@@ -397,6 +397,7 @@
     .skill-card.legal    { --skill-accent: #8B5CF6; }
     .skill-card.acq      { --skill-accent: #10B981; }
     .skill-card.comp-map { --skill-accent: #F97316; }
+    .skill-card.canvas   { --skill-accent: #06B6D4; }
 
     .card-top {
       display: flex;
@@ -791,7 +792,7 @@
     <div class="nav-status">
       <div class="status-pill">
         <span class="dot"></span>
-        5 Skills Active
+        6 Skills Active
       </div>
       <div class="nav-build">Build: 2026.03.11</div>
     </div>
@@ -914,7 +915,7 @@
     <div class="section-header">
       <span class="section-label">Subsidiaries</span>
       <span class="section-title">Integrated Skill Modules</span>
-      <span class="section-count">5 / 5 Active</span>
+      <span class="section-count">6 / 6 Active</span>
     </div>
 
     <div class="skills-grid">
@@ -1132,6 +1133,51 @@
         </button>
       </div>
 
+      <!-- CANVAS -->
+      <div class="skill-card canvas">
+        <div class="card-top">
+          <div class="card-icon">🏗️</div>
+          <div class="card-status"><span class="sdot"></span>Active</div>
+        </div>
+        <div class="card-codename">Canvas_SKILL.md</div>
+        <div class="card-name">CANVAS</div>
+        <p class="card-desc">
+          Tenant Intelligence &amp; Space Matching Engine. Demand-side sourcing — identify, score, and rank businesses that need small and mid-bay industrial or flex space (2,000–25,000 SF). Fill mode: you have a building, find the tenants. Hunt mode: find displaced businesses, feed back into RIDGE pipeline as acquisition targets.
+        </p>
+        <div class="card-section-label">Trigger Phrases</div>
+        <div class="trigger-pills">
+          <span class="pill">find tenants for this building</span>
+          <span class="pill">run CANVAS</span>
+          <span class="pill">fill this building</span>
+          <span class="pill">tenant search</span>
+          <span class="pill">who's looking for space</span>
+          <span class="pill">demand analysis</span>
+        </div>
+        <hr class="card-divider">
+        <div class="card-section-label">Mandatory Outputs (always three)</div>
+        <ul class="output-list">
+          <li><span class="output-tag tag-xlsx">XLSX</span> Ranked tenant prospect list — scored, tiered, decision makers</li>
+          <li><span class="output-tag tag-pdf">PDF</span> Tier 1 profiles + summary report</li>
+          <li><span class="output-tag tag-tbl">Feed</span> RIDGE Acquisition Feed (Hunt mode) — demand-validated targets</li>
+        </ul>
+        <hr class="card-divider">
+        <div class="card-footer">
+          <span class="card-file">Canvas_SKILL.md</span>
+          <span class="card-mode-badge">2 Modes</span>
+        </div>
+        <div class="card-inputs">
+          <select class="card-input" id="canvas-mode">
+            <option value="Fill">Mode: Fill — I have a building, find tenants</option>
+            <option value="Hunt">Mode: Hunt — find displaced businesses for acquisition targeting</option>
+          </select>
+          <input class="card-input" id="canvas-location" type="text" placeholder="Property address or market / submarket">
+        </div>
+        <button class="launch-btn" onclick="launchCanvas()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+          Launch in Claude
+        </button>
+      </div>
+
     </div>
   </section>
 
@@ -1231,7 +1277,7 @@
     </div>
     <div class="footer-right">
       <div class="footer-meta">
-        5 Skills Active &nbsp;·&nbsp; Build 2026.03.11<br>
+        6 Skills Active &nbsp;·&nbsp; Build 2026.03.11<br>
         ATL · SAV · DFW · HOU
       </div>
     </div>
@@ -1274,6 +1320,14 @@
       let p = 'Map these comps — I have lease comp data for a RIDGE Lease Comp Map.';
       if (address) p += ' Target property: ' + address + '.';
       if (submarket) p += ' Submarket: ' + submarket + '.';
+      window.open('https://claude.ai/new?q=' + encodeURIComponent(p), '_blank');
+    }
+    function launchCanvas() {
+      const mode = document.getElementById('canvas-mode').value;
+      const location = document.getElementById('canvas-location').value.trim();
+      let p = 'Run CANVAS — ' + mode + ' mode.';
+      if (location) p += ' ' + (mode === 'Fill' ? 'Property: ' : 'Market / submarket: ') + location + '.';
+      p += ' I am ready to begin.';
       window.open('https://claude.ai/new?q=' + encodeURIComponent(p), '_blank');
     }
   </script>

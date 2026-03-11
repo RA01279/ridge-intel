@@ -250,6 +250,7 @@ When any document is uploaded during a RIDGE session, route it immediately using
 | Full diligence package (lease + PSA or other docs) | **Both** — Lease Admin on the lease, CRE Legal Reviewer on everything else; cross-reference findings in session summary |
 | Acquisition model (.xlsx), underwriting model | **Acquisition Investment Report** | `/mnt/skills/user/acq-investment-report/SKILL.md` |
 | Lease comp data (screenshot, Excel, CSV, or pasted text) + target property | **Lease Comp Map** | `/mnt/skills/user/lease-comp-map/SKILL.md` |
+| Tenant sourcing request, building fill request, demand analysis, CoStar tenant export | **CANVAS** | `Canvas_SKILL.md` |
 
 If document type is ambiguous, classify it explicitly and confirm with the user before proceeding.
 
@@ -323,6 +324,30 @@ RIDGE's leasing intelligence engine. Takes comp data in any format (screenshot, 
 - Use alongside Lease Admin output to compare in-place rent vs. market on any acquisition target
 
 Read `/mnt/skills/user/lease-comp-map/SKILL.md` in full before executing any comp map task.
+
+---
+
+### CANVAS — Tenant Intelligence & Space Matching Engine
+
+RIDGE's demand-side sourcing engine. Identifies, scores, and ranks businesses that are likely tenants for small and mid-bay industrial and flex space (2,000–25,000 SF). Closes the loop between supply-side acquisition targeting and demand-side leasing confidence.
+
+**Trigger phrases:** "find tenants for this building", "run CANVAS", "fill this building", "tenant search", "who's looking for space", "demand analysis", "who should lease this space", "hunt for tenants", or any request to source, identify, or rank potential tenants for industrial or flex assets.
+
+**Two operating modes:**
+- **Fill** — You have a specific building under contract, in LOI, or in the pipeline. Find businesses in the trade area that fit the space and are likely to lease it.
+- **Hunt** — Scan a market or submarket for businesses showing displacement signals. Output feeds directly back into RIDGE as acquisition targets — demand-validated sourcing is more defensible than vacancy signal alone.
+
+**Every run produces three deliverables — always all three:**
+1. `CANVAS_[Property/Market]_Prospects_[YYYYMMDD].xlsx` — Ranked tenant prospect list, scored 0–100, tiered (Tier 1 Priority / Tier 2 Active / Tier 3 Watch)
+2. `CANVAS_[Property/Market]_Report_[YYYYMMDD].pdf` — Tier 1 profiles (one page each) + summary report
+3. **RIDGE Acquisition Feed** (Hunt mode) — Submarket pockets with ≥3 Tier 1/2 tenants flagged as implied acquisition targets, formatted for direct pipeline ingestion
+
+**RIDGE integration:**
+- Fill mode output is the strongest acquisition conversation opener — "we have tenants ready" before you approach the owner
+- Hunt mode Acquisition Feed appends directly to the RIDGE Daily Prospect Report pipeline
+- ≥3 confirmed Tier 1 tenants + submarket vacancy below 10% + no new supply = High Conviction acquisition feed signal
+
+Read `Canvas_SKILL.md` in full before executing any tenant sourcing or demand analysis task.
 
 ---
 
