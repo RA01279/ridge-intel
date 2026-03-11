@@ -594,6 +594,31 @@
       flex-shrink: 0;
     }
 
+    .card-inputs {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-top: 16px;
+    }
+
+    .card-input {
+      width: 100%;
+      padding: 9px 12px;
+      background: rgba(0,0,0,0.25);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--white);
+      font-size: 12px;
+      font-family: 'Inter', sans-serif;
+      outline: none;
+      transition: border-color 0.2s ease;
+      -webkit-appearance: none;
+    }
+    .card-input:focus { border-color: rgba(255,255,255,0.3); }
+    .card-input::placeholder { color: var(--muted); opacity: 1; }
+    select.card-input { cursor: pointer; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%238B91A8' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 10px center; padding-right: 28px; }
+    select.card-input option { background: #141928; color: #F0F2F8; }
+
     /* ── PRINCIPLES ── */
     .principles-grid {
       display: grid;
@@ -926,10 +951,17 @@
           <span class="card-file">/mnt/skills/user/scout/SKILL.md</span>
           <span class="card-mode-badge">2 Modes</span>
         </div>
-        <a class="launch-btn" href="https://claude.ai/new?q=Run%20SCOUT%20%E2%80%94%20build%20me%20a%20prospect%20list.%20What%20submarket%20and%20asset%20type%20should%20I%20target%3F" target="_blank">
+        <div class="card-inputs">
+          <input class="card-input" id="scout-market" type="text" placeholder="Market — e.g. Savannah, GA">
+          <select class="card-input" id="scout-mode">
+            <option value="Submarket Sweep">Mode: Submarket Sweep</option>
+            <option value="Property Dossier">Mode: Property Dossier</option>
+          </select>
+        </div>
+        <button class="launch-btn" onclick="launchScout()">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
           Launch in Claude
-        </a>
+        </button>
       </div>
 
       <!-- Lease Admin / The Gavel -->
@@ -963,10 +995,14 @@
           <span class="card-file">/mnt/skills/user/the-gavel/SKILL.md</span>
           <span class="card-mode-badge">Auto-Route</span>
         </div>
-        <a class="launch-btn" href="https://claude.ai/new?q=Run%20the%20lease%20%E2%80%94%20I%27m%20uploading%20a%20lease%20document%20for%20RIDGE%20Lease%20Admin%20analysis." target="_blank">
+        <div class="card-inputs">
+          <input class="card-input" id="gavel-tenant" type="text" placeholder="Tenant name (optional)">
+          <input class="card-input" id="gavel-address" type="text" placeholder="Property address (optional)">
+        </div>
+        <button class="launch-btn" onclick="launchGavel()">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
           Launch in Claude
-        </a>
+        </button>
       </div>
 
       <!-- CRE Legal Reviewer -->
@@ -1001,10 +1037,20 @@
           <span class="card-file">/mnt/skills/user/cre-legal-reviewer/SKILL.md</span>
           <span class="card-mode-badge">4 Modules</span>
         </div>
-        <a class="launch-btn" href="https://claude.ai/new?q=Legal%20review%20%E2%80%94%20I%27m%20uploading%20a%20transaction%20document%20(PSA%2C%20JV%20agreement%2C%20loan%20docs%2C%20or%20PMA)%20for%20RIDGE%20CRE%20Legal%20Reviewer." target="_blank">
+        <div class="card-inputs">
+          <select class="card-input" id="legal-type">
+            <option value="">Document type...</option>
+            <option value="PSA">PSA</option>
+            <option value="JV / Operating Agreement">JV / Operating Agreement</option>
+            <option value="Loan Documents">Loan Documents</option>
+            <option value="PMA">PMA</option>
+          </select>
+          <input class="card-input" id="legal-deal" type="text" placeholder="Deal / property name (optional)">
+        </div>
+        <button class="launch-btn" onclick="launchLegal()">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
           Launch in Claude
-        </a>
+        </button>
       </div>
 
       <!-- Acquisition Investment Report -->
@@ -1036,10 +1082,13 @@
           <span class="card-file">/mnt/skills/user/acq-investment-report/SKILL.md</span>
           <span class="card-mode-badge">11 Slides Min</span>
         </div>
-        <a class="launch-btn" href="https://claude.ai/new?q=IC%20deck%20%E2%80%94%20I%27m%20uploading%20my%20acquisition%20model.%20Build%20me%20an%20investment%20committee%20presentation." target="_blank">
+        <div class="card-inputs">
+          <input class="card-input" id="acq-deal" type="text" placeholder="Deal / property name (optional)">
+        </div>
+        <button class="launch-btn" onclick="launchAcq()">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
           Launch in Claude
-        </a>
+        </button>
       </div>
 
       <!-- Lease Comp Map -->
@@ -1073,10 +1122,14 @@
           <span class="card-file">/mnt/skills/user/lease-comp-map/SKILL.md</span>
           <span class="card-mode-badge">3 Outputs Always</span>
         </div>
-        <a class="launch-btn" href="https://claude.ai/new?q=Map%20these%20comps%20%E2%80%94%20I%20have%20lease%20comp%20data%20and%20a%20target%20property%20address%20for%20a%20RIDGE%20Lease%20Comp%20Map." target="_blank">
+        <div class="card-inputs">
+          <input class="card-input" id="comp-address" type="text" placeholder="Target property address">
+          <input class="card-input" id="comp-submarket" type="text" placeholder="Submarket (optional)">
+        </div>
+        <button class="launch-btn" onclick="launchCompMap()">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
           Launch in Claude
-        </a>
+        </button>
       </div>
 
     </div>
@@ -1184,5 +1237,45 @@
     </div>
   </footer>
 
+  <script>
+    function launchScout() {
+      const market = document.getElementById('scout-market').value.trim();
+      const mode = document.getElementById('scout-mode').value;
+      let p = 'Run SCOUT — ' + mode;
+      if (market) p += ' in ' + market;
+      p += '. I am ready to begin.';
+      window.open('https://claude.ai/new?q=' + encodeURIComponent(p), '_blank');
+    }
+    function launchGavel() {
+      const tenant = document.getElementById('gavel-tenant').value.trim();
+      const address = document.getElementById('gavel-address').value.trim();
+      let p = 'Run the lease — I am uploading a lease document for RIDGE Lease Admin analysis.';
+      if (tenant) p += ' Tenant: ' + tenant + '.';
+      if (address) p += ' Property: ' + address + '.';
+      window.open('https://claude.ai/new?q=' + encodeURIComponent(p), '_blank');
+    }
+    function launchLegal() {
+      const type = document.getElementById('legal-type').value;
+      const deal = document.getElementById('legal-deal').value.trim();
+      let p = 'Legal review — I am uploading a transaction document for RIDGE CRE Legal Reviewer.';
+      if (type) p += ' Document type: ' + type + '.';
+      if (deal) p += ' Deal: ' + deal + '.';
+      window.open('https://claude.ai/new?q=' + encodeURIComponent(p), '_blank');
+    }
+    function launchAcq() {
+      const deal = document.getElementById('acq-deal').value.trim();
+      let p = 'IC deck — I am uploading my acquisition model. Build me an investment committee presentation.';
+      if (deal) p += ' Deal: ' + deal + '.';
+      window.open('https://claude.ai/new?q=' + encodeURIComponent(p), '_blank');
+    }
+    function launchCompMap() {
+      const address = document.getElementById('comp-address').value.trim();
+      const submarket = document.getElementById('comp-submarket').value.trim();
+      let p = 'Map these comps — I have lease comp data for a RIDGE Lease Comp Map.';
+      if (address) p += ' Target property: ' + address + '.';
+      if (submarket) p += ' Submarket: ' + submarket + '.';
+      window.open('https://claude.ai/new?q=' + encodeURIComponent(p), '_blank');
+    }
+  </script>
 </body>
 </html>
