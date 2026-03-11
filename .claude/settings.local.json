@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python3 -c \":*)",
+      "Bash(python3 create_lease_files.py)",
+      "Read(//c/Users/RhettAnderson/.claude/**)",
+      "Read(//c/Users/RhettAnderson/**)",
+      "Read(//c/Users/RhettAnderson/.claude/plugins/marketplaces/**)",
+      "Bash(xargs grep:*)",
+      "Bash(/dev/null -i)"
+    ]
+  }
+}

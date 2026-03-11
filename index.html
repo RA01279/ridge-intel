@@ -1,0 +1,1136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>RIDGE — Real Intelligence for Deal Generation & Evaluation</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,300&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --navy:       #1E2761;
+      --navy-light: #263580;
+      --midnight:   #0A0E1A;
+      --dark:       #0F1423;
+      --card:       #141928;
+      --card-hover: #1A2035;
+      --border:     rgba(255,255,255,0.07);
+      --border-bright: rgba(255,255,255,0.15);
+      --gold:       #C9A84C;
+      --gold-light: #DFC06B;
+      --white:      #F0F2F8;
+      --muted:      #8B91A8;
+      --green:      #22C55E;
+      --accent-red: #C8102E;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--midnight);
+      color: var(--white);
+      line-height: 1.6;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* ── GRID BACKGROUND ── */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(30,39,97,0.15) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(30,39,97,0.15) 1px, transparent 1px);
+      background-size: 48px 48px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* ── GLOW ── */
+    .glow-orb {
+      position: fixed;
+      border-radius: 50%;
+      filter: blur(120px);
+      pointer-events: none;
+      z-index: 0;
+    }
+    .glow-orb-1 {
+      width: 600px; height: 600px;
+      background: radial-gradient(circle, rgba(30,39,97,0.4) 0%, transparent 70%);
+      top: -200px; left: -200px;
+    }
+    .glow-orb-2 {
+      width: 400px; height: 400px;
+      background: radial-gradient(circle, rgba(201,168,76,0.08) 0%, transparent 70%);
+      top: 30%; right: -100px;
+    }
+
+    /* ── NAV ── */
+    nav {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 48px;
+      height: 64px;
+      background: rgba(10,14,26,0.85);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .nav-logo {
+      font-family: 'Space Mono', monospace;
+      font-size: 18px;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      color: var(--white);
+    }
+    .nav-logo span { color: var(--gold); }
+
+    .nav-status {
+      display: flex;
+      align-items: center;
+      gap: 24px;
+    }
+
+    .status-pill {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+    .status-pill .dot {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: var(--green);
+      box-shadow: 0 0 6px var(--green);
+      animation: pulse 2s ease-in-out infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+
+    .nav-build {
+      font-size: 11px;
+      font-weight: 500;
+      color: var(--muted);
+      font-family: 'Space Mono', monospace;
+    }
+
+    /* ── HERO ── */
+    .hero {
+      position: relative;
+      z-index: 1;
+      padding: 160px 48px 80px;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    .hero-eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--gold);
+      margin-bottom: 24px;
+      padding: 6px 14px;
+      border: 1px solid rgba(201,168,76,0.3);
+      border-radius: 4px;
+      background: rgba(201,168,76,0.05);
+    }
+
+    .hero-title {
+      font-size: clamp(52px, 7vw, 92px);
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      line-height: 1;
+      margin-bottom: 8px;
+    }
+    .hero-title .ridge { color: var(--white); }
+    .hero-title .dot-sep { color: var(--gold); margin: 0 12px; }
+
+    .hero-subtitle {
+      font-family: 'Space Mono', monospace;
+      font-size: clamp(11px, 1.2vw, 13px);
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 32px;
+    }
+
+    .hero-desc {
+      font-size: 18px;
+      font-weight: 300;
+      color: rgba(240,242,248,0.7);
+      max-width: 600px;
+      margin-bottom: 48px;
+      line-height: 1.7;
+    }
+
+    .hero-stats {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow: hidden;
+      max-width: 740px;
+      background: rgba(20,25,40,0.6);
+    }
+
+    .stat-block {
+      flex: 1;
+      min-width: 120px;
+      padding: 20px 24px;
+      border-right: 1px solid var(--border);
+    }
+    .stat-block:last-child { border-right: none; }
+
+    .stat-label {
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+    .stat-value {
+      font-family: 'Space Mono', monospace;
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--gold);
+    }
+
+    /* ── SECTION ── */
+    section {
+      position: relative;
+      z-index: 1;
+      padding: 0 48px 80px;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    .section-header {
+      display: flex;
+      align-items: baseline;
+      gap: 16px;
+      margin-bottom: 40px;
+      padding-bottom: 20px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .section-label {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--gold);
+    }
+
+    .section-title {
+      font-size: 28px;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+    }
+
+    .section-count {
+      margin-left: auto;
+      font-family: 'Space Mono', monospace;
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    /* ── DIVIDER ── */
+    .divider {
+      position: relative;
+      z-index: 1;
+      max-width: 1200px;
+      margin: 0 auto 60px;
+      padding: 0 48px;
+    }
+    .divider hr {
+      border: none;
+      border-top: 1px solid var(--border);
+    }
+
+    /* ── HOLDING COMPANY CARD ── */
+    .holding-card {
+      background: linear-gradient(135deg, #1E2761 0%, #141928 60%);
+      border: 1px solid rgba(30,39,97,0.8);
+      border-radius: 12px;
+      padding: 48px;
+      margin-bottom: 80px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .holding-card::before {
+      content: 'RIDGE';
+      position: absolute;
+      right: -20px; top: -30px;
+      font-family: 'Space Mono', monospace;
+      font-size: 160px;
+      font-weight: 700;
+      color: rgba(255,255,255,0.03);
+      letter-spacing: -0.05em;
+      pointer-events: none;
+      user-select: none;
+    }
+
+    .holding-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 32px;
+      margin-bottom: 40px;
+    }
+
+    .holding-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--gold);
+      padding: 5px 12px;
+      border: 1px solid rgba(201,168,76,0.4);
+      border-radius: 4px;
+      background: rgba(201,168,76,0.08);
+      margin-bottom: 16px;
+    }
+
+    .holding-name {
+      font-size: 36px;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      margin-bottom: 8px;
+    }
+
+    .holding-tagline {
+      font-size: 14px;
+      color: rgba(240,242,248,0.6);
+      max-width: 500px;
+    }
+
+    .holding-criteria {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+    }
+
+    .criteria-item {
+      background: rgba(0,0,0,0.2);
+      border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 8px;
+      padding: 16px 20px;
+    }
+
+    .criteria-label {
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+
+    .criteria-value {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--white);
+    }
+    .criteria-value .highlight { color: var(--gold); }
+
+    /* ── SKILL GRID ── */
+    .skills-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+      gap: 20px;
+    }
+
+    .skill-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 32px;
+      transition: all 0.25s ease;
+      position: relative;
+      overflow: hidden;
+      cursor: default;
+    }
+
+    .skill-card::after {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, var(--skill-accent, var(--navy)), transparent);
+      opacity: 0;
+      transition: opacity 0.25s ease;
+    }
+
+    .skill-card:hover {
+      background: var(--card-hover);
+      border-color: var(--border-bright);
+      transform: translateY(-2px);
+    }
+    .skill-card:hover::after { opacity: 1; }
+
+    /* accent colors per card */
+    .skill-card.scout    { --skill-accent: #3B82F6; }
+    .skill-card.gavel    { --skill-accent: #C9A84C; }
+    .skill-card.legal    { --skill-accent: #8B5CF6; }
+    .skill-card.acq      { --skill-accent: #10B981; }
+    .skill-card.comp-map { --skill-accent: #F97316; }
+
+    .card-top {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      margin-bottom: 20px;
+    }
+
+    .card-icon {
+      width: 44px; height: 44px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid var(--border);
+    }
+
+    .card-status {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--green);
+    }
+    .card-status .sdot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: var(--green);
+      box-shadow: 0 0 5px var(--green);
+      animation: pulse 2s ease-in-out infinite;
+    }
+
+    .card-codename {
+      font-family: 'Space Mono', monospace;
+      font-size: 10px;
+      color: var(--muted);
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      margin-bottom: 6px;
+    }
+
+    .card-name {
+      font-size: 20px;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+      margin-bottom: 10px;
+      line-height: 1.2;
+    }
+
+    .card-desc {
+      font-size: 13px;
+      color: rgba(240,242,248,0.6);
+      line-height: 1.65;
+      margin-bottom: 24px;
+    }
+
+    .card-section-label {
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 8px;
+    }
+
+    .trigger-pills {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-bottom: 20px;
+    }
+
+    .pill {
+      font-size: 11px;
+      font-weight: 500;
+      padding: 3px 9px;
+      border-radius: 4px;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid var(--border);
+      color: rgba(240,242,248,0.7);
+      font-family: 'Space Mono', monospace;
+    }
+
+    .output-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+
+    .output-list li {
+      font-size: 12px;
+      color: rgba(240,242,248,0.65);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .output-list li::before {
+      content: '';
+      width: 16px; height: 16px;
+      border-radius: 4px;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid var(--border);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      font-size: 9px;
+      color: var(--muted);
+    }
+
+    .output-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      padding: 2px 7px;
+      border-radius: 3px;
+      font-family: 'Space Mono', monospace;
+    }
+    .tag-pdf  { background: rgba(200,16,46,0.15);  color: #F87171; border: 1px solid rgba(200,16,46,0.3); }
+    .tag-xlsx { background: rgba(16,185,129,0.12); color: #6EE7B7; border: 1px solid rgba(16,185,129,0.3); }
+    .tag-pptx { background: rgba(249,115,22,0.12); color: #FDBA74; border: 1px solid rgba(249,115,22,0.3); }
+    .tag-html { background: rgba(59,130,246,0.12); color: #93C5FD; border: 1px solid rgba(59,130,246,0.3); }
+    .tag-tbl  { background: rgba(139,92,246,0.12); color: #C4B5FD; border: 1px solid rgba(139,92,246,0.3); }
+
+    .card-divider {
+      border: none;
+      border-top: 1px solid var(--border);
+      margin: 20px 0;
+    }
+
+    .card-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .card-file {
+      font-family: 'Space Mono', monospace;
+      font-size: 9px;
+      color: var(--muted);
+      opacity: 0.6;
+    }
+
+    .card-mode-badge {
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      padding: 3px 9px;
+      border-radius: 4px;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid var(--border);
+      color: var(--muted);
+    }
+
+    /* ── PRINCIPLES ── */
+    .principles-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 12px;
+    }
+
+    .principle-item {
+      display: flex;
+      gap: 16px;
+      align-items: flex-start;
+      padding: 16px 20px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+    }
+
+    .principle-num {
+      font-family: 'Space Mono', monospace;
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--gold);
+      opacity: 0.7;
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+
+    .principle-text {
+      font-size: 13px;
+      color: rgba(240,242,248,0.7);
+      line-height: 1.5;
+    }
+
+    /* ── MARKETS ── */
+    .markets-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-bottom: 80px;
+    }
+
+    .market-card {
+      flex: 1;
+      min-width: 160px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 20px 24px;
+      position: relative;
+    }
+
+    .market-card.primary {
+      border-color: rgba(201,168,76,0.3);
+      background: rgba(201,168,76,0.04);
+    }
+
+    .market-tier {
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+    .market-card.primary .market-tier { color: var(--gold); }
+
+    .market-name {
+      font-size: 17px;
+      font-weight: 700;
+    }
+
+    .market-state {
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .market-flag {
+      position: absolute;
+      top: 16px; right: 16px;
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--green);
+      padding: 2px 6px;
+      border: 1px solid rgba(34,197,94,0.3);
+      border-radius: 3px;
+      background: rgba(34,197,94,0.08);
+    }
+
+    .market-flag.watch {
+      color: #FBBF24;
+      border-color: rgba(251,191,36,0.3);
+      background: rgba(251,191,36,0.06);
+    }
+
+    /* ── FOOTER ── */
+    footer {
+      position: relative;
+      z-index: 1;
+      border-top: 1px solid var(--border);
+      padding: 40px 48px;
+      max-width: 1200px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: gap;
+      gap: 24px;
+    }
+
+    .footer-left {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .footer-logo {
+      font-family: 'Space Mono', monospace;
+      font-size: 14px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      color: var(--white);
+    }
+    .footer-logo span { color: var(--gold); }
+
+    .footer-sub {
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .footer-right {
+      display: flex;
+      align-items: center;
+      gap: 24px;
+    }
+
+    .footer-meta {
+      font-family: 'Space Mono', monospace;
+      font-size: 10px;
+      color: var(--muted);
+      opacity: 0.6;
+      text-align: right;
+    }
+
+    /* ── RESPONSIVE ── */
+    @media (max-width: 768px) {
+      nav { padding: 0 24px; }
+      .hero, section, footer { padding-left: 24px; padding-right: 24px; }
+      .divider { padding: 0 24px; }
+      .holding-card { padding: 28px 24px; }
+      .hero-title { font-size: 44px; }
+      .nav-build { display: none; }
+      .skills-grid { grid-template-columns: 1fr; }
+      .hero-stats { flex-direction: column; }
+      .stat-block { border-right: none; border-bottom: 1px solid var(--border); }
+      .stat-block:last-child { border-bottom: none; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Background -->
+  <div class="glow-orb glow-orb-1"></div>
+  <div class="glow-orb glow-orb-2"></div>
+
+  <!-- Nav -->
+  <nav>
+    <div class="nav-logo"><span>RIDGE</span> &nbsp;·&nbsp; Acquisitions Intelligence</div>
+    <div class="nav-status">
+      <div class="status-pill">
+        <span class="dot"></span>
+        5 Skills Active
+      </div>
+      <div class="nav-build">Build: 2026.03.11</div>
+    </div>
+  </nav>
+
+  <!-- Hero -->
+  <div class="hero">
+    <div class="hero-eyebrow">Off-Market Commercial Real Estate</div>
+    <div class="hero-title">
+      <span class="ridge">RIDGE</span>
+    </div>
+    <div class="hero-subtitle">Real Intelligence for Deal Generation &amp; Evaluation</div>
+    <p class="hero-desc">
+      Senior acquisitions partner for industrial, flex industrial, and single-story office conversion.
+      Purpose-built for off-market sourcing, outside-in underwriting, and conviction-based deal execution.
+    </p>
+    <div class="hero-stats">
+      <div class="stat-block">
+        <div class="stat-label">Deal Range</div>
+        <div class="stat-value">$10M – $70M</div>
+      </div>
+      <div class="stat-block">
+        <div class="stat-label">IRR Target</div>
+        <div class="stat-value">15%+ / 60mo</div>
+      </div>
+      <div class="stat-block">
+        <div class="stat-label">Equity Multiple</div>
+        <div class="stat-value">1.8× – 2.2×</div>
+      </div>
+      <div class="stat-block">
+        <div class="stat-label">YOC Anchor</div>
+        <div class="stat-value">7.5% – 8.0%</div>
+      </div>
+      <div class="stat-block">
+        <div class="stat-label">Sourcing</div>
+        <div class="stat-value">95% Off-Mkt</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Holding Company -->
+  <section>
+    <div class="holding-card">
+      <div class="holding-header">
+        <div>
+          <div class="holding-badge">Holding Company</div>
+          <div class="holding-name">RIDGE Intelligence Platform</div>
+          <div class="holding-tagline">Five integrated modules. One acquisitions engine. Zero redundancy.</div>
+        </div>
+      </div>
+      <div class="holding-criteria">
+        <div class="criteria-item">
+          <div class="criteria-label">Asset Types</div>
+          <div class="criteria-value">Industrial &bull; Flex Industrial &bull; <span class="highlight">Single-Story Office Conversion</span></div>
+        </div>
+        <div class="criteria-item">
+          <div class="criteria-label">Sweet Spot</div>
+          <div class="criteria-value"><span class="highlight">$25M – $35M</span> · 40% sourcing energy</div>
+        </div>
+        <div class="criteria-item">
+          <div class="criteria-label">Hold Period</div>
+          <div class="criteria-value">3–7 years · Value-Add Primary</div>
+        </div>
+        <div class="criteria-item">
+          <div class="criteria-label">Ownership Target</div>
+          <div class="criteria-value">Private LLCs · <span class="highlight">7–15 yr hold</span> · Family / Estate</div>
+        </div>
+        <div class="criteria-item">
+          <div class="criteria-label">Debt Signal</div>
+          <div class="criteria-value">Loans vintage <span class="highlight">2018–2021</span> approaching maturity</div>
+        </div>
+        <div class="criteria-item">
+          <div class="criteria-label">Conviction States</div>
+          <div class="criteria-value">High Conviction · Needs More Data · Watch List</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Markets -->
+    <div class="section-header">
+      <span class="section-label">Coverage</span>
+      <span class="section-title">Target Markets</span>
+    </div>
+    <div class="markets-row">
+      <div class="market-card primary">
+        <div class="market-tier">Priority 1 — Primary</div>
+        <div class="market-name">Atlanta</div>
+        <div class="market-state">Georgia</div>
+        <div class="market-flag">Active</div>
+      </div>
+      <div class="market-card primary">
+        <div class="market-tier">Priority 2 — Primary</div>
+        <div class="market-name">Savannah</div>
+        <div class="market-state">Georgia</div>
+        <div class="market-flag">Active</div>
+      </div>
+      <div class="market-card">
+        <div class="market-tier">Priority 3</div>
+        <div class="market-name">Dallas–Fort Worth</div>
+        <div class="market-state">Texas</div>
+        <div class="market-flag">Active</div>
+      </div>
+      <div class="market-card">
+        <div class="market-tier">Priority 4</div>
+        <div class="market-name">Houston</div>
+        <div class="market-state">Texas</div>
+        <div class="market-flag">Active</div>
+      </div>
+      <div class="market-card">
+        <div class="market-tier">Watch Only</div>
+        <div class="market-name">Austin</div>
+        <div class="market-state">Texas</div>
+        <div class="market-flag watch">Watch</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Skills -->
+  <section>
+    <div class="section-header">
+      <span class="section-label">Subsidiaries</span>
+      <span class="section-title">Integrated Skill Modules</span>
+      <span class="section-count">5 / 5 Active</span>
+    </div>
+
+    <div class="skills-grid">
+
+      <!-- SCOUT -->
+      <div class="skill-card scout">
+        <div class="card-top">
+          <div class="card-icon">🔭</div>
+          <div class="card-status"><span class="sdot"></span>Active</div>
+        </div>
+        <div class="card-codename">scout.skill</div>
+        <div class="card-name">SCOUT</div>
+        <p class="card-desc">
+          Sourcing &amp; Coverage Operations Unit. RIDGE's dedicated hunting engine. Builds ranked prospect tables from vacancy signals, debt lifecycle signals, and physical neglect signals. Produces full single-property dossiers on demand. SCOUT hunts — RIDGE evaluates.
+        </p>
+        <div class="card-section-label">Trigger Phrases</div>
+        <div class="trigger-pills">
+          <span class="pill">build me a prospect list</span>
+          <span class="pill">find targets in [submarket]</span>
+          <span class="pill">run SCOUT</span>
+          <span class="pill">pull a dossier on [address]</span>
+          <span class="pill">debt stress</span>
+          <span class="pill">CMBS</span>
+          <span class="pill">sourcing run</span>
+        </div>
+        <hr class="card-divider">
+        <div class="card-section-label">Outputs</div>
+        <ul class="output-list">
+          <li><span class="output-tag tag-tbl">Table</span> Ranked prospect sweep (10–50 properties)</li>
+          <li><span class="output-tag tag-tbl">Report</span> Full property dossier (5 sections)</li>
+        </ul>
+        <hr class="card-divider">
+        <div class="card-footer">
+          <span class="card-file">/mnt/skills/user/scout/SKILL.md</span>
+          <span class="card-mode-badge">2 Modes</span>
+        </div>
+      </div>
+
+      <!-- Lease Admin / The Gavel -->
+      <div class="skill-card gavel">
+        <div class="card-top">
+          <div class="card-icon">⚖️</div>
+          <div class="card-status"><span class="sdot"></span>Active</div>
+        </div>
+        <div class="card-codename">the-gavel.skill</div>
+        <div class="card-name">Lease Admin</div>
+        <p class="card-desc">
+          Formerly The Gavel. RIDGE's dedicated lease analysis engine, calibrated for industrial and flex lease structures. Activates automatically on any uploaded lease document. Always produces both a PDF abstract and an XLSX rent roll — never one without the other.
+        </p>
+        <div class="card-section-label">Trigger Phrases</div>
+        <div class="trigger-pills">
+          <span class="pill">run the lease</span>
+          <span class="pill">abstract this</span>
+          <span class="pill">lease admin</span>
+          <span class="pill">review the lease</span>
+          <span class="pill">lease abstract</span>
+          <span class="pill">read the rent roll</span>
+        </div>
+        <hr class="card-divider">
+        <div class="card-section-label">Mandatory Outputs (always both)</div>
+        <ul class="output-list">
+          <li><span class="output-tag tag-pdf">PDF</span> Lease Abstract — key terms, risk flags, redlines</li>
+          <li><span class="output-tag tag-xlsx">XLSX</span> Rent Roll — 3 tabs: Schedule / Critical Dates / Summary</li>
+        </ul>
+        <hr class="card-divider">
+        <div class="card-footer">
+          <span class="card-file">/mnt/skills/user/the-gavel/SKILL.md</span>
+          <span class="card-mode-badge">Auto-Route</span>
+        </div>
+      </div>
+
+      <!-- CRE Legal Reviewer -->
+      <div class="skill-card legal">
+        <div class="card-top">
+          <div class="card-icon">📋</div>
+          <div class="card-status"><span class="sdot"></span>Active</div>
+        </div>
+        <div class="card-codename">cre-legal-reviewer.skill</div>
+        <div class="card-name">CRE Legal Reviewer</div>
+        <p class="card-desc">
+          Transaction document analysis engine. Covers PSAs, JV &amp; Operating Agreements, Loan Documents, and Property Management Agreements. Not for leases — those route to Lease Admin. Flags seller rep gaps, waterfall mechanics, DSCR covenants, and prepayment exposure.
+        </p>
+        <div class="card-section-label">Document Types</div>
+        <div class="trigger-pills">
+          <span class="pill">PSA</span>
+          <span class="pill">JV / Operating Agreement</span>
+          <span class="pill">Loan Documents</span>
+          <span class="pill">PMA</span>
+          <span class="pill">review the PSA</span>
+          <span class="pill">legal review</span>
+          <span class="pill">redline</span>
+        </div>
+        <hr class="card-divider">
+        <div class="card-section-label">Output</div>
+        <ul class="output-list">
+          <li><span class="output-tag tag-pdf">PDF</span> Executive summary + key terms + provision checklist</li>
+          <li><span class="output-tag tag-pdf">PDF</span> Risk analysis with clause references + redline suggestions</li>
+        </ul>
+        <hr class="card-divider">
+        <div class="card-footer">
+          <span class="card-file">/mnt/skills/user/cre-legal-reviewer/SKILL.md</span>
+          <span class="card-mode-badge">4 Modules</span>
+        </div>
+      </div>
+
+      <!-- Acquisition Investment Report -->
+      <div class="skill-card acq">
+        <div class="card-top">
+          <div class="card-icon">📊</div>
+          <div class="card-status"><span class="sdot"></span>Active</div>
+        </div>
+        <div class="card-codename">acq-investment-report.skill</div>
+        <div class="card-name">Acquisition Investment Report</div>
+        <p class="card-desc">
+          IC presentation engine. Reads an uploaded Excel acquisition model and produces a polished PowerPoint deck ready for an investment committee. Midnight Executive palette. IRR ≥14% = RECOMMEND · 11–14% = CONDITIONAL · &lt;11% = PASS.
+        </p>
+        <div class="card-section-label">Trigger Phrases</div>
+        <div class="trigger-pills">
+          <span class="pill">IC deck</span>
+          <span class="pill">investment committee presentation</span>
+          <span class="pill">create a deck from my model</span>
+          <span class="pill">turn this into a deck</span>
+          <span class="pill">IC-ready output</span>
+        </div>
+        <hr class="card-divider">
+        <div class="card-section-label">Output</div>
+        <ul class="output-list">
+          <li><span class="output-tag tag-pptx">PPTX</span> 11-slide IC deck — deal thesis, returns, capital stack, sensitivity</li>
+        </ul>
+        <hr class="card-divider">
+        <div class="card-footer">
+          <span class="card-file">/mnt/skills/user/acq-investment-report/SKILL.md</span>
+          <span class="card-mode-badge">11 Slides Min</span>
+        </div>
+      </div>
+
+      <!-- Lease Comp Map -->
+      <div class="skill-card comp-map">
+        <div class="card-top">
+          <div class="card-icon">🗺️</div>
+          <div class="card-status"><span class="sdot"></span>Active</div>
+        </div>
+        <div class="card-codename">lease-comp-map.skill</div>
+        <div class="card-name">Lease Comp Map</div>
+        <p class="card-desc">
+          Leasing intelligence engine. Takes comp data in any format — screenshot, Excel, CSV, or pasted text — plus a target property address and produces three outputs every time. Comp rents feed directly into market reset analysis and Year 3/4 YOC target validation.
+        </p>
+        <div class="card-section-label">Trigger Phrases</div>
+        <div class="trigger-pills">
+          <span class="pill">lease comps</span>
+          <span class="pill">comp map</span>
+          <span class="pill">map these comps</span>
+          <span class="pill">show me the comps</span>
+          <span class="pill">visualize the leasing data</span>
+        </div>
+        <hr class="card-divider">
+        <div class="card-section-label">Mandatory Outputs (always three)</div>
+        <ul class="output-list">
+          <li><span class="output-tag tag-html">HTML</span> Interactive map — Leaflet.js, clickable comp pins</li>
+          <li><span class="output-tag tag-pdf">PDF</span> 2-page print-ready comp summary</li>
+          <li><span class="output-tag tag-xlsx">XLSX</span> 2-sheet analysis workbook</li>
+        </ul>
+        <hr class="card-divider">
+        <div class="card-footer">
+          <span class="card-file">/mnt/skills/user/lease-comp-map/SKILL.md</span>
+          <span class="card-mode-badge">3 Outputs Always</span>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- Document Routing -->
+  <section style="padding-top: 0;">
+    <div class="section-header" style="margin-top: 60px;">
+      <span class="section-label">Routing</span>
+      <span class="section-title">Document Routing Logic</span>
+    </div>
+    <div style="background: var(--card); border: 1px solid var(--border); border-radius: 12px; overflow: hidden;">
+      <table style="width:100%; border-collapse: collapse; font-size: 13px;">
+        <thead>
+          <tr style="background: rgba(255,255,255,0.03);">
+            <th style="padding: 14px 20px; text-align:left; font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:var(--muted); font-weight:600; border-bottom:1px solid var(--border);">Document Type</th>
+            <th style="padding: 14px 20px; text-align:left; font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:var(--muted); font-weight:600; border-bottom:1px solid var(--border);">Module</th>
+            <th style="padding: 14px 20px; text-align:left; font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:var(--muted); font-weight:600; border-bottom:1px solid var(--border);">Skill File</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr style="border-bottom:1px solid var(--border);">
+            <td style="padding: 14px 20px; color: rgba(240,242,248,0.8);">Lease agreement, lease amendment, rent roll</td>
+            <td style="padding: 14px 20px;"><span style="color: var(--gold); font-weight:600;">Lease Admin</span></td>
+            <td style="padding: 14px 20px; font-family: 'Space Mono', monospace; font-size: 11px; color: var(--muted);">the-gavel/SKILL.md</td>
+          </tr>
+          <tr style="border-bottom:1px solid var(--border);">
+            <td style="padding: 14px 20px; color: rgba(240,242,248,0.8);">PSA, JV / Operating Agreement, Loan Docs, PMA</td>
+            <td style="padding: 14px 20px;"><span style="color: #C4B5FD; font-weight:600;">CRE Legal Reviewer</span></td>
+            <td style="padding: 14px 20px; font-family: 'Space Mono', monospace; font-size: 11px; color: var(--muted);">cre-legal-reviewer/SKILL.md</td>
+          </tr>
+          <tr style="border-bottom:1px solid var(--border);">
+            <td style="padding: 14px 20px; color: rgba(240,242,248,0.8);">Full diligence package (lease + PSA or other docs)</td>
+            <td style="padding: 14px 20px;"><span style="color: #93C5FD; font-weight:600;">Both</span> <span style="color: var(--muted); font-size: 12px;">— cross-reference in session summary</span></td>
+            <td style="padding: 14px 20px; font-family: 'Space Mono', monospace; font-size: 11px; color: var(--muted);">Both skill files</td>
+          </tr>
+          <tr style="border-bottom:1px solid var(--border);">
+            <td style="padding: 14px 20px; color: rgba(240,242,248,0.8);">Acquisition model (.xlsx), underwriting model</td>
+            <td style="padding: 14px 20px;"><span style="color: #6EE7B7; font-weight:600;">Acquisition Investment Report</span></td>
+            <td style="padding: 14px 20px; font-family: 'Space Mono', monospace; font-size: 11px; color: var(--muted);">acq-investment-report/SKILL.md</td>
+          </tr>
+          <tr>
+            <td style="padding: 14px 20px; color: rgba(240,242,248,0.8);">Lease comp data + target property address</td>
+            <td style="padding: 14px 20px;"><span style="color: #FDBA74; font-weight:600;">Lease Comp Map</span></td>
+            <td style="padding: 14px 20px; font-family: 'Space Mono', monospace; font-size: 11px; color: var(--muted);">lease-comp-map/SKILL.md</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- Operating Principles -->
+  <section style="padding-top: 0;">
+    <div class="section-header" style="margin-top: 60px;">
+      <span class="section-label">Standards</span>
+      <span class="section-title">Operating Principles</span>
+    </div>
+    <div class="principles-grid">
+      <div class="principle-item">
+        <span class="principle-num">01</span>
+        <span class="principle-text">Reference prior sessions and deals — never start from scratch</span>
+      </div>
+      <div class="principle-item">
+        <span class="principle-num">02</span>
+        <span class="principle-text">Lead with conviction, not neutrality</span>
+      </div>
+      <div class="principle-item">
+        <span class="principle-num">03</span>
+        <span class="principle-text">Push back when the math doesn't work — protect the return thresholds</span>
+      </div>
+      <div class="principle-item">
+        <span class="principle-num">04</span>
+        <span class="principle-text">Ask one sharp question at a time</span>
+      </div>
+      <div class="principle-item">
+        <span class="principle-num">05</span>
+        <span class="principle-text">Always state conviction level before explaining it</span>
+      </div>
+      <div class="principle-item">
+        <span class="principle-num">06</span>
+        <span class="principle-text">When a deal doesn't work, say exactly why and what would change it</span>
+      </div>
+      <div class="principle-item">
+        <span class="principle-num">07</span>
+        <span class="principle-text">The 14.75% IRR floor is a stretch — explicit justification required, no quiet exceptions</span>
+      </div>
+      <div class="principle-item">
+        <span class="principle-num">08</span>
+        <span class="principle-text">The $5M–$10M exception requires explicit confirmation before underwriting</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer>
+    <div class="footer-left">
+      <div class="footer-logo"><span>RIDGE</span> Intelligence Platform</div>
+      <div class="footer-sub">Real Intelligence for Deal Generation &amp; Evaluation</div>
+    </div>
+    <div class="footer-right">
+      <div class="footer-meta">
+        5 Skills Active &nbsp;·&nbsp; Build 2026.03.11<br>
+        ATL · SAV · DFW · HOU
+      </div>
+    </div>
+  </footer>
+
+</body>
+</html>
