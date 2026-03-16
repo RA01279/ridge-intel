@@ -797,7 +797,50 @@
       .stat-block { border-right: none; border-bottom: 1px solid var(--border); }
       .stat-block:last-child { border-bottom: none; }
     }
+    /* ── FILE UPLOAD ── */
+    .file-drop {
+      margin-top: 8px;
+      border: 1px dashed rgba(255,255,255,0.15);
+      border-radius: 6px;
+      padding: 10px 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+      transition: border-color 0.2s, background 0.2s;
+    }
+    .file-drop:hover {
+      border-color: rgba(255,255,255,0.3);
+      background: rgba(255,255,255,0.03);
+    }
+    .file-drop.has-file {
+      border-color: rgba(34,197,94,0.5);
+      background: rgba(34,197,94,0.05);
+    }
+    .file-drop svg { flex-shrink: 0; opacity: 0.45; }
+    .file-drop.has-file svg { opacity: 1; color: var(--green); }
+    .file-drop-label {
+      font-size: 11px;
+      color: var(--muted);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .file-drop.has-file .file-drop-label { color: var(--green); }
+    .file-drop input[type="file"] { display: none; }
+
+    .clip-notice {
+      display: none;
+      margin-top: 6px;
+      font-size: 11px;
+      color: var(--green);
+      text-align: center;
+      letter-spacing: 0.05em;
+    }
+    .clip-notice.visible { display: block; }
   </style>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 </head>
 <body>
 
@@ -1034,8 +1077,14 @@
         <div class="card-inputs">
           <input class="card-input" id="comp-address" type="text" placeholder="Target property address">
           <input class="card-input" id="comp-submarket" type="text" placeholder="Submarket (optional)">
+          <div class="file-drop" id="comp-drop" onclick="document.getElementById('comp-file').click()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            <span class="file-drop-label" id="comp-file-label">Upload comp data (.xlsx / .csv)</span>
+            <input type="file" id="comp-file" accept=".xlsx,.xls,.csv" onchange="onFileSelected('comp', this)">
+          </div>
         </div>
-        <button class="launch-btn" onclick="launchCompMap()">
+        <div class="clip-notice" id="comp-clip">✓ Copied to clipboard — paste in Claude</div>
+        <button class="launch-btn" onclick="launchWithFile('comp', launchCompPrompt)">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
           Launch in Claude
         </button>
@@ -1071,8 +1120,14 @@
         <p class="card-desc">Upload your Excel model, get an 11-slide IC deck. IRR ≥14% = RECOMMEND · 11–14% = CONDITIONAL · &lt;11% = PASS. Midnight Executive palette.</p>
         <div class="card-inputs">
           <input class="card-input" id="acq-deal" type="text" placeholder="Deal / property name (optional)">
+          <div class="file-drop" id="acq-drop" onclick="document.getElementById('acq-file').click()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            <span class="file-drop-label" id="acq-file-label">Upload acquisition model (.xlsx)</span>
+            <input type="file" id="acq-file" accept=".xlsx,.xls,.csv" onchange="onFileSelected('acq', this)">
+          </div>
         </div>
-        <button class="launch-btn" onclick="launchAcq()">
+        <div class="clip-notice" id="acq-clip">✓ Copied to clipboard — paste in Claude</div>
+        <button class="launch-btn" onclick="launchWithFile('acq', launchAcqPrompt)">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
           Launch in Claude
         </button>
@@ -1110,8 +1165,14 @@
         <div class="card-inputs">
           <input class="card-input" id="gavel-tenant" type="text" placeholder="Tenant name (optional)">
           <input class="card-input" id="gavel-address" type="text" placeholder="Property address (optional)">
+          <div class="file-drop" id="gavel-drop" onclick="document.getElementById('gavel-file').click()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            <span class="file-drop-label" id="gavel-file-label">Upload lease document (.pdf)</span>
+            <input type="file" id="gavel-file" accept=".pdf" onchange="onFileSelected('gavel', this)">
+          </div>
         </div>
-        <button class="launch-btn" onclick="launchGavel()">
+        <div class="clip-notice" id="gavel-clip">✓ Copied to clipboard — paste in Claude</div>
+        <button class="launch-btn" onclick="launchWithFile('gavel', launchGavelPrompt)">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
           Launch in Claude
         </button>
@@ -1135,8 +1196,14 @@
             <option value="PMA">PMA</option>
           </select>
           <input class="card-input" id="legal-deal" type="text" placeholder="Deal / property name (optional)">
+          <div class="file-drop" id="legal-drop" onclick="document.getElementById('legal-file').click()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            <span class="file-drop-label" id="legal-file-label">Upload document (.pdf)</span>
+            <input type="file" id="legal-file" accept=".pdf" onchange="onFileSelected('legal', this)">
+          </div>
         </div>
-        <button class="launch-btn" onclick="launchLegal()">
+        <div class="clip-notice" id="legal-clip">✓ Copied to clipboard — paste in Claude</div>
+        <button class="launch-btn" onclick="launchWithFile('legal', launchLegalPrompt)">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
           Launch in Claude
         </button>
@@ -1176,8 +1243,14 @@
         <p class="card-desc">Broker OM teardown. Strips the narrative, re-underwrites at RIDGE criteria, outputs Bear / RIDGE Base / Bull with a maximum entry price. Use whenever a broker sends a deal.</p>
         <div class="card-inputs">
           <input class="card-input" id="lens-property" type="text" placeholder="Property name or address (optional)">
+          <div class="file-drop" id="lens-drop" onclick="document.getElementById('lens-file').click()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            <span class="file-drop-label" id="lens-file-label">Upload broker OM (.pdf)</span>
+            <input type="file" id="lens-file" accept=".pdf" onchange="onFileSelected('lens', this)">
+          </div>
         </div>
-        <button class="launch-btn" onclick="launchLens()">
+        <div class="clip-notice" id="lens-clip">✓ Copied to clipboard — paste in Claude</div>
+        <button class="launch-btn" onclick="launchWithFile('lens', launchLensPrompt)">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
           Launch in Claude
         </button>
@@ -1294,6 +1367,134 @@
   </footer>
 
   <script>
+    // ── FILE UPLOAD + CLIPBOARD INJECT ──
+
+    pdfjsLib && (pdfjsLib.GlobalWorkerOptions.workerSrc =
+      'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js');
+
+    const fileStore = {};
+
+    function onFileSelected(cardId, input) {
+      const file = input.files[0];
+      if (!file) return;
+      fileStore[cardId] = file;
+      const label = document.getElementById(cardId + '-file-label');
+      const drop = document.getElementById(cardId + '-drop');
+      label.textContent = file.name;
+      drop.classList.add('has-file');
+      document.getElementById(cardId + '-clip').classList.remove('visible');
+    }
+
+    async function extractXLSX(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = e => {
+          try {
+            const wb = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
+            let out = '';
+            wb.SheetNames.forEach(name => {
+              out += `\n=== ${name} ===\n` + XLSX.utils.sheet_to_csv(wb.Sheets[name]);
+            });
+            resolve(out);
+          } catch(err) { reject(err); }
+        };
+        reader.readAsArrayBuffer(file);
+      });
+    }
+
+    async function extractPDF(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = async e => {
+          try {
+            const pdf = await pdfjsLib.getDocument(new Uint8Array(e.target.result)).promise;
+            let text = '';
+            for (let i = 1; i <= Math.min(pdf.numPages, 80); i++) {
+              const page = await pdf.getPage(i);
+              const content = await page.getTextContent();
+              text += content.items.map(x => x.str).join(' ') + '\n';
+            }
+            resolve(text);
+          } catch(err) { reject(err); }
+        };
+        reader.readAsArrayBuffer(file);
+      });
+    }
+
+    async function launchWithFile(cardId, promptFn) {
+      const file = fileStore[cardId];
+      const prompt = promptFn();
+
+      if (!file) {
+        window.open('https://claude.ai/new?q=' + encodeURIComponent(prompt), '_blank');
+        return;
+      }
+
+      const btn = document.querySelector(`[onclick="launchWithFile('${cardId}', ${promptFn.name})"]`);
+      const origText = btn ? btn.innerHTML : '';
+      if (btn) btn.innerHTML = btn.innerHTML.replace('Launch in Claude', 'Reading file…');
+
+      try {
+        const ext = file.name.split('.').pop().toLowerCase();
+        let content;
+        if (ext === 'pdf') {
+          content = await extractPDF(file);
+        } else {
+          content = await extractXLSX(file);
+        }
+
+        const fullPrompt = prompt + '\n\n--- BEGIN FILE: ' + file.name + ' ---\n' + content + '\n--- END FILE ---';
+        await navigator.clipboard.writeText(fullPrompt);
+
+        const notice = document.getElementById(cardId + '-clip');
+        notice.classList.add('visible');
+        if (btn) btn.innerHTML = origText;
+
+        window.open('https://claude.ai/new?q=' + encodeURIComponent(prompt + ' [File content copied to clipboard — paste with Ctrl+V to include ' + file.name + ']'), '_blank');
+      } catch(err) {
+        if (btn) btn.innerHTML = origText;
+        window.open('https://claude.ai/new?q=' + encodeURIComponent(prompt), '_blank');
+      }
+    }
+
+    // Prompt builder functions (one per card using file upload)
+    function launchLensPrompt() {
+      const property = document.getElementById('lens-property').value.trim();
+      let p = 'Run LENS — I am uploading a broker OM for RIDGE teardown analysis.';
+      if (property) p += ' Property: ' + property + '.';
+      return p;
+    }
+    function launchAcqPrompt() {
+      const deal = document.getElementById('acq-deal').value.trim();
+      let p = 'IC deck — I am uploading my acquisition model. Build me an investment committee presentation.';
+      if (deal) p += ' Deal: ' + deal + '.';
+      return p;
+    }
+    function launchGavelPrompt() {
+      const tenant = document.getElementById('gavel-tenant').value.trim();
+      const address = document.getElementById('gavel-address').value.trim();
+      let p = 'Run the lease — I am uploading a lease document for RIDGE Lease Admin analysis.';
+      if (tenant) p += ' Tenant: ' + tenant + '.';
+      if (address) p += ' Property: ' + address + '.';
+      return p;
+    }
+    function launchLegalPrompt() {
+      const type = document.getElementById('legal-type').value;
+      const deal = document.getElementById('legal-deal').value.trim();
+      let p = 'Legal review — I am uploading a transaction document for RIDGE CRE Legal Reviewer.';
+      if (type) p += ' Document type: ' + type + '.';
+      if (deal) p += ' Deal: ' + deal + '.';
+      return p;
+    }
+    function launchCompPrompt() {
+      const address = document.getElementById('comp-address').value.trim();
+      const submarket = document.getElementById('comp-submarket').value.trim();
+      let p = 'Map these comps — I have lease comp data for a RIDGE Lease Comp Map.';
+      if (address) p += ' Target property: ' + address + '.';
+      if (submarket) p += ' Submarket: ' + submarket + '.';
+      return p;
+    }
+
     function launchScout() {
       const market = document.getElementById('scout-market').value.trim();
       const mode = document.getElementById('scout-mode').value;
