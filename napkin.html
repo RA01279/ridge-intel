@@ -1,0 +1,872 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Napkin — RIDGE</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:        #0b0b0b;
+    --surface:   #111111;
+    --card:      #161616;
+    --card-2:    #1c1c1c;
+    --border:    rgba(255,255,255,0.07);
+    --border-md: rgba(255,255,255,0.13);
+    --accent:    #c8a96e;
+    --accent-bg: rgba(200,169,110,0.09);
+    --text:      #e2ddd5;
+    --muted:     #5a5650;
+    --label:     #888278;
+    --green:     #5a9e72;
+    --green-bg:  rgba(90,158,114,0.10);
+    --amber:     #c8a96e;
+    --amber-bg:  rgba(200,169,110,0.10);
+    --red:       #a05858;
+    --red-bg:    rgba(160,88,88,0.10);
+    --mono:      'Courier New', 'Lucida Console', monospace;
+    --serif:     'Georgia', 'Times New Roman', serif;
+  }
+
+  html, body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--serif);
+    min-height: 100vh;
+    line-height: 1.5;
+  }
+
+  /* ── NAV ── */
+  nav {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 32px;
+    height: 52px;
+    border-bottom: 0.5px solid var(--border);
+    position: sticky;
+    top: 0;
+    background: var(--bg);
+    z-index: 100;
+  }
+  .nav-logo {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--accent);
+    text-decoration: none;
+  }
+  .nav-right {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+  }
+  .nav-tag {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    color: var(--muted);
+    text-transform: uppercase;
+  }
+  .nav-back {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    color: var(--muted);
+    text-transform: uppercase;
+    text-decoration: none;
+    border: 0.5px solid var(--border);
+    padding: 5px 12px;
+    border-radius: 2px;
+    transition: color 0.15s, border-color 0.15s;
+  }
+  .nav-back:hover { color: var(--accent); border-color: var(--accent); }
+
+  /* ── LAYOUT ── */
+  .page {
+    max-width: 780px;
+    margin: 0 auto;
+    padding: 48px 24px 80px;
+  }
+
+  /* ── HEADER ── */
+  .page-header {
+    margin-bottom: 40px;
+    padding-bottom: 28px;
+    border-bottom: 0.5px solid var(--border);
+  }
+  .module-tag {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 10px;
+  }
+  .page-title {
+    font-size: 32px;
+    font-weight: normal;
+    letter-spacing: -0.02em;
+    color: var(--text);
+    margin-bottom: 10px;
+  }
+  .page-desc {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--muted);
+    letter-spacing: 0.04em;
+    line-height: 1.7;
+  }
+  .criteria-strip {
+    display: flex;
+    gap: 0;
+    margin-top: 20px;
+    border: 0.5px solid var(--border);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+  .crit-item {
+    flex: 1;
+    padding: 10px 14px;
+    border-right: 0.5px solid var(--border);
+    font-family: var(--mono);
+  }
+  .crit-item:last-child { border-right: none; }
+  .crit-item-label {
+    font-size: 9px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 3px;
+  }
+  .crit-item-value {
+    font-size: 13px;
+    color: var(--accent);
+  }
+
+  /* ── FORM ── */
+  .form-section {
+    margin-bottom: 8px;
+  }
+  .section-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 14px;
+    padding-bottom: 8px;
+    border-bottom: 0.5px solid var(--border);
+  }
+  .field-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+    margin-bottom: 14px;
+  }
+  .field-full { grid-column: 1 / -1; }
+  .field-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .field-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.13em;
+    text-transform: uppercase;
+    color: var(--label);
+  }
+  .field-label .req { color: var(--accent); margin-left: 2px; }
+  .field-input {
+    background: var(--card);
+    border: 0.5px solid var(--border);
+    border-radius: 2px;
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 13px;
+    padding: 10px 13px;
+    outline: none;
+    transition: border-color 0.15s;
+    width: 100%;
+    -webkit-appearance: none;
+    appearance: none;
+  }
+  .field-input:focus { border-color: var(--border-md); }
+  .field-input::placeholder { color: var(--muted); font-size: 12px; }
+  .field-input.accent-focus:focus { border-color: var(--accent); }
+  select.field-input {
+    cursor: pointer;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%235a5650'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 13px center;
+    padding-right: 32px;
+  }
+  select.field-input option { background: #161616; color: var(--text); }
+
+  /* NOI toggle */
+  .toggle-row {
+    display: flex;
+    gap: 0;
+    border: 0.5px solid var(--border);
+    border-radius: 2px;
+    overflow: hidden;
+    margin-bottom: 8px;
+  }
+  .toggle-btn {
+    flex: 1;
+    padding: 8px 0;
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.11em;
+    text-transform: uppercase;
+    background: transparent;
+    border: none;
+    color: var(--muted);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .toggle-btn.active {
+    background: var(--accent-bg);
+    color: var(--accent);
+  }
+  .toggle-btn:first-child { border-right: 0.5px solid var(--border); }
+
+  .field-hint {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--muted);
+    margin-top: 3px;
+  }
+
+  /* ── RUN BUTTON ── */
+  .divider { height: 0.5px; background: var(--border); margin: 24px 0; }
+  .run-btn {
+    width: 100%;
+    background: var(--accent);
+    color: #0a0a0a;
+    border: none;
+    border-radius: 2px;
+    padding: 15px 0;
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    cursor: pointer;
+    font-weight: bold;
+    transition: opacity 0.15s;
+  }
+  .run-btn:hover { opacity: 0.88; }
+  .run-btn:active { opacity: 0.72; transform: scale(0.995); }
+
+  .error-msg {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--red);
+    margin-top: 10px;
+    display: none;
+  }
+
+  /* ── RESULTS ── */
+  .results {
+    display: none;
+    margin-top: 40px;
+    padding-top: 32px;
+    border-top: 0.5px solid var(--border);
+    animation: fadeIn 0.3s ease;
+  }
+  .results.visible { display: block; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+
+  .results-header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    margin-bottom: 20px;
+  }
+  .results-address {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--accent);
+  }
+  .results-tag {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 0.1em;
+  }
+
+  .metrics-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+    margin-bottom: 16px;
+  }
+  .metric-card {
+    background: var(--card);
+    border: 0.5px solid var(--border);
+    border-radius: 2px;
+    padding: 14px 14px 12px;
+  }
+  .metric-label {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 0.13em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 6px;
+  }
+  .metric-value {
+    font-family: var(--mono);
+    font-size: 20px;
+    font-weight: bold;
+    color: var(--text);
+    line-height: 1;
+    margin-bottom: 4px;
+  }
+  .metric-value.good { color: var(--green); }
+  .metric-value.warn { color: var(--accent); }
+  .metric-value.bad  { color: var(--red); }
+  .metric-sub {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--muted);
+  }
+
+  /* Verdict */
+  .verdict-block {
+    border: 0.5px solid var(--border);
+    border-radius: 2px;
+    padding: 18px 20px;
+    display: flex;
+    align-items: flex-start;
+    gap: 18px;
+    margin-bottom: 12px;
+  }
+  .verdict-block.pursue  { border-color: rgba(90,158,114,0.4);  background: var(--green-bg); }
+  .verdict-block.conditional { border-color: rgba(200,169,110,0.4); background: var(--amber-bg); }
+  .verdict-block.pass    { border-color: rgba(160,88,88,0.4);   background: var(--red-bg); }
+
+  .verdict-icon {
+    font-family: var(--mono);
+    font-size: 24px;
+    line-height: 1;
+    flex-shrink: 0;
+    margin-top: 2px;
+  }
+  .verdict-block.pursue  .verdict-icon { color: var(--green); }
+  .verdict-block.conditional .verdict-icon { color: var(--accent); }
+  .verdict-block.pass    .verdict-icon { color: var(--red); }
+
+  .verdict-label {
+    font-family: var(--mono);
+    font-size: 12px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    font-weight: bold;
+    margin-bottom: 5px;
+  }
+  .verdict-block.pursue  .verdict-label { color: var(--green); }
+  .verdict-block.conditional .verdict-label { color: var(--accent); }
+  .verdict-block.pass    .verdict-label { color: var(--red); }
+
+  .verdict-reason {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--label);
+    line-height: 1.6;
+  }
+
+  /* Price row */
+  .price-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 12px;
+  }
+  .price-cell {
+    background: var(--card);
+    border: 0.5px solid var(--border);
+    border-radius: 2px;
+    padding: 12px 14px;
+  }
+  .price-cell-label {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 0.13em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 5px;
+  }
+  .price-cell-value {
+    font-family: var(--mono);
+    font-size: 16px;
+    font-weight: bold;
+    color: var(--text);
+  }
+  .price-cell-value.gap-over { color: var(--red); }
+  .price-cell-value.gap-under { color: var(--green); }
+
+  /* Assumptions row */
+  .assumptions {
+    background: var(--card);
+    border: 0.5px solid var(--border);
+    border-radius: 2px;
+    padding: 12px 16px;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--muted);
+    line-height: 1.9;
+    margin-bottom: 12px;
+  }
+  .assumptions strong { color: var(--label); }
+
+  /* Broker warning */
+  .broker-warn {
+    background: rgba(200,169,110,0.06);
+    border: 0.5px solid rgba(200,169,110,0.25);
+    border-radius: 2px;
+    padding: 10px 14px;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--accent);
+    letter-spacing: 0.03em;
+    display: none;
+    margin-bottom: 12px;
+  }
+
+  /* Next step buttons */
+  .next-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 20px;
+  }
+  .next-btn {
+    flex: 1;
+    background: transparent;
+    border: 0.5px solid var(--border);
+    border-radius: 2px;
+    color: var(--muted);
+    padding: 11px 0;
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.13em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.15s;
+    text-align: center;
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .next-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .next-btn.primary { border-color: var(--border-md); color: var(--label); }
+  .next-btn.primary:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* Print */
+  .print-row {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 12px;
+  }
+  .print-btn {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted);
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 6px 0;
+    transition: color 0.15s;
+  }
+  .print-btn:hover { color: var(--accent); }
+
+  /* ── FOOTER ── */
+  footer {
+    border-top: 0.5px solid var(--border);
+    padding: 20px 32px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 60px;
+  }
+  .footer-left {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 0.1em;
+  }
+  .footer-right {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 0.1em;
+  }
+
+  /* ── RESPONSIVE ── */
+  @media (max-width: 600px) {
+    .metrics-grid { grid-template-columns: 1fr 1fr; }
+    .price-row { grid-template-columns: 1fr; }
+    .field-grid { grid-template-columns: 1fr; }
+    .criteria-strip { flex-wrap: wrap; }
+    .crit-item { border-right: none; border-bottom: 0.5px solid var(--border); }
+    .next-actions { flex-direction: column; }
+    nav { padding: 0 16px; }
+    .page { padding: 32px 16px 60px; }
+  }
+
+  @media print {
+    nav, footer, .run-btn, .next-actions, .print-row, .form-section, .divider, .section-label, .error-msg { display: none !important; }
+    .results { display: block !important; }
+    body { background: white; color: black; }
+  }
+</style>
+</head>
+<body>
+
+<nav>
+  <a class="nav-logo" href="/">RIDGE</a>
+  <div class="nav-right">
+    <span class="nav-tag">Module 03 · The Napkin</span>
+    <a class="nav-back" href="/">← Dashboard</a>
+  </div>
+</nav>
+
+<div class="page">
+
+  <!-- PAGE HEADER -->
+  <div class="page-header">
+    <div class="module-tag">RIDGE · Module 03</div>
+    <h1 class="page-title">The Napkin</h1>
+    <p class="page-desc">60-second screen. Address and ask price in, Go / No-Go out.<br>Reverse-engineers cap rate, stabilized NOI, and YOC at Year 3/4. Outputs the price that makes the deal work.</p>
+    <div class="criteria-strip">
+      <div class="crit-item">
+        <div class="crit-item-label">YOC Target</div>
+        <div class="crit-item-value">7.5% – 8.0%</div>
+      </div>
+      <div class="crit-item">
+        <div class="crit-item-label">IRR Hurdle</div>
+        <div class="crit-item-value">14.75%</div>
+      </div>
+      <div class="crit-item">
+        <div class="crit-item-label">Deal Range</div>
+        <div class="crit-item-value">$10M – $70M</div>
+      </div>
+      <div class="crit-item">
+        <div class="crit-item-label">Hold Period</div>
+        <div class="crit-item-value">5 Years</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- FORM -->
+  <div class="form-section">
+    <div class="section-label">Deal Inputs</div>
+
+    <div class="field-grid">
+      <div class="field-group field-full">
+        <div class="field-label">Property Address <span class="req">*</span></div>
+        <input class="field-input accent-focus" id="f_address" type="text" placeholder="e.g. 5000 Highlands Parkway, Smyrna GA">
+      </div>
+      <div class="field-group">
+        <div class="field-label">Asking Price ($) <span class="req">*</span></div>
+        <input class="field-input accent-focus" id="f_ask" type="number" placeholder="e.g. 27000000" min="0">
+      </div>
+      <div class="field-group">
+        <div class="field-label">Total Rentable SF <span class="req">*</span></div>
+        <input class="field-input accent-focus" id="f_sf" type="number" placeholder="e.g. 185000" min="0">
+      </div>
+      <div class="field-group">
+        <div class="field-label">Asset Type <span class="req">*</span></div>
+        <select class="field-input accent-focus" id="f_type">
+          <option value="">— Select —</option>
+          <option value="industrial">Industrial</option>
+          <option value="flex">Flex</option>
+          <option value="conversion">Office Conversion</option>
+        </select>
+      </div>
+      <div class="field-group">
+        <div class="field-label">Occupancy %</div>
+        <input class="field-input" id="f_occ" type="number" placeholder="85 (default)" min="0" max="100">
+      </div>
+    </div>
+
+    <div class="field-group" style="margin-bottom:14px;">
+      <div class="field-label">NOI / Rent Input <span class="req">*</span></div>
+      <div class="toggle-row">
+        <button class="toggle-btn active" id="btn_noi" onclick="setMode('noi')">In-Place NOI ($)</button>
+        <button class="toggle-btn" id="btn_rent" onclick="setMode('rent')">Market Rent ($/SF/yr)</button>
+      </div>
+      <input class="field-input accent-focus" id="f_noi" type="number" placeholder="e.g. 1850000" min="0">
+      <div class="field-hint" id="noi_hint">Annual in-place NOI — from rent roll or broker OM</div>
+    </div>
+
+    <div class="field-grid">
+      <div class="field-group">
+        <div class="field-label">Year Built</div>
+        <input class="field-input" id="f_year" type="number" placeholder="e.g. 1997" min="1900" max="2030">
+      </div>
+      <div class="field-group">
+        <div class="field-label">Market</div>
+        <select class="field-input" id="f_market">
+          <option value="atl">Atlanta / Smyrna</option>
+          <option value="savannah">Savannah</option>
+          <option value="dfw">Dallas–Fort Worth</option>
+          <option value="houston">Houston</option>
+          <option value="austin">Austin (Watch Only)</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="field-group" style="margin-bottom:14px;">
+      <div class="field-label">Source</div>
+      <select class="field-input" id="f_source">
+        <option value="owner">Owner / Off-Market</option>
+        <option value="broker">Broker OM</option>
+        <option value="scout">SCOUT Prospect</option>
+        <option value="other">Other</option>
+      </select>
+    </div>
+
+  </div>
+
+  <div class="divider"></div>
+  <button class="run-btn" onclick="runNapkin()">Run the Napkin →</button>
+  <div class="error-msg" id="error_msg">Please complete all required fields before running the screen.</div>
+
+  <!-- RESULTS -->
+  <div class="results" id="results">
+
+    <div class="results-header">
+      <div class="results-address" id="r_address">—</div>
+      <div class="results-tag" id="r_date">—</div>
+    </div>
+
+    <div class="metrics-grid" id="r_metrics"></div>
+
+    <div class="broker-warn" id="r_broker_warn">
+      ⚠ Broker OM source — apply 10–15% haircut to stated NOI in full model. Re-run screen with verified rent roll.
+    </div>
+
+    <div class="verdict-block" id="r_verdict">
+      <div class="verdict-icon" id="r_vicon">—</div>
+      <div>
+        <div class="verdict-label" id="r_vlabel">—</div>
+        <div class="verdict-reason" id="r_vreason">—</div>
+      </div>
+    </div>
+
+    <div class="price-row" id="r_price_row"></div>
+
+    <div class="assumptions" id="r_assumptions"></div>
+
+    <div class="next-actions" id="r_next"></div>
+
+    <div class="print-row">
+      <button class="print-btn" onclick="window.print()">Print / Export →</button>
+    </div>
+
+  </div>
+
+</div>
+
+<footer>
+  <div class="footer-left">RIDGE Intelligence Platform · Build 2026.03.16</div>
+  <div class="footer-right">ATL · SAV · DFW · HOU · 12 Modules Active</div>
+</footer>
+
+<script>
+let inputMode = 'noi';
+
+function setMode(m) {
+  inputMode = m;
+  document.getElementById('btn_noi').classList.toggle('active', m === 'noi');
+  document.getElementById('btn_rent').classList.toggle('active', m === 'rent');
+  document.getElementById('f_noi').placeholder = m === 'noi' ? 'e.g. 1850000' : 'e.g. 7.50';
+  document.getElementById('noi_hint').textContent = m === 'noi'
+    ? 'Annual in-place NOI — from rent roll or broker OM'
+    : 'Gross market rent per SF per year';
+}
+
+function fmtM(n) { return '$' + (n / 1000000).toFixed(2) + 'M'; }
+function fmtPct(n, dec) { return (n * 100).toFixed(dec !== undefined ? dec : 2) + '%'; }
+function fmtNum(n) { return n.toLocaleString('en-US'); }
+
+function runNapkin() {
+  const address = document.getElementById('f_address').value.trim();
+  const ask     = parseFloat(document.getElementById('f_ask').value);
+  const sf      = parseFloat(document.getElementById('f_sf').value);
+  const type    = document.getElementById('f_type').value;
+  const noiRaw  = parseFloat(document.getElementById('f_noi').value);
+  const errEl   = document.getElementById('error_msg');
+
+  if (!address || isNaN(ask) || isNaN(sf) || !type || isNaN(noiRaw)) {
+    errEl.style.display = 'block'; return;
+  }
+  errEl.style.display = 'none';
+
+  const occ      = parseFloat(document.getElementById('f_occ').value) || 85;
+  const year     = parseInt(document.getElementById('f_year').value) || null;
+  const market   = document.getElementById('f_market').value;
+  const source   = document.getElementById('f_source').value;
+
+  // Expense & exit cap by type
+  const expRatio = type === 'industrial' ? 0.20 : type === 'flex' ? 0.25 : 0.30;
+  const exitCap  = type === 'industrial' ? 0.060 : type === 'flex' ? 0.065 : 0.070;
+
+  // NOI calc
+  let inPlaceNOI, stabilizedNOI, hasUpside = false;
+  if (inputMode === 'noi') {
+    inPlaceNOI = noiRaw;
+    const goCap = inPlaceNOI / ask;
+    hasUpside   = goCap < 0.065;
+    stabilizedNOI = inPlaceNOI * (hasUpside ? 1.08 : 1.0);
+  } else {
+    const grossRev = noiRaw * sf * (occ / 100);
+    inPlaceNOI    = grossRev * (1 - expRatio);
+    stabilizedNOI = inPlaceNOI;
+  }
+
+  // CapEx
+  let capexPSF = 5, capexFlag = 'Good condition / post-2000';
+  if (year) {
+    if (year < 1990)      { capexPSF = 20; capexFlag = 'Value-add required / pre-1990'; }
+    else if (year < 2000) { capexPSF = 10; capexFlag = 'Average condition / 1990s vintage'; }
+    else                  { capexPSF = 3;  capexFlag = 'Good condition / post-2000'; }
+  }
+  const capexTotal = capexPSF * sf;
+
+  const goingInCap   = inPlaceNOI / ask;
+  const stabilYOC    = stabilizedNOI / (ask + capexTotal);
+  const maxEntry     = (stabilizedNOI / 0.0775) - capexTotal;
+  const priceGap     = ask - maxEntry;
+  const psfAsk       = ask / sf;
+
+  // IRR lookup
+  let irrLow, irrHigh;
+  if      (stabilYOC >= 0.080) { irrLow = 16; irrHigh = 19; }
+  else if (stabilYOC >= 0.075) { irrLow = 14; irrHigh = 16; }
+  else if (stabilYOC >= 0.070) { irrLow = 12; irrHigh = 14; }
+  else                          { irrLow = 9;  irrHigh = 12; }
+
+  // Equity multiple rough
+  const emLow  = Math.round(((1 + irrLow  / 100) ** 5) * 10) / 10;
+  const emHigh = Math.round(((1 + irrHigh / 100) ** 5) * 10) / 10;
+
+  // Verdict
+  let verdict, vClass, vIcon, vReason, vNext;
+  const pctAbove = (ask - maxEntry) / maxEntry;
+  if (stabilYOC >= 0.075 && irrLow >= 14) {
+    verdict = 'PURSUE'; vClass = 'pursue'; vIcon = '✓';
+    vReason = `Math clears RIDGE thresholds at asking price. Stabilized YOC of ${fmtPct(stabilYOC)} and IRR range of ${irrLow}%–${irrHigh}% both clear hurdles. Move to full model and owner outreach.`;
+    vNext   = ['Run SCOUT Dossier', 'Add to Pipeline', 'Full Model'];
+  } else if (stabilYOC >= 0.070 && irrLow >= 12) {
+    verdict = 'CONDITIONAL'; vClass = 'conditional'; vIcon = '◈';
+    vReason = priceGap > 0
+      ? `Deal works at ${fmtM(maxEntry)} — asking price is ${fmtM(priceGap)} above max entry (${(pctAbove*100).toFixed(1)}% gap). Pursue only if seller shows pricing flexibility.`
+      : `Borderline returns — YOC of ${fmtPct(stabilYOC)} is below 7.5% target. Full model required to confirm upside thesis.`;
+    vNext   = ['Add to Pipeline (Watch)', 'Request Rent Roll', 'Stress Test Price'];
+  } else {
+    verdict = 'PASS'; vClass = 'pass'; vIcon = '×';
+    vReason = `Stabilized YOC of ${fmtPct(stabilYOC)} is below RIDGE floor. IRR range of ${irrLow}%–${irrHigh}% does not clear the 14.75% hurdle. Asking price is ${fmtM(priceGap)} above what the math supports.`;
+    vNext   = ['Log & Close', 'Re-open if Price Drops'];
+  }
+
+  // ── RENDER ──
+
+  // Broker warning
+  document.getElementById('r_broker_warn').style.display = source === 'broker' ? 'block' : 'none';
+
+  // Address / date
+  document.getElementById('r_address').textContent = address.toUpperCase();
+  document.getElementById('r_date').textContent = new Date().toLocaleDateString('en-US', {month:'short',day:'numeric',year:'numeric'}).toUpperCase();
+
+  // Metrics
+  const yocClass = stabilYOC >= 0.075 ? 'good' : stabilYOC >= 0.070 ? 'warn' : 'bad';
+  const irrClass = irrLow >= 14 ? 'good' : irrLow >= 12 ? 'warn' : 'bad';
+  document.getElementById('r_metrics').innerHTML = `
+    <div class="metric-card">
+      <div class="metric-label">Going-in Cap</div>
+      <div class="metric-value warn">${fmtPct(goingInCap)}</div>
+      <div class="metric-sub">${fmtM(inPlaceNOI)} NOI</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-label">$/SF Ask</div>
+      <div class="metric-value">$${Math.round(psfAsk)}</div>
+      <div class="metric-sub">${fmtNum(Math.round(sf))} SF</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-label">Stabilized YOC</div>
+      <div class="metric-value ${yocClass}">${fmtPct(stabilYOC)}</div>
+      <div class="metric-sub">Target 7.5%–8.0%</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-label">IRR Range</div>
+      <div class="metric-value ${irrClass}">${irrLow}–${irrHigh}%</div>
+      <div class="metric-sub">EM: ${emLow.toFixed(1)}×–${emHigh.toFixed(1)}×</div>
+    </div>
+  `;
+
+  // Verdict
+  const vb = document.getElementById('r_verdict');
+  vb.className = `verdict-block ${vClass}`;
+  document.getElementById('r_vicon').textContent  = vIcon;
+  document.getElementById('r_vlabel').textContent = verdict;
+  document.getElementById('r_vreason').textContent = vReason;
+
+  // Price row
+  const gapClass = priceGap > 0 ? 'gap-over' : 'gap-under';
+  const gapLabel = priceGap > 0 ? '▲ above max' : '▼ room to work';
+  document.getElementById('r_price_row').innerHTML = `
+    <div class="price-cell">
+      <div class="price-cell-label">Max Entry Price</div>
+      <div class="price-cell-value">${fmtM(maxEntry)}</div>
+    </div>
+    <div class="price-cell">
+      <div class="price-cell-label">Asking Price</div>
+      <div class="price-cell-value">${fmtM(ask)}</div>
+    </div>
+    <div class="price-cell">
+      <div class="price-cell-label">Price Gap</div>
+      <div class="price-cell-value ${gapClass}">${priceGap > 0 ? '+' : ''}${fmtM(priceGap)} ${gapLabel}</div>
+    </div>
+  `;
+
+  // Assumptions
+  const stabilLabel = inputMode === 'noi'
+    ? `${fmtM(inPlaceNOI)} in-place${hasUpside ? ' × 1.08 upside factor' : ''} = ${fmtM(stabilizedNOI)}`
+    : `$${noiRaw}/SF × ${fmtNum(Math.round(sf))} SF × ${occ}% occ × ${((1-expRatio)*100).toFixed(0)}% NIM = ${fmtM(stabilizedNOI)}`;
+  document.getElementById('r_assumptions').innerHTML =
+    `<strong>Stabilized NOI (Yr3):</strong> ${stabilLabel}<br>` +
+    `<strong>CapEx assumed:</strong> $${capexPSF}/SF · ${capexFlag} · Total: ${fmtM(capexTotal)}<br>` +
+    `<strong>Exit cap:</strong> ${fmtPct(exitCap)} (${type}) &nbsp;·&nbsp; <strong>Occ assumed:</strong> ${occ}% &nbsp;·&nbsp; <strong>Hold:</strong> 5 years<br>` +
+    `<em>Directional only. Full model required before any offer.</em>`;
+
+  // Next actions
+  document.getElementById('r_next').innerHTML = vNext.map(label =>
+    `<button class="next-btn primary" onclick="void(0)">${label} →</button>`
+  ).join('');
+
+  // Show results
+  const el = document.getElementById('results');
+  el.classList.add('visible');
+  el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+// Allow Enter key to run
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    const active = document.activeElement;
+    if (active && active.closest && active.closest('.form-section')) runNapkin();
+  }
+});
+</script>
+</body>
+</html>
