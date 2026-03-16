@@ -801,7 +801,7 @@
     <div class="nav-status">
       <div class="status-pill">
         <span class="dot"></span>
-        15 Skills Active
+        12 Skills Active
       </div>
       <div class="nav-build">Build: 2026.03.16</div>
     </div>
@@ -849,7 +849,7 @@
         <div>
           <div class="holding-badge">Holding Company</div>
           <div class="holding-name">RIDGE Intelligence Platform</div>
-          <div class="holding-tagline">Fifteen integrated modules. One acquisitions engine. Zero redundancy.</div>
+          <div class="holding-tagline">Twelve integrated modules. One acquisitions engine. Zero redundancy.</div>
         </div>
       </div>
       <div class="holding-criteria">
@@ -924,7 +924,7 @@
     <div class="section-header">
       <span class="section-label">Subsidiaries</span>
       <span class="section-title">Integrated Skill Modules</span>
-      <span class="section-count">15 / 15 Active</span>
+      <span class="section-count">12 / 12 Active</span>
     </div>
 
     <div class="skills-grid">
@@ -1142,51 +1142,6 @@
         </button>
       </div>
 
-      <!-- CANVAS -->
-      <div class="skill-card canvas">
-        <div class="card-top">
-          <div class="card-icon">🏗️</div>
-          <div class="card-status"><span class="sdot"></span>Active</div>
-        </div>
-        <div class="card-codename">Canvas_SKILL.md</div>
-        <div class="card-name">CANVAS</div>
-        <p class="card-desc">
-          Tenant Intelligence &amp; Space Matching Engine. Demand-side sourcing — identify, score, and rank businesses that need small and mid-bay industrial or flex space (2,000–25,000 SF). Fill mode: you have a building, find the tenants. Hunt mode: find displaced businesses, feed back into RIDGE pipeline as acquisition targets.
-        </p>
-        <div class="card-section-label">Trigger Phrases</div>
-        <div class="trigger-pills">
-          <span class="pill">find tenants for this building</span>
-          <span class="pill">run CANVAS</span>
-          <span class="pill">fill this building</span>
-          <span class="pill">tenant search</span>
-          <span class="pill">who's looking for space</span>
-          <span class="pill">demand analysis</span>
-        </div>
-        <hr class="card-divider">
-        <div class="card-section-label">Mandatory Outputs (always three)</div>
-        <ul class="output-list">
-          <li><span class="output-tag tag-xlsx">XLSX</span> Ranked tenant prospect list — scored, tiered, decision makers</li>
-          <li><span class="output-tag tag-pdf">PDF</span> Tier 1 profiles + summary report</li>
-          <li><span class="output-tag tag-tbl">Feed</span> RIDGE Acquisition Feed (Hunt mode) — demand-validated targets</li>
-        </ul>
-        <hr class="card-divider">
-        <div class="card-footer">
-          <span class="card-file">Canvas_SKILL.md</span>
-          <span class="card-mode-badge">2 Modes</span>
-        </div>
-        <div class="card-inputs">
-          <select class="card-input" id="canvas-mode">
-            <option value="Fill">Mode: Fill — I have a building, find tenants</option>
-            <option value="Hunt">Mode: Hunt — find displaced businesses for acquisition targeting</option>
-          </select>
-          <input class="card-input" id="canvas-location" type="text" placeholder="Property address or market / submarket">
-        </div>
-        <button class="launch-btn" onclick="launchCanvas()">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
-          Launch in Claude
-        </button>
-      </div>
-
       <!-- PIPELINE -->
       <div class="skill-card pipeline">
         <div class="card-top">
@@ -1353,45 +1308,6 @@
         </button>
       </div>
 
-      <!-- DEAL MEMORY -->
-      <div class="skill-card memory">
-        <div class="card-top">
-          <div class="card-icon">💾</div>
-          <div class="card-status"><span class="sdot"></span>Active</div>
-        </div>
-        <div class="card-codename">deal-memory.skill</div>
-        <div class="card-name">DEAL MEMORY</div>
-        <p class="card-desc">
-          Session persistence layer for RIDGE. Serializes the full pipeline state — all deal records, stage history, notes, DD checklists, and benchmarks — into a portable memory block. Paste it at the start of any new session to restore context instantly. Embedded within PIPELINE.
-        </p>
-        <div class="card-section-label">Trigger Phrases</div>
-        <div class="trigger-pills">
-          <span class="pill">save session</span>
-          <span class="pill">serialize pipeline</span>
-          <span class="pill">memory block</span>
-          <span class="pill">restore pipeline</span>
-          <span class="pill">load memory</span>
-          <span class="pill">save my deals</span>
-        </div>
-        <hr class="card-divider">
-        <div class="card-section-label">Output</div>
-        <ul class="output-list">
-          <li><span class="output-tag tag-tbl">Block</span> Portable memory block — paste to restore any session</li>
-          <li><span class="output-tag tag-tbl">Restore</span> Silent parse &amp; restore on memory block detection</li>
-        </ul>
-        <hr class="card-divider">
-        <div class="card-footer">
-          <span class="card-file">/mnt/skills/user/deal-memory/SKILL.md</span>
-          <span class="card-mode-badge">Embedded — PIPELINE</span>
-        </div>
-        <div class="card-inputs">
-        </div>
-        <button class="launch-btn" onclick="launchMemory()">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
-          Launch in Claude
-        </button>
-      </div>
-
       <!-- MARKET PULSE -->
       <div class="skill-card pulse">
         <div class="card-top">
@@ -1434,47 +1350,6 @@
           </select>
         </div>
         <button class="launch-btn" onclick="launchPulse()">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
-          Launch in Claude
-        </button>
-      </div>
-
-      <!-- DD TRACKER -->
-      <div class="skill-card dd">
-        <div class="card-top">
-          <div class="card-icon">✅</div>
-          <div class="card-status"><span class="sdot"></span>Active</div>
-        </div>
-        <div class="card-codename">dd-tracker.skill</div>
-        <div class="card-name">DD TRACKER</div>
-        <p class="card-desc">
-          Due diligence management system. Activates automatically when a PIPELINE deal reaches DD stage. Structured checklist across five categories: Title &amp; Survey, Physical, Financial, Legal, Market. Critical flags — Phase I RECs, title defects, zoning non-conformance — automatically pause closing.
-        </p>
-        <div class="card-section-label">Trigger Phrases</div>
-        <div class="trigger-pills">
-          <span class="pill">DD checklist</span>
-          <span class="pill">open DD</span>
-          <span class="pill">start DD</span>
-          <span class="pill">DD tracker</span>
-          <span class="pill">what's outstanding in DD</span>
-          <span class="pill">DD status</span>
-        </div>
-        <hr class="card-divider">
-        <div class="card-section-label">Outputs</div>
-        <ul class="output-list">
-          <li><span class="output-tag tag-tbl">Checklist</span> 5-category DD checklist — Pending / Received / Reviewed / Flagged</li>
-          <li><span class="output-tag tag-tbl">Report</span> DD summary — outstanding items, flags, days remaining</li>
-          <li><span class="output-tag tag-tbl">Alert</span> Critical flags — title defects, RECs, zoning issues</li>
-        </ul>
-        <hr class="card-divider">
-        <div class="card-footer">
-          <span class="card-file">/mnt/skills/user/dd-tracker/SKILL.md</span>
-          <span class="card-mode-badge">Embedded — PIPELINE</span>
-        </div>
-        <div class="card-inputs">
-          <input class="card-input" id="dd-deal" type="text" placeholder="Deal / property name">
-        </div>
-        <button class="launch-btn" onclick="launchDD()">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
           Launch in Claude
         </button>
@@ -1672,7 +1547,7 @@
     </div>
     <div class="footer-right">
       <div class="footer-meta">
-        15 Skills Active &nbsp;·&nbsp; Build 2026.03.16<br>
+        12 Skills Active &nbsp;·&nbsp; Build 2026.03.16<br>
         ATL · SAV · DFW · HOU
       </div>
     </div>
