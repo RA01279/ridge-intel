@@ -398,6 +398,15 @@
     .skill-card.acq      { --skill-accent: #10B981; }
     .skill-card.comp-map { --skill-accent: #F97316; }
     .skill-card.canvas   { --skill-accent: #06B6D4; }
+    .skill-card.pipeline      { --skill-accent: #C9A84C; }
+    .skill-card.napkin        { --skill-accent: #14B8A6; }
+    .skill-card.loi           { --skill-accent: #3B82F6; }
+    .skill-card.debt          { --skill-accent: #F59E0B; }
+    .skill-card.memory        { --skill-accent: #A855F7; }
+    .skill-card.pulse         { --skill-accent: #22C55E; }
+    .skill-card.dd            { --skill-accent: #F97316; }
+    .skill-card.canvas-panel  { --skill-accent: #6366F1; }
+    .skill-card.lens          { --skill-accent: #EC4899; }
 
     .card-top {
       display: flex;
@@ -792,9 +801,9 @@
     <div class="nav-status">
       <div class="status-pill">
         <span class="dot"></span>
-        6 Skills Active
+        15 Skills Active
       </div>
-      <div class="nav-build">Build: 2026.03.11</div>
+      <div class="nav-build">Build: 2026.03.16</div>
     </div>
   </nav>
 
@@ -840,7 +849,7 @@
         <div>
           <div class="holding-badge">Holding Company</div>
           <div class="holding-name">RIDGE Intelligence Platform</div>
-          <div class="holding-tagline">Five integrated modules. One acquisitions engine. Zero redundancy.</div>
+          <div class="holding-tagline">Fifteen integrated modules. One acquisitions engine. Zero redundancy.</div>
         </div>
       </div>
       <div class="holding-criteria">
@@ -915,7 +924,7 @@
     <div class="section-header">
       <span class="section-label">Subsidiaries</span>
       <span class="section-title">Integrated Skill Modules</span>
-      <span class="section-count">6 / 6 Active</span>
+      <span class="section-count">15 / 15 Active</span>
     </div>
 
     <div class="skills-grid">
@@ -1178,6 +1187,387 @@
         </button>
       </div>
 
+      <!-- PIPELINE -->
+      <div class="skill-card pipeline">
+        <div class="card-top">
+          <div class="card-icon">🗂️</div>
+          <div class="card-status"><span class="sdot"></span>Active</div>
+        </div>
+        <div class="card-codename">pipeline.skill</div>
+        <div class="card-name">PIPELINE</div>
+        <p class="card-desc">
+          Deal CRM &amp; kanban tracker. The central hub for all RIDGE acquisitions. Tracks every deal from Watch to Close — conviction level, stage, days in stage, notes, attachments. All other skills log back here. Embeds DD TRACKER and DEAL MEMORY.
+        </p>
+        <div class="card-section-label">Trigger Phrases</div>
+        <div class="trigger-pills">
+          <span class="pill">show my pipeline</span>
+          <span class="pill">add deal</span>
+          <span class="pill">log deal</span>
+          <span class="pill">move to LOI</span>
+          <span class="pill">pipeline report</span>
+          <span class="pill">deal status</span>
+        </div>
+        <hr class="card-divider">
+        <div class="card-section-label">Outputs</div>
+        <ul class="output-list">
+          <li><span class="output-tag tag-tbl">Table</span> Full pipeline — conviction-sorted, days in stage</li>
+          <li><span class="output-tag tag-tbl">Report</span> Pipeline report — stale flags, action required</li>
+          <li><span class="output-tag tag-tbl">Record</span> Deal dossier — all fields, notes log, stage history</li>
+        </ul>
+        <hr class="card-divider">
+        <div class="card-footer">
+          <span class="card-file">/mnt/skills/user/pipeline/SKILL.md</span>
+          <span class="card-mode-badge">Hub — All Skills</span>
+        </div>
+        <div class="card-inputs">
+        </div>
+        <button class="launch-btn" onclick="launchPipeline()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+          Launch in Claude
+        </button>
+      </div>
+
+      <!-- THE NAPKIN -->
+      <div class="skill-card napkin">
+        <div class="card-top">
+          <div class="card-icon">📝</div>
+          <div class="card-status"><span class="sdot"></span>Active</div>
+        </div>
+        <div class="card-codename">napkin.skill</div>
+        <div class="card-name">THE NAPKIN</div>
+        <p class="card-desc">
+          60-second deal screen. Back-of-napkin underwriting for a Go / No-Go verdict before committing to full RIDGE analysis. Reverse-engineers cap rates, estimates stabilized NOI, projects YOC at Year 3/4. Enforces RIDGE criteria guardrails automatically.
+        </p>
+        <div class="card-section-label">Trigger Phrases</div>
+        <div class="trigger-pills">
+          <span class="pill">run the napkin</span>
+          <span class="pill">quick screen</span>
+          <span class="pill">back of napkin</span>
+          <span class="pill">does this deal work</span>
+          <span class="pill">napkin math</span>
+          <span class="pill">screen this deal</span>
+        </div>
+        <hr class="card-divider">
+        <div class="card-section-label">Output</div>
+        <ul class="output-list">
+          <li><span class="output-tag tag-tbl">Screen</span> Go / No-Go / Needs More Data verdict + thesis</li>
+          <li><span class="output-tag tag-tbl">Math</span> Implied cap, stabilized NOI, YOC Year 3/4</li>
+          <li><span class="output-tag tag-tbl">Price</span> Counter-offer anchor — price that makes it work</li>
+        </ul>
+        <hr class="card-divider">
+        <div class="card-footer">
+          <span class="card-file">/mnt/skills/user/napkin/SKILL.md</span>
+          <span class="card-mode-badge">60-Second Screen</span>
+        </div>
+        <div class="card-inputs">
+          <input class="card-input" id="napkin-address" type="text" placeholder="Property address">
+          <input class="card-input" id="napkin-price" type="text" placeholder="Ask price — e.g. $12,500,000">
+          <input class="card-input" id="napkin-market" type="text" placeholder="Market — e.g. Gwinnett, Atlanta">
+        </div>
+        <button class="launch-btn" onclick="launchNapkin()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+          Launch in Claude
+        </button>
+      </div>
+
+      <!-- LOI GENERATOR -->
+      <div class="skill-card loi">
+        <div class="card-top">
+          <div class="card-icon">📄</div>
+          <div class="card-status"><span class="sdot"></span>Active</div>
+        </div>
+        <div class="card-codename">loi-generator.skill</div>
+        <div class="card-name">LOI Generator</div>
+        <p class="card-desc">
+          Instant LOI drafting for industrial and flex CRE acquisitions. RIDGE defaults: 5% earnest money hard at end of DD, 30-day DD, 45-day close, buyer as Entrada Management Services LLC. Paste-ready output. Also drafts amendments, extensions, and termination notices.
+        </p>
+        <div class="card-section-label">Trigger Phrases</div>
+        <div class="trigger-pills">
+          <span class="pill">draft an LOI</span>
+          <span class="pill">write the LOI</span>
+          <span class="pill">generate LOI</span>
+          <span class="pill">LOI for [property]</span>
+          <span class="pill">letter of intent</span>
+        </div>
+        <hr class="card-divider">
+        <div class="card-section-label">Output</div>
+        <ul class="output-list">
+          <li><span class="output-tag tag-pdf">Doc</span> Complete LOI — parties, price, earnest money, DD, close</li>
+          <li><span class="output-tag tag-pdf">Doc</span> Amendment / extension / termination on request</li>
+        </ul>
+        <hr class="card-divider">
+        <div class="card-footer">
+          <span class="card-file">/mnt/skills/user/loi-generator/SKILL.md</span>
+          <span class="card-mode-badge">RIDGE Defaults</span>
+        </div>
+        <div class="card-inputs">
+          <input class="card-input" id="loi-property" type="text" placeholder="Property name">
+          <input class="card-input" id="loi-address" type="text" placeholder="Property address">
+          <input class="card-input" id="loi-price" type="text" placeholder="Purchase price — e.g. $14,750,000">
+        </div>
+        <button class="launch-btn" onclick="launchLOI()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+          Launch in Claude
+        </button>
+      </div>
+
+      <!-- DEBT TOOL -->
+      <div class="skill-card debt">
+        <div class="card-top">
+          <div class="card-icon">🏦</div>
+          <div class="card-status"><span class="sdot"></span>Active</div>
+        </div>
+        <div class="card-codename">debt-tool.skill</div>
+        <div class="card-name">DEBT TOOL</div>
+        <p class="card-desc">
+          Capital stack modeling for RIDGE acquisitions. Models senior debt, bridge, CMBS, and agency financing. Outputs capital stack table, DSCR, debt yield, LTV, and return sensitivity. Flags DSCR below 1.20x, debt yield below 8%, and LTV above 70% on value-add automatically.
+        </p>
+        <div class="card-section-label">Trigger Phrases</div>
+        <div class="trigger-pills">
+          <span class="pill">run the debt tool</span>
+          <span class="pill">model the debt</span>
+          <span class="pill">capital stack</span>
+          <span class="pill">DSCR</span>
+          <span class="pill">financing scenarios</span>
+          <span class="pill">debt yield</span>
+        </div>
+        <hr class="card-divider">
+        <div class="card-section-label">Outputs</div>
+        <ul class="output-list">
+          <li><span class="output-tag tag-tbl">Table</span> Capital stack — equity, senior debt, mezz</li>
+          <li><span class="output-tag tag-tbl">Metrics</span> DSCR · debt yield · LTV · IO vs amortizing</li>
+          <li><span class="output-tag tag-tbl">Sensitivity</span> How debt terms affect equity IRR and CoC</li>
+        </ul>
+        <hr class="card-divider">
+        <div class="card-footer">
+          <span class="card-file">/mnt/skills/user/debt-tool/SKILL.md</span>
+          <span class="card-mode-badge">Multi-Scenario</span>
+        </div>
+        <div class="card-inputs">
+          <input class="card-input" id="debt-deal" type="text" placeholder="Deal name">
+          <input class="card-input" id="debt-price" type="text" placeholder="Purchase price — e.g. $18,000,000">
+        </div>
+        <button class="launch-btn" onclick="launchDebt()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+          Launch in Claude
+        </button>
+      </div>
+
+      <!-- DEAL MEMORY -->
+      <div class="skill-card memory">
+        <div class="card-top">
+          <div class="card-icon">💾</div>
+          <div class="card-status"><span class="sdot"></span>Active</div>
+        </div>
+        <div class="card-codename">deal-memory.skill</div>
+        <div class="card-name">DEAL MEMORY</div>
+        <p class="card-desc">
+          Session persistence layer for RIDGE. Serializes the full pipeline state — all deal records, stage history, notes, DD checklists, and benchmarks — into a portable memory block. Paste it at the start of any new session to restore context instantly. Embedded within PIPELINE.
+        </p>
+        <div class="card-section-label">Trigger Phrases</div>
+        <div class="trigger-pills">
+          <span class="pill">save session</span>
+          <span class="pill">serialize pipeline</span>
+          <span class="pill">memory block</span>
+          <span class="pill">restore pipeline</span>
+          <span class="pill">load memory</span>
+          <span class="pill">save my deals</span>
+        </div>
+        <hr class="card-divider">
+        <div class="card-section-label">Output</div>
+        <ul class="output-list">
+          <li><span class="output-tag tag-tbl">Block</span> Portable memory block — paste to restore any session</li>
+          <li><span class="output-tag tag-tbl">Restore</span> Silent parse &amp; restore on memory block detection</li>
+        </ul>
+        <hr class="card-divider">
+        <div class="card-footer">
+          <span class="card-file">/mnt/skills/user/deal-memory/SKILL.md</span>
+          <span class="card-mode-badge">Embedded — PIPELINE</span>
+        </div>
+        <div class="card-inputs">
+        </div>
+        <button class="launch-btn" onclick="launchMemory()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+          Launch in Claude
+        </button>
+      </div>
+
+      <!-- MARKET PULSE -->
+      <div class="skill-card pulse">
+        <div class="card-top">
+          <div class="card-icon">📡</div>
+          <div class="card-status"><span class="sdot"></span>Active</div>
+        </div>
+        <div class="card-codename">market-pulse.skill</div>
+        <div class="card-name">MARKET PULSE</div>
+        <p class="card-desc">
+          Live submarket intelligence engine. Vacancy rates, Class A/B/C asking rents, 12-month absorption, new supply pipeline, and RIDGE benchmark rents for Atlanta, Savannah, DFW, Houston, and Austin. Benchmarks feed directly into NAPKIN screens and RIDGE return models.
+        </p>
+        <div class="card-section-label">Trigger Phrases</div>
+        <div class="trigger-pills">
+          <span class="pill">market pulse</span>
+          <span class="pill">run pulse</span>
+          <span class="pill">submarket report</span>
+          <span class="pill">vacancy in [market]</span>
+          <span class="pill">update benchmarks</span>
+          <span class="pill">rents in [submarket]</span>
+        </div>
+        <hr class="card-divider">
+        <div class="card-section-label">Outputs</div>
+        <ul class="output-list">
+          <li><span class="output-tag tag-tbl">Table</span> Submarket data — vacancy, rents, absorption, supply</li>
+          <li><span class="output-tag tag-tbl">Benchmarks</span> RIDGE underwriting rents — updated across all markets</li>
+          <li><span class="output-tag tag-tbl">Flags</span> Trend direction — Tightening / Stable / Loosening</li>
+        </ul>
+        <hr class="card-divider">
+        <div class="card-footer">
+          <span class="card-file">/mnt/skills/user/market-pulse/SKILL.md</span>
+          <span class="card-mode-badge">ATL · SAV · DFW · HOU</span>
+        </div>
+        <div class="card-inputs">
+          <select class="card-input" id="pulse-market">
+            <option value="Atlanta">Market: Atlanta, GA</option>
+            <option value="Savannah">Market: Savannah, GA</option>
+            <option value="DFW">Market: Dallas–Fort Worth, TX</option>
+            <option value="Houston">Market: Houston, TX</option>
+            <option value="Austin">Market: Austin, TX (Watch Only)</option>
+          </select>
+        </div>
+        <button class="launch-btn" onclick="launchPulse()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+          Launch in Claude
+        </button>
+      </div>
+
+      <!-- DD TRACKER -->
+      <div class="skill-card dd">
+        <div class="card-top">
+          <div class="card-icon">✅</div>
+          <div class="card-status"><span class="sdot"></span>Active</div>
+        </div>
+        <div class="card-codename">dd-tracker.skill</div>
+        <div class="card-name">DD TRACKER</div>
+        <p class="card-desc">
+          Due diligence management system. Activates automatically when a PIPELINE deal reaches DD stage. Structured checklist across five categories: Title &amp; Survey, Physical, Financial, Legal, Market. Critical flags — Phase I RECs, title defects, zoning non-conformance — automatically pause closing.
+        </p>
+        <div class="card-section-label">Trigger Phrases</div>
+        <div class="trigger-pills">
+          <span class="pill">DD checklist</span>
+          <span class="pill">open DD</span>
+          <span class="pill">start DD</span>
+          <span class="pill">DD tracker</span>
+          <span class="pill">what's outstanding in DD</span>
+          <span class="pill">DD status</span>
+        </div>
+        <hr class="card-divider">
+        <div class="card-section-label">Outputs</div>
+        <ul class="output-list">
+          <li><span class="output-tag tag-tbl">Checklist</span> 5-category DD checklist — Pending / Received / Reviewed / Flagged</li>
+          <li><span class="output-tag tag-tbl">Report</span> DD summary — outstanding items, flags, days remaining</li>
+          <li><span class="output-tag tag-tbl">Alert</span> Critical flags — title defects, RECs, zoning issues</li>
+        </ul>
+        <hr class="card-divider">
+        <div class="card-footer">
+          <span class="card-file">/mnt/skills/user/dd-tracker/SKILL.md</span>
+          <span class="card-mode-badge">Embedded — PIPELINE</span>
+        </div>
+        <div class="card-inputs">
+          <input class="card-input" id="dd-deal" type="text" placeholder="Deal / property name">
+        </div>
+        <button class="launch-btn" onclick="launchDD()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+          Launch in Claude
+        </button>
+      </div>
+
+      <!-- CANVAS PANEL -->
+      <div class="skill-card canvas-panel">
+        <div class="card-top">
+          <div class="card-icon">🏗️</div>
+          <div class="card-status"><span class="sdot"></span>Active</div>
+        </div>
+        <div class="card-codename">canvas-panel.skill</div>
+        <div class="card-name">CANVAS Panel</div>
+        <p class="card-desc">
+          CANVAS engine embedded in the RIDGE pipeline workflow. Same Fill and Hunt modes, same three mandatory outputs — with direct PIPELINE deal attachment. Fill mode always prompts to attach the tenant list to an active deal. Hunt mode Acquisition Feed auto-formats for PIPELINE ingestion.
+        </p>
+        <div class="card-section-label">Trigger Phrases</div>
+        <div class="trigger-pills">
+          <span class="pill">canvas panel</span>
+          <span class="pill">attach tenants to deal</span>
+          <span class="pill">fill [deal]</span>
+          <span class="pill">tenant list for [deal]</span>
+          <span class="pill">find tenants for this building</span>
+          <span class="pill">run CANVAS</span>
+        </div>
+        <hr class="card-divider">
+        <div class="card-section-label">Mandatory Outputs (always three)</div>
+        <ul class="output-list">
+          <li><span class="output-tag tag-xlsx">XLSX</span> Ranked tenant prospect list — scored, tiered, PIPELINE-attached</li>
+          <li><span class="output-tag tag-pdf">PDF</span> Tier 1 profiles + summary report</li>
+          <li><span class="output-tag tag-tbl">Feed</span> PIPELINE ingestion feed (Hunt) — demand-validated deal targets</li>
+        </ul>
+        <hr class="card-divider">
+        <div class="card-footer">
+          <span class="card-file">/mnt/skills/user/canvas-panel/SKILL.md</span>
+          <span class="card-mode-badge">2 Modes · PIPELINE</span>
+        </div>
+        <div class="card-inputs">
+          <select class="card-input" id="cpanel-mode">
+            <option value="Fill">Mode: Fill — I have a building, find tenants</option>
+            <option value="Hunt">Mode: Hunt — find displaced businesses for acquisition targeting</option>
+          </select>
+          <input class="card-input" id="cpanel-location" type="text" placeholder="Property address or market / submarket">
+          <input class="card-input" id="cpanel-deal" type="text" placeholder="PIPELINE deal to attach (optional)">
+        </div>
+        <button class="launch-btn" onclick="launchCanvasPanel()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+          Launch in Claude
+        </button>
+      </div>
+
+      <!-- LENS -->
+      <div class="skill-card lens">
+        <div class="card-top">
+          <div class="card-icon">🔬</div>
+          <div class="card-status"><span class="sdot"></span>Active</div>
+        </div>
+        <div class="card-codename">lens.skill</div>
+        <div class="card-name">LENS</div>
+        <p class="card-desc">
+          OM Analysis &amp; Investment Signal Engine. Strips the broker narrative, stress-tests every assumption, re-underwrites the deal against RIDGE criteria, and delivers a go/no-go verdict with a maximum entry price. Bear / RIDGE Base / Bull scenarios. LENS is not neutral — it is calibrated to protect return thresholds.
+        </p>
+        <div class="card-section-label">Trigger Phrases</div>
+        <div class="trigger-pills">
+          <span class="pill">run LENS</span>
+          <span class="pill">analyze this OM</span>
+          <span class="pill">tear apart this OM</span>
+          <span class="pill">stress test this</span>
+          <span class="pill">re-underwrite this</span>
+          <span class="pill">what's the broker hiding</span>
+          <span class="pill">check the assumptions</span>
+        </div>
+        <hr class="card-divider">
+        <div class="card-section-label">Mandatory Outputs (always three)</div>
+        <ul class="output-list">
+          <li><span class="output-tag tag-pdf">PDF</span> Full teardown report — broker assumptions vs. RIDGE re-underwrite</li>
+          <li><span class="output-tag tag-xlsx">XLSX</span> Three-scenario model — Bear / RIDGE Base / Bull</li>
+          <li><span class="output-tag tag-tbl">Feed</span> RIDGE Feed — verdict + max entry price → session pipeline</li>
+        </ul>
+        <hr class="card-divider">
+        <div class="card-footer">
+          <span class="card-file">/mnt/skills/user/lens/SKILL.md</span>
+          <span class="card-mode-badge">3 Scenarios</span>
+        </div>
+        <div class="card-inputs">
+          <input class="card-input" id="lens-property" type="text" placeholder="Property name or address (optional)">
+        </div>
+        <button class="launch-btn" onclick="launchLens()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+          Launch in Claude
+        </button>
+      </div>
+
     </div>
   </section>
 
@@ -1217,10 +1607,15 @@
             <td style="padding: 14px 20px;"><span style="color: #6EE7B7; font-weight:600;">Acquisition Investment Report</span></td>
             <td style="padding: 14px 20px; font-family: 'Space Mono', monospace; font-size: 11px; color: var(--muted);">acq-investment-report/SKILL.md</td>
           </tr>
-          <tr>
+          <tr style="border-bottom:1px solid var(--border);">
             <td style="padding: 14px 20px; color: rgba(240,242,248,0.8);">Lease comp data + target property address</td>
             <td style="padding: 14px 20px;"><span style="color: #FDBA74; font-weight:600;">Lease Comp Map</span></td>
             <td style="padding: 14px 20px; font-family: 'Space Mono', monospace; font-size: 11px; color: var(--muted);">lease-comp-map/SKILL.md</td>
+          </tr>
+          <tr>
+            <td style="padding: 14px 20px; color: rgba(240,242,248,0.8);">Broker OM, BOV, investment summary, deal package</td>
+            <td style="padding: 14px 20px;"><span style="color: #EC4899; font-weight:600;">LENS</span></td>
+            <td style="padding: 14px 20px; font-family: 'Space Mono', monospace; font-size: 11px; color: var(--muted);">lens/SKILL.md</td>
           </tr>
         </tbody>
       </table>
@@ -1277,7 +1672,7 @@
     </div>
     <div class="footer-right">
       <div class="footer-meta">
-        6 Skills Active &nbsp;·&nbsp; Build 2026.03.11<br>
+        15 Skills Active &nbsp;·&nbsp; Build 2026.03.16<br>
         ATL · SAV · DFW · HOU
       </div>
     </div>
@@ -1327,6 +1722,73 @@
       const location = document.getElementById('canvas-location').value.trim();
       let p = 'Run CANVAS — ' + mode + ' mode.';
       if (location) p += ' ' + (mode === 'Fill' ? 'Property: ' : 'Market / submarket: ') + location + '.';
+      p += ' I am ready to begin.';
+      window.open('https://claude.ai/new?q=' + encodeURIComponent(p), '_blank');
+    }
+    function launchPipeline() {
+      const p = 'Show my RIDGE pipeline — display all active deals by conviction level.';
+      window.open('https://claude.ai/new?q=' + encodeURIComponent(p), '_blank');
+    }
+    function launchNapkin() {
+      const address = document.getElementById('napkin-address').value.trim();
+      const price = document.getElementById('napkin-price').value.trim();
+      const market = document.getElementById('napkin-market').value.trim();
+      let p = 'Run the napkin — quick screen';
+      if (address) p += ' on ' + address;
+      if (price) p += '. Ask price: ' + price;
+      if (market) p += '. Market: ' + market;
+      p += '. I am ready to begin.';
+      window.open('https://claude.ai/new?q=' + encodeURIComponent(p), '_blank');
+    }
+    function launchLOI() {
+      const property = document.getElementById('loi-property').value.trim();
+      const address = document.getElementById('loi-address').value.trim();
+      const price = document.getElementById('loi-price').value.trim();
+      let p = 'Draft an LOI';
+      if (property) p += ' — ' + property;
+      if (address) p += ' at ' + address;
+      if (price) p += '. Purchase price: ' + price;
+      p += '.';
+      window.open('https://claude.ai/new?q=' + encodeURIComponent(p), '_blank');
+    }
+    function launchDebt() {
+      const deal = document.getElementById('debt-deal').value.trim();
+      const price = document.getElementById('debt-price').value.trim();
+      let p = 'Run the debt tool — model the capital stack';
+      if (deal) p += ' for ' + deal;
+      if (price) p += '. Purchase price: ' + price;
+      p += '.';
+      window.open('https://claude.ai/new?q=' + encodeURIComponent(p), '_blank');
+    }
+    function launchMemory() {
+      const p = 'Save session — serialize my current RIDGE pipeline state to a memory block.';
+      window.open('https://claude.ai/new?q=' + encodeURIComponent(p), '_blank');
+    }
+    function launchPulse() {
+      const market = document.getElementById('pulse-market').value;
+      const p = 'Run Market Pulse — ' + market + ' submarket report.';
+      window.open('https://claude.ai/new?q=' + encodeURIComponent(p), '_blank');
+    }
+    function launchDD() {
+      const deal = document.getElementById('dd-deal').value.trim();
+      let p = 'Open DD tracker — activate due diligence checklist';
+      if (deal) p += ' for ' + deal;
+      p += '.';
+      window.open('https://claude.ai/new?q=' + encodeURIComponent(p), '_blank');
+    }
+    function launchLens() {
+      const property = document.getElementById('lens-property').value.trim();
+      let p = 'Run LENS — I am uploading a broker OM for RIDGE teardown analysis.';
+      if (property) p += ' Property: ' + property + '.';
+      window.open('https://claude.ai/new?q=' + encodeURIComponent(p), '_blank');
+    }
+    function launchCanvasPanel() {
+      const mode = document.getElementById('cpanel-mode').value;
+      const location = document.getElementById('cpanel-location').value.trim();
+      const deal = document.getElementById('cpanel-deal').value.trim();
+      let p = 'Run CANVAS Panel — ' + mode + ' mode.';
+      if (location) p += ' ' + (mode === 'Fill' ? 'Property: ' : 'Market / submarket: ') + location + '.';
+      if (deal) p += ' Attach results to PIPELINE deal: ' + deal + '.';
       p += ' I am ready to begin.';
       window.open('https://claude.ai/new?q=' + encodeURIComponent(p), '_blank');
     }
