@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>RIDGE — Real Intelligence for Deal Generation & Evaluation</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pptxgenjs/3.12.0/pptxgen.bundle.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <style>
@@ -1433,14 +1434,15 @@ function clearDailySourced() {
   }
 }
 
-function exportDailySignalXLSX() {
+async function exportDailySignalXLSX() {
   var rows = (STATE['daily-signal'] || {})._rows;
   if (!rows || !rows.length) { showToast('Select CoStar folder first'); return; }
 
   var today = new Date();
+  var dateStr = today.toLocaleDateString('en-US', { month:'long', day:'numeric', year:'numeric' });
+  var fileDate = today.toISOString().slice(0,10);
   var sourced = (localStorage.getItem('ridge_daily_sourced') || '').split('\n').map(function(s){ return s.trim().toLowerCase(); }).filter(Boolean);
 
-  // Fuzzy column getter
   function col(r, keys) {
     var rk = Object.keys(r);
     for (var i=0; i<keys.length; i++) {
@@ -1451,10 +1453,14 @@ function exportDailySignalXLSX() {
     return '';
   }
 
+  var totalScreened = 0;
+  var disqualified = 0;
   var results = [];
+
   rows.forEach(function(r) {
     var address = String(col(r,['Property Address']) || '').trim();
     if (!address) return;
+    totalScreened++;
 
     var rba       = parseFloat(String(col(r,['RBA','Rentable Building'])).replace(/[^0-9.]/g,'')) || 0;
     var vacancy   = parseFloat(String(col(r,['Vacancy %','Vacancy Pct','Vacancy Rate'])).replace(/[^0-9.]/g,'')) || 0;
@@ -1473,83 +1479,253 @@ function exportDailySignalXLSX() {
     var docks     = String(col(r,['Number Of Loading Docks','Loading Docks','Docks']) || '').trim();
     var driveIns  = String(col(r,['Drive Ins','Drive-Ins']) || '').trim();
 
-    // Disqualify
-    if (rba < 10000 || rba > 300000) return;
-    if (pctLeased >= 100 && forSale !== 'yes' && vacancy === 0) return;
+    if (rba < 10000 || rba > 300000) { disqualified++; return; }
+    if (pctLeased >= 100 && forSale !== 'yes' && vacancy === 0) { disqualified++; return; }
     if (propType && propType.length > 0 &&
         !propType.includes('industrial') && !propType.includes('flex') &&
         !propType.includes('warehouse') && !propType.includes('distribution') &&
-        !propType.includes('manufacturing') && !propType.includes('light')) return;
+        !propType.includes('manufacturing') && !propType.includes('light')) { disqualified++; return; }
 
-    // Previously sourced check (re-signal flags override)
     var addrKey = address.toLowerCase();
     var prevSourced = sourced.some(function(s){ return addrKey.includes(s) || s.includes(addrKey.substring(0,20)); });
 
-    var score = 0; var why = [];
+    var score = 0; var signals = [];
 
-    if (vacancy >= 30)       { score += 4; why.push('Vacancy ' + vacancy.toFixed(1) + '%'); }
-    else if (vacancy >= 15)  { score += 2; why.push('Vacancy ' + vacancy.toFixed(1) + '%'); }
-
-    if (forSale === 'yes')   { score += 4; why.push('For sale'); }
+    if (vacancy >= 30)       { score += 4; signals.push(vacancy.toFixed(1) + '% vacant'); }
+    else if (vacancy >= 15)  { score += 2; signals.push(vacancy.toFixed(1) + '% vacant'); }
+    if (forSale === 'yes')   { score += 4; signals.push('listed for sale'); }
 
     var saleYear = null;
     var m = lastSale.match(/(\d{4})/);
     if (m) saleYear = parseInt(m[1]);
     var yearsHeld = saleYear ? today.getFullYear() - saleYear : null;
-    if (yearsHeld > 10)      { score += 3; why.push(yearsHeld + 'yr hold'); }
-    else if (yearsHeld >= 5) { score += 2; why.push(yearsHeld + 'yr hold'); }
+    if (yearsHeld > 10)      { score += 3; signals.push(yearsHeld + '-year hold'); }
+    else if (yearsHeld >= 5) { score += 2; signals.push(yearsHeld + '-year hold'); }
 
     if (rba >= 15000 && rba <= 200000) score += 1;
-    if (phone && phone.length > 5)     { score += 1; why.push('Direct contact'); }
-    if (rentSF > 0 && rentSF < 10)     { score += 1; why.push('$' + rentSF.toFixed(2) + '/SF'); }
-    if (yearBuilt > 0 && yearBuilt < 1995) { score += 1; why.push('Built ' + yearBuilt); }
+    if (phone && phone.length > 5)     { score += 1; signals.push('direct contact'); }
+    if (rentSF > 0 && rentSF < 10)     { score += 1; signals.push('$' + rentSF.toFixed(2) + '/SF asking'); }
+    if (yearBuilt > 0 && yearBuilt < 1995) { score += 1; signals.push('built ' + yearBuilt); }
 
     if (score === 0) return;
 
-    // Re-signal override
     var reSignal = prevSourced && (forSale === 'yes' || vacancy >= 30);
     if (prevSourced && !reSignal) return;
 
+    // Build readable signal sentence
+    var signalText = signals.length ? signals[0].charAt(0).toUpperCase() + signals[0].slice(1) : '';
+    if (signals.length > 1) signalText += ' · ' + signals.slice(1).join(' · ');
+    if (reSignal) signalText = '⚡ RE-SIGNAL: ' + signalText;
+
     results.push({
-      score, address, city, submarket,
-      rba:      rba ? Math.round(rba/100)*100 : '—',
+      score, address, city, submarket, owner,
+      rba:      rba ? Math.round(rba/100)*100 : 0,
+      vacancyN: vacancy,
       vacancy:  vacancy ? vacancy.toFixed(1)+'%' : '0%',
-      availSF:  availSF ? Math.round(availSF/100)*100 : '—',
+      availSF:  availSF ? Math.round(availSF/100)*100 : 0,
       lastSale: lastSale || '—',
-      owner:    owner || '—',
-      phone:    phone || 'No direct contact',
-      why:      why.join(' + ') + (reSignal ? ' ⚡ RE-SIGNAL' : ''),
-      ceilHt, docks, driveIns
+      phone:    (phone && phone.length > 5) ? phone : 'Research via county records',
+      signal:   signalText,
+      ceilHt:   ceilHt || '—',
+      docks:    docks || '—',
+      driveIns: driveIns || '—',
+      reSignal
     });
   });
 
   results.sort(function(a,b){ return b.score - a.score; });
   var top15 = results.slice(0, 15);
-
   if (!top15.length) { showToast('No qualifying prospects found'); return; }
 
-  // Build workbook
-  var wb2 = XLSX.utils.book_new();
-  var headers = ['Rank','Score','Address','City','Submarket','RBA (SF)','Vacancy %','Avail SF','Last Sale','Ceiling Ht','Docks','Drive-Ins','Owner','Phone','Signal'];
-  var wsData = [headers];
-  top15.forEach(function(p, i) {
-    wsData.push([i+1, p.score, p.address, p.city, p.submarket, p.rba, p.vacancy, p.availSF, p.lastSale, p.ceilHt, p.docks, p.driveIns, p.owner, p.phone, p.why]);
+  // ── ExcelJS formatted workbook ─────────────────────────────
+  var wb = new ExcelJS.Workbook();
+  wb.creator = 'RIDGE';
+  var ws = wb.addWorksheet('Daily Signal', { views:[{ state:'frozen', xSplit:0, ySplit:6 }] });
+
+  var NAVY   = '0D1B2A';
+  var WHITE  = 'FFFFFF';
+  var ACCENT = '2563EB';
+  var GREEN  = 'D1FAE5';
+  var YELLOW = 'FEF9C3';
+  var LGRAY  = 'F8FAFC';
+  var BORDER = 'CBD5E1';
+  var TEXT   = '0F172A';
+  var MUTED  = '64748B';
+
+  function thin(color) { return { style:'thin', color:{ argb: color || BORDER } }; }
+  function fillSolid(hex) { return { type:'pattern', pattern:'solid', fgColor:{ argb: hex } }; }
+  function numFmt(v, fmt) { return { value: v, numFmt: fmt }; }
+
+  // ── Row 1: Main title ──────────────────────────────────────
+  ws.mergeCells('A1:O1');
+  var t1 = ws.getCell('A1');
+  t1.value = 'RIDGE  ·  DAILY SIGNAL REPORT';
+  t1.font   = { bold:true, size:14, color:{ argb:WHITE }, name:'Calibri' };
+  t1.fill   = fillSolid(NAVY);
+  t1.alignment = { vertical:'middle', horizontal:'left', indent:2 };
+  ws.getRow(1).height = 32;
+
+  // ── Row 2: Date + stats bar ────────────────────────────────
+  ws.mergeCells('A2:E2');
+  ws.getCell('A2').value = dateStr;
+  ws.getCell('A2').font  = { size:10, color:{ argb:'93C5FD' }, bold:true, name:'Calibri' };
+  ws.getCell('A2').fill  = fillSolid(NAVY);
+  ws.getCell('A2').alignment = { vertical:'middle', indent:2 };
+
+  ws.mergeCells('F2:I2');
+  ws.getCell('F2').value = totalScreened + ' properties screened';
+  ws.getCell('F2').font  = { size:10, color:{ argb:'94A3B8' }, name:'Calibri' };
+  ws.getCell('F2').fill  = fillSolid(NAVY);
+  ws.getCell('F2').alignment = { vertical:'middle', horizontal:'center' };
+
+  ws.mergeCells('J2:L2');
+  ws.getCell('J2').value = (totalScreened - disqualified) + ' scored';
+  ws.getCell('J2').font  = { size:10, color:{ argb:'94A3B8' }, name:'Calibri' };
+  ws.getCell('J2').fill  = fillSolid(NAVY);
+  ws.getCell('J2').alignment = { vertical:'middle', horizontal:'center' };
+
+  ws.mergeCells('M2:O2');
+  ws.getCell('M2').value = 'Top score: ' + top15[0].score + '/15';
+  ws.getCell('M2').font  = { size:10, color:{ argb:'6EE7B7' }, bold:true, name:'Calibri' };
+  ws.getCell('M2').fill  = fillSolid(NAVY);
+  ws.getCell('M2').alignment = { vertical:'middle', horizontal:'center' };
+  ws.getRow(2).height = 22;
+
+  // ── Row 3: Spacer ──────────────────────────────────────────
+  ws.getRow(3).height = 4;
+  for (var cc=1; cc<=15; cc++) {
+    ws.getCell(3, cc).fill = fillSolid('1E293B');
+  }
+
+  // ── Row 4: Section label ───────────────────────────────────
+  ws.mergeCells('A4:O4');
+  ws.getCell('A4').value = 'TOP ' + top15.length + ' ACQUISITION PROSPECTS — Ranked by Signal Score';
+  ws.getCell('A4').font  = { size:9, color:{ argb:'94A3B8' }, name:'Calibri' };
+  ws.getCell('A4').fill  = fillSolid('1E293B');
+  ws.getCell('A4').alignment = { vertical:'middle', indent:2 };
+  ws.getRow(4).height = 18;
+
+  // ── Row 5: Spacer ──────────────────────────────────────────
+  ws.getRow(5).height = 4;
+  for (var cc=1; cc<=15; cc++) {
+    ws.getCell(5, cc).fill = fillSolid(LGRAY);
+  }
+
+  // ── Row 6: Column headers ──────────────────────────────────
+  var COLS = ['#','Score','Address','City','Submarket','RBA (SF)','Vacancy','Avail SF','Last Sale','Ceil Ht','Docks','D-I','Owner','Phone','Signal'];
+  var COL_WIDTHS = [4, 6.5, 42, 18, 22, 11, 9, 11, 11, 9, 6, 6, 32, 22, 52];
+  ws.columns = COL_WIDTHS.map(function(w){ return { width: w }; });
+
+  var hdrRow = ws.getRow(6);
+  COLS.forEach(function(h, i) {
+    var c = hdrRow.getCell(i+1);
+    c.value = h;
+    c.font  = { bold:true, size:9, color:{ argb:WHITE }, name:'Calibri' };
+    c.fill  = fillSolid('1E3A5F');
+    c.alignment = { vertical:'middle', horizontal: i < 2 ? 'center' : i <= 1 ? 'center' : 'left', wrapText: false };
+    c.border = { bottom: thin('2563EB') };
   });
-  var ws = XLSX.utils.aoa_to_sheet(wsData);
-  ws['!cols'] = [{wch:5},{wch:6},{wch:38},{wch:18},{wch:20},{wch:10},{wch:9},{wch:9},{wch:11},{wch:10},{wch:6},{wch:9},{wch:30},{wch:18},{wch:42}];
-  XLSX.utils.book_append_sheet(wb2, ws, 'Daily Signal');
+  hdrRow.height = 20;
 
-  var dateStr = today.toISOString().slice(0,10);
-  XLSX.writeFile(wb2, 'RIDGE_DailySignal_' + dateStr + '.xlsx');
+  // ── Data rows 7–21 ─────────────────────────────────────────
+  top15.forEach(function(p, idx) {
+    var rn = 7 + idx;
+    var row = ws.getRow(rn);
+    var isHot  = p.score >= 8;
+    var isWarm = p.score >= 5 && p.score < 8;
+    var rowFill = p.reSignal ? 'FFF3E0' : isHot ? GREEN : isWarm ? YELLOW : WHITE;
+    var altFill = p.reSignal ? 'FFF3E0' : isHot ? 'ECFDF5' : isWarm ? 'FEFCE8' : LGRAY;
+    var bg = idx % 2 === 0 ? rowFill : altFill;
 
-  // Auto-populate Log This Run with the 15 addresses
+    var vals = [
+      idx+1, p.score, p.address, p.city, p.submarket,
+      p.rba || '—', p.vacancy, p.availSF || '—', p.lastSale,
+      p.ceilHt, p.docks, p.driveIns,
+      p.owner, p.phone, p.signal
+    ];
+
+    vals.forEach(function(v, ci) {
+      var c = row.getCell(ci+1);
+      c.value = v;
+      c.fill  = fillSolid(bg);
+      c.font  = { size:9, name:'Calibri', color:{ argb: TEXT } };
+      c.alignment = { vertical:'middle', wrapText: ci === 14 };
+      c.border = { bottom: thin(BORDER) };
+
+      // Special formatting
+      if (ci === 0) { c.font = { bold:true, size:9, name:'Calibri', color:{ argb: MUTED } }; c.alignment.horizontal = 'center'; }
+      if (ci === 1) {
+        var scoreColor = p.score >= 8 ? '059669' : p.score >= 5 ? 'D97706' : MUTED;
+        c.font = { bold:true, size:10, name:'Calibri', color:{ argb: scoreColor } };
+        c.alignment.horizontal = 'center';
+      }
+      if (ci === 2) { c.font = { bold: idx < 3, size:9, name:'Calibri', color:{ argb: TEXT } }; }
+      if (ci === 13 && p.phone.startsWith('Research')) {
+        c.font = { size:9, name:'Calibri', color:{ argb: 'EF4444' }, italic:true };
+      }
+    });
+
+    row.height = p.signal.length > 60 ? 30 : 18;
+  });
+
+  // ── Outreach priority callout (rows 23–26) ─────────────────
+  var priRow = 7 + top15.length + 1;
+  ws.getRow(priRow).height = 4;
+
+  ws.mergeCells('A' + (priRow+1) + ':O' + (priRow+1));
+  ws.getCell('A' + (priRow+1)).value = 'OUTREACH PRIORITY — Call These First';
+  ws.getCell('A' + (priRow+1)).font  = { bold:true, size:9, color:{ argb:WHITE }, name:'Calibri' };
+  ws.getCell('A' + (priRow+1)).fill  = fillSolid('1E3A5F');
+  ws.getCell('A' + (priRow+1)).alignment = { vertical:'middle', indent:2 };
+  ws.getRow(priRow+1).height = 18;
+
+  top15.slice(0,3).forEach(function(p, i) {
+    var rn = priRow + 2 + i;
+    ws.mergeCells('A' + rn + ':B' + rn);
+    ws.getCell('A' + rn).value = '#' + (i+1) + ' — Score ' + p.score;
+    ws.getCell('A' + rn).font  = { bold:true, size:9, name:'Calibri', color:{ argb:'059669' } };
+    ws.getCell('A' + rn).fill  = fillSolid(LGRAY);
+    ws.getCell('A' + rn).alignment = { vertical:'middle', horizontal:'center' };
+
+    ws.mergeCells('C' + rn + ':G' + rn);
+    ws.getCell('C' + rn).value = p.address + (p.city ? ', ' + p.city : '');
+    ws.getCell('C' + rn).font  = { bold:true, size:9, name:'Calibri', color:{ argb: TEXT } };
+    ws.getCell('C' + rn).fill  = fillSolid(LGRAY);
+
+    ws.mergeCells('H' + rn + ':J' + rn);
+    ws.getCell('H' + rn).value = p.owner;
+    ws.getCell('H' + rn).font  = { size:9, name:'Calibri', color:{ argb: MUTED } };
+    ws.getCell('H' + rn).fill  = fillSolid(LGRAY);
+
+    ws.mergeCells('K' + rn + ':M' + rn);
+    ws.getCell('K' + rn).value = p.phone;
+    ws.getCell('K' + rn).font  = { bold:true, size:9, name:'Calibri', color:{ argb:'2563EB' } };
+    ws.getCell('K' + rn).fill  = fillSolid(LGRAY);
+
+    ws.mergeCells('N' + rn + ':O' + rn);
+    ws.getCell('N' + rn).value = p.signal;
+    ws.getCell('N' + rn).font  = { size:9, name:'Calibri', color:{ argb: MUTED }, italic:true };
+    ws.getCell('N' + rn).fill  = fillSolid(LGRAY);
+    ws.getRow(rn).height = 18;
+  });
+
+  // ── Download ───────────────────────────────────────────────
+  var buf = await wb.xlsx.writeBuffer();
+  var blob = new Blob([buf], { type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url; a.download = 'RIDGE_DailySignal_' + fileDate + '.xlsx';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+
+  // Auto-populate log
   var addrs = top15.map(function(p){ return p.address + (p.city ? ', ' + p.city : ''); }).join('\n');
   var inp = document.getElementById('ds-log-input');
   if (inp) inp.value = addrs;
   var box = document.getElementById('ds-log-box');
   if (box) box.style.display = 'block';
 
-  showToast('✓ ' + top15.length + ' prospects exported — review and save to memory below');
+  showToast('✓ ' + top15.length + ' prospects exported — save to memory below');
 }
 
 var _folderHandles = {};
