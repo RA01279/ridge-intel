@@ -90,6 +90,13 @@ main{max-width:1120px;margin:0 auto;padding:32px 20px;}
 input[type=file]{display:none;}
 .refresh-btn{margin-top:6px;background:none;border:1px solid var(--border);color:var(--muted);font-size:11px;padding:4px 10px;cursor:pointer;border-radius:3px;}
 .refresh-btn:hover{color:var(--text);border-color:var(--text);}
+.ds-memory-bar{display:flex;align-items:center;gap:10px;background:rgba(255,255,255,.03);border:1px solid var(--border);padding:8px 12px;border-radius:4px;margin-bottom:14px;flex-wrap:wrap;}
+.ds-mem-label{font-size:12px;color:var(--muted);flex:1;}
+.ds-mem-label strong{color:var(--text);}
+.ds-mem-btn{background:none;border:1px solid var(--border);color:var(--muted);font-size:11px;padding:3px 10px;cursor:pointer;border-radius:3px;}
+.ds-mem-btn:hover{color:var(--text);border-color:var(--text);}
+.ds-mem-clear:hover{color:var(--red,#e05);border-color:var(--red,#e05);}
+.ds-log-box{background:rgba(255,255,255,.02);border:1px solid var(--border);padding:12px;border-radius:4px;margin-bottom:14px;}
 
 /* PARSED PREVIEW */
 .parsed-preview{background:var(--surface2);border:1px solid var(--border);border-radius:var(--r);padding:14px;margin-bottom:20px;display:none;}
@@ -1062,7 +1069,6 @@ var TOOLS = [
     uploads:[{id:'costar',label:'CoStar Reports Folder',hint:'Select your CoStar Reports folder — all XLSX files load automatically',icon:'📁',accept:'.xlsx',type:'xlsx',folder:true}],
     fields:[
       {row:[{id:'date',label:'Report Date',ph:'March 16, 2026'},{id:'notes',label:'Focus / Notes',ph:'Prioritize Savannah and NE Atlanta this week...'}]},
-      {row:[{id:'sourced',label:'Previously Sourced (paste to exclude)',ph:'123 Industrial Blvd, Savannah\n456 Port Ave, Atlanta\n...',type:'textarea'}]},
     ],
     steps:['Parsing CoStar data...','Scoring vacancy signals...','Ranking prospects...','Identifying owner contacts...','Building report...'],
     system:`You are DAILY SIGNAL, RIDGE's daily acquisition lead generator for Entrada Partners. Score and rank properties from CoStar export data using RIDGE's signal scoring system. RIDGE criteria: industrial and flex, $10M–$70M, ATL/SAV/DFW/HOU, IRR ≥14.75%. Be direct. Rank ruthlessly. Surface the best 15 prospects with owner contact info.`,
@@ -1189,6 +1195,16 @@ function buildPanelHTML(tool) {
   <div class="panel-body">
     ${uploadsHTML}
     ${parsedHTML}
+    ${tool.id === 'daily-signal' ? `<div class="ds-memory-bar">
+      <span class="ds-mem-label">📋 Sourced memory: <strong id="ds-mem-count">0 properties</strong></span>
+      <button class="ds-mem-btn" onclick="toggleDSLog()">+ Log This Run</button>
+      <button class="ds-mem-btn ds-mem-clear" onclick="clearDailySourced()">Clear Memory</button>
+    </div>
+    <div class="ds-log-box" id="ds-log-box" style="display:none">
+      <label class="fl" style="margin-bottom:6px">Paste the "SOURCED THIS RUN:" block from Claude's output — saved automatically</label>
+      <textarea id="ds-log-input" placeholder="123 Industrial Blvd, Savannah&#10;456 Port Ave, Atlanta&#10;..." style="height:90px;width:100%;box-sizing:border-box"></textarea>
+      <button class="btn btn-p" style="margin-top:6px;font-size:12px" onclick="saveDailySourced()">Save to Memory</button>
+    </div>` : ''}
     <div class="manual-toggle" onclick="toggleManual('${tool.id}')">
       <span id="marrow-${tool.id}">▶</span> Fields &amp; Parameters
       <span style="color:var(--faint);font-size:11px;margin-left:4px">— auto-filled from upload where available</span>
@@ -1250,6 +1266,7 @@ function togglePanel(id) {
     panel.classList.add('open');
     if (card) card.classList.add('open');
     setTimeout(() => panel.scrollIntoView({ behavior:'smooth', block:'start' }), 50);
+    if (id === 'daily-signal') updateDSMemCount();
   }
 }
 
@@ -1379,6 +1396,39 @@ function handleMultiXLSX(toolId, uploadId, input) {
     };
     reader.readAsArrayBuffer(file);
   });
+}
+
+// ── Daily Signal sourced memory ──────────────────────────────
+function updateDSMemCount() {
+  var el = document.getElementById('ds-mem-count');
+  if (!el) return;
+  var lines = (localStorage.getItem('ridge_daily_sourced') || '').split('\n').map(s=>s.trim()).filter(Boolean);
+  el.textContent = lines.length + ' propert' + (lines.length === 1 ? 'y' : 'ies');
+}
+function toggleDSLog() {
+  var box = document.getElementById('ds-log-box');
+  if (box) box.style.display = box.style.display === 'none' ? 'block' : 'none';
+}
+function saveDailySourced() {
+  var inp = document.getElementById('ds-log-input');
+  if (!inp || !inp.value.trim()) return;
+  var existing = (localStorage.getItem('ridge_daily_sourced') || '').split('\n');
+  var incoming = inp.value.split('\n');
+  var merged = [...new Set([...existing, ...incoming].map(s=>s.trim()).filter(Boolean))];
+  localStorage.setItem('ridge_daily_sourced', merged.join('\n'));
+  inp.value = '';
+  var box = document.getElementById('ds-log-box');
+  if (box) box.style.display = 'none';
+  updateDSMemCount();
+  showToast('✓ ' + merged.length + ' properties saved to sourced memory');
+}
+function clearDailySourced() {
+  var count = (localStorage.getItem('ridge_daily_sourced') || '').split('\n').filter(s=>s.trim()).length;
+  if (!count || confirm('Clear ' + count + ' properties from sourced memory?')) {
+    localStorage.removeItem('ridge_daily_sourced');
+    updateDSMemCount();
+    showToast('Sourced memory cleared');
+  }
 }
 
 var _folderHandles = {};
@@ -1705,8 +1755,11 @@ function buildTrigger(toolId, d) {
       var p = 'Run Daily Signal report';
       if (d.date)  p += ' for ' + d.date;
       if (d.notes) p += '. Focus: ' + d.notes;
+      var sourced = localStorage.getItem('ridge_daily_sourced') || '';
+      if (sourced.trim()) p += '\n\nPREVIOUSLY SOURCED — exclude these unless a new signal fires (vacancy +5%, newly for-sale, or new owner):\n' + sourced;
       if (d.costar_text) p += '\n\nCoStar export data:\n' + d.costar_text;
       else p += '. CoStar export data is attached.';
+      p += '\n\nAt the end of your report, output a section titled "SOURCED THIS RUN:" followed by the 15 addresses you surfaced, one per line.';
       return p;
 
     case 'canvas':
