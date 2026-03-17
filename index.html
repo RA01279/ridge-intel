@@ -1183,7 +1183,9 @@ function buildPanelHTML(tool) {
   var fieldsHTML = buildFieldsHTML(tool);
 
   // Buttons
-  var extraBtns = '';
+  var extraBtns = tool.id === 'daily-signal'
+    ? `<button class="btn btn-o" onclick="exportDailySignalXLSX()">↓ Export Excel</button>`
+    : '';
 
   return `
   <div class="panel-head">
@@ -1431,6 +1433,125 @@ function clearDailySourced() {
   }
 }
 
+function exportDailySignalXLSX() {
+  var rows = (STATE['daily-signal'] || {})._rows;
+  if (!rows || !rows.length) { showToast('Select CoStar folder first'); return; }
+
+  var today = new Date();
+  var sourced = (localStorage.getItem('ridge_daily_sourced') || '').split('\n').map(function(s){ return s.trim().toLowerCase(); }).filter(Boolean);
+
+  // Fuzzy column getter
+  function col(r, keys) {
+    var rk = Object.keys(r);
+    for (var i=0; i<keys.length; i++) {
+      for (var j=0; j<rk.length; j++) {
+        if (rk[j].toLowerCase().includes(keys[i].toLowerCase())) return r[rk[j]];
+      }
+    }
+    return '';
+  }
+
+  var results = [];
+  rows.forEach(function(r) {
+    var address = String(col(r,['Property Address']) || '').trim();
+    if (!address) return;
+
+    var rba       = parseFloat(String(col(r,['RBA','Rentable Building'])).replace(/[^0-9.]/g,'')) || 0;
+    var vacancy   = parseFloat(String(col(r,['Vacancy %','Vacancy Pct','Vacancy Rate'])).replace(/[^0-9.]/g,'')) || 0;
+    var pctLeased = parseFloat(String(col(r,['Percent Leased','% Leased'])).replace(/[^0-9.]/g,'')) || 0;
+    var forSale   = String(col(r,['For Sale Status','For Sale'])).trim().toLowerCase();
+    var lastSale  = String(col(r,['Last Sale Date','Last Sale']) || '').trim();
+    var rentSF    = parseFloat(String(col(r,['Rent/SF','Rent Per SF','Asking Rent'])).replace(/[^0-9.]/g,'')) || 0;
+    var yearBuilt = parseInt(String(col(r,['Year Built']))) || 0;
+    var phone     = String(col(r,['Recorded Owner Phone','Owner Phone']) || '').trim();
+    var city      = String(col(r,['City']) || '').trim();
+    var submarket = String(col(r,['Submarket Name','Submarket']) || '').trim();
+    var availSF   = parseFloat(String(col(r,['Total Available Space','Available SF','Avail'])).replace(/[^0-9.]/g,'')) || 0;
+    var owner     = String(col(r,['Recorded Owner Name','Owner Name']) || '').trim();
+    var propType  = String(col(r,['Property Type','Type']) || '').toLowerCase();
+    var ceilHt    = String(col(r,['Ceiling Ht','Clear Height']) || '').trim();
+    var docks     = String(col(r,['Number Of Loading Docks','Loading Docks','Docks']) || '').trim();
+    var driveIns  = String(col(r,['Drive Ins','Drive-Ins']) || '').trim();
+
+    // Disqualify
+    if (rba < 10000 || rba > 300000) return;
+    if (pctLeased >= 100 && forSale !== 'yes' && vacancy === 0) return;
+    if (propType && propType.length > 0 &&
+        !propType.includes('industrial') && !propType.includes('flex') &&
+        !propType.includes('warehouse') && !propType.includes('distribution') &&
+        !propType.includes('manufacturing') && !propType.includes('light')) return;
+
+    // Previously sourced check (re-signal flags override)
+    var addrKey = address.toLowerCase();
+    var prevSourced = sourced.some(function(s){ return addrKey.includes(s) || s.includes(addrKey.substring(0,20)); });
+
+    var score = 0; var why = [];
+
+    if (vacancy >= 30)       { score += 4; why.push('Vacancy ' + vacancy.toFixed(1) + '%'); }
+    else if (vacancy >= 15)  { score += 2; why.push('Vacancy ' + vacancy.toFixed(1) + '%'); }
+
+    if (forSale === 'yes')   { score += 4; why.push('For sale'); }
+
+    var saleYear = null;
+    var m = lastSale.match(/(\d{4})/);
+    if (m) saleYear = parseInt(m[1]);
+    var yearsHeld = saleYear ? today.getFullYear() - saleYear : null;
+    if (yearsHeld > 10)      { score += 3; why.push(yearsHeld + 'yr hold'); }
+    else if (yearsHeld >= 5) { score += 2; why.push(yearsHeld + 'yr hold'); }
+
+    if (rba >= 15000 && rba <= 200000) score += 1;
+    if (phone && phone.length > 5)     { score += 1; why.push('Direct contact'); }
+    if (rentSF > 0 && rentSF < 10)     { score += 1; why.push('$' + rentSF.toFixed(2) + '/SF'); }
+    if (yearBuilt > 0 && yearBuilt < 1995) { score += 1; why.push('Built ' + yearBuilt); }
+
+    if (score === 0) return;
+
+    // Re-signal override
+    var reSignal = prevSourced && (forSale === 'yes' || vacancy >= 30);
+    if (prevSourced && !reSignal) return;
+
+    results.push({
+      score, address, city, submarket,
+      rba:      rba ? Math.round(rba/100)*100 : '—',
+      vacancy:  vacancy ? vacancy.toFixed(1)+'%' : '0%',
+      availSF:  availSF ? Math.round(availSF/100)*100 : '—',
+      lastSale: lastSale || '—',
+      owner:    owner || '—',
+      phone:    phone || 'No direct contact',
+      why:      why.join(' + ') + (reSignal ? ' ⚡ RE-SIGNAL' : ''),
+      ceilHt, docks, driveIns
+    });
+  });
+
+  results.sort(function(a,b){ return b.score - a.score; });
+  var top15 = results.slice(0, 15);
+
+  if (!top15.length) { showToast('No qualifying prospects found'); return; }
+
+  // Build workbook
+  var wb2 = XLSX.utils.book_new();
+  var headers = ['Rank','Score','Address','City','Submarket','RBA (SF)','Vacancy %','Avail SF','Last Sale','Ceiling Ht','Docks','Drive-Ins','Owner','Phone','Signal'];
+  var wsData = [headers];
+  top15.forEach(function(p, i) {
+    wsData.push([i+1, p.score, p.address, p.city, p.submarket, p.rba, p.vacancy, p.availSF, p.lastSale, p.ceilHt, p.docks, p.driveIns, p.owner, p.phone, p.why]);
+  });
+  var ws = XLSX.utils.aoa_to_sheet(wsData);
+  ws['!cols'] = [{wch:5},{wch:6},{wch:38},{wch:18},{wch:20},{wch:10},{wch:9},{wch:9},{wch:11},{wch:10},{wch:6},{wch:9},{wch:30},{wch:18},{wch:42}];
+  XLSX.utils.book_append_sheet(wb2, ws, 'Daily Signal');
+
+  var dateStr = today.toISOString().slice(0,10);
+  XLSX.writeFile(wb2, 'RIDGE_DailySignal_' + dateStr + '.xlsx');
+
+  // Auto-populate Log This Run with the 15 addresses
+  var addrs = top15.map(function(p){ return p.address + (p.city ? ', ' + p.city : ''); }).join('\n');
+  var inp = document.getElementById('ds-log-input');
+  if (inp) inp.value = addrs;
+  var box = document.getElementById('ds-log-box');
+  if (box) box.style.display = 'block';
+
+  showToast('✓ ' + top15.length + ' prospects exported — review and save to memory below');
+}
+
 var _folderHandles = {};
 
 async function pickCoStarFolder(toolId, uploadId) {
@@ -1470,7 +1591,7 @@ async function loadFolderFiles(toolId, uploadId, dirHandle) {
   }
 
   st.textContent = 'Loading ' + entries.length + ' files...';
-  var allText = ''; var done = 0;
+  var allText = ''; var allRows = [];
 
   for (var fh of entries) {
     var file = await fh.getFile();
@@ -1479,13 +1600,16 @@ async function loadFolderFiles(toolId, uploadId, dirHandle) {
       reader.onload = function(e) {
         try {
           var wb = XLSX.read(e.target.result, { type:'array' });
-          wb.SheetNames.forEach(function(name) {
-            var rows = XLSX.utils.sheet_to_json(wb.Sheets[name], { header:1, defval:'' });
-            var lines = rows.map(function(r){ return r.filter(function(c){ return c!==''; }).join(' | '); }).filter(function(l){ return l.trim(); });
-            allText += '\n=== FILE: ' + file.name + ' / SHEET: ' + name + ' ===\n' + lines.join('\n');
+          wb.SheetNames.forEach(function(sn) {
+            // Text for Claude prompt
+            var raw = XLSX.utils.sheet_to_json(wb.Sheets[sn], { header:1, defval:'' });
+            var lines = raw.map(function(r){ return r.filter(function(c){ return c!==''; }).join(' | '); }).filter(function(l){ return l.trim(); });
+            allText += '\n=== FILE: ' + file.name + ' / SHEET: ' + sn + ' ===\n' + lines.join('\n');
+            // Row objects for JS scoring
+            var json = XLSX.utils.sheet_to_json(wb.Sheets[sn], { defval:'' });
+            allRows = allRows.concat(json);
           });
         } catch(err) {}
-        done++;
         resolve();
       };
       reader.onerror = resolve;
@@ -1494,8 +1618,9 @@ async function loadFolderFiles(toolId, uploadId, dirHandle) {
   }
 
   STATE[toolId].files[uploadId] = allText;
+  STATE[toolId]._rows = allRows;
   uz.classList.add('loaded');
-  st.textContent = '✓ ' + entries.length + ' files loaded from ' + dirHandle.name;
+  st.textContent = '✓ ' + entries.length + ' files · ' + allRows.length + ' properties loaded';
   if (btn) btn.style.display = 'inline-block';
 }
 
