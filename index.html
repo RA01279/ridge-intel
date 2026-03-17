@@ -1436,6 +1436,13 @@ function runTool(toolId) {
       var el = document.getElementById('f-' + toolId + '-' + field.id);
       d[field.id] = el ? el.value.trim() : '';
     }));
+    // Attach extracted text from uploads (XLSX parsed data, PDF text)
+    Object.keys(STATE[toolId].files).forEach(function(uploadId) {
+      var fd = STATE[toolId].files[uploadId];
+      if (typeof fd === 'string' && fd.length > 0) {
+        d[uploadId + '_text'] = fd.length > 8000 ? fd.slice(0, 8000) + '\n[...truncated]' : fd;
+      }
+    });
   } else {
     d.addr   = document.getElementById('pl-addr').value.trim();
     d.stage  = document.getElementById('pl-stage').value;
@@ -1445,73 +1452,39 @@ function runTool(toolId) {
     d.notes  = document.getElementById('pl-notes').value.trim();
   }
 
-  // Build trigger + append extracted file data
-  var trigger = buildTrigger(toolId, d);
-  var fileData = '';
-  if (tool) {
-    Object.keys(STATE[toolId].files).forEach(function(uploadId) {
-      var fd = STATE[toolId].files[uploadId];
-      if (typeof fd === 'string' && fd.length > 0 && !fd.startsWith('[PDF:')) {
-        // Truncate very large extracts to 6000 chars
-        var excerpt = fd.length > 6000 ? fd.slice(0, 6000) + '\n[... truncated ...]' : fd;
-        fileData += '\n\n=== UPLOADED FILE DATA ===\n' + excerpt;
-      }
-    });
-  }
+  var prompt = buildTrigger(toolId, d);
+  var encoded = encodeURIComponent(prompt);
 
-  var fullPrompt = trigger + fileData;
+  // Use ?q= — opens Claude with prompt pre-filled, no popup blocker issues
+  // Show launch link in modal so user clicks it directly (never blocked)
+  var url = 'https://claude.ai/new?q=' + encoded;
 
-  // Check for PDFs that couldn't be extracted
-  var manualPDFs = [];
-  if (tool) {
-    Object.keys(STATE[toolId].files).forEach(function(uploadId) {
-      var fd = STATE[toolId].files[uploadId];
-      if (typeof fd === 'string' && fd.startsWith('[PDF:')) {
-        manualPDFs.push(fd.replace('[PDF: ', '').replace(' — upload manually in Claude]', ''));
-      }
-    });
-  }
+  document.getElementById('launch-title').textContent = (tool ? tool.name : 'PIPELINE') + ' — Ready';
+  document.getElementById('launch-prompt').value = prompt;
+  document.getElementById('launch-note').textContent = '';
 
-  // Show launch modal
-  document.getElementById('launch-title').textContent = (tool ? tool.name : 'PIPELINE') + ' — Ready to Launch';
-  document.getElementById('launch-sub').textContent = 'Review the prompt below, then click Copy & Open Claude. Paste with Ctrl+V.';
-  document.getElementById('launch-prompt').value = fullPrompt;
-  document.getElementById('launch-note').textContent = manualPDFs.length
-    ? '⚠ Upload manually in Claude: ' + manualPDFs.join(', ')
-    : '';
+  var goBtn = document.getElementById('launch-go-btn');
+  goBtn.onclick = null;
+  goBtn.outerHTML = '<a id="launch-go-btn" class="btn btn-p" href="' + url + '" target="_blank" rel="noopener" onclick="closeLaunch()" style="text-decoration:none;">↗ Open in Claude</a>';
+
   document.getElementById('launch-modal').classList.add('show');
-}
-
-function copyAndLaunch() {
-  var prompt = document.getElementById('launch-prompt').value;
-  var btn = document.getElementById('launch-go-btn');
-  // Copy to clipboard
-  try {
-    navigator.clipboard.writeText(prompt).catch(function() { fallbackCopy(prompt); });
-  } catch(e) { fallbackCopy(prompt); }
-
-  window.open('https://claude.ai/new', '_blank');
-  btn.textContent = '✓ Copied — paste in Claude';
-  setTimeout(function() {
-    closeLaunch();
-    btn.textContent = '↗ Copy & Open Claude';
-    showToast('Paste with Ctrl+V to run');
-  }, 1200);
-}
-
-function fallbackCopy(text) {
-  var ta = document.createElement('textarea');
-  ta.value = text;
-  ta.style.cssText = 'position:fixed;top:-9999px;left:-9999px';
-  document.body.appendChild(ta);
-  ta.select();
-  document.execCommand('copy');
-  document.body.removeChild(ta);
 }
 
 function closeLaunch() {
   document.getElementById('launch-modal').classList.remove('show');
+  // Reset button
+  var a = document.getElementById('launch-go-btn');
+  if (a) {
+    var btn = document.createElement('button');
+    btn.id = 'launch-go-btn';
+    btn.className = 'btn btn-p';
+    btn.onclick = copyAndLaunch;
+    btn.textContent = '↗ Open in Claude';
+    a.parentNode.replaceChild(btn, a);
+  }
 }
+
+function copyAndLaunch() {} // kept for safety
 
 function buildTrigger(toolId, d) {
   switch(toolId) {
@@ -1562,7 +1535,9 @@ function buildTrigger(toolId, d) {
       if (d.sub)  p += ' in ' + d.sub;
       if (d.sf)   p += '. Building SF: ' + d.sf;
       if (d.rent) p += '. Current in-place rent: ' + d.rent + ' PSF';
-      p += '. Comp data is attached — analyze and benchmark.';
+      if (d.comps_text) p += '\n\nComp data:\n' + d.comps_text;
+      if (d.om_text)    p += '\n\nOM/property context:\n' + d.om_text;
+      if (!d.comps_text && !d.om_text) p += '. Comp data is attached — analyze and benchmark.';
       return p;
 
     case 'debt':
