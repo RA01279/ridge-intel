@@ -43,17 +43,14 @@ main{max-width:1120px;margin:0 auto;padding:32px 20px;}
 .sec-title{font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--muted);}
 
 /* TOOL GRID */
-.tool-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(310px,1fr));gap:14px;margin-bottom:14px;}
-.tool-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:20px;cursor:pointer;transition:border-color .15s,transform .1s;}
-.tool-card:hover{border-color:var(--blue);transform:translateY(-1px);}
-.tool-card.open{border-color:var(--blue);background:var(--surface2);}
-.tc-hdr{display:flex;align-items:center;gap:10px;margin-bottom:8px;}
-.tc-icon{font-size:20px;}
+.tool-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:8px;margin-bottom:8px;}
+.tool-card{background:var(--surface);border:1px solid var(--border);border-left:2px solid transparent;border-radius:var(--r);padding:14px 16px;cursor:pointer;transition:border-color .15s,background .15s;}
+.tool-card:hover{border-color:var(--border);border-left-color:var(--blue);background:var(--surface2);}
+.tool-card.open{border-left-color:var(--blue);background:var(--surface2);}
+.tc-row{display:flex;align-items:baseline;gap:8px;margin-bottom:4px;}
+.tc-num{font-family:var(--mono);font-size:10px;color:var(--faint);min-width:18px;}
 .tc-name{font-size:13px;font-weight:700;color:var(--text);}
-.tc-num{font-family:var(--mono);font-size:10px;color:var(--faint);margin-left:auto;}
-.tc-desc{font-size:12px;color:var(--muted);line-height:1.6;}
-.tc-badge{display:inline-block;font-size:10px;padding:2px 8px;border-radius:10px;border:1px solid var(--green-bright);color:var(--green-bright);margin-top:10px;letter-spacing:.5px;}
-.tc-badge.blue{border-color:var(--blue);color:var(--blue);}
+.tc-desc{font-size:11px;color:var(--muted);line-height:1.5;padding-left:26px;}
 
 /* TOOL PANEL */
 .tool-panel{display:none;background:var(--surface);border:1px solid var(--blue);border-radius:var(--r);padding:0;margin-bottom:20px;overflow:hidden;animation:fadeIn .2s ease;}
@@ -220,83 +217,39 @@ footer{border-top:1px solid var(--border);padding:20px 24px;text-align:center;co
 <!-- ═══ TOOLS ═══ -->
 <div class="sec-hdr"><span class="sec-title">Integrated Skill Modules</span><span style="font-size:11px;color:var(--faint)">11 Active · Click any tile to expand</span></div>
 <div class="tool-grid" id="tool-grid"><div class="tool-card open" id="card-lens">
-      <div class="tc-hdr">
-        <span class="tc-icon">🔬</span>
-        <span class="tc-name">LENS</span>
-        <span class="tc-num">01</span>
-      </div>
-      <div class="tc-desc">Broker OM teardown. Strips the narrative, stress-tests every assumption, re-underwrites at RIDGE criteria. Bear / Base / Bull with a max entry price.</div>
-      <span class="tc-badge blue">OM Teardown</span></div><div class="tool-card" id="card-scout">
-      <div class="tc-hdr">
-        <span class="tc-icon">🔭</span>
-        <span class="tc-name">SCOUT</span>
-        <span class="tc-num">02</span>
-      </div>
-      <div class="tc-desc">Off-market prospect hunter. Builds ranked prospect tables from vacancy, debt maturity, and ownership signals. Full single-property dossiers on demand.</div>
-      <span class="tc-badge">Deal Sourcing</span></div><div class="tool-card" id="card-napkin">
-      <div class="tc-hdr">
-        <span class="tc-icon">📝</span>
-        <span class="tc-name">THE NAPKIN</span>
-        <span class="tc-num">03</span>
-      </div>
-      <div class="tc-desc">Back-of-envelope go/no-go. Address and ask price in, verdict out. Reverse-engineers cap rate, stabilized NOI, and YOC at Year 3/4.</div>
-      <span class="tc-badge">60-Second Screen</span></div><div class="tool-card" id="card-market-pulse">
-      <div class="tc-hdr">
-        <span class="tc-icon">📡</span>
-        <span class="tc-name">MARKET PULSE</span>
-        <span class="tc-num">04</span>
-      </div>
-      <div class="tc-desc">Submarket intelligence engine. Vacancy, Class A/B rents, absorption, supply pipeline, cap rates. Covers ATL, SAV, DFW, HOU, AUS.</div>
-      <span class="tc-badge">Live Benchmarks</span></div><div class="tool-card" id="card-lease-comp">
-      <div class="tc-hdr">
-        <span class="tc-icon">🗺️</span>
-        <span class="tc-name">LEASE COMP MAP</span>
-        <span class="tc-num">05</span>
-      </div>
-      <div class="tc-desc">Comp data in any format — Excel, CSV, pasted text. Analyzes lease comps, benchmarks in-place rents, and flags roll risk vs. market.</div>
-      <span class="tc-badge">Comp Analysis</span></div><div class="tool-card" id="card-debt">
-      <div class="tc-hdr">
-        <span class="tc-icon">🏦</span>
-        <span class="tc-name">DEBT TOOL</span>
-        <span class="tc-num">06</span>
-      </div>
-      <div class="tc-desc">Capital stack modeling across multiple scenarios — senior, bridge, CMBS, agency. Outputs DSCR, debt yield, LTV, and return sensitivity.</div>
-      <span class="tc-badge">Capital Stack</span></div><div class="tool-card" id="card-isr">
-      <div class="tc-hdr">
-        <span class="tc-icon">📊</span>
-        <span class="tc-name">ACQUISITION INVESTMENT REPORT</span>
-        <span class="tc-num">07</span>
-      </div>
-      <div class="tc-desc">Upload your Excel model + broker OM. Get a full IC analysis and 11-slide PowerPoint deck. IRR ≥14% = RECOMMEND · 11–14% = CONDITIONAL · &lt;11% = PASS.</div>
-      <span class="tc-badge blue">IC Deck · Dual Upload</span></div><div class="tool-card" id="card-loi">
-      <div class="tc-hdr">
-        <span class="tc-icon">📄</span>
-        <span class="tc-name">LOI GENERATOR</span>
-        <span class="tc-num">08</span>
-      </div>
-      <div class="tc-desc">Draft-ready LOI using Entrada's exact template. Nine variable fields — everything else is locked firm boilerplate.</div>
-      <span class="tc-badge">Entrada Template</span></div><div class="tool-card" id="card-gavel">
-      <div class="tc-hdr">
-        <span class="tc-icon">⚖️</span>
-        <span class="tc-name">THE GAVEL — LEASE ADMIN</span>
-        <span class="tc-num">09</span>
-      </div>
-      <div class="tc-desc">Upload a lease, get a structured abstract. Key dates, rent schedule, tenant obligations, landlord obligations, risk flags, and renewal options.</div>
-      <span class="tc-badge">Lease Abstract</span></div><div class="tool-card" id="card-legal">
-      <div class="tc-hdr">
-        <span class="tc-icon">📋</span>
-        <span class="tc-name">CRE LEGAL REVIEWER</span>
-        <span class="tc-num">10</span>
-      </div>
-      <div class="tc-desc">PSAs, JV / Operating Agreements, loan documents, and PMAs. Flags seller rep gaps, waterfall mechanics, DSCR covenants, and prepayment exposure.</div>
-      <span class="tc-badge">PSA · JV · Loan · PMA</span></div><div class="tool-card" id="card-canvas">
-      <div class="tc-hdr">
-        <span class="tc-icon">🏗️</span>
-        <span class="tc-name">CANVAS</span>
-        <span class="tc-num">11</span>
-      </div>
-      <div class="tc-desc">Tenant sourcing engine. Fill mode: find tenants for a specific building. Hunt mode: scan for displaced businesses and feed them back as acquisition targets.</div>
-      <span class="tc-badge">Tenant Sourcing</span></div></div>
+      <div class="tc-row"><span class="tc-num">01</span><span class="tc-name">LENS</span></div>
+      <div class="tc-desc">Broker OM teardown. Bear / Base / Bull · max entry price.</div>
+    </div><div class="tool-card" id="card-scout">
+      <div class="tc-row"><span class="tc-num">02</span><span class="tc-name">SCOUT</span></div>
+      <div class="tc-desc">Off-market sourcing. Ranked prospects from vacancy, debt, and ownership signals.</div>
+    </div><div class="tool-card" id="card-napkin">
+      <div class="tc-row"><span class="tc-num">03</span><span class="tc-name">THE NAPKIN</span></div>
+      <div class="tc-desc">60-second screen. Ask price in, Go / No-Go out.</div>
+    </div><div class="tool-card" id="card-market-pulse">
+      <div class="tc-row"><span class="tc-num">04</span><span class="tc-name">MARKET PULSE</span></div>
+      <div class="tc-desc">Submarket benchmarks. Vacancy, rents, absorption, cap rates.</div>
+    </div><div class="tool-card" id="card-lease-comp">
+      <div class="tc-row"><span class="tc-num">05</span><span class="tc-name">LEASE COMP MAP</span></div>
+      <div class="tc-desc">Comp data in, interactive map + analysis out.</div>
+    </div><div class="tool-card" id="card-debt">
+      <div class="tc-row"><span class="tc-num">06</span><span class="tc-name">DEBT TOOL</span></div>
+      <div class="tc-desc">Capital stack modeling. DSCR, debt yield, LTV across scenarios.</div>
+    </div><div class="tool-card" id="card-isr">
+      <div class="tc-row"><span class="tc-num">07</span><span class="tc-name">ACQUISITION INVESTMENT REPORT</span></div>
+      <div class="tc-desc">Upload model → IC analysis + 11-slide deck.</div>
+    </div><div class="tool-card" id="card-loi">
+      <div class="tc-row"><span class="tc-num">08</span><span class="tc-name">LOI GENERATOR</span></div>
+      <div class="tc-desc">Draft-ready LOI. Entrada defaults locked in.</div>
+    </div><div class="tool-card" id="card-gavel">
+      <div class="tc-row"><span class="tc-num">09</span><span class="tc-name">THE GAVEL — LEASE ADMIN</span></div>
+      <div class="tc-desc">Upload a lease, get a structured abstract.</div>
+    </div><div class="tool-card" id="card-legal">
+      <div class="tc-row"><span class="tc-num">10</span><span class="tc-name">CRE LEGAL REVIEWER</span></div>
+      <div class="tc-desc">PSA, JV, loan docs, PMA. Flags risk, suggests redlines.</div>
+    </div><div class="tool-card" id="card-canvas">
+      <div class="tc-row"><span class="tc-num">11</span><span class="tc-name">CANVAS</span></div>
+      <div class="tc-desc">Tenant sourcing. Fill a building or hunt acquisition targets.</div>
+    </div></div>
 <div id="panels-container"><div class="tool-panel open" id="panel-lens">
   <div class="panel-head">
     <span class="panel-head-icon">🔬</span>
@@ -849,9 +802,8 @@ footer{border-top:1px solid var(--border);padding:20px 24px;text-align:center;co
 <div class="pipeline-section">
   <div class="sec-hdr"><span class="sec-title">Deal Pipeline</span></div>
   <div class="pipeline-card" id="pipeline-card" onclick="togglePanel(&#39;pipeline&#39;)">
-    <div class="tc-hdr"><span class="tc-icon">🗂️</span><span class="tc-name">PIPELINE</span><span class="tc-num">12</span></div>
-    <div class="tc-desc">Active deal board. Track every acquisition by stage, conviction, and days in motion. Log outreach, set follow-ups, move deals through the funnel.</div>
-    <span class="tc-badge">Active</span>
+    <div class="tc-row"><span class="tc-num">12</span><span class="tc-name">PIPELINE</span></div>
+    <div class="tc-desc">Active deal board. Stage, conviction, follow-ups.</div>
   </div>
   <div class="tool-panel" id="panel-pipeline">
     <div class="panel-head">
@@ -928,6 +880,7 @@ var TOOLS = [
     id:'lens', num:'01', icon:'🔬', name:'LENS',
     badge:'OM Teardown', badgeBlue:true,
     desc:'Broker OM teardown. Strips the narrative, stress-tests every assumption, re-underwrites at RIDGE criteria. Bear / Base / Bull with a max entry price.',
+    shortDesc:'Broker OM teardown. Bear / Base / Bull · max entry price.',
     uploads:[{id:'om',label:'Offering Memorandum *',hint:'PDF · Broker OM, BOV, or investment summary',icon:'📄',accept:'.pdf',type:'pdf'}],
     fields:[
       {row:[{id:'addr',label:'Property Address',ph:'18 Patton Road, Savannah, GA'},{id:'type',label:'Asset Type',type:'select',opts:['Flex Industrial','Industrial / Warehouse','Single-Story Office Conversion','Multi-Tenant Industrial']}]},
@@ -942,6 +895,7 @@ var TOOLS = [
     id:'scout', num:'02', icon:'🔭', name:'SCOUT',
     badge:'Deal Sourcing',
     desc:'Off-market prospect hunter. Builds ranked prospect tables from vacancy, debt maturity, and ownership signals. Full single-property dossiers on demand.',
+    shortDesc:'Off-market sourcing. Ranked prospects from vacancy, debt, and ownership signals.',
     uploads:[{id:'data',label:'Submarket Data',hint:'Optional: CoStar export, comp list, or any market data',icon:'📊',accept:'.xlsx,.csv,.pdf',type:'mixed'}],
     fields:[
       {row:[{id:'mkt',label:'Market / Submarket',ph:'Northeast Atlanta — Gwinnett/Buford'},{id:'mode',label:'Mode',type:'select',opts:['Submarket Sweep','Property Dossier']}]},
@@ -957,6 +911,7 @@ var TOOLS = [
     id:'napkin', num:'03', icon:'📝', name:'THE NAPKIN',
     badge:'60-Second Screen',
     desc:'Back-of-envelope go/no-go. Address and ask price in, verdict out. Reverse-engineers cap rate, stabilized NOI, and YOC at Year 3/4.',
+    shortDesc:'60-second screen. Ask price in, Go / No-Go out.',
     uploads:[{id:'data',label:'Any Supporting Data',hint:'Optional: rent roll, T12, or comp list',icon:'📄',accept:'.pdf,.xlsx,.csv',type:'mixed'}],
     fields:[
       {row:[{id:'addr',label:'Property Address *',ph:'310 Regal Row, Dallas, TX'},{id:'type',label:'Asset Type',type:'select',opts:['Flex Industrial','Industrial / Warehouse','Single-Story Office Conversion','Multi-Tenant Industrial']}]},
@@ -973,6 +928,7 @@ var TOOLS = [
     id:'market-pulse', num:'04', icon:'📡', name:'MARKET PULSE',
     badge:'Live Benchmarks',
     desc:'Submarket intelligence engine. Vacancy, Class A/B rents, absorption, supply pipeline, cap rates. Covers ATL, SAV, DFW, HOU, AUS.',
+    shortDesc:'Submarket benchmarks. Vacancy, rents, absorption, cap rates.',
     uploads:[{id:'data',label:'CoStar Data / Broker Report',hint:'Optional: CoStar export or broker submarket report PDF',icon:'📊',accept:'.xlsx,.csv,.pdf',type:'mixed'}],
     fields:[
       {row:[{id:'mkt',label:'Market',type:'select',opts:['Atlanta, GA','Savannah, GA','Dallas–Fort Worth, TX','Houston, TX','Austin, TX (Watch)','All Markets — Full Matrix']},{id:'sub',label:'Specific Submarket',ph:'Gwinnett/Buford, NE Atlanta (optional)'}]},
@@ -986,6 +942,7 @@ var TOOLS = [
     id:'lease-comp', num:'05', icon:'🗺️', name:'LEASE COMP MAP',
     badge:'Comp Analysis',
     desc:'Comp data in any format — Excel, CSV, pasted text. Analyzes lease comps, benchmarks in-place rents, and flags roll risk vs. market.',
+    shortDesc:'Comp data in, interactive map + analysis out.',
     uploads:[{id:'comps',label:'Comp Data',hint:'Excel, CSV, or PDF with lease comp data',icon:'📊',accept:'.xlsx,.csv,.pdf',type:'mixed'},{id:'om',label:'Subject Property / OM',hint:'Optional: PDF of OM or deal summary for context',icon:'📄',accept:'.pdf',type:'pdf'}],
     fields:[
       {row:[{id:'addr',label:'Subject Property Address *',ph:'18 Patton Road, Savannah, GA'},{id:'sub',label:'Submarket',ph:'Savannah Industrial'}]},
@@ -999,6 +956,7 @@ var TOOLS = [
     id:'debt', num:'06', icon:'🏦', name:'DEBT TOOL',
     badge:'Capital Stack',
     desc:'Capital stack modeling across multiple scenarios — senior, bridge, CMBS, agency. Outputs DSCR, debt yield, LTV, and return sensitivity.',
+    shortDesc:'Capital stack modeling. DSCR, debt yield, LTV across scenarios.',
     uploads:[{id:'model',label:'Acquisition Model',hint:'Optional: .xlsx model to extract NOI and returns',icon:'📊',accept:'.xlsx',type:'xlsx'}],
     fields:[
       {row:[{id:'addr',label:'Property Address',ph:'18 Patton Road, Savannah, GA'},{id:'price',label:'Purchase Price',ph:'$7,962,500'}]},
@@ -1014,6 +972,7 @@ var TOOLS = [
     id:'isr', num:'07', icon:'📊', name:'ACQUISITION INVESTMENT REPORT',
     badge:'IC Deck · Dual Upload', badgeBlue:true,
     desc:'Upload your Excel model + broker OM. Get a full IC analysis and 11-slide PowerPoint deck. IRR ≥14% = RECOMMEND · 11–14% = CONDITIONAL · <11% = PASS.',
+    shortDesc:'Upload model → IC analysis + 11-slide deck.',
     uploads:[
       {id:'model',label:'Acquisition Model *',hint:'Excel model · All sheets parsed · Patton Road format',icon:'📊',accept:'.xlsx,.xls',type:'xlsx'},
       {id:'om',label:'Offering Memorandum',hint:'Optional PDF · Adds market context and property narrative',icon:'📄',accept:'.pdf',type:'pdf'}
@@ -1034,6 +993,7 @@ var TOOLS = [
     id:'loi', num:'08', icon:'📄', name:'LOI GENERATOR',
     badge:'Entrada Template',
     desc:'Draft-ready LOI using Entrada\'s exact template. Nine variable fields — everything else is locked firm boilerplate.',
+    shortDesc:'Draft-ready LOI. Entrada defaults locked in.',
     uploads:[{id:'model',label:'Acquisition Model or Deal Summary',hint:'Optional: .xlsx model or PDF deal summary to auto-fill terms',icon:'📊',accept:'.xlsx,.pdf',type:'mixed'}],
     fields:[
       {row:[{id:'date',label:'LOI Date',ph:'March 16, 2026'},{id:'broker',label:'Broker Name & Firm',ph:'Maggie Dominguez, JLL'}]},
@@ -1050,6 +1010,7 @@ var TOOLS = [
     id:'gavel', num:'09', icon:'⚖️', name:'THE GAVEL — LEASE ADMIN',
     badge:'Lease Abstract',
     desc:'Upload a lease, get a structured abstract. Key dates, rent schedule, tenant obligations, landlord obligations, risk flags, and renewal options.',
+    shortDesc:'Upload a lease, get a structured abstract.',
     uploads:[{id:'lease',label:'Lease Agreement *',hint:'PDF or Word lease document',icon:'📄',accept:'.pdf,.docx',type:'pdf'},{id:'rentroll',label:'Rent Roll',hint:'Optional: Excel rent roll for additional context',icon:'📊',accept:'.xlsx,.csv',type:'xlsx'}],
     fields:[
       {row:[{id:'addr',label:'Property Address',ph:'18 Patton Road, Savannah, GA'},{id:'tenant',label:'Tenant Name',ph:'TWC Services'}]},
@@ -1063,6 +1024,7 @@ var TOOLS = [
     id:'legal', num:'10', icon:'📋', name:'CRE LEGAL REVIEWER',
     badge:'PSA · JV · Loan · PMA',
     desc:'PSAs, JV / Operating Agreements, loan documents, and PMAs. Flags seller rep gaps, waterfall mechanics, DSCR covenants, and prepayment exposure.',
+    shortDesc:'PSA, JV, loan docs, PMA. Flags risk, suggests redlines.',
     uploads:[{id:'doc1',label:'Primary Document *',hint:'PSA, JV agreement, loan docs, or PMA — PDF',icon:'📄',accept:'.pdf,.docx',type:'pdf'},{id:'doc2',label:'Secondary Document',hint:'Optional: second document for comparison or cross-reference',icon:'📄',accept:'.pdf,.docx',type:'pdf'}],
     fields:[
       {row:[{id:'dtype',label:'Document Type',type:'select',opts:['Purchase & Sale Agreement (PSA)','JV / Operating Agreement','Loan Documents / Mortgage','Property Management Agreement (PMA)','Other']},{id:'addr',label:'Property / Deal',ph:'18 Patton Road, Savannah, GA'}]},
@@ -1076,6 +1038,7 @@ var TOOLS = [
     id:'canvas', num:'11', icon:'🏗️', name:'CANVAS',
     badge:'Tenant Sourcing',
     desc:'Tenant sourcing engine. Fill mode: find tenants for a specific building. Hunt mode: scan for displaced businesses and feed them back as acquisition targets.',
+    shortDesc:'Tenant sourcing. Fill a building or hunt acquisition targets.',
     uploads:[{id:'data',label:'Property Info or Market Data',hint:'Optional: floor plan PDF, CoStar data, or OM',icon:'📄',accept:'.pdf,.xlsx',type:'mixed'}],
     fields:[
       {row:[{id:'mode',label:'Mode',type:'select',opts:['Fill — I have a building, find tenants','Hunt — find displaced businesses for acquisition targeting']},{id:'addr',label:'Property Address',ph:'310 Regal Row, Dallas, TX'}]},
@@ -1111,13 +1074,11 @@ function renderTools() {
     card.id = 'card-' + tool.id;
     card.onclick = () => togglePanel(tool.id);
     card.innerHTML = `
-      <div class="tc-hdr">
-        <span class="tc-icon">${tool.icon}</span>
-        <span class="tc-name">${tool.name}</span>
+      <div class="tc-row">
         <span class="tc-num">${tool.num}</span>
+        <span class="tc-name">${tool.name}</span>
       </div>
-      <div class="tc-desc">${tool.desc}</div>
-      <span class="tc-badge${tool.badgeBlue?' blue':''}">${tool.badge}</span>`;
+      <div class="tc-desc">${tool.shortDesc||tool.desc}</div>`;
     grid.appendChild(card);
 
     // Panel
