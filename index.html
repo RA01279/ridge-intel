@@ -1399,7 +1399,7 @@ async function runTool(toolId) {
     d.context = document.getElementById('pipeline-context').value;
   }
 
-  // Build prompt
+  // Build prompt — system context + structured prompt
   var sys = tool ? tool.system : `You are RIDGE's pipeline manager for Entrada Partners. Maintain and summarize the active deal pipeline. Be concise and action-oriented.`;
   var promptText = tool ? tool.prompt(d) : `Update pipeline for: ${d.addr||'deal'} | Stage: ${d.stage} | Conviction: ${d.conv} | Price: ${d.price||'TBD'} | Broker: ${d.broker||'none'}.\nNotes: ${d.notes||'none'}.\n${d.context?'Context: '+d.context+'\n':''}\nProduce:\n## DEAL STATUS UPDATE\nKey facts, current stage, conviction level, days in stage (estimate if unknown).\n\n## OUTSTANDING ITEMS\n3–5 things that need to happen before advancing.\n\n## NEXT ACTIONS\nTop 3 immediate next steps, each with a deadline recommendation.\n\n## COMPARABLE DEALS\nBriefly, how does this deal compare to RIDGE's typical criteria? Any flags?`;
 
@@ -1414,25 +1414,33 @@ async function runTool(toolId) {
     });
   }
 
-  // Copy prompt to clipboard
-  try {
-    await navigator.clipboard.writeText(fullPrompt);
-  } catch(e) {
-    var ta = document.createElement('textarea');
-    ta.value = fullPrompt;
-    ta.style.cssText = 'position:fixed;top:-9999px;left:-9999px';
-    document.body.appendChild(ta);
-    ta.select();
-    document.execCommand('copy');
-    document.body.removeChild(ta);
+  // Use claude.ai/new?q= to pre-fill and auto-queue the prompt.
+  // If the URL would be too long (> 8000 chars encoded), fall back to clipboard.
+  var encoded = encodeURIComponent(fullPrompt);
+  if (encoded.length <= 8000) {
+    window.open('https://claude.ai/new?q=' + encoded, '_blank');
+    var msg = pdfNames.length
+      ? `Prompt sent — also upload in Claude: ${pdfNames.join(', ')}`
+      : 'Launched — prompt queued in Claude';
+    showToast(msg);
+  } else {
+    // Fallback: clipboard + open blank chat
+    try {
+      await navigator.clipboard.writeText(fullPrompt);
+    } catch(e) {
+      var ta = document.createElement('textarea');
+      ta.value = fullPrompt;
+      ta.style.cssText = 'position:fixed;top:-9999px;left:-9999px';
+      document.body.appendChild(ta); ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+    }
+    window.open('https://claude.ai/new', '_blank');
+    var msg2 = pdfNames.length
+      ? `Prompt copied — paste in Claude, then upload: ${pdfNames.join(', ')}`
+      : 'Prompt copied — paste in Claude (Ctrl+V) · too large for auto-fill';
+    showToast(msg2);
   }
-
-  window.open('https://claude.ai/new', '_blank');
-
-  var msg = pdfNames.length
-    ? `Prompt copied — paste in Claude, then upload: ${pdfNames.join(', ')}`
-    : 'Prompt copied — paste in Claude (Ctrl+V)';
-  showToast(msg);
 }
 
 function showToast(msg) {
