@@ -98,6 +98,15 @@ input[type=file]{display:none;}
 .ds-mem-btn:hover{color:var(--text);border-color:var(--text);}
 .ds-mem-clear:hover{color:var(--red,#e05);border-color:var(--red,#e05);}
 .ds-log-box{background:rgba(255,255,255,.02);border:1px solid var(--border);padding:12px;border-radius:4px;margin-bottom:14px;}
+.export-section{border-top:1px solid var(--border);margin-top:20px;padding-top:16px;}
+.export-toggle{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted);cursor:pointer;margin-bottom:0;user-select:none;}
+.export-toggle:hover{color:var(--text);}
+.export-toggle .et-arrow{font-size:10px;transition:transform .15s;}
+.export-toggle.open .et-arrow{transform:rotate(90deg);}
+.export-body{display:none;margin-top:12px;}
+.export-body textarea{width:100%;box-sizing:border-box;height:110px;font-size:11px;font-family:var(--mono);resize:vertical;}
+.export-body .export-btns{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;}
+.export-hint{font-size:11px;color:var(--muted);margin-bottom:8px;}
 
 /* PARSED PREVIEW */
 .parsed-preview{background:var(--surface2);border:1px solid var(--border);border-radius:var(--r);padding:14px;margin-bottom:20px;display:none;}
@@ -920,23 +929,7 @@ var TOOLS = [
     prompt:(d)=>`Tear apart this broker OM for ${d.addr||'the subject property'} (${d.type||'industrial/flex'}). Asking: ${d.ask||'see OM'}. SF: ${d.sf||'see OM'}.\n\n${d.notes?'Context: '+d.notes+'\n\n':''}${d.om_text||''}\n\nProduce:\n## BROKER NARRATIVE vs. REALITY\nTable: What broker claims | RIDGE read | Verdict\n\n## RE-UNDERWRITE AT RIDGE CRITERIA\nReconstruct NOI from scratch. Show your work. Flag every assumption.\n\n## BEAR / RIDGE BASE / BULL SCENARIOS\nTable: Scenario | Entry Price | IRR | EM | YOC | Key Assumption\n\n## MAX ENTRY PRICE\nThe exact price at which this deal hits RIDGE's 14.75% IRR hurdle. Show the math.\n\n## RED FLAGS\n3–5 specific things the broker is hiding or glossing over.\n\n## VERDICT\nBUY AT MAX / PASS / WATCH — one sentence why.`
   },
   {
-    id:'scout', num:'02', icon:'🔭', name:'SCOUT',
-    badge:'Deal Sourcing',
-    desc:'Off-market prospect hunter. Builds ranked prospect tables from vacancy, debt maturity, and ownership signals. Full single-property dossiers on demand.',
-    shortDesc:'Off-market sourcing. Ranked prospects from vacancy, debt, and ownership signals.',
-    uploads:[{id:'data',label:'Submarket Data',hint:'Optional: CoStar export, comp list, or any market data',icon:'📊',accept:'.xlsx,.csv,.pdf',type:'mixed'}],
-    fields:[
-      {row:[{id:'mkt',label:'Market / Submarket',ph:'Northeast Atlanta — Gwinnett/Buford'},{id:'mode',label:'Mode',type:'select',opts:['Submarket Sweep','Property Dossier']}]},
-      {row:[{id:'sfmin',label:'Min SF',ph:'20,000'},{id:'sfmax',label:'Max SF',ph:'200,000'},{id:'price',label:'Max Price',ph:'$40,000,000'}]},
-      {row:[{id:'signals',label:'Debt Signals to Target',type:'select',opts:['Loans 2018–2021 Maturing','CMBS Watchlist','Bridge Loan Stress','All Signals']}]},
-      {row:[{id:'addr',label:'Specific Property Address',ph:'Leave blank for sweep mode'}]},
-    ],
-    steps:['Scanning submarket...','Pulling ownership signals...','Analyzing debt maturity stack...','Ranking prospects by distress signal...','Building prospect table...'],
-    system:`You are SCOUT, RIDGE's off-market deal sourcing engine. You identify distressed industrial and flex properties using vacancy, debt maturity, and ownership lifecycle signals. Markets: Atlanta, Savannah, DFW, Houston. Asset types: industrial, flex industrial, single-story office conversion. Deal range: $10M–$70M.`,
-    prompt:(d)=>`Run SCOUT ${d.mode||'Submarket Sweep'} for ${d.mkt||'the target submarket'}.\nSF range: ${d.sfmin||'20,000'}–${d.sfmax||'200,000'} SF. Max price: ${d.price||'$40M'}. Signal focus: ${d.signals||'All Signals'}.\n${d.addr?'Specific property: '+d.addr+'\n':''}\n${d.data_text?'Market data provided:\n'+d.data_text+'\n\n':''}\nProduce:\n## SUBMARKET SNAPSHOT\nVacancy, avg rent, absorption trend, supply pipeline — flag any ★ ESTIMATE data.\n\n## PROSPECT TABLE\n| Rank | Address | Est. SF | Signal | Debt Flag | Ownership | Priority |\n\n## TOP 3 DOSSIERS\nFor each top prospect:\n- Address, estimated SF, ownership entity, year built\n- Debt signal: maturity date, estimated balance, lender type\n- Why this fits RIDGE criteria\n- Suggested outreach approach\n\n## SIGNAL SUMMARY\nWhat patterns in this submarket suggest near-term off-market opportunity?`
-  },
-  {
-    id:'napkin', num:'03', icon:'📝', name:'THE NAPKIN',
+    id:'napkin', num:'02', icon:'📝', name:'THE NAPKIN',
     badge:'60-Second Screen',
     desc:'Back-of-envelope go/no-go. Address and ask price in, verdict out. Reverse-engineers cap rate, stabilized NOI, and YOC at Year 3/4.',
     shortDesc:'60-second screen. Ask price in, Go / No-Go out.',
@@ -953,7 +946,7 @@ var TOOLS = [
     prompt:(d)=>`Run The Napkin on: ${d.addr||'Subject Property'} | ${d.sf||'?'} SF | Asking: ${d.ask||'?'} | Occupancy: ${d.occ||'unknown'} | In-place NOI: ${d.noi||'unknown'} | Market Rent: ${d.mktrent||'unknown'} PSF | In-Place Rent: ${d.inplace||'unknown'} PSF.\n${d.notes?'Facts: '+d.notes+'\n':''}\n${d.data_text?'Supporting data:\n'+d.data_text+'\n':''}\nProduce:\n## QUICK MATH\nTable: Metric | Value | Notes\nInclude: Ask PSF, In-place cap rate, Market rent vs. in-place gap, Mark-to-market upside, Stabilized NOI estimate, YOC at Yr3 (est.), Implied IRR range, Price to hit 14.75% IRR\n\n## VERDICT\n**GO / NO-GO / CONDITIONAL** — one sentence.\n\n## THE NUMBER THAT MAKES IT WORK\nIf No-Go: the exact price where this clears RIDGE criteria. Show the math.\n\n## NEXT STEPS\nIf Go: 3 bullet points on what to confirm first.`
   },
   {
-    id:'market-pulse', num:'04', icon:'📡', name:'MARKET PULSE',
+    id:'market-pulse', num:'03', icon:'📡', name:'MARKET PULSE',
     badge:'Live Benchmarks',
     desc:'Submarket intelligence engine. Vacancy, Class A/B rents, absorption, supply pipeline, cap rates. Covers ATL, SAV, DFW, HOU, AUS.',
     shortDesc:'Submarket benchmarks. Vacancy, rents, absorption, cap rates.',
@@ -967,7 +960,7 @@ var TOOLS = [
     prompt:(d)=>`Run Market Pulse: ${d.mkt||'Atlanta, GA'}${d.sub?', '+d.sub:''} | Mode: ${d.mode||'Full Market Report'}${d.deal?' | Active deal: '+d.deal:''}.\n${d.data_text?'CoStar/broker data provided:\n'+d.data_text+'\n\n':''}\nProduce in this format:\n## HEADLINE METRICS\nTable: Metric | Value | vs. 12 Mo Ago | Trend\nVacancy rate, Direct ask rent NNN (Class A & B), Net absorption TTM, New supply under construction, Market cap rate range, Rent growth 12mo\n\n## SUBMARKET BREAKDOWN\nTable: Submarket | Vacancy | Ask Rent | Trend | RIDGE Priority\n\n## SUPPLY PIPELINE\nDelivering <6mo, 6–12mo, under construction. Flag if spec >15% of inventory.\n\n## CAP RATE CONTEXT\nIndustrial stabilized, flex stabilized, value-add premium, RIDGE exit assumption check.\n\n## RIDGE UNDERWRITING IMPLICATIONS\nMarket rent benchmark to use, vacancy assumption, rent growth for 5-yr model, exit cap recommendation.\n\n**Verdict: FAVORABLE / NEUTRAL / CAUTIOUS** — one paragraph.`
   },
   {
-    id:'lease-comp', num:'05', icon:'🗺️', name:'LEASE COMP MAP',
+    id:'lease-comp', num:'04', icon:'🗺️', name:'LEASE COMP MAP',
     badge:'Comp Analysis',
     desc:'Comp data in any format — Excel, CSV, pasted text. Analyzes lease comps, benchmarks in-place rents, and flags roll risk vs. market.',
     shortDesc:'Comp data in, interactive map + analysis out.',
@@ -981,7 +974,7 @@ var TOOLS = [
     prompt:(d)=>`Analyze lease comps for: ${d.addr||'Subject Property'} | ${d.sf||'?'} SF | Submarket: ${d.sub||'?'} | Current in-place rent: ${d.rent||'unknown'} PSF.\n${d.comps_text?'Comp data:\n'+d.comps_text+'\n\n':''}\n${d.om_text?'OM context:\n'+d.om_text+'\n\n':''}\nProduce:\n## COMP SUMMARY TABLE\nTable: Address | Tenant | SF | Date | Term | Eff. Rate PSF | Free Rent | NNN/Gross | Notes\n\n## MARKET RENT BENCHMARK\nClass A NNN: $X–$X PSF\nClass B NNN: $X–$X PSF\nFlex/Multi-tenant: $X–$X PSF\nSubject property in-place vs. market: gap analysis\n\n## ROLL RISK ANALYSIS\nWhere do in-place rents sit vs. market? Which tenants are most at risk? What's the mark-to-market opportunity?\n\n## UNDERWRITING RECOMMENDATION\nWhat rent PSF to use in the RIDGE model. Renewal probability assumption. Free rent on new leases.`
   },
   {
-    id:'debt', num:'06', icon:'🏦', name:'DEBT TOOL',
+    id:'debt', num:'05', icon:'🏦', name:'DEBT TOOL',
     badge:'Capital Stack',
     desc:'Capital stack modeling across multiple scenarios — senior, bridge, CMBS, agency. Outputs DSCR, debt yield, LTV, and return sensitivity.',
     shortDesc:'Capital stack modeling. DSCR, debt yield, LTV across scenarios.',
@@ -997,7 +990,7 @@ var TOOLS = [
     prompt:(d)=>`Model debt for: ${d.addr||'Subject Property'} | Price: ${d.price||'?'} | Yr1 NOI: ${d.noi||'?'} | SF: ${d.sf||'?'} | Target LTV: ${d.ltv||'65%'} | Hold: ${d.hold||'5 years'}.\n${d.model_text?'Model data:\n'+d.model_text+'\n\n':''}Debt type: ${d.type||'Compare All Types'}. Rate (if provided): ${d.rate||'use current market'}.\n\nProduce:\n## DEBT SCENARIO COMPARISON\nTable: Type | Loan Amount | LTV | Rate | Term | IO Period | DSCR Yr1 | Debt Yield | Max Proceeds | Notes\nInclude: Conventional, CMBS, Bridge (if value-add), Agency (if stabilized)\n\n## RECOMMENDED STRUCTURE\nBest fit for this deal and why. What lender type, sizing, and terms.\n\n## DSCR & COVERAGE ANALYSIS\nYear-by-year DSCR for hold period. Flag any year below 1.20x.\n\n## EQUITY REQUIRED\nFor each scenario: equity in, total capitalization, LTC.\n\n## RISK FLAGS\nAnything that could prevent financing or require equity cure.`
   },
   {
-    id:'isr', num:'07', icon:'📊', name:'ACQUISITION INVESTMENT REPORT',
+    id:'isr', num:'06', icon:'📊', name:'ACQUISITION INVESTMENT REPORT',
     badge:'IC Deck · Dual Upload', badgeBlue:true,
     desc:'Upload your Excel model + broker OM. Get a full IC analysis and 11-slide PowerPoint deck. IRR ≥14% = RECOMMEND · 11–14% = CONDITIONAL · <11% = PASS.',
     shortDesc:'Upload model → IC analysis + 11-slide deck.',
@@ -1018,7 +1011,7 @@ var TOOLS = [
     prompt:(d)=>`Generate a complete IC Report for: ${d.addr||'Subject Property'} | ${d.type||'Flex Industrial'} | ${d.sf||'?'} SF\nPrice: ${d.price||'?'} (${d.psf||'?'} PSF) | IRR: ${d.irr||'?'} | EM: ${d.em||'?'} | Cap: ${d.cap||'?'} | YOC: ${d.yoc||'?'} | LTV: ${d.ltv||'?'} | Hold: ${d.hold||'5yr'}\n${d.thesis?'Thesis: '+d.thesis+'\n':''}\n${d.model_text?'=== ACQUISITION MODEL ===\n'+d.model_text+'\n\n':''}\nProduce:\n## DEAL SNAPSHOT\nTable: Metric | Value | RIDGE Hurdle | Status (✓/⚠/✗)\n\n## INVESTMENT THESIS\n3–4 bullet points. Specific to this deal. Lead with the conviction driver.\n\n## PROPERTY OVERVIEW\nAsset type, location, submarket, SF, occupancy, tenant summary, lease structure.\n\n## SOURCES & USES / CAPITAL STACK\nTable: Item | Amount | $ PSF | % Total\nOne paragraph capital stack narrative.\n\n## RETURN METRICS\nFull returns table. Every number from the model.\n\n## CASH FLOW SUMMARY\nYear-by-year table: Year | EGR | NOI | Leasing/CapEx | Oper CF | Levered CF | YOC\n\n## MARKET & SUBMARKET ANALYSIS\nSavannah/target market context. Vacancy, rents, absorption, port demand drivers.\n\n## SENSITIVITY ANALYSIS\nIRR table: exit cap (5.5–7.5%) × rent growth scenarios. EM table same axes. ★ = hits RIDGE hurdle.\n\n## RISK MATRIX\nTable: Risk Factor | Severity | Mitigant\n5–7 risks specific to this deal.\n\n## IC RECOMMENDATION\n**RECOMMEND FOR INVESTMENT / CONDITIONAL APPROVAL / PASS**\n2–3 sentence basis. If conditional, list 3–5 specific conditions. 3–5 next steps.`
   },
   {
-    id:'loi', num:'08', icon:'📄', name:'LOI GENERATOR',
+    id:'loi', num:'07', icon:'📄', name:'LOI GENERATOR',
     badge:'Entrada Template',
     desc:'Draft-ready LOI using Entrada\'s exact template. Nine variable fields — everything else is locked firm boilerplate.',
     shortDesc:'Draft-ready LOI. Entrada defaults locked in.',
@@ -1035,7 +1028,7 @@ var TOOLS = [
     prompt:(d)=>`Draft an LOI for:\nDate: ${d.date||'[DATE]'}\nBroker: ${d.broker||'[BROKER]'}\nProperty: ${d.addr||'[ADDRESS]'}, ${d.city||''}\nTotal SF: ${d.sf||'[SF]'}\nPurchase Price: ${d.price||'[PRICE]'}\nDeposit: ${d.deposit||'[DEPOSIT]'}\nExtension Deposit: ${d.ext||'$100,000'}\nExpiration: ${d.exp||'10 business days from date'}\n${d.model_text?'Deal data:\n'+d.model_text+'\n\n':''}\nProduce the complete LOI in Entrada's exact format:\n- Header with date and broker attn line\n- RE: line with property address\n- Entrada firm description paragraph (standard text)\n- Two-column table format with all terms: Asset Description, Purchase Price (written out in full), Deposit, Leasing Costs, Due Diligence, Contingencies, Closing, Environmental, DD Period Access, Title Insurance, Escrow Fees, Brokerage Representation, New Contracts, Deliveries\n- Closing paragraph with expiration deadline\n- Non-binding disclaimer paragraph\n- Signature block: Reuben Berman, Justin Schuman, Joshua Bar-Yadin / Principal x3\n- Agreed and Accepted signature line`
   },
   {
-    id:'gavel', num:'09', icon:'⚖️', name:'THE GAVEL — LEASE ADMIN',
+    id:'gavel', num:'08', icon:'⚖️', name:'THE GAVEL — LEASE ADMIN',
     badge:'Lease Abstract',
     desc:'Upload a lease, get a structured abstract. Key dates, rent schedule, tenant obligations, landlord obligations, risk flags, and renewal options.',
     shortDesc:'Upload a lease, get a structured abstract.',
@@ -1049,7 +1042,7 @@ var TOOLS = [
     prompt:(d)=>`Abstract this lease for: ${d.tenant||'Tenant'} at ${d.addr||'Subject Property'}.\n${d.notes?'Review focus: '+d.notes+'\n':''}\n${d.lease_text||'[Lease document uploaded — extract all key terms]'}\n${d.rentroll_text?'Rent roll context:\n'+d.rentroll_text+'\n':''}\nProduce:\n## LEASE ABSTRACT — KEY TERMS\nTable: Term | Detail\nInclude: Tenant legal name, Guarantor, Lease type (NNN/Gross/Modified), Commencement, Expiration, Base rent (current), Rent escalations, CAM structure, Security deposit, Renewal options, Expansion rights, ROFO/ROFR, Permitted use, Assignment/subletting\n\n## RENT SCHEDULE\nTable: Period | Dates | Annual Rent | Monthly Rent | PSF\n\n## LANDLORD OBLIGATIONS\nCapital responsibilities, maintenance, insurance, TI obligations.\n\n## TENANT OBLIGATIONS\nMaintenance, insurance minimums, reporting, operating covenants.\n\n## RISK FLAGS\nFor each flag: clause reference, risk description, severity (High/Med/Low), suggested mitigation.\n\n## UNDERWRITING NOTES\nWhat this lease means for RIDGE's model. Renewal probability. Roll risk. Any credit concern.`
   },
   {
-    id:'legal', num:'10', icon:'📋', name:'CRE LEGAL REVIEWER',
+    id:'legal', num:'09', icon:'📋', name:'CRE LEGAL REVIEWER',
     badge:'PSA · JV · Loan · PMA',
     desc:'PSAs, JV / Operating Agreements, loan documents, and PMAs. Flags seller rep gaps, waterfall mechanics, DSCR covenants, and prepayment exposure.',
     shortDesc:'PSA, JV, loan docs, PMA. Flags risk, suggests redlines.',
@@ -1063,7 +1056,7 @@ var TOOLS = [
     prompt:(d)=>`Review this ${d.dtype||'CRE legal document'} for ${d.addr||'the subject deal'}.\n${d.focus?'Focus areas: '+d.focus+'\n':''}\n${d.doc1_text||'[Document uploaded]'}\n${d.doc2_text?'Secondary document:\n'+d.doc2_text+'\n':''}\nProduce:\n## DOCUMENT SUMMARY\nParties, purpose, key dates, transaction structure in 3–5 sentences.\n\n## KEY PROVISIONS TABLE\nTable: Section | Provision | Summary | Risk Level\n\n## RED FLAGS\nFor each flag: Section reference, what it says, why it's a problem, suggested fix or redline language.\n\n## RIDGE-SPECIFIC CONCERNS\nAnything that affects: earnest money refundability, financing contingency, assignment rights, seller reps on leases, waterfall/preferred return (if JV), prepayment/defeasance (if loan docs), termination rights (if PMA).\n\n## MISSING PROVISIONS\nAnything RIDGE typically requires that is absent from this document.\n\n## RECOMMENDED REDLINES\n3–5 specific changes with proposed language.`
   },
   {
-    id:'daily-signal', num:'11', icon:'📊', name:'DAILY SIGNAL',
+    id:'daily-signal', num:'10', icon:'📊', name:'DAILY SIGNAL',
     badge:'Daily Prospects',
     shortDesc:'Upload CoStar exports → 15 ranked prospects with owner contacts.',
     desc:'Upload CoStar exports → 15 ranked prospects with owner contacts.',
@@ -1076,7 +1069,7 @@ var TOOLS = [
     prompt:(d)=>`Run Daily Signal report for ${d.date||'today'}.\n${d.notes?'Focus: '+d.notes+'\n':''}\n${d.sourced?'PREVIOUSLY SOURCED — exclude these unless new signal:\n'+d.sourced+'\n\n':''}\n${d.costar_text?'CoStar data:\n'+d.costar_text:''}`
   },
   {
-    id:'canvas', num:'12', icon:'🏗️', name:'CANVAS',
+    id:'canvas', num:'11', icon:'🏗️', name:'CANVAS',
     badge:'Tenant Sourcing',
     desc:'Tenant sourcing engine. Fill mode: find tenants for a specific building. Hunt mode: scan for displaced businesses and feed them back as acquisition targets.',
     shortDesc:'Tenant sourcing. Fill a building or hunt acquisition targets.',
@@ -1183,10 +1176,30 @@ function buildPanelHTML(tool) {
   // Fields
   var fieldsHTML = buildFieldsHTML(tool);
 
-  // Buttons
-  var extraBtns = tool.id === 'daily-signal'
-    ? `<button class="btn btn-o" onclick="exportDailySignalXLSX()">↓ Export Excel</button>`
-    : '';
+  // Buttons / Export section
+  var exportSection = '';
+  if (tool.id === 'daily-signal') {
+    exportSection = `<button class="btn btn-o" onclick="exportDailySignalXLSX()">↓ Export Excel</button>`;
+  } else if (tool.id === 'isr') {
+    exportSection = '';  // ISR already has PPTX export handled separately
+  } else {
+    exportSection = `<div class="export-section">
+      <div class="export-toggle" id="et-${tool.id}" onclick="toggleExport('${tool.id}')">
+        <span class="et-arrow">▶</span>
+        <span>↓ Export to Excel</span>
+        <span style="font-size:10px;margin-left:4px;color:var(--faint)">— paste Claude's analysis to include in export (optional)</span>
+      </div>
+      <div class="export-body" id="eb-${tool.id}">
+        <div class="export-hint">Paste Claude's full response below. The export includes all deal inputs plus the analysis formatted for IC review.</div>
+        <textarea id="paste-text-${tool.id}" placeholder="Paste Claude's analysis here (optional — export works without it)..."></textarea>
+        <div class="export-btns">
+          <button class="btn btn-p" onclick="exportToolReport('${tool.id}')">↓ Download XLSX</button>
+          <button class="btn btn-o" style="font-size:11px" onclick="document.getElementById('paste-text-${tool.id}').value=''">Clear</button>
+        </div>
+      </div>
+    </div>`;
+  }
+  var extraBtns = '';
 
   return `
   <div class="panel-head">
@@ -1218,8 +1231,9 @@ function buildPanelHTML(tool) {
     <div class="btn-row">
       <button class="btn btn-p" id="run-btn-${tool.id}" onclick="runTool('${tool.id}')">↗ Run in Claude</button>
       <button class="btn btn-o" onclick="clearTool('${tool.id}')">Clear</button>
-      ${extraBtns}
+      ${tool.id === 'daily-signal' ? exportSection : ''}
     </div>
+    ${tool.id !== 'daily-signal' ? exportSection : ''}
     <div class="loading" id="loading-${tool.id}">
       <div class="loading-lbl" id="llbl-${tool.id}">Working...</div>
       <div class="pbar"><div class="pfill" id="pfill-${tool.id}"></div></div>
@@ -1900,7 +1914,7 @@ function runTool(toolId) {
     Object.keys(STATE[toolId].files).forEach(function(uploadId) {
       var fd = STATE[toolId].files[uploadId];
       if (typeof fd === 'string' && fd.length > 0) {
-        d[uploadId + '_text'] = fd.length > 8000 ? fd.slice(0, 8000) + '\n[...truncated]' : fd;
+        d[uploadId + '_text'] = fd.length > 25000 ? fd.slice(0, 25000) + '\n[...truncated]' : fd;
       }
     });
   } else {
@@ -2303,14 +2317,44 @@ function buildPPTX() {
 
     // Slide 7 — Cash Flow
     var s7=pptx.addSlide(); s7.background={color:WHITE}; title(s7,'Cash Flow Summary');
+    // Parse cash flow from extracted model text
+    var cfText = (STATE['isr'].files['model'] || '');
+    function parseCFRows(text) {
+      var section = '';
+      var inSection = false;
+      text.split('\n').forEach(function(line) {
+        if (line.includes('Annual Cash Flow')) inSection = true;
+        if (inSection) section += line + '\n';
+      });
+      var years = [];
+      section.split('\n').forEach(function(line) {
+        var m = line.match(/(?:Year\s*)?(\d+)\s*\|(.+)/i);
+        if (m) {
+          var cols = [m[1]].concat(m[2].split('|').map(function(c){ return c.trim(); }));
+          if (cols.length >= 3) years.push(cols);
+        }
+      });
+      return years.slice(0,5);
+    }
+    var cfParsed = parseCFRows(cfText);
     var cfRows=[
       [{text:'Year',options:{bold:true,color:WHITE,fill:{color:NAVY}}},{text:'EGR',options:{bold:true,color:WHITE,fill:{color:NAVY}}},{text:'NOI',options:{bold:true,color:WHITE,fill:{color:NAVY}}},{text:'Leasing/CapEx',options:{bold:true,color:WHITE,fill:{color:NAVY}}},{text:'Oper CF',options:{bold:true,color:WHITE,fill:{color:NAVY}}},{text:'Levered CF',options:{bold:true,color:WHITE,fill:{color:NAVY}}},{text:'YOC',options:{bold:true,color:WHITE,fill:{color:NAVY}}}],
-      [{text:'Yr 1'},{text:'$552K'},{text:'$408K'},{text:'($309K)'},{text:'$100K'},{text:'($2K)'},{text:'5.7%'}],
-      [{text:'Yr 2',options:{fill:{color:'F0F4FF'}}},{text:'$634K',options:{fill:{color:'F0F4FF'}}},{text:'$484K',options:{fill:{color:'F0F4FF'}}},{text:'($5K)',options:{fill:{color:'F0F4FF'}}},{text:'$480K',options:{fill:{color:'F0F4FF'}}},{text:'$43K',options:{fill:{color:'F0F4FF'}}},{text:'6.5%',options:{fill:{color:'F0F4FF'}}}],
-      [{text:'Yr 3'},{text:'$725K'},{text:'$569K'},{text:'($205K)'},{text:'$364K'},{text:'$111K'},{text:'7.6%'}],
-      [{text:'Yr 4',options:{fill:{color:'F0F4FF'}}},{text:'$837K',options:{fill:{color:'F0F4FF'}}},{text:'$673K',options:{fill:{color:'F0F4FF'}}},{text:'($89K)',options:{fill:{color:'F0F4FF'}}},{text:'$585K',options:{fill:{color:'F0F4FF'}}},{text:'$146K',options:{fill:{color:'F0F4FF'}}},{text:'8.2%',options:{fill:{color:'F0F4FF'}}}],
-      [{text:'Yr 5'},{text:'$897K'},{text:'$727K'},{text:'($5K)'},{text:'$722K'},{text:'$5.8M'},{text:'8.3%'}],
     ];
+    for (var yi=0; yi<5; yi++) {
+      var yrLabel = 'Yr ' + (yi+1);
+      var bg = yi%2===1 ? {fill:{color:'F0F4FF'}} : {};
+      if (cfParsed[yi]) {
+        var cols = cfParsed[yi];
+        cfRows.push([
+          {text:yrLabel,options:bg},
+          {text:cols[1]||'—',options:bg},{text:cols[2]||'—',options:bg},
+          {text:cols[3]||'—',options:bg},{text:cols[4]||'—',options:bg},
+          {text:cols[5]||'—',options:bg},{text:cols[6]||'—',options:bg}
+        ]);
+      } else {
+        cfRows.push([{text:yrLabel,options:bg},{text:'—',options:bg},{text:'—',options:bg},{text:'—',options:bg},{text:'—',options:bg},{text:'—',options:bg},{text:'—',options:bg}]);
+      }
+    }
     s7.addTable(cfRows,{x:.2,y:.82,w:12.9,border:{pt:.5,color:'E0E0E0'},fontSize:11});
     footer(s7,7);
 
@@ -2433,6 +2477,595 @@ document.addEventListener('drop', e => {
 renderTools();
 // Open LENS by default (per user preference — near top)
 // no default panel open
+
+// ═══════════════════════════════════════════════════════════
+//  EXPORT SYSTEM — Institutional XLSX for all tools
+// ═══════════════════════════════════════════════════════════
+
+function toggleExport(toolId) {
+  var toggle = document.getElementById('et-' + toolId);
+  var body   = document.getElementById('eb-' + toolId);
+  if (!toggle || !body) return;
+  var isOpen = body.style.display !== 'none' && body.style.display !== '';
+  body.style.display = isOpen ? 'none' : 'block';
+  toggle.classList.toggle('open', !isOpen);
+}
+
+function downloadBlob(buffer, filename) {
+  var blob = new Blob([buffer], { type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+// Shared ExcelJS color palette
+var RC = {
+  NAVY:'0D1B2A', WHITE:'FFFFFF', BLUE:'2563EB', DKBLUE:'1E3A5F',
+  LGRAY:'F8FAFC', BORDER:'CBD5E1', TEXT:'0F172A', MUTED:'64748B',
+  GREEN:'D1FAE5', YELLOW:'FEF9C3', RED:'FEE2E2', ACCENT:'93C5FD'
+};
+function rcF(hex){ return { type:'pattern', pattern:'solid', fgColor:{ argb:hex } }; }
+function rcT(c)  { return { style:'thin', color:{ argb:c||RC.BORDER } }; }
+function rcBrd() { return { top:rcT(), bottom:rcT(), left:rcT(), right:rcT() }; }
+
+function rcTitle(ws, toolName, subtitle, dateStr) {
+  var W = 10;
+  ws.mergeCells('A1:J1');
+  var c1 = ws.getCell('A1');
+  c1.value = 'RIDGE  ·  ' + toolName;
+  c1.font = { bold:true, size:14, color:{ argb:RC.WHITE }, name:'Calibri' };
+  c1.fill = rcF(RC.NAVY); c1.alignment = { vertical:'middle', indent:2 };
+  ws.getRow(1).height = 30;
+
+  ws.mergeCells('A2:J2');
+  var c2 = ws.getCell('A2');
+  c2.value = (subtitle ? subtitle + '  ·  ' : '') + dateStr + '  ·  ENTRADA PARTNERS — CONFIDENTIAL';
+  c2.font = { size:9, color:{ argb:RC.ACCENT }, name:'Calibri' };
+  c2.fill = rcF(RC.NAVY); c2.alignment = { vertical:'middle', indent:2 };
+  ws.getRow(2).height = 18;
+
+  for (var i=1; i<=W; i++) { ws.getCell(3,i).fill = rcF('1E293B'); }
+  ws.getRow(3).height = 5;
+  return 4;
+}
+
+function rcSecHead(ws, row, title, cols) {
+  cols = cols || 10;
+  var endCol = String.fromCharCode(64 + cols);
+  ws.mergeCells('A' + row + ':' + endCol + row);
+  var c = ws.getCell('A' + row);
+  c.value = title;
+  c.font = { bold:true, size:9, color:{ argb:RC.WHITE }, name:'Calibri' };
+  c.fill = rcF(RC.DKBLUE);
+  c.alignment = { vertical:'middle', indent:2 };
+  ws.getRow(row).height = 18;
+}
+
+function rcKV(ws, pairs, startRow) {
+  pairs.forEach(function(pair, i) {
+    var label = pair[0], value = pair[1];
+    var bg = i % 2 === 0 ? RC.WHITE : RC.LGRAY;
+    var r = ws.getRow(startRow);
+
+    var lc = r.getCell(1);
+    lc.value = label;
+    lc.font = { size:9, name:'Calibri', bold:true, color:{ argb:'475569' } };
+    lc.fill = rcF(bg); lc.alignment = { vertical:'middle', indent:2 };
+    lc.border = { bottom:rcT() };
+    ws.getCell('A' + startRow).border = { bottom:rcT() };
+
+    ws.mergeCells('B' + startRow + ':J' + startRow);
+    var vc = ws.getCell('B' + startRow);
+    vc.value = (value !== undefined && value !== null && value !== '') ? String(value) : '—';
+    vc.font = { size:9, name:'Calibri', color:{ argb:RC.TEXT } };
+    vc.fill = rcF(bg); vc.alignment = { vertical:'middle' };
+    vc.border = { bottom:rcT() };
+
+    r.height = 16;
+    startRow++;
+  });
+  ws.getRow(startRow).height = 8; // spacer
+  return startRow + 1;
+}
+
+function rcAnalysis(ws, pasteText, startRow) {
+  if (!pasteText || !pasteText.trim()) return startRow;
+  rcSecHead(ws, startRow, 'CLAUDE ANALYSIS');
+  startRow++;
+  var lines = pasteText.split('\n');
+  lines.forEach(function(line) {
+    ws.mergeCells('A' + startRow + ':J' + startRow);
+    var c = ws.getCell('A' + startRow);
+    c.value = line;
+    var isHead = line.startsWith('##') || (line.startsWith('**') && line.endsWith('**'));
+    var isSub  = line.startsWith('###') || line.startsWith('---');
+    if (isHead) {
+      c.font = { size:10, name:'Calibri', bold:true, color:{ argb:RC.NAVY } };
+      c.fill = rcF('EEF2FF'); ws.getRow(startRow).height = 20;
+    } else if (isSub) {
+      c.font = { size:9, name:'Calibri', bold:true, color:{ argb:RC.DKBLUE } };
+      c.fill = rcF('F1F5F9'); ws.getRow(startRow).height = 16;
+    } else {
+      c.font = { size:9, name:'Calibri', color:{ argb:RC.TEXT } };
+      c.fill = rcF(RC.WHITE); ws.getRow(startRow).height = 15;
+    }
+    c.alignment = { vertical:'middle', indent:2, wrapText:false };
+    startRow++;
+  });
+  return startRow;
+}
+
+function rcColWidths(ws, widths) {
+  ws.columns = widths.map(function(w){ return { width:w }; });
+}
+
+function rcGetField(toolId, fieldId) {
+  var el = document.getElementById('f-' + toolId + '-' + fieldId);
+  return el ? el.value.trim() : '';
+}
+
+async function exportToolReport(toolId) {
+  var tool = TOOLS.find(function(t){ return t.id === toolId; });
+  if (!tool) return;
+  showToast('Building report...');
+  try {
+    var today   = new Date();
+    var dateStr = today.toLocaleDateString('en-US', {month:'long', day:'numeric', year:'numeric'});
+    var fileDate = today.toISOString().slice(0,10);
+    var paste   = (document.getElementById('paste-text-' + toolId) || {}).value || '';
+    var m       = (STATE[toolId] || {}).metrics || {};
+
+    var wb = new ExcelJS.Workbook();
+    wb.creator = 'RIDGE — Entrada Partners';
+
+    switch(toolId) {
+      case 'lens':        _exportLens(wb, toolId, dateStr, paste); break;
+      case 'napkin':      _exportNapkin(wb, toolId, dateStr, paste); break;
+      case 'market-pulse':_exportMarket(wb, toolId, dateStr, paste); break;
+      case 'lease-comp':  _exportLeaseComp(wb, toolId, dateStr, paste); break;
+      case 'debt':        _exportDebt(wb, toolId, dateStr, paste); break;
+      case 'loi':         _exportLOI(wb, toolId, dateStr, paste); break;
+      case 'gavel':       _exportGavel(wb, toolId, dateStr, paste); break;
+      case 'legal':       _exportLegal(wb, toolId, dateStr, paste); break;
+      case 'canvas':      _exportCanvas(wb, toolId, dateStr, paste); break;
+      default: showToast('No export configured'); return;
+    }
+
+    var buf = await wb.xlsx.writeBuffer();
+    var addr = rcGetField(toolId, 'addr') || tool.name;
+    var slug = addr.split(',')[0].replace(/[^a-zA-Z0-9]/g,'_').replace(/_+/g,'_');
+    downloadBlob(buf, 'RIDGE_' + tool.name.replace(/[^a-zA-Z0-9]/g,'_').replace(/_+/g,'_') + '_' + slug + '_' + fileDate + '.xlsx');
+    showToast('✓ Report downloaded');
+  } catch(err) {
+    showToast('Export error: ' + err.message);
+    console.error(err);
+  }
+}
+
+// ── LENS — Deal Tear Sheet ─────────────────────────────────
+function _exportLens(wb, tid, dateStr, paste) {
+  var ws = wb.addWorksheet('Deal Tear Sheet', { views:[{state:'frozen',xSplit:0,ySplit:3}] });
+  rcColWidths(ws, [24,20,12,12,12,12,12,12,12,12]);
+  var addr = rcGetField(tid,'addr');
+  var r = rcTitle(ws, 'LENS — DEAL TEARDOWN', addr, dateStr);
+
+  rcSecHead(ws, r, 'PROPERTY'); r++;
+  r = rcKV(ws, [
+    ['Address',      rcGetField(tid,'addr')],
+    ['Asset Type',   rcGetField(tid,'type')],
+    ['Building SF',  rcGetField(tid,'sf')],
+    ['Asking Price', rcGetField(tid,'ask')],
+    ['Price PSF',    rcGetField(tid,'sf') && rcGetField(tid,'ask') ? ('$' + (parseFloat(rcGetField(tid,'ask').replace(/[^0-9.]/g,'')) / parseFloat(rcGetField(tid,'sf').replace(/[^0-9.]/g,''))).toFixed(0) + ' PSF') : '—'],
+    ['Context',      rcGetField(tid,'notes')],
+  ], r);
+
+  rcSecHead(ws, r, 'RIDGE HURDLE CHECK'); r++;
+  r = rcKV(ws, [
+    ['Target IRR',    '≥ 14.75%'],
+    ['Equity Multiple','≥ 1.8x'],
+    ['YOC (Yr 3/4)',  '7.5% – 8.0%'],
+    ['Max LTV',       '65%'],
+    ['Deal Size',     '$10M – $70M'],
+    ['Markets',       'ATL · SAV · DFW · HOU'],
+  ], r);
+
+  r = rcAnalysis(ws, paste, r);
+}
+
+// ── THE NAPKIN — Quick Screen ──────────────────────────────
+function _exportNapkin(wb, tid, dateStr, paste) {
+  var ws = wb.addWorksheet('Quick Screen', { views:[{state:'frozen',xSplit:0,ySplit:3}] });
+  rcColWidths(ws, [26,20,12,12,12,12,12,12,12,12]);
+  var addr = rcGetField(tid,'addr');
+  var r = rcTitle(ws, 'THE NAPKIN — QUICK SCREEN', addr, dateStr);
+
+  var ask    = parseFloat((rcGetField(tid,'ask')||'').replace(/[^0-9.]/g,'')) || 0;
+  var sf     = parseFloat((rcGetField(tid,'sf')||'').replace(/[^0-9.]/g,''))  || 0;
+  var noi    = parseFloat((rcGetField(tid,'noi')||'').replace(/[^0-9.]/g,'')) || 0;
+  var occ    = parseFloat((rcGetField(tid,'occ')||'').replace(/[^0-9.]/g,'')) || 0;
+  var mktRent = parseFloat((rcGetField(tid,'mktrent')||'').replace(/[^0-9.]/g,'')) || 0;
+
+  var capRate   = ask && noi ? (noi / ask * 100).toFixed(2) + '%' : '—';
+  var psf       = ask && sf  ? '$' + (ask/sf).toFixed(0) + ' PSF' : '—';
+  var potNOI    = sf && mktRent ? '$' + Math.round(sf * mktRent * (occ/100 || 0.9)).toLocaleString() : '—';
+
+  rcSecHead(ws, r, 'DEAL INPUTS'); r++;
+  r = rcKV(ws, [
+    ['Address',         rcGetField(tid,'addr')],
+    ['Asset Type',      rcGetField(tid,'type')],
+    ['Building SF',     rcGetField(tid,'sf')],
+    ['Asking Price',    rcGetField(tid,'ask')],
+    ['Price PSF',       psf],
+    ['Current Occupancy', rcGetField(tid,'occ')],
+    ['In-Place NOI',    rcGetField(tid,'noi')],
+    ['Market Rent PSF', rcGetField(tid,'mktrent')],
+    ['In-Place Rent PSF', rcGetField(tid,'inplace')],
+    ['Known Facts',     rcGetField(tid,'notes')],
+  ], r);
+
+  rcSecHead(ws, r, 'QUICK MATH'); r++;
+  r = rcKV(ws, [
+    ['Going-In Cap Rate',   capRate],
+    ['Price PSF',           psf],
+    ['Potential NOI (mkt rent × occ)', potNOI],
+    ['RIDGE IRR Hurdle',    '≥ 14.75%'],
+    ['RIDGE YOC Target',    '7.5% – 8.0% at Yr3/4'],
+  ], r);
+
+  r = rcAnalysis(ws, paste, r);
+}
+
+// ── MARKET PULSE ──────────────────────────────────────────
+function _exportMarket(wb, tid, dateStr, paste) {
+  var ws = wb.addWorksheet('Market Report', { views:[{state:'frozen',xSplit:0,ySplit:3}] });
+  rcColWidths(ws, [26,20,12,12,12,12,12,12,12,12]);
+  var mkt = rcGetField(tid,'mkt');
+  var r = rcTitle(ws, 'MARKET PULSE — SUBMARKET INTELLIGENCE', mkt, dateStr);
+
+  rcSecHead(ws, r, 'REPORT PARAMETERS'); r++;
+  r = rcKV(ws, [
+    ['Market',         rcGetField(tid,'mkt')],
+    ['Submarket',      rcGetField(tid,'sub')],
+    ['Report Type',    rcGetField(tid,'mode')],
+    ['Active Deal',    rcGetField(tid,'deal')],
+  ], r);
+
+  rcSecHead(ws, r, 'RIDGE MARKET BENCHMARKS'); r++;
+  r = rcKV(ws, [
+    ['Target Markets',      'ATL · SAV · DFW · HOU'],
+    ['Asset Type',          'Industrial / Flex Industrial'],
+    ['Rent Benchmark Source','CoStar (not LoopNet asking rents)'],
+    ['Vacancy Signal Threshold','≥ 15% = opportunity signal'],
+  ], r);
+
+  r = rcAnalysis(ws, paste, r);
+}
+
+// ── LEASE COMP MAP ────────────────────────────────────────
+function _exportLeaseComp(wb, tid, dateStr, paste) {
+  var ws = wb.addWorksheet('Comp Analysis', { views:[{state:'frozen',xSplit:0,ySplit:3}] });
+  rcColWidths(ws, [26,20,12,12,12,12,12,12,12,12]);
+  var addr = rcGetField(tid,'addr');
+  var r = rcTitle(ws, 'LEASE COMP MAP — RENT BENCHMARKING', addr, dateStr);
+
+  rcSecHead(ws, r, 'SUBJECT PROPERTY'); r++;
+  r = rcKV(ws, [
+    ['Address',          rcGetField(tid,'addr')],
+    ['Submarket',        rcGetField(tid,'sub')],
+    ['Building SF',      rcGetField(tid,'sf')],
+    ['In-Place Rent PSF', rcGetField(tid,'rent')],
+  ], r);
+
+  rcSecHead(ws, r, 'BENCHMARK REFERENCE'); r++;
+  r = rcKV(ws, [
+    ['Analysis Purpose', 'Validate underwritten rent assumptions vs. market comps'],
+    ['Key Question',     'Does in-place rent support or lag market? Roll risk?'],
+    ['RIDGE Flag',       'Underwrite conservatively — use comps, not asking rents'],
+  ], r);
+
+  r = rcAnalysis(ws, paste, r);
+}
+
+// ── DEBT TOOL — Full Computed Scenarios ───────────────────
+function _exportDebt(wb, tid, dateStr, paste) {
+  var ws = wb.addWorksheet('Debt Scenarios', { views:[{state:'frozen',xSplit:0,ySplit:6}] });
+  rcColWidths(ws, [28,14,14,14,14,14,14,14,14,14]);
+
+  var addr  = rcGetField(tid,'addr');
+  var price = parseFloat((rcGetField(tid,'price')||'').replace(/[^0-9.]/g,'')) || 0;
+  var noi   = parseFloat((rcGetField(tid,'noi')||'').replace(/[^0-9.]/g,''))   || 0;
+  var sf    = parseFloat((rcGetField(tid,'sf')||'').replace(/[^0-9.]/g,''))    || 0;
+  var ltvPct = parseFloat((rcGetField(tid,'ltv')||'65').replace(/[^0-9.]/g,''))/100 || 0.65;
+  var rateIn = parseFloat((rcGetField(tid,'rate')||'6.5').replace(/[^0-9.]/g,''))/100 || 0.065;
+
+  function pmt(r, n, pv) {
+    if (r === 0) return pv/n;
+    return (pv * (r/12)) / (1 - Math.pow(1 + r/12, -n));
+  }
+
+  function scenario(label, ltv, rate, amYrs) {
+    var loan = price * ltv;
+    var equity = price - loan;
+    var annualDS = pmt(rate, amYrs*12, loan) * 12;
+    var dscr = noi && annualDS ? (noi / annualDS) : 0;
+    var yoc  = noi && price ? (noi / price * 100) : 0;
+    var capRate = noi && price ? (noi / price * 100) : 0;
+    return {
+      label, ltv: (ltv*100).toFixed(0)+'%',
+      loan: loan ? '$'+Math.round(loan).toLocaleString() : '—',
+      equity: equity ? '$'+Math.round(equity).toLocaleString() : '—',
+      rate: (rate*100).toFixed(2)+'%',
+      annualDS: annualDS ? '$'+Math.round(annualDS).toLocaleString() : '—',
+      monthly: annualDS ? '$'+Math.round(annualDS/12).toLocaleString() : '—',
+      dscr: dscr ? dscr.toFixed(2)+'x' : '—',
+      dscrFlag: dscr < 1.25 ? '⚠ Below 1.25x' : '✓',
+      yoc: yoc ? yoc.toFixed(2)+'%' : '—',
+      amYrs: amYrs + ' yr',
+    };
+  }
+
+  var scenarios = [
+    scenario('Base (Target)',        ltvPct,       rateIn,       30),
+    scenario('Conservative',        Math.max(ltvPct-0.05,0.5), rateIn+0.005, 25),
+    scenario('Stretch',             Math.min(ltvPct+0.05,0.70), Math.max(rateIn-0.003,0.04), 30),
+    scenario('Bridge (Short-term)', Math.min(ltvPct+0.07,0.75), rateIn+0.015, 3),
+  ];
+
+  var r = rcTitle(ws, 'DEBT TOOL — CAPITAL STACK SCENARIOS', addr, dateStr);
+
+  rcSecHead(ws, r, 'DEAL PARAMETERS'); r++;
+  r = rcKV(ws, [
+    ['Address',       rcGetField(tid,'addr')],
+    ['Purchase Price', rcGetField(tid,'price')],
+    ['Year 1 NOI',    rcGetField(tid,'noi')],
+    ['Building SF',   rcGetField(tid,'sf')],
+    ['Debt Scenario', rcGetField(tid,'type')],
+    ['Hold Period',   rcGetField(tid,'hold')],
+  ], r);
+
+  // Scenario comparison table
+  rcSecHead(ws, r, 'SCENARIO COMPARISON'); r++;
+  var hdrRow = ws.getRow(r);
+  var hdrCols = ['Scenario','LTV','Loan Amount','Equity','Rate','Annual DS','Monthly Pmt','DSCR','DSCR Check'];
+  hdrCols.forEach(function(h, ci) {
+    var c = hdrRow.getCell(ci+1);
+    c.value = h;
+    c.font = { bold:true, size:9, color:{ argb:RC.WHITE }, name:'Calibri' };
+    c.fill = rcF(RC.DKBLUE);
+    c.alignment = { vertical:'middle', horizontal:ci===0?'left':'center', indent:ci===0?2:0 };
+    c.border = { bottom:rcT(RC.BLUE) };
+  });
+  hdrRow.height = 18; r++;
+
+  scenarios.forEach(function(s, idx) {
+    var row = ws.getRow(r);
+    var bg  = idx === 0 ? RC.GREEN : (idx % 2 === 0 ? RC.WHITE : RC.LGRAY);
+    var vals = [s.label, s.ltv, s.loan, s.equity, s.rate, s.annualDS, s.monthly, s.dscr, s.dscrFlag];
+    vals.forEach(function(v, ci) {
+      var c = row.getCell(ci+1);
+      c.value = v;
+      c.fill  = rcF(bg);
+      c.font  = { size:9, name:'Calibri', bold:idx===0, color:{ argb: ci===8 && s.dscrFlag.startsWith('⚠') ? 'DC2626' : ci===8 ? '059669' : RC.TEXT } };
+      c.alignment = { vertical:'middle', horizontal:ci===0?'left':'center', indent:ci===0?2:0 };
+      c.border = { bottom:rcT() };
+    });
+    row.height = 16; r++;
+  });
+
+  ws.getRow(r).height = 8; r++;
+
+  rcSecHead(ws, r, 'RIDGE DEBT CONSTRAINTS'); r++;
+  r = rcKV(ws, [
+    ['Max LTV',       '65%'],
+    ['Min DSCR',      '1.25x'],
+    ['Deal Range',    '$10M – $70M'],
+    ['Amortization',  '25–30 years (conventional); interest-only for bridge'],
+  ], r);
+
+  r = rcAnalysis(ws, paste, r);
+}
+
+// ── LOI GENERATOR ─────────────────────────────────────────
+function _exportLOI(wb, tid, dateStr, paste) {
+  var ws = wb.addWorksheet('Letter of Intent');
+  rcColWidths(ws, [14, 80, 4, 4, 4, 4, 4, 4, 4, 4]);
+
+  var date    = rcGetField(tid,'date') || dateStr;
+  var broker  = rcGetField(tid,'broker');
+  var addr    = rcGetField(tid,'addr');
+  var city    = rcGetField(tid,'city');
+  var sf      = rcGetField(tid,'sf');
+  var price   = rcGetField(tid,'price');
+  var deposit = rcGetField(tid,'deposit');
+  var ext     = rcGetField(tid,'ext');
+  var exp     = rcGetField(tid,'exp');
+  var brokerParts = broker ? broker.split(',') : ['[Broker Name]', '[Firm]'];
+  var brokerName  = (brokerParts[0]||'').trim();
+  var brokerFirm  = (brokerParts[1]||'').trim();
+
+  // Title block
+  ws.mergeCells('A1:B1');
+  ws.getCell('A1').value = 'RIDGE  ·  LOI GENERATOR';
+  ws.getCell('A1').font = { bold:true, size:14, color:{ argb:RC.WHITE }, name:'Calibri' };
+  ws.getCell('A1').fill = rcF(RC.NAVY);
+  ws.getCell('A1').alignment = { vertical:'middle', indent:2 };
+  ws.getRow(1).height = 30;
+
+  ws.mergeCells('A2:B2');
+  ws.getCell('A2').value = addr + (city ? ', ' + city : '') + '  ·  ' + date + '  ·  ENTRADA PARTNERS — CONFIDENTIAL';
+  ws.getCell('A2').font = { size:9, color:{ argb:RC.ACCENT }, name:'Calibri' };
+  ws.getCell('A2').fill = rcF(RC.NAVY);
+  ws.getCell('A2').alignment = { vertical:'middle', indent:2 };
+  ws.getRow(2).height = 18;
+
+  ws.getRow(3).height = 10;
+
+  function addLine(row, text, isBold, fontSize, color, bg, indent) {
+    ws.mergeCells('A' + row + ':B' + row);
+    var c = ws.getCell('A' + row);
+    c.value = text || '';
+    c.font = { size: fontSize||10, name:'Calibri', bold:!!isBold, color:{ argb: color||RC.TEXT } };
+    if (bg) c.fill = rcF(bg);
+    c.alignment = { vertical:'middle', wrapText:true, indent:indent||0 };
+    ws.getRow(row).height = text && text.length > 120 ? 32 : 18;
+    return row + 1;
+  }
+
+  var rn = 4;
+  rn = addLine(rn, date, false, 10, RC.MUTED);
+  rn = addLine(rn, '');
+  rn = addLine(rn, brokerName, true, 11);
+  rn = addLine(rn, brokerFirm || '[Brokerage Firm]');
+  rn = addLine(rn, '');
+  rn = addLine(rn, 'RE: Non-Binding Letter of Intent — ' + addr + (city ? ', ' + city : ''), true, 11, RC.NAVY);
+  rn = addLine(rn, '');
+  rn = addLine(rn, 'Dear ' + brokerName + ',');
+  rn = addLine(rn, '');
+  rn = addLine(rn, 'On behalf of Entrada Partners Acquisitions, LLC or Assignee (the "Buyer"), we are pleased to submit this non-binding Letter of Intent to purchase the above-referenced property. This LOI is intended to outline the basic terms and conditions under which the Buyer proposes to acquire the property from the seller.');
+  rn = addLine(rn, '');
+
+  var terms = [
+    ['1.  PROPERTY', addr + (city ? ', ' + city : '') + (sf ? ' (' + sf + ' SF)' : '')],
+    ['2.  PURCHASE PRICE', price || '[Purchase Price]'],
+    ['3.  EARNEST MONEY DEPOSIT', (deposit || '[Deposit]') + ' to be deposited within 3 business days of Effective Date'],
+    ['4.  INSPECTION & DUE DILIGENCE', '30 days from Effective Date ("DD Period")'],
+    ['5.  EXTENSION RIGHT', '15-day extension right. Additional deposit of ' + (ext || '[Extension Deposit]') + ', non-refundable upon exercise'],
+    ['6.  CLOSING', '30 days following expiration of the DD Period'],
+    ['7.  DEPOSIT — REFUND', 'Deposit fully refundable during the DD Period. Non-refundable upon expiration of DD unless Seller default'],
+    ['8.  FINANCING', 'This LOI is NOT contingent on financing. Buyer reserves the right to obtain financing at Buyer\'s discretion'],
+    ['9.  TITLE', 'Seller to deliver insurable fee simple title, free and clear of all liens and encumbrances except those approved by Buyer'],
+    ['10. CLOSING COSTS', 'Each party responsible for their own attorney fees. Transfer taxes and title insurance per local custom'],
+    ['11. BUYER ENTITY', 'Entrada Partners Acquisitions, LLC or Assignee'],
+    ['12. EXCLUSIVITY', 'Seller agrees to negotiate exclusively with Buyer for 15 days from acceptance of this LOI'],
+    ['13. EXPIRATION', 'This LOI expires at 5:00 PM ET on ' + (exp || '[Expiration Date]')],
+  ];
+
+  terms.forEach(function(t) {
+    var r = ws.getRow(rn);
+    ws.unMergeCells('A' + rn + ':B' + rn);
+
+    var lc = r.getCell(1);
+    lc.value = t[0];
+    lc.font = { size:9, name:'Calibri', bold:true, color:{ argb:'1E3A5F' } };
+    lc.fill = rcF(rn % 2 === 0 ? RC.WHITE : RC.LGRAY);
+    lc.alignment = { vertical:'top', indent:1, wrapText:true };
+    lc.border = { bottom:rcT() };
+
+    var vc = r.getCell(2);
+    vc.value = t[1];
+    vc.font = { size:9, name:'Calibri', color:{ argb:RC.TEXT } };
+    vc.fill = rcF(rn % 2 === 0 ? RC.WHITE : RC.LGRAY);
+    vc.alignment = { vertical:'top', wrapText:true };
+    vc.border = { bottom:rcT() };
+
+    r.height = t[1] && t[1].length > 80 ? 28 : 18;
+    rn++;
+  });
+
+  rn = addLine(rn, '');
+  rn = addLine(rn, 'This Letter of Intent is non-binding and is intended solely to outline the basic terms of a proposed transaction. Neither party shall be legally bound until execution of a mutually acceptable Purchase and Sale Agreement.');
+  rn = addLine(rn, '');
+  rn = addLine(rn, 'We look forward to working with you on this transaction.');
+  rn = addLine(rn, '');
+  rn = addLine(rn, 'Sincerely,', false, 10);
+  rn = addLine(rn, '');
+  rn = addLine(rn, 'Entrada Partners Acquisitions, LLC', true, 10);
+  rn = addLine(rn, '');
+  rn = addLine(rn, '_________________________');
+  rn = addLine(rn, 'Authorized Signatory');
+  rn = addLine(rn, 'Entrada Partners Acquisitions, LLC');
+}
+
+// ── THE GAVEL — Lease Abstract ────────────────────────────
+function _exportGavel(wb, tid, dateStr, paste) {
+  var ws = wb.addWorksheet('Lease Abstract', { views:[{state:'frozen',xSplit:0,ySplit:3}] });
+  rcColWidths(ws, [26,20,12,12,12,12,12,12,12,12]);
+  var addr = rcGetField(tid,'addr');
+  var r = rcTitle(ws, 'THE GAVEL — LEASE ABSTRACT', addr + (rcGetField(tid,'tenant') ? ' · ' + rcGetField(tid,'tenant') : ''), dateStr);
+
+  rcSecHead(ws, r, 'LEASE DETAILS'); r++;
+  r = rcKV(ws, [
+    ['Property',     rcGetField(tid,'addr')],
+    ['Tenant',       rcGetField(tid,'tenant')],
+    ['Review Focus', rcGetField(tid,'notes')],
+  ], r);
+
+  rcSecHead(ws, r, 'STANDARD ABSTRACTIONS EXTRACTED'); r++;
+  r = rcKV(ws, [
+    ['Lease Type',         ''],
+    ['Commencement Date',  ''],
+    ['Expiration Date',    ''],
+    ['Base Rent',          ''],
+    ['Rent Escalations',   ''],
+    ['CAM / NNN Structure',''],
+    ['Security Deposit',   ''],
+    ['Option to Renew',    ''],
+    ['Early Termination',  ''],
+    ['Co-Tenancy Clause',  ''],
+    ['Assignment / Sublet',''],
+    ['Guaranty Type',      ''],
+    ['SNDA / Subordination',''],
+  ], r);
+
+  r = rcAnalysis(ws, paste, r);
+}
+
+// ── LEGAL REVIEWER ────────────────────────────────────────
+function _exportLegal(wb, tid, dateStr, paste) {
+  var ws = wb.addWorksheet('Legal Risk Summary', { views:[{state:'frozen',xSplit:0,ySplit:3}] });
+  rcColWidths(ws, [26,20,12,12,12,12,12,12,12,12]);
+  var addr = rcGetField(tid,'addr');
+  var r = rcTitle(ws, 'CRE LEGAL REVIEWER — RISK SUMMARY', addr, dateStr);
+
+  rcSecHead(ws, r, 'DOCUMENT DETAILS'); r++;
+  r = rcKV(ws, [
+    ['Document Type', rcGetField(tid,'dtype')],
+    ['Property / Deal', rcGetField(tid,'addr')],
+    ['Review Focus', rcGetField(tid,'focus')],
+  ], r);
+
+  rcSecHead(ws, r, 'STANDARD RISK CATEGORIES'); r++;
+  r = rcKV(ws, [
+    ['Seller Representations & Warranties', ''],
+    ['Earnest Money / Hard Money Provisions',''],
+    ['Due Diligence Access & Conditions',    ''],
+    ['Closing Conditions',                   ''],
+    ['Default & Remedy Provisions',          ''],
+    ['Assignment Rights',                    ''],
+    ['Environmental Indemnification',        ''],
+    ['FIRPTA / Tax Provisions',              ''],
+    ['Dispute Resolution / Arbitration',     ''],
+  ], r);
+
+  r = rcAnalysis(ws, paste, r);
+}
+
+// ── CANVAS — Tenant Sourcing ──────────────────────────────
+function _exportCanvas(wb, tid, dateStr, paste) {
+  var ws = wb.addWorksheet('Tenant Prospects', { views:[{state:'frozen',xSplit:0,ySplit:3}] });
+  rcColWidths(ws, [26,20,12,12,12,12,12,12,12,12]);
+  var addr = rcGetField(tid,'addr');
+  var r = rcTitle(ws, 'CANVAS — TENANT SOURCING', addr, dateStr);
+
+  rcSecHead(ws, r, 'PROPERTY PROFILE'); r++;
+  r = rcKV(ws, [
+    ['Property',       rcGetField(tid,'addr')],
+    ['Submarket',      rcGetField(tid,'sub')],
+    ['Mode',           rcGetField(tid,'mode')],
+    ['Available SF',   rcGetField(tid,'sf')],
+    ['Dock / Clear Ht',rcGetField(tid,'dock')],
+    ['Target Rent',    rcGetField(tid,'rent')],
+    ['Ideal Profile',  rcGetField(tid,'notes')],
+  ], r);
+
+  r = rcAnalysis(ws, paste, r);
+}
+// ═══════════════════════════════════════════════════════════
+//  END EXPORT SYSTEM
+// ═══════════════════════════════════════════════════════════
 </script>
 
 
