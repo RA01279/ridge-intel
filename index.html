@@ -863,7 +863,7 @@ footer{border-top:1px solid var(--border);padding:20px 24px;text-align:center;co
         <div class="fg"><label class="fl">Deal Notes</label><textarea id="pl-notes" placeholder="Key facts, outstanding diligence items, next steps..."></textarea></div>
       </div>
       <div class="btn-row">
-        <button class="btn btn-p" onclick="runTool(&#39;pipeline&#39;)">⚡ Update Pipeline &amp; Get Summary</button>
+        <button class="btn btn-p" onclick="runTool('pipeline')">↗ Run in Claude</button>
         <button class="btn btn-o" onclick="clearTool(&#39;pipeline&#39;)">Clear</button>
       </div>
       <div class="loading" id="loading-pipeline"><div class="loading-lbl">Working...</div><div class="pbar"><div class="pfill" id="pfill-pipeline"></div></div><div class="pstep" id="pstep-pipeline"></div></div>
@@ -1372,40 +1372,26 @@ function showParsedKPIs(toolId, m) {
 // ═══════════════════════════════════════════════════════════
 //  RUN TOOL
 // ═══════════════════════════════════════════════════════════
-async function runTool(toolId) {
+function runTool(toolId) {
   var tool = TOOLS.find(t => t.id === toolId);
-  if (!tool && toolId !== 'pipeline') return;
 
   // Gather field values
   var d = {};
   if (tool) {
     tool.fields.forEach(f => f.row.forEach(field => {
-      var el = document.getElementById(`f-${toolId}-${field.id}`);
+      var el = document.getElementById('f-' + toolId + '-' + field.id);
       d[field.id] = el ? el.value.trim() : '';
     }));
-    // Attach extracted text (XLSX/CSV). PDFs need manual upload in Claude.
-    Object.keys(STATE[toolId].files).forEach(uploadId => {
-      var fd = STATE[toolId].files[uploadId];
-      if (typeof fd === 'string') d[uploadId + '_text'] = fd;
-      else if (fd && fd.name) d[uploadId + '_name'] = fd.name;
-    });
   } else {
-    d.addr = document.getElementById('pl-addr').value;
-    d.stage = document.getElementById('pl-stage').value;
-    d.conv = document.getElementById('pl-conv').value;
-    d.price = document.getElementById('pl-price').value;
-    d.broker = document.getElementById('pl-broker').value;
-    d.notes = document.getElementById('pl-notes').value;
-    d.context = document.getElementById('pipeline-context').value;
+    d.addr   = document.getElementById('pl-addr').value.trim();
+    d.stage  = document.getElementById('pl-stage').value;
+    d.conv   = document.getElementById('pl-conv').value;
+    d.price  = document.getElementById('pl-price').value.trim();
+    d.broker = document.getElementById('pl-broker').value.trim();
+    d.notes  = document.getElementById('pl-notes').value.trim();
   }
 
-  // Build prompt — system context + structured prompt
-  var sys = tool ? tool.system : `You are RIDGE's pipeline manager for Entrada Partners. Maintain and summarize the active deal pipeline. Be concise and action-oriented.`;
-  var promptText = tool ? tool.prompt(d) : `Update pipeline for: ${d.addr||'deal'} | Stage: ${d.stage} | Conviction: ${d.conv} | Price: ${d.price||'TBD'} | Broker: ${d.broker||'none'}.\nNotes: ${d.notes||'none'}.\n${d.context?'Context: '+d.context+'\n':''}\nProduce:\n## DEAL STATUS UPDATE\nKey facts, current stage, conviction level, days in stage (estimate if unknown).\n\n## OUTSTANDING ITEMS\n3–5 things that need to happen before advancing.\n\n## NEXT ACTIONS\nTop 3 immediate next steps, each with a deadline recommendation.\n\n## COMPARABLE DEALS\nBriefly, how does this deal compare to RIDGE's typical criteria? Any flags?`;
-
-  var fullPrompt = sys + '\n\n---\n\n' + promptText;
-
-  // Detect PDF uploads that need manual drag into Claude
+  // Detect uploaded PDFs (need manual drag into Claude)
   var pdfNames = [];
   if (tool) {
     tool.uploads.filter(u => u.type === 'pdf').forEach(u => {
@@ -1414,32 +1400,143 @@ async function runTool(toolId) {
     });
   }
 
-  // Use claude.ai/new?q= to pre-fill and auto-queue the prompt.
-  // If the URL would be too long (> 8000 chars encoded), fall back to clipboard.
-  var encoded = encodeURIComponent(fullPrompt);
-  if (encoded.length <= 8000) {
-    window.open('https://claude.ai/new?q=' + encoded, '_blank');
-    var msg = pdfNames.length
-      ? `Prompt sent — also upload in Claude: ${pdfNames.join(', ')}`
-      : 'Launched — prompt queued in Claude';
-    showToast(msg);
-  } else {
-    // Fallback: clipboard + open blank chat
-    try {
-      await navigator.clipboard.writeText(fullPrompt);
-    } catch(e) {
-      var ta = document.createElement('textarea');
-      ta.value = fullPrompt;
-      ta.style.cssText = 'position:fixed;top:-9999px;left:-9999px';
-      document.body.appendChild(ta); ta.select();
-      document.execCommand('copy');
-      document.body.removeChild(ta);
-    }
-    window.open('https://claude.ai/new', '_blank');
-    var msg2 = pdfNames.length
-      ? `Prompt copied — paste in Claude, then upload: ${pdfNames.join(', ')}`
-      : 'Prompt copied — paste in Claude (Ctrl+V) · too large for auto-fill';
-    showToast(msg2);
+  // Build short trigger prompt from key fields
+  var p = buildTrigger(toolId, d);
+
+  var encoded = encodeURIComponent(p);
+  window.open('https://claude.ai/new?q=' + encoded, '_blank');
+
+  var msg = pdfNames.length
+    ? 'Launched — also upload in Claude: ' + pdfNames.join(', ')
+    : 'Launched in Claude';
+  showToast(msg);
+}
+
+function buildTrigger(toolId, d) {
+  switch(toolId) {
+    case 'lens':
+      var p = 'Run LENS';
+      if (d.addr) p += ' on ' + d.addr;
+      if (d.type) p += ' — ' + d.type;
+      if (d.sf)   p += ', ' + d.sf + ' SF';
+      if (d.ask)  p += ', asking ' + d.ask;
+      if (d.notes) p += '. Context: ' + d.notes;
+      p += '. Tear it down at RIDGE criteria.';
+      return p;
+
+    case 'scout':
+      var p = 'Run SCOUT — ' + (d.mode || 'Submarket Sweep');
+      if (d.mkt)     p += ' in ' + d.mkt;
+      if (d.sfmin)   p += '. Min SF: ' + d.sfmin;
+      if (d.sfmax)   p += ', Max SF: ' + d.sfmax;
+      if (d.price)   p += '. Max price: ' + d.price;
+      if (d.signals) p += '. Signal focus: ' + d.signals;
+      if (d.addr)    p += '. Property: ' + d.addr;
+      return p;
+
+    case 'napkin':
+      var p = 'Run The Napkin';
+      if (d.addr)    p += ' on ' + d.addr;
+      if (d.type)    p += ' — ' + d.type;
+      if (d.sf)      p += ', ' + d.sf + ' SF';
+      if (d.ask)     p += '. Ask: ' + d.ask;
+      if (d.occ)     p += '. Occupancy: ' + d.occ;
+      if (d.noi)     p += '. In-place NOI: ' + d.noi;
+      if (d.mktrent) p += '. Market rent: ' + d.mktrent + ' PSF';
+      if (d.inplace) p += '. In-place rent: ' + d.inplace + ' PSF';
+      if (d.notes)   p += '. Facts: ' + d.notes;
+      p += '. Go / No-Go.';
+      return p;
+
+    case 'market-pulse':
+      var p = 'Run Market Pulse — ' + (d.mode || 'Full Market Report');
+      if (d.mkt)  p += ' for ' + d.mkt;
+      if (d.sub)  p += ', ' + d.sub;
+      if (d.deal) p += '. Active deal: ' + d.deal;
+      return p;
+
+    case 'lease-comp':
+      var p = 'Run Lease Comp Map';
+      if (d.addr) p += ' for ' + d.addr;
+      if (d.sub)  p += ' in ' + d.sub;
+      if (d.sf)   p += '. Building SF: ' + d.sf;
+      if (d.rent) p += '. Current in-place rent: ' + d.rent + ' PSF';
+      p += '. Comp data is attached — analyze and benchmark.';
+      return p;
+
+    case 'debt':
+      var p = 'Run the Debt Tool';
+      if (d.addr)  p += ' for ' + d.addr;
+      if (d.price) p += '. Price: ' + d.price;
+      if (d.noi)   p += '. Yr1 NOI: ' + d.noi;
+      if (d.ltv)   p += '. Target LTV: ' + d.ltv;
+      if (d.type)  p += '. Scenario: ' + d.type;
+      if (d.hold)  p += '. Hold: ' + d.hold;
+      return p;
+
+    case 'isr':
+      var p = 'Build the IC Report';
+      if (d.addr)  p += ' for ' + d.addr;
+      if (d.type)  p += ' — ' + d.type;
+      if (d.sf)    p += ', ' + d.sf + ' SF';
+      if (d.price) p += '. Price: ' + d.price;
+      if (d.psf)   p += ' (' + d.psf + ' PSF)';
+      if (d.irr)   p += '. IRR: ' + d.irr;
+      if (d.em)    p += '. EM: ' + d.em;
+      if (d.cap)   p += '. Cap: ' + d.cap;
+      if (d.yoc)   p += '. YOC: ' + d.yoc;
+      if (d.ltv)   p += '. LTV: ' + d.ltv;
+      if (d.hold)  p += '. Hold: ' + d.hold;
+      if (d.thesis) p += '. Thesis: ' + d.thesis;
+      return p;
+
+    case 'loi':
+      var p = 'Draft the LOI';
+      if (d.addr)    p += ' for ' + d.addr;
+      if (d.city)    p += ', ' + d.city;
+      if (d.sf)      p += '. SF: ' + d.sf;
+      if (d.price)   p += '. Price: ' + d.price;
+      if (d.deposit) p += '. Deposit: ' + d.deposit;
+      if (d.broker)  p += '. Broker: ' + d.broker;
+      if (d.exp)     p += '. Expiration: ' + d.exp;
+      return p;
+
+    case 'gavel':
+      var p = 'Run Lease Admin';
+      if (d.tenant) p += ' for ' + d.tenant;
+      if (d.addr)   p += ' at ' + d.addr;
+      if (d.notes)  p += '. Focus: ' + d.notes;
+      p += '. Lease document is attached.';
+      return p;
+
+    case 'legal':
+      var p = 'Legal review — ' + (d.dtype || 'CRE document');
+      if (d.addr)  p += ' for ' + d.addr;
+      if (d.focus) p += '. Focus: ' + d.focus;
+      p += '. Document is attached.';
+      return p;
+
+    case 'canvas':
+      var p = 'Run CANVAS — ' + (d.mode || 'Fill mode');
+      if (d.addr)  p += ' for ' + d.addr;
+      if (d.sf)    p += '. Available SF: ' + d.sf;
+      if (d.rent)  p += '. Target rent: ' + d.rent;
+      if (d.sub)   p += '. Submarket: ' + d.sub;
+      if (d.notes) p += '. Ideal profile: ' + d.notes;
+      return p;
+
+    case 'pipeline':
+      var p = 'Update the RIDGE pipeline';
+      if (d.addr)   p += ' for ' + d.addr;
+      if (d.stage)  p += ' — ' + d.stage;
+      if (d.conv)   p += ' (' + d.conv + ')';
+      if (d.price)  p += '. Ask: ' + d.price;
+      if (d.broker) p += '. Broker: ' + d.broker;
+      if (d.notes)  p += '. Notes: ' + d.notes;
+      return p;
+
+    default:
+      return 'Run ' + toolId + ' — I am ready to begin.';
   }
 }
 
