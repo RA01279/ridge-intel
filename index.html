@@ -1053,7 +1053,20 @@ var TOOLS = [
     prompt:(d)=>`Review this ${d.dtype||'CRE legal document'} for ${d.addr||'the subject deal'}.\n${d.focus?'Focus areas: '+d.focus+'\n':''}\n${d.doc1_text||'[Document uploaded]'}\n${d.doc2_text?'Secondary document:\n'+d.doc2_text+'\n':''}\nProduce:\n## DOCUMENT SUMMARY\nParties, purpose, key dates, transaction structure in 3–5 sentences.\n\n## KEY PROVISIONS TABLE\nTable: Section | Provision | Summary | Risk Level\n\n## RED FLAGS\nFor each flag: Section reference, what it says, why it's a problem, suggested fix or redline language.\n\n## RIDGE-SPECIFIC CONCERNS\nAnything that affects: earnest money refundability, financing contingency, assignment rights, seller reps on leases, waterfall/preferred return (if JV), prepayment/defeasance (if loan docs), termination rights (if PMA).\n\n## MISSING PROVISIONS\nAnything RIDGE typically requires that is absent from this document.\n\n## RECOMMENDED REDLINES\n3–5 specific changes with proposed language.`
   },
   {
-    id:'canvas', num:'11', icon:'🏗️', name:'CANVAS',
+    id:'daily-signal', num:'11', icon:'📊', name:'DAILY SIGNAL',
+    badge:'Daily Prospects',
+    shortDesc:'Upload CoStar exports → 15 ranked prospects with owner contacts.',
+    desc:'Upload CoStar exports → 15 ranked prospects with owner contacts.',
+    uploads:[{id:'costar',label:'CoStar Export Files',hint:'Upload one or more CoStar XLSX exports from your CoStar Reports folder',icon:'📁',accept:'.xlsx',type:'xlsx'}],
+    fields:[
+      {row:[{id:'date',label:'Report Date',ph:'March 16, 2026'},{id:'notes',label:'Focus / Notes',ph:'Prioritize Savannah and NE Atlanta this week...'}]},
+    ],
+    steps:['Parsing CoStar data...','Scoring vacancy signals...','Ranking prospects...','Identifying owner contacts...','Building report...'],
+    system:`You are DAILY SIGNAL, RIDGE's daily acquisition lead generator for Entrada Partners. Score and rank properties from CoStar export data using RIDGE's signal scoring system. RIDGE criteria: industrial and flex, $10M–$70M, ATL/SAV/DFW/HOU, IRR ≥14.75%. Be direct. Rank ruthlessly. Surface the best 15 prospects with owner contact info.`,
+    prompt:(d)=>`Run Daily Signal report for ${d.date||'today'}.\n${d.notes?'Focus: '+d.notes+'\n':''}\n${d.costar_text?'CoStar data:\n'+d.costar_text:''}`
+  },
+  {
+    id:'canvas', num:'12', icon:'🏗️', name:'CANVAS',
     badge:'Tenant Sourcing',
     desc:'Tenant sourcing engine. Fill mode: find tenants for a specific building. Hunt mode: scan for displaced businesses and feed them back as acquisition targets.',
     shortDesc:'Tenant sourcing. Fill a building or hunt acquisition targets.',
@@ -1569,6 +1582,14 @@ function buildTrigger(toolId, d) {
       if (d.addr)  p += ' for ' + d.addr;
       if (d.focus) p += '. Focus: ' + d.focus;
       p += '. Document is attached.';
+      return p;
+
+    case 'daily-signal':
+      var p = 'Run Daily Signal report';
+      if (d.date)  p += ' for ' + d.date;
+      if (d.notes) p += '. Focus: ' + d.notes;
+      if (d.costar_text) p += '\n\nCoStar export data:\n' + d.costar_text;
+      else p += '. CoStar export data is attached.';
       return p;
 
     case 'canvas':
