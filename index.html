@@ -24,18 +24,6 @@ header{background:var(--surface);border-bottom:1px solid var(--border);padding:0
 .hdr-sub{color:var(--muted);font-size:11px;letter-spacing:1px;}
 .hdr-left{display:flex;align-items:center;gap:12px;}
 .hdr-right{display:flex;align-items:center;gap:12px;}
-.api-btn{background:var(--surface2);border:1px solid var(--border);color:var(--muted);padding:5px 14px;border-radius:var(--r);cursor:pointer;font-size:12px;transition:all .15s;}
-.api-btn:hover{border-color:var(--blue);color:var(--text);}
-.api-btn.set{border-color:var(--green-bright);color:var(--green-bright);}
-
-/* MODAL */
-.modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:999;align-items:center;justify-content:center;}
-.modal-bg.show{display:flex;}
-.modal{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:28px;width:100%;max-width:460px;position:relative;}
-.modal h3{font-size:15px;font-weight:700;margin-bottom:6px;}
-.modal p{font-size:12px;color:var(--muted);margin-bottom:16px;line-height:1.6;}
-.modal-btns{display:flex;gap:8px;justify-content:flex-end;margin-top:14px;}
-.xbtn{position:absolute;top:12px;right:14px;background:none;border:none;color:var(--muted);font-size:18px;cursor:pointer;line-height:1;}
 
 /* MAIN */
 main{max-width:1120px;margin:0 auto;padding:32px 20px;}
@@ -177,20 +165,6 @@ footer{border-top:1px solid var(--border);padding:20px 24px;text-align:center;co
 </head>
 <body>
 
-<!-- API MODAL -->
-<div class="modal-bg" id="api-modal">
-  <div class="modal">
-    <button class="xbtn" onclick="closeApi()">✕</button>
-    <h3>Anthropic API Key</h3>
-    <p>Stored only in your browser's localStorage. Sent only to <code>api.anthropic.com</code>.</p>
-    <label class="fl">API Key</label>
-    <input type="text" id="api-input" placeholder="sk-ant-..." autocomplete="off" style="margin-bottom:0">
-    <div class="modal-btns">
-      <button class="btn btn-o" onclick="closeApi()">Cancel</button>
-      <button class="btn btn-p" onclick="saveApi()">Save</button>
-    </div>
-  </div>
-</div>
 
 <!-- HEADER -->
 <header>
@@ -199,8 +173,7 @@ footer{border-top:1px solid var(--border);padding:20px 24px;text-align:center;co
     <span class="hdr-sub">ACQUISITIONS INTELLIGENCE</span>
   </div>
   <div class="hdr-right">
-    <span style="font-size:11px;color:var(--muted)">12 Skills Active · v5.0</span>
-    <button class="api-btn set" id="api-btn" onclick="showApi()">✓ Key Set</button>
+    <span style="font-size:11px;color:var(--muted)">12 Skills Active · v5.2</span>
   </div>
 </header>
 
@@ -1166,7 +1139,7 @@ function buildPanelHTML(tool) {
   var fieldsHTML = buildFieldsHTML(tool);
 
   // Buttons
-  var extraBtns = tool.isISR ? `<button class="btn btn-g" style="font-size:12px" id="pptx-btn-${tool.id}" onclick="buildPPTX()" disabled>⬇ Download .pptx</button>` : '';
+  var extraBtns = '';
 
   return `
   <div class="panel-head">
@@ -1186,7 +1159,7 @@ function buildPanelHTML(tool) {
       ${fieldsHTML}
     </div>
     <div class="btn-row">
-      <button class="btn btn-p" id="run-btn-${tool.id}" onclick="runTool('${tool.id}')">⚡ Run ${tool.name}</button>
+      <button class="btn btn-p" id="run-btn-${tool.id}" onclick="runTool('${tool.id}')">↗ Run in Claude</button>
       <button class="btn btn-o" onclick="clearTool('${tool.id}')">Clear</button>
       ${extraBtns}
     </div>
@@ -1400,10 +1373,7 @@ function showParsedKPIs(toolId, m) {
 //  RUN TOOL
 // ═══════════════════════════════════════════════════════════
 async function runTool(toolId) {
-  var apiKey = getApiKey();
-  if (!apiKey) { alert('Set your API key first (⚙ API Key in header)'); showApi(); return; }
-
-  var tool = TOOLS.find(t=>t.id===toolId);
+  var tool = TOOLS.find(t => t.id === toolId);
   if (!tool && toolId !== 'pipeline') return;
 
   // Gather field values
@@ -1413,15 +1383,13 @@ async function runTool(toolId) {
       var el = document.getElementById(`f-${toolId}-${field.id}`);
       d[field.id] = el ? el.value.trim() : '';
     }));
-    // Attach file data
+    // Attach extracted text (XLSX/CSV). PDFs need manual upload in Claude.
     Object.keys(STATE[toolId].files).forEach(uploadId => {
       var fd = STATE[toolId].files[uploadId];
-      if (typeof fd === 'string') d[uploadId+'_text'] = fd;
-      else if (fd && fd.base64) d[uploadId+'_b64'] = fd.base64;
-      else if (fd && fd.name) d[uploadId+'_text'] = '[File: '+fd.name+']';
+      if (typeof fd === 'string') d[uploadId + '_text'] = fd;
+      else if (fd && fd.name) d[uploadId + '_name'] = fd.name;
     });
   } else {
-    // Pipeline special
     d.addr = document.getElementById('pl-addr').value;
     d.stage = document.getElementById('pl-stage').value;
     d.conv = document.getElementById('pl-conv').value;
@@ -1431,73 +1399,54 @@ async function runTool(toolId) {
     d.context = document.getElementById('pipeline-context').value;
   }
 
-  // Show loading
-  var loadEl = document.getElementById('loading-'+toolId);
-  var resEl = document.getElementById('results-'+toolId);
-  var runBtn = document.getElementById('run-btn-'+toolId);
-  loadEl.classList.add('show');
-  resEl.classList.remove('show');
-  if (runBtn) runBtn.disabled = true;
+  // Build prompt
+  var sys = tool ? tool.system : `You are RIDGE's pipeline manager for Entrada Partners. Maintain and summarize the active deal pipeline. Be concise and action-oriented.`;
+  var promptText = tool ? tool.prompt(d) : `Update pipeline for: ${d.addr||'deal'} | Stage: ${d.stage} | Conviction: ${d.conv} | Price: ${d.price||'TBD'} | Broker: ${d.broker||'none'}.\nNotes: ${d.notes||'none'}.\n${d.context?'Context: '+d.context+'\n':''}\nProduce:\n## DEAL STATUS UPDATE\nKey facts, current stage, conviction level, days in stage (estimate if unknown).\n\n## OUTSTANDING ITEMS\n3–5 things that need to happen before advancing.\n\n## NEXT ACTIONS\nTop 3 immediate next steps, each with a deadline recommendation.\n\n## COMPARABLE DEALS\nBriefly, how does this deal compare to RIDGE's typical criteria? Any flags?`;
 
-  var steps = tool ? tool.steps : ['Updating pipeline...','Analyzing deal status...','Generating summary...'];
-  var si = 0, prog = 0;
-  function tick() {
-    if (si < steps.length) {
-      document.getElementById('pstep-'+toolId).textContent = steps[si++];
-      prog = Math.min(90, (si/steps.length)*100);
-      document.getElementById('pfill-'+toolId).style.width = prog+'%';
-    }
-  }
-  tick();
-  var timer = setInterval(tick, 2400);
+  var fullPrompt = sys + '\n\n---\n\n' + promptText;
 
-  try {
-    var sys = tool ? tool.system : `You are RIDGE's pipeline manager for Entrada Partners. Maintain and summarize the active deal pipeline. Be concise and action-oriented.`;
-    var userContent = [];
-
-    // Add PDF docs
-    if (tool) {
-      tool.uploads.filter(u=>u.type==='pdf').forEach(u => {
-        var fd = STATE[toolId].files[u.id];
-        if (fd && fd.base64) {
-          userContent.push({ type:'document', source:{ type:'base64', media_type:'application/pdf', data:fd.base64 }});
-        }
-      });
-    }
-
-    var promptText = tool ? tool.prompt(d) : `Update pipeline for: ${d.addr||'deal'} | Stage: ${d.stage} | Conviction: ${d.conv} | Price: ${d.price||'TBD'} | Broker: ${d.broker||'none'}.\nNotes: ${d.notes||'none'}.\n${d.context?'Context: '+d.context+'\n':''}\nProduce:\n## DEAL STATUS UPDATE\nKey facts, current stage, conviction level, days in stage (estimate if unknown).\n\n## OUTSTANDING ITEMS\n3–5 things that need to happen before advancing.\n\n## NEXT ACTIONS\nTop 3 immediate next steps, each with a deadline recommendation.\n\n## COMPARABLE DEALS\nBriefly, how does this deal compare to RIDGE's typical criteria? Any flags?`;
-    userContent.push({ type:'text', text:promptText });
-
-    var resp = await fetch('https://api.anthropic.com/v1/messages', {
-      method:'POST',
-      headers:{ 'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true' },
-      body:JSON.stringify({ model:'claude-sonnet-4-20250514', max_tokens:3500, system:sys, messages:[{ role:'user', content:userContent }] })
+  // Detect PDF uploads that need manual drag into Claude
+  var pdfNames = [];
+  if (tool) {
+    tool.uploads.filter(u => u.type === 'pdf').forEach(u => {
+      var fd = STATE[toolId].files[u.id];
+      if (fd && fd.base64) pdfNames.push(fd.name || u.label);
     });
-
-    clearInterval(timer);
-    if (!resp.ok) { var e=await resp.json(); throw new Error(((e.error||{}).message)||'API error '+resp.status); }
-    var data = await resp.json();
-    var text = data.content.filter(b=>b.type==='text').map(b=>b.text).join('');
-    STATE[toolId].result = text;
-
-    document.getElementById('pfill-'+toolId).style.width='100%';
-    document.getElementById('pstep-'+toolId).textContent='Done.';
-    setTimeout(()=>{
-      loadEl.classList.remove('show');
-      resEl.classList.add('show');
-      document.getElementById('rtitle-'+toolId).textContent = (tool?tool.name:'PIPELINE') + (d.addr?' — '+d.addr:'');
-      document.getElementById('rout-'+toolId).innerHTML = renderMD(text);
-      if (runBtn) runBtn.disabled = false;
-      // Enable PPTX for ISR
-      if (toolId==='isr') { var pb=document.getElementById('pptx-btn-isr'); if(pb) pb.disabled=false; }
-    }, 500);
-
-  } catch(err) {
-    clearInterval(timer);
-    loadEl.classList.remove('show');
-    if (runBtn) runBtn.disabled = false;
-    alert('Error: '+err.message);
   }
+
+  // Copy prompt to clipboard
+  try {
+    await navigator.clipboard.writeText(fullPrompt);
+  } catch(e) {
+    var ta = document.createElement('textarea');
+    ta.value = fullPrompt;
+    ta.style.cssText = 'position:fixed;top:-9999px;left:-9999px';
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+  }
+
+  window.open('https://claude.ai/new', '_blank');
+
+  var msg = pdfNames.length
+    ? `Prompt copied — paste in Claude, then upload: ${pdfNames.join(', ')}`
+    : 'Prompt copied — paste in Claude (Ctrl+V)';
+  showToast(msg);
+}
+
+function showToast(msg) {
+  var t = document.getElementById('ridge-toast');
+  if (!t) {
+    t = document.createElement('div');
+    t.id = 'ridge-toast';
+    t.style.cssText = 'position:fixed;bottom:28px;right:28px;background:var(--navy);border:1px solid var(--blue);color:var(--text);padding:13px 20px;border-radius:var(--r);font-size:13px;z-index:9999;opacity:0;transition:opacity .3s;max-width:380px;line-height:1.5;box-shadow:0 4px 20px rgba(0,0,0,.4)';
+    document.body.appendChild(t);
+  }
+  t.textContent = msg;
+  t.style.opacity = '1';
+  clearTimeout(t._timer);
+  t._timer = setTimeout(() => { t.style.opacity = '0'; }, 4000);
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -1804,19 +1753,6 @@ function extractRisks(text){
   return risks.length?risks.slice(0,8):null;
 }
 
-// ═══════════════════════════════════════════════════════════
-//  API KEY
-// ═══════════════════════════════════════════════════════════
-function getApiKey(){return localStorage.getItem('ridge_api_key')||'';}
-function showApi(){document.getElementById('api-input').value=getApiKey();document.getElementById('api-modal').classList.add('show');}
-function closeApi(){document.getElementById('api-modal').classList.remove('show');}
-function saveApi(){
-  var k=document.getElementById('api-input').value.trim(); if(!k)return;
-  localStorage.setItem('ridge_api_key',k);
-  var b=document.getElementById('api-btn'); b.textContent='✓ Key Set'; b.classList.add('set');
-  closeApi();
-}
-(function(){if(getApiKey()){var b=document.getElementById('api-btn');b.textContent='✓ Key Set';b.classList.add('set');}})();
 
 // ═══════════════════════════════════════════════════════════
 //  DRAG & DROP for all upload zones
