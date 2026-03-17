@@ -42,6 +42,14 @@ main{max-width:1120px;margin:0 auto;padding:32px 20px;}
 .sec-hdr{display:flex;align-items:center;gap:10px;margin-bottom:18px;}
 .sec-title{font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--muted);}
 
+/* RIDGE LAUNCH */
+.ridge-launch{display:flex;align-items:center;justify-content:space-between;background:var(--navy);border:1px solid #2d3a7a;border-radius:var(--r);padding:24px 28px;margin-bottom:12px;gap:24px;}
+.rl-label{font-size:9px;font-weight:700;letter-spacing:2px;color:#cadcfc;text-transform:uppercase;margin-bottom:6px;}
+.rl-name{font-family:var(--mono);font-size:28px;font-weight:800;color:#fff;letter-spacing:4px;margin-bottom:6px;}
+.rl-desc{font-size:12px;color:#cadcfc;max-width:520px;line-height:1.6;}
+.rl-btn{display:inline-flex;align-items:center;gap:8px;background:#fff;color:var(--navy);padding:11px 24px;border-radius:var(--r);font-size:13px;font-weight:700;text-decoration:none;white-space:nowrap;letter-spacing:.5px;transition:opacity .15s;flex-shrink:0;}
+.rl-btn:hover{opacity:.9;}
+
 /* TOOL GRID */
 .tool-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:8px;margin-bottom:8px;}
 .tool-card{background:var(--surface);border:1px solid var(--border);border-left:2px solid transparent;border-radius:var(--r);padding:14px 16px;cursor:pointer;transition:border-color .15s,background .15s;}
@@ -214,8 +222,18 @@ footer{border-top:1px solid var(--border);padding:20px 24px;text-align:center;co
   </div>
 </div>
 
-<!-- ═══ TOOLS ═══ -->
-<div class="sec-hdr"><span class="sec-title">Integrated Skill Modules</span><span style="font-size:11px;color:var(--faint)">11 Active · Click any tile to expand</span></div>
+<!-- ═══ RIDGE LAUNCH ═══ -->
+<div class="ridge-launch">
+  <div class="rl-left">
+    <div class="rl-label">PRIMARY SKILL</div>
+    <div class="rl-name">RIDGE</div>
+    <div class="rl-desc">Senior acquisitions partner. Sourcing, underwriting, conviction, and deal management — all in one session.</div>
+  </div>
+  <a class="rl-btn" href="https://claude.ai/new?q=Begin+RIDGE+session.+I+am+ready+to+source+and+evaluate+deals." target="_blank" rel="noopener">↗ Launch RIDGE</a>
+</div>
+
+<!-- ═══ SUPPORT SKILLS ═══ -->
+<div class="sec-hdr" style="margin-top:32px"><span class="sec-title">Support Skills</span><span style="font-size:11px;color:var(--faint)">11 Active · Click any tile to expand</span></div>
 <div class="tool-grid" id="tool-grid"><div class="tool-card open" id="card-lens">
       <div class="tc-row"><span class="tc-num">01</span><span class="tc-name">LENS</span></div>
       <div class="tc-desc">Broker OM teardown. Bear / Base / Bull · max entry price.</div>
