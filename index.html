@@ -6,6 +6,7 @@
 <title>RIDGE — Real Intelligence for Deal Generation & Evaluation</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pptxgenjs/3.12.0/pptxgen.bundle.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <style>
 :root {
   --bg:#0d1117;--surface:#161b22;--surface2:#1c2128;--border:#30363d;
@@ -161,10 +162,34 @@ textarea{resize:vertical;min-height:72px;}
 footer{border-top:1px solid var(--border);padding:20px 24px;text-align:center;color:var(--faint);font-size:11px;letter-spacing:1px;margin-top:40px;}
 ::-webkit-scrollbar{width:5px;}
 ::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px;}
+
+/* MODAL (launch) */
+.modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:999;align-items:center;justify-content:center;}
+.modal-bg.show{display:flex;}
+.modal{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:28px;width:100%;max-width:460px;position:relative;}
+.modal h3{font-size:15px;font-weight:700;margin-bottom:6px;}
+.modal p{font-size:12px;color:var(--muted);line-height:1.6;}
+.modal-btns{display:flex;gap:8px;justify-content:flex-end;margin-top:14px;}
+.xbtn{position:absolute;top:12px;right:14px;background:none;border:none;color:var(--muted);font-size:18px;cursor:pointer;line-height:1;}
 </style>
 </head>
 <body>
 
+
+<!-- LAUNCH MODAL -->
+<div class="modal-bg" id="launch-modal">
+  <div class="modal" style="max-width:580px;">
+    <button class="xbtn" onclick="closeLaunch()">✕</button>
+    <h3 id="launch-title">Ready to Launch</h3>
+    <p id="launch-sub" style="margin-bottom:12px;"></p>
+    <textarea id="launch-prompt" style="width:100%;height:220px;font-size:11px;font-family:var(--mono);resize:vertical;margin-bottom:4px;" readonly></textarea>
+    <div style="font-size:11px;color:var(--muted);margin-bottom:14px;" id="launch-note"></div>
+    <div class="modal-btns">
+      <button class="btn btn-o" onclick="closeLaunch()">Cancel</button>
+      <button class="btn btn-p" id="launch-go-btn" onclick="copyAndLaunch()">↗ Copy &amp; Open Claude</button>
+    </div>
+  </div>
+</div>
 
 <!-- HEADER -->
 <header>
@@ -1317,31 +1342,60 @@ function handleXLSX(toolId, uploadId, input) {
 
 function handleFile(toolId, uploadId, input, type) {
   var file = input.files[0]; if (!file) return;
-  var uz = document.getElementById(`uz-${toolId}-${uploadId}`);
-  var st = document.getElementById(`uzst-${toolId}-${uploadId}`);
+  var uz = document.getElementById('uz-' + toolId + '-' + uploadId);
+  var st = document.getElementById('uzst-' + toolId + '-' + uploadId);
   st.textContent = 'Reading...'; st.className = 'uz-st';
 
-  if (type === 'pdf') {
+  if (type === 'pdf' || file.name.toLowerCase().endsWith('.pdf')) {
     var reader = new FileReader();
     reader.onload = function(e) {
-      STATE[toolId].files[uploadId] = { base64: e.target.result.split(',')[1], name: file.name };
-      uz.classList.add('loaded');
-      st.textContent = `✓ ${file.name} (${(file.size/1024/1024).toFixed(1)} MB)`;
-    };
-    reader.readAsDataURL(file);
-  } else {
-    // Try xlsx first, fallback to text
-    if (file.name.endsWith('.xlsx') || file.name.endsWith('.xls')) {
-      handleXLSX(toolId, uploadId, input);
-    } else {
-      var reader2 = new FileReader();
-      reader2.onload = function(e) {
-        STATE[toolId].files[uploadId] = e.target.result;
+      var arrBuf = e.target.result;
+      // Use PDF.js to extract text
+      if (window.pdfjsLib) {
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+        pdfjsLib.getDocument({ data: arrBuf }).promise.then(function(pdf) {
+          var pages = [];
+          var total = pdf.numPages;
+          for (var i = 1; i <= total; i++) {
+            pages.push(pdf.getPage(i).then(function(page) {
+              return page.getTextContent().then(function(tc) {
+                return tc.items.map(function(s) { return s.str; }).join(' ');
+              });
+            }));
+          }
+          Promise.all(pages).then(function(texts) {
+            var fullText = texts.join('\n');
+            STATE[toolId].files[uploadId] = fullText;
+            uz.classList.add('loaded');
+            st.textContent = '✓ ' + file.name + ' (' + total + ' pages extracted)';
+          });
+        }).catch(function(err) {
+          // Fallback: store as base64 if PDF.js fails
+          var b64reader = new FileReader();
+          b64reader.onload = function(e2) {
+            STATE[toolId].files[uploadId] = '[PDF: ' + file.name + ' — upload manually in Claude]';
+            uz.classList.add('loaded');
+            st.textContent = '✓ ' + file.name + ' (upload manually in Claude)';
+          };
+          b64reader.readAsDataURL(file);
+        });
+      } else {
+        STATE[toolId].files[uploadId] = '[PDF: ' + file.name + ' — upload manually in Claude]';
         uz.classList.add('loaded');
-        st.textContent = `✓ ${file.name}`;
-      };
-      reader2.readAsText(file);
-    }
+        st.textContent = '✓ ' + file.name + ' (upload manually in Claude)';
+      }
+    };
+    reader.readAsArrayBuffer(file);
+  } else if (file.name.endsWith('.xlsx') || file.name.endsWith('.xls')) {
+    handleXLSX(toolId, uploadId, input);
+  } else {
+    var reader2 = new FileReader();
+    reader2.onload = function(e) {
+      STATE[toolId].files[uploadId] = e.target.result;
+      uz.classList.add('loaded');
+      st.textContent = '✓ ' + file.name;
+    };
+    reader2.readAsText(file);
   }
 }
 
@@ -1391,25 +1445,72 @@ function runTool(toolId) {
     d.notes  = document.getElementById('pl-notes').value.trim();
   }
 
-  // Detect uploaded PDFs (need manual drag into Claude)
-  var pdfNames = [];
+  // Build trigger + append extracted file data
+  var trigger = buildTrigger(toolId, d);
+  var fileData = '';
   if (tool) {
-    tool.uploads.filter(u => u.type === 'pdf').forEach(u => {
-      var fd = STATE[toolId].files[u.id];
-      if (fd && fd.base64) pdfNames.push(fd.name || u.label);
+    Object.keys(STATE[toolId].files).forEach(function(uploadId) {
+      var fd = STATE[toolId].files[uploadId];
+      if (typeof fd === 'string' && fd.length > 0 && !fd.startsWith('[PDF:')) {
+        // Truncate very large extracts to 6000 chars
+        var excerpt = fd.length > 6000 ? fd.slice(0, 6000) + '\n[... truncated ...]' : fd;
+        fileData += '\n\n=== UPLOADED FILE DATA ===\n' + excerpt;
+      }
     });
   }
 
-  // Build short trigger prompt from key fields
-  var p = buildTrigger(toolId, d);
+  var fullPrompt = trigger + fileData;
 
-  var encoded = encodeURIComponent(p);
-  window.open('https://claude.ai/new?q=' + encoded, '_blank');
+  // Check for PDFs that couldn't be extracted
+  var manualPDFs = [];
+  if (tool) {
+    Object.keys(STATE[toolId].files).forEach(function(uploadId) {
+      var fd = STATE[toolId].files[uploadId];
+      if (typeof fd === 'string' && fd.startsWith('[PDF:')) {
+        manualPDFs.push(fd.replace('[PDF: ', '').replace(' — upload manually in Claude]', ''));
+      }
+    });
+  }
 
-  var msg = pdfNames.length
-    ? 'Launched — also upload in Claude: ' + pdfNames.join(', ')
-    : 'Launched in Claude';
-  showToast(msg);
+  // Show launch modal
+  document.getElementById('launch-title').textContent = (tool ? tool.name : 'PIPELINE') + ' — Ready to Launch';
+  document.getElementById('launch-sub').textContent = 'Review the prompt below, then click Copy & Open Claude. Paste with Ctrl+V.';
+  document.getElementById('launch-prompt').value = fullPrompt;
+  document.getElementById('launch-note').textContent = manualPDFs.length
+    ? '⚠ Upload manually in Claude: ' + manualPDFs.join(', ')
+    : '';
+  document.getElementById('launch-modal').classList.add('show');
+}
+
+function copyAndLaunch() {
+  var prompt = document.getElementById('launch-prompt').value;
+  var btn = document.getElementById('launch-go-btn');
+  // Copy to clipboard
+  try {
+    navigator.clipboard.writeText(prompt).catch(function() { fallbackCopy(prompt); });
+  } catch(e) { fallbackCopy(prompt); }
+
+  window.open('https://claude.ai/new', '_blank');
+  btn.textContent = '✓ Copied — paste in Claude';
+  setTimeout(function() {
+    closeLaunch();
+    btn.textContent = '↗ Copy & Open Claude';
+    showToast('Paste with Ctrl+V to run');
+  }, 1200);
+}
+
+function fallbackCopy(text) {
+  var ta = document.createElement('textarea');
+  ta.value = text;
+  ta.style.cssText = 'position:fixed;top:-9999px;left:-9999px';
+  document.body.appendChild(ta);
+  ta.select();
+  document.execCommand('copy');
+  document.body.removeChild(ta);
+}
+
+function closeLaunch() {
+  document.getElementById('launch-modal').classList.remove('show');
 }
 
 function buildTrigger(toolId, d) {
