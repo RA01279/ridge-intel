@@ -1,1613 +1,1850 @@
 <!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>RIDGE — Real Intelligence for Deal Generation & Evaluation</title>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,300&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
-  <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-    :root {
-      --navy:       #1E2761;
-      --navy-light: #263580;
-      --midnight:   #0A0E1A;
-      --dark:       #0F1423;
-      --card:       #141928;
-      --card-hover: #1A2035;
-      --border:     rgba(255,255,255,0.07);
-      --border-bright: rgba(255,255,255,0.15);
-      --gold:       #C9A84C;
-      --gold-light: #DFC06B;
-      --white:      #F0F2F8;
-      --muted:      #8B91A8;
-      --green:      #22C55E;
-      --accent-red: #C8102E;
-    }
-
-    html { scroll-behavior: smooth; }
-
-    body {
-      font-family: 'Inter', sans-serif;
-      background: var(--midnight);
-      color: var(--white);
-      line-height: 1.6;
-      min-height: 100vh;
-      overflow-x: hidden;
-    }
-
-    /* ── GRID BACKGROUND ── */
-    body::before {
-      content: '';
-      position: fixed;
-      inset: 0;
-      background-image:
-        linear-gradient(rgba(30,39,97,0.15) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(30,39,97,0.15) 1px, transparent 1px);
-      background-size: 48px 48px;
-      pointer-events: none;
-      z-index: 0;
-    }
-
-    /* ── GLOW ── */
-    .glow-orb {
-      position: fixed;
-      border-radius: 50%;
-      filter: blur(120px);
-      pointer-events: none;
-      z-index: 0;
-    }
-    .glow-orb-1 {
-      width: 600px; height: 600px;
-      background: radial-gradient(circle, rgba(30,39,97,0.4) 0%, transparent 70%);
-      top: -200px; left: -200px;
-    }
-    .glow-orb-2 {
-      width: 400px; height: 400px;
-      background: radial-gradient(circle, rgba(201,168,76,0.08) 0%, transparent 70%);
-      top: 30%; right: -100px;
-    }
-
-    /* ── NAV ── */
-    nav {
-      position: fixed;
-      top: 0; left: 0; right: 0;
-      z-index: 100;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 0 48px;
-      height: 64px;
-      background: rgba(10,14,26,0.85);
-      backdrop-filter: blur(12px);
-      border-bottom: 1px solid var(--border);
-    }
-
-    .nav-logo {
-      font-family: 'Space Mono', monospace;
-      font-size: 18px;
-      font-weight: 700;
-      letter-spacing: 0.12em;
-      color: var(--white);
-    }
-    .nav-logo span { color: var(--gold); }
-
-    .nav-status {
-      display: flex;
-      align-items: center;
-      gap: 24px;
-    }
-
-    .status-pill {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      font-size: 11px;
-      font-weight: 600;
-      letter-spacing: 0.1em;
-      text-transform: uppercase;
-      color: var(--muted);
-    }
-    .status-pill .dot {
-      width: 7px; height: 7px;
-      border-radius: 50%;
-      background: var(--green);
-      box-shadow: 0 0 6px var(--green);
-      animation: pulse 2s ease-in-out infinite;
-    }
-    @keyframes pulse {
-      0%, 100% { opacity: 1; }
-      50% { opacity: 0.5; }
-    }
-
-    .nav-build {
-      font-size: 11px;
-      font-weight: 500;
-      color: var(--muted);
-      font-family: 'Space Mono', monospace;
-    }
-
-    /* ── HERO ── */
-    .hero {
-      position: relative;
-      z-index: 1;
-      padding: 160px 48px 80px;
-      max-width: 1200px;
-      margin: 0 auto;
-    }
-
-    .hero-eyebrow {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      font-size: 11px;
-      font-weight: 600;
-      letter-spacing: 0.18em;
-      text-transform: uppercase;
-      color: var(--gold);
-      margin-bottom: 24px;
-      padding: 6px 14px;
-      border: 1px solid rgba(201,168,76,0.3);
-      border-radius: 4px;
-      background: rgba(201,168,76,0.05);
-    }
-
-    .hero-title {
-      font-size: clamp(52px, 7vw, 92px);
-      font-weight: 800;
-      letter-spacing: -0.02em;
-      line-height: 1;
-      margin-bottom: 8px;
-    }
-    .hero-title .ridge { color: var(--white); }
-    .hero-title .dot-sep { color: var(--gold); margin: 0 12px; }
-
-    .hero-subtitle {
-      font-family: 'Space Mono', monospace;
-      font-size: clamp(11px, 1.2vw, 13px);
-      letter-spacing: 0.14em;
-      text-transform: uppercase;
-      color: var(--muted);
-      margin-bottom: 32px;
-    }
-
-    .hero-desc {
-      font-size: 18px;
-      font-weight: 300;
-      color: rgba(240,242,248,0.7);
-      max-width: 600px;
-      margin-bottom: 48px;
-      line-height: 1.7;
-    }
-
-    .hero-stats {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 0;
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      overflow: hidden;
-      max-width: 740px;
-      background: rgba(20,25,40,0.6);
-    }
-
-    .stat-block {
-      flex: 1;
-      min-width: 120px;
-      padding: 20px 24px;
-      border-right: 1px solid var(--border);
-    }
-    .stat-block:last-child { border-right: none; }
-
-    .stat-label {
-      font-size: 10px;
-      font-weight: 600;
-      letter-spacing: 0.12em;
-      text-transform: uppercase;
-      color: var(--muted);
-      margin-bottom: 6px;
-    }
-    .stat-value {
-      font-family: 'Space Mono', monospace;
-      font-size: 15px;
-      font-weight: 700;
-      color: var(--gold);
-    }
-
-    /* ── SECTION ── */
-    section {
-      position: relative;
-      z-index: 1;
-      padding: 0 48px 80px;
-      max-width: 1200px;
-      margin: 0 auto;
-    }
-
-    .section-header {
-      display: flex;
-      align-items: baseline;
-      gap: 16px;
-      margin-bottom: 40px;
-      padding-bottom: 20px;
-      border-bottom: 1px solid var(--border);
-    }
-
-    .section-label {
-      font-size: 10px;
-      font-weight: 700;
-      letter-spacing: 0.2em;
-      text-transform: uppercase;
-      color: var(--gold);
-    }
-
-    .section-title {
-      font-size: 28px;
-      font-weight: 700;
-      letter-spacing: -0.01em;
-    }
-
-    .section-count {
-      margin-left: auto;
-      font-family: 'Space Mono', monospace;
-      font-size: 12px;
-      color: var(--muted);
-    }
-
-    /* ── DIVIDER ── */
-    .divider {
-      position: relative;
-      z-index: 1;
-      max-width: 1200px;
-      margin: 0 auto 60px;
-      padding: 0 48px;
-    }
-    .divider hr {
-      border: none;
-      border-top: 1px solid var(--border);
-    }
-
-    /* ── HOLDING COMPANY CARD ── */
-    .holding-card {
-      background: linear-gradient(135deg, #1E2761 0%, #141928 60%);
-      border: 1px solid rgba(30,39,97,0.8);
-      border-radius: 12px;
-      padding: 48px;
-      margin-bottom: 80px;
-      position: relative;
-      overflow: hidden;
-    }
-
-    .holding-card::before {
-      content: 'RIDGE';
-      position: absolute;
-      right: -20px; top: -30px;
-      font-family: 'Space Mono', monospace;
-      font-size: 160px;
-      font-weight: 700;
-      color: rgba(255,255,255,0.03);
-      letter-spacing: -0.05em;
-      pointer-events: none;
-      user-select: none;
-    }
-
-    .holding-header {
-      display: flex;
-      align-items: flex-start;
-      justify-content: space-between;
-      gap: 32px;
-      margin-bottom: 40px;
-    }
-
-    .holding-badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      font-size: 10px;
-      font-weight: 700;
-      letter-spacing: 0.18em;
-      text-transform: uppercase;
-      color: var(--gold);
-      padding: 5px 12px;
-      border: 1px solid rgba(201,168,76,0.4);
-      border-radius: 4px;
-      background: rgba(201,168,76,0.08);
-      margin-bottom: 16px;
-    }
-
-    .holding-name {
-      font-size: 36px;
-      font-weight: 800;
-      letter-spacing: -0.02em;
-      margin-bottom: 8px;
-    }
-
-    .holding-tagline {
-      font-size: 14px;
-      color: rgba(240,242,248,0.6);
-      max-width: 500px;
-    }
-
-    .holding-criteria {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-      gap: 16px;
-    }
-
-    .criteria-item {
-      background: rgba(0,0,0,0.2);
-      border: 1px solid rgba(255,255,255,0.06);
-      border-radius: 8px;
-      padding: 16px 20px;
-    }
-
-    .criteria-label {
-      font-size: 10px;
-      font-weight: 600;
-      letter-spacing: 0.12em;
-      text-transform: uppercase;
-      color: var(--muted);
-      margin-bottom: 6px;
-    }
-
-    .criteria-value {
-      font-size: 14px;
-      font-weight: 600;
-      color: var(--white);
-    }
-    .criteria-value .highlight { color: var(--gold); }
-
-    /* ── SKILL GRID ── */
-    .skills-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
-      gap: 20px;
-    }
-
-    .skill-card {
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 32px;
-      transition: all 0.25s ease;
-      position: relative;
-      overflow: hidden;
-      cursor: default;
-    }
-
-    .skill-card::after {
-      content: '';
-      position: absolute;
-      top: 0; left: 0; right: 0;
-      height: 2px;
-      background: linear-gradient(90deg, transparent, var(--skill-accent, var(--navy)), transparent);
-      opacity: 0;
-      transition: opacity 0.25s ease;
-    }
-
-    .skill-card:hover {
-      background: var(--card-hover);
-      border-color: var(--border-bright);
-      transform: translateY(-2px);
-    }
-    .skill-card:hover::after { opacity: 1; }
-
-    /* accent colors per card */
-    .skill-card.scout    { --skill-accent: #3B82F6; }
-    .skill-card.gavel    { --skill-accent: #C9A84C; }
-    .skill-card.legal    { --skill-accent: #8B5CF6; }
-    .skill-card.acq      { --skill-accent: #10B981; }
-    .skill-card.comp-map { --skill-accent: #F97316; }
-    .skill-card.canvas   { --skill-accent: #06B6D4; }
-    .skill-card.pipeline      { --skill-accent: #C9A84C; }
-    .skill-card.napkin        { --skill-accent: #14B8A6; }
-    .skill-card.loi           { --skill-accent: #3B82F6; }
-    .skill-card.debt          { --skill-accent: #F59E0B; }
-    .skill-card.memory        { --skill-accent: #A855F7; }
-    .skill-card.pulse         { --skill-accent: #22C55E; }
-    .skill-card.dd            { --skill-accent: #F97316; }
-    .skill-card.canvas-panel  { --skill-accent: #6366F1; }
-    .skill-card.lens          { --skill-accent: #EC4899; }
-
-    .card-num {
-      font-family: 'Space Mono', monospace;
-      font-size: 10px;
-      font-weight: 700;
-      color: var(--skill-accent);
-      opacity: 0.55;
-      letter-spacing: 0.12em;
-      margin-bottom: 2px;
-    }
-
-    .card-top {
-      display: flex;
-      align-items: flex-start;
-      justify-content: space-between;
-      margin-bottom: 20px;
-    }
-
-    .card-icon {
-      width: 44px; height: 44px;
-      border-radius: 10px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 20px;
-      background: rgba(255,255,255,0.04);
-      border: 1px solid var(--border);
-    }
-
-    .card-status {
-      display: flex;
-      align-items: center;
-      gap: 5px;
-      font-size: 10px;
-      font-weight: 700;
-      letter-spacing: 0.12em;
-      text-transform: uppercase;
-      color: var(--green);
-    }
-    .card-status .sdot {
-      width: 6px; height: 6px;
-      border-radius: 50%;
-      background: var(--green);
-      box-shadow: 0 0 5px var(--green);
-      animation: pulse 2s ease-in-out infinite;
-    }
-
-    .card-codename {
-      font-family: 'Space Mono', monospace;
-      font-size: 10px;
-      color: var(--muted);
-      letter-spacing: 0.1em;
-      text-transform: uppercase;
-      margin-bottom: 6px;
-    }
-
-    .card-name {
-      font-size: 20px;
-      font-weight: 700;
-      letter-spacing: -0.01em;
-      margin-bottom: 10px;
-      line-height: 1.2;
-    }
-
-    .card-desc {
-      font-size: 13px;
-      color: rgba(240,242,248,0.6);
-      line-height: 1.65;
-      margin-bottom: 24px;
-    }
-
-    .card-section-label {
-      font-size: 9px;
-      font-weight: 700;
-      letter-spacing: 0.18em;
-      text-transform: uppercase;
-      color: var(--muted);
-      margin-bottom: 8px;
-    }
-
-    .trigger-pills {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 6px;
-      margin-bottom: 20px;
-    }
-
-    .pill {
-      font-size: 11px;
-      font-weight: 500;
-      padding: 3px 9px;
-      border-radius: 4px;
-      background: rgba(255,255,255,0.05);
-      border: 1px solid var(--border);
-      color: rgba(240,242,248,0.7);
-      font-family: 'Space Mono', monospace;
-    }
-
-    .output-list {
-      list-style: none;
-      display: flex;
-      flex-direction: column;
-      gap: 5px;
-    }
-
-    .output-list li {
-      font-size: 12px;
-      color: rgba(240,242,248,0.65);
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .output-list li::before {
-      content: '';
-      width: 16px; height: 16px;
-      border-radius: 4px;
-      background: rgba(255,255,255,0.05);
-      border: 1px solid var(--border);
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      flex-shrink: 0;
-      font-size: 9px;
-      color: var(--muted);
-    }
-
-    .output-tag {
-      display: inline-flex;
-      align-items: center;
-      gap: 4px;
-      font-size: 10px;
-      font-weight: 600;
-      letter-spacing: 0.06em;
-      padding: 2px 7px;
-      border-radius: 3px;
-      font-family: 'Space Mono', monospace;
-    }
-    .tag-pdf  { background: rgba(200,16,46,0.15);  color: #F87171; border: 1px solid rgba(200,16,46,0.3); }
-    .tag-xlsx { background: rgba(16,185,129,0.12); color: #6EE7B7; border: 1px solid rgba(16,185,129,0.3); }
-    .tag-pptx { background: rgba(249,115,22,0.12); color: #FDBA74; border: 1px solid rgba(249,115,22,0.3); }
-    .tag-html { background: rgba(59,130,246,0.12); color: #93C5FD; border: 1px solid rgba(59,130,246,0.3); }
-    .tag-tbl  { background: rgba(139,92,246,0.12); color: #C4B5FD; border: 1px solid rgba(139,92,246,0.3); }
-
-    .card-divider {
-      border: none;
-      border-top: 1px solid var(--border);
-      margin: 20px 0;
-    }
-
-    .card-footer {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-    }
-
-    .card-file {
-      font-family: 'Space Mono', monospace;
-      font-size: 9px;
-      color: var(--muted);
-      opacity: 0.6;
-    }
-
-    .card-mode-badge {
-      font-size: 10px;
-      font-weight: 600;
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-      padding: 3px 9px;
-      border-radius: 4px;
-      background: rgba(255,255,255,0.04);
-      border: 1px solid var(--border);
-      color: var(--muted);
-    }
-
-    .launch-btn {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-      width: 100%;
-      margin-top: 16px;
-      padding: 10px 16px;
-      border-radius: 6px;
-      border: 1px solid rgba(255,255,255,0.12);
-      background: rgba(255,255,255,0.04);
-      color: rgba(240,242,248,0.8);
-      font-size: 12px;
-      font-weight: 600;
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-      text-decoration: none;
-      transition: all 0.2s ease;
-      font-family: 'Inter', sans-serif;
-    }
-    .launch-btn:hover {
-      background: rgba(255,255,255,0.09);
-      border-color: rgba(255,255,255,0.25);
-      color: var(--white);
-      transform: translateY(-1px);
-    }
-    .launch-btn svg {
-      width: 13px; height: 13px;
-      opacity: 0.7;
-      flex-shrink: 0;
-    }
-
-    .card-inputs {
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-      margin-top: 16px;
-    }
-
-    .card-input {
-      width: 100%;
-      padding: 9px 12px;
-      background: rgba(0,0,0,0.25);
-      border: 1px solid var(--border);
-      border-radius: 6px;
-      color: var(--white);
-      font-size: 12px;
-      font-family: 'Inter', sans-serif;
-      outline: none;
-      transition: border-color 0.2s ease;
-      -webkit-appearance: none;
-    }
-    .card-input:focus { border-color: rgba(255,255,255,0.3); }
-    .card-input::placeholder { color: var(--muted); opacity: 1; }
-    select.card-input { cursor: pointer; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%238B91A8' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 10px center; padding-right: 28px; }
-    select.card-input option { background: #141928; color: #F0F2F8; }
-
-    /* ── PRINCIPLES ── */
-    .principles-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-      gap: 12px;
-    }
-
-    .principle-item {
-      display: flex;
-      gap: 16px;
-      align-items: flex-start;
-      padding: 16px 20px;
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-    }
-
-    .principle-num {
-      font-family: 'Space Mono', monospace;
-      font-size: 11px;
-      font-weight: 700;
-      color: var(--gold);
-      opacity: 0.7;
-      flex-shrink: 0;
-      margin-top: 2px;
-    }
-
-    .principle-text {
-      font-size: 13px;
-      color: rgba(240,242,248,0.7);
-      line-height: 1.5;
-    }
-
-    /* ── MARKETS ── */
-    .markets-row {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 12px;
-      margin-bottom: 80px;
-    }
-
-    .market-card {
-      flex: 1;
-      min-width: 160px;
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      padding: 20px 24px;
-      position: relative;
-    }
-
-    .market-card.primary {
-      border-color: rgba(201,168,76,0.3);
-      background: rgba(201,168,76,0.04);
-    }
-
-    .market-tier {
-      font-size: 9px;
-      font-weight: 700;
-      letter-spacing: 0.2em;
-      text-transform: uppercase;
-      color: var(--muted);
-      margin-bottom: 6px;
-    }
-    .market-card.primary .market-tier { color: var(--gold); }
-
-    .market-name {
-      font-size: 17px;
-      font-weight: 700;
-    }
-
-    .market-state {
-      font-size: 12px;
-      color: var(--muted);
-    }
-
-    .market-flag {
-      position: absolute;
-      top: 16px; right: 16px;
-      font-size: 10px;
-      font-weight: 600;
-      letter-spacing: 0.1em;
-      text-transform: uppercase;
-      color: var(--green);
-      padding: 2px 6px;
-      border: 1px solid rgba(34,197,94,0.3);
-      border-radius: 3px;
-      background: rgba(34,197,94,0.08);
-    }
-
-    .market-flag.watch {
-      color: #FBBF24;
-      border-color: rgba(251,191,36,0.3);
-      background: rgba(251,191,36,0.06);
-    }
-
-    /* ── FOOTER ── */
-    footer {
-      position: relative;
-      z-index: 1;
-      border-top: 1px solid var(--border);
-      padding: 40px 48px;
-      max-width: 1200px;
-      margin: 0 auto;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      flex-wrap: gap;
-      gap: 24px;
-    }
-
-    .footer-left {
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-    }
-
-    .footer-logo {
-      font-family: 'Space Mono', monospace;
-      font-size: 14px;
-      font-weight: 700;
-      letter-spacing: 0.1em;
-      color: var(--white);
-    }
-    .footer-logo span { color: var(--gold); }
-
-    .footer-sub {
-      font-size: 12px;
-      color: var(--muted);
-    }
-
-    .footer-right {
-      display: flex;
-      align-items: center;
-      gap: 24px;
-    }
-
-    .footer-meta {
-      font-family: 'Space Mono', monospace;
-      font-size: 10px;
-      color: var(--muted);
-      opacity: 0.6;
-      text-align: right;
-    }
-
-    /* ── RESPONSIVE ── */
-    @media (max-width: 768px) {
-      nav { padding: 0 24px; }
-      .hero, section, footer { padding-left: 24px; padding-right: 24px; }
-      .divider { padding: 0 24px; }
-      .holding-card { padding: 28px 24px; }
-      .hero-title { font-size: 44px; }
-      .nav-build { display: none; }
-      .skills-grid { grid-template-columns: 1fr; }
-      .hero-stats { flex-direction: column; }
-      .stat-block { border-right: none; border-bottom: 1px solid var(--border); }
-      .stat-block:last-child { border-bottom: none; }
-    }
-    /* ── FILE UPLOAD ── */
-    .file-drop {
-      margin-top: 8px;
-      border: 1px dashed rgba(255,255,255,0.15);
-      border-radius: 6px;
-      padding: 10px 12px;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      cursor: pointer;
-      transition: border-color 0.2s, background 0.2s;
-    }
-    .file-drop:hover {
-      border-color: rgba(255,255,255,0.3);
-      background: rgba(255,255,255,0.03);
-    }
-    .file-drop.has-file {
-      border-color: rgba(34,197,94,0.5);
-      background: rgba(34,197,94,0.05);
-    }
-    .file-drop svg { flex-shrink: 0; opacity: 0.45; }
-    .file-drop.has-file svg { opacity: 1; color: var(--green); }
-    .file-drop-label {
-      font-size: 11px;
-      color: var(--muted);
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-    .file-drop.has-file .file-drop-label { color: var(--green); }
-    .file-drop input[type="file"] { display: none; }
-
-    .clip-notice {
-      display: none;
-      margin-top: 6px;
-      font-size: 11px;
-      color: var(--green);
-      text-align: center;
-      letter-spacing: 0.05em;
-    }
-    .clip-notice.visible { display: block; }
-  </style>
-  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<!-- saved from url=(0056)file:///C:/Users/RhettAnderson/Downloads/ridge_v5_2.html -->
+<html lang="en"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RIDGE — Real Intelligence for Deal Generation &amp; Evaluation</title>
+<script src="./index_files/xlsx.full.min.js.download"></script>
+<script src="./index_files/pptxgen.bundle.js.download"></script>
+<style>
+:root {
+  --bg:#0d1117;--surface:#161b22;--surface2:#1c2128;--border:#30363d;
+  --navy:#1e2761;--blue:#2196F3;--blue-dim:#1565c0;
+  --green:#1b7a34;--green-bright:#2ea043;--red:#c0392b;--amber:#d97706;
+  --text:#e6edf3;--muted:#8b949e;--faint:#484f58;
+  --r:6px;--mono:'SF Mono','Fira Code',monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+html{scroll-behavior:smooth;}
+body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:14px;line-height:1.5;min-height:100vh;}
+
+/* HEADER */
+header{background:var(--surface);border-bottom:1px solid var(--border);padding:0 24px;height:52px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:200;}
+.hdr-logo{font-family:var(--mono);font-size:18px;font-weight:700;color:var(--blue);letter-spacing:2px;}
+.hdr-sub{color:var(--muted);font-size:11px;letter-spacing:1px;}
+.hdr-left{display:flex;align-items:center;gap:12px;}
+.hdr-right{display:flex;align-items:center;gap:12px;}
+.api-btn{background:var(--surface2);border:1px solid var(--border);color:var(--muted);padding:5px 14px;border-radius:var(--r);cursor:pointer;font-size:12px;transition:all .15s;}
+.api-btn:hover{border-color:var(--blue);color:var(--text);}
+.api-btn.set{border-color:var(--green-bright);color:var(--green-bright);}
+
+/* MODAL */
+.modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:999;align-items:center;justify-content:center;}
+.modal-bg.show{display:flex;}
+.modal{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:28px;width:100%;max-width:460px;position:relative;}
+.modal h3{font-size:15px;font-weight:700;margin-bottom:6px;}
+.modal p{font-size:12px;color:var(--muted);margin-bottom:16px;line-height:1.6;}
+.modal-btns{display:flex;gap:8px;justify-content:flex-end;margin-top:14px;}
+.xbtn{position:absolute;top:12px;right:14px;background:none;border:none;color:var(--muted);font-size:18px;cursor:pointer;line-height:1;}
+
+/* MAIN */
+main{max-width:1120px;margin:0 auto;padding:32px 20px;}
+
+/* HERO */
+.hero{text-align:center;padding:44px 0 36px;border-bottom:1px solid var(--border);margin-bottom:36px;}
+.hero-title{font-size:44px;font-weight:800;font-family:var(--mono);color:var(--blue);letter-spacing:4px;margin-bottom:6px;}
+.hero-sub{color:var(--muted);font-size:13px;letter-spacing:1px;margin-bottom:24px;}
+.hero-stats{display:flex;justify-content:center;gap:36px;flex-wrap:wrap;}
+.hs{text-align:center;}
+.hs-v{font-family:var(--mono);font-size:17px;font-weight:700;color:var(--text);}
+.hs-l{font-size:10px;color:var(--muted);letter-spacing:1px;margin-top:2px;}
+
+/* SECTION */
+.sec-hdr{display:flex;align-items:center;gap:10px;margin-bottom:18px;}
+.sec-title{font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--muted);}
+
+/* TOOL GRID */
+.tool-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(310px,1fr));gap:14px;margin-bottom:14px;}
+.tool-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:20px;cursor:pointer;transition:border-color .15s,transform .1s;}
+.tool-card:hover{border-color:var(--blue);transform:translateY(-1px);}
+.tool-card.open{border-color:var(--blue);background:var(--surface2);}
+.tc-hdr{display:flex;align-items:center;gap:10px;margin-bottom:8px;}
+.tc-icon{font-size:20px;}
+.tc-name{font-size:13px;font-weight:700;color:var(--text);}
+.tc-num{font-family:var(--mono);font-size:10px;color:var(--faint);margin-left:auto;}
+.tc-desc{font-size:12px;color:var(--muted);line-height:1.6;}
+.tc-badge{display:inline-block;font-size:10px;padding:2px 8px;border-radius:10px;border:1px solid var(--green-bright);color:var(--green-bright);margin-top:10px;letter-spacing:.5px;}
+.tc-badge.blue{border-color:var(--blue);color:var(--blue);}
+
+/* TOOL PANEL */
+.tool-panel{display:none;background:var(--surface);border:1px solid var(--blue);border-radius:var(--r);padding:0;margin-bottom:20px;overflow:hidden;animation:fadeIn .2s ease;}
+.tool-panel.open{display:block;}
+@keyframes fadeIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+.panel-head{background:var(--navy);padding:16px 20px;display:flex;align-items:center;gap:12px;}
+.panel-head-icon{font-size:20px;}
+.panel-head-title{font-size:15px;font-weight:700;color:#fff;}
+.panel-head-sub{font-size:11px;color:#cadcfc;margin-left:4px;}
+.panel-close{margin-left:auto;background:rgba(255,255,255,.1);border:none;color:#fff;padding:4px 10px;border-radius:var(--r);cursor:pointer;font-size:12px;}
+.panel-close:hover{background:rgba(255,255,255,.2);}
+.panel-body{padding:24px;}
+
+/* UPLOAD ZONE */
+.upload-row{display:grid;gap:14px;margin-bottom:20px;}
+.upload-row.two{grid-template-columns:1fr 1fr;}
+.upload-row.one{grid-template-columns:1fr;}
+.upload-group label{font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--blue);display:block;margin-bottom:8px;}
+.upload-group label span{color:var(--faint);font-weight:400;text-transform:none;letter-spacing:0;}
+.uz{border:1.5px dashed var(--border);border-radius:var(--r);padding:20px 14px;text-align:center;cursor:pointer;transition:all .15s;background:var(--bg);position:relative;}
+.uz:hover{border-color:var(--blue);background:var(--surface2);}
+.uz.loaded{border-color:var(--green-bright);border-style:solid;}
+.uz-ico{font-size:26px;margin-bottom:6px;color:var(--faint);}
+.uz.loaded .uz-ico{color:var(--green-bright);}
+.uz-t{font-size:12px;font-weight:600;color:var(--text);margin-bottom:3px;}
+.uz-s{font-size:11px;color:var(--muted);}
+.uz-st{font-size:11px;font-family:var(--mono);color:var(--green-bright);margin-top:6px;font-weight:600;}
+.uz-st.err{color:var(--red);}
+input[type=file]{display:none;}
+
+/* PARSED PREVIEW */
+.parsed-preview{background:var(--surface2);border:1px solid var(--border);border-radius:var(--r);padding:14px;margin-bottom:20px;display:none;}
+.parsed-title{font-size:10px;font-weight:700;letter-spacing:1px;color:var(--green-bright);margin-bottom:10px;}
+.parsed-kpis{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;}
+.kpi-chip{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:8px 12px;}
+.kpi-chip-l{font-size:10px;color:var(--muted);letter-spacing:.5px;text-transform:uppercase;}
+.kpi-chip-v{font-size:14px;font-weight:700;color:var(--text);font-family:var(--mono);}
+
+/* FORM */
+label.fl{font-size:11px;color:var(--muted);display:block;margin-bottom:4px;font-weight:500;}
+input[type=text],input[type=number],textarea,select{width:100%;background:var(--bg);border:1px solid var(--border);border-radius:var(--r);color:var(--text);padding:8px 12px;font-size:13px;font-family:inherit;outline:none;transition:border-color .15s;}
+input:focus,textarea:focus,select:focus{border-color:var(--blue);}
+textarea{resize:vertical;min-height:72px;}
+.fr{display:grid;gap:12px;margin-bottom:12px;}
+.fr.two{grid-template-columns:1fr 1fr;}
+.fr.three{grid-template-columns:1fr 1fr 1fr;}
+.fr.one{grid-template-columns:1fr;}
+.fg{display:flex;flex-direction:column;}
+.manual-toggle{font-size:12px;color:var(--muted);cursor:pointer;display:flex;align-items:center;gap:6px;margin-bottom:14px;user-select:none;border-top:1px solid var(--border);padding-top:16px;}
+.manual-toggle:hover{color:var(--text);}
+.manual-body{display:none;}
+.manual-body.open{display:block;}
+
+/* BUTTONS */
+.btn{display:inline-flex;align-items:center;gap:7px;padding:9px 18px;border-radius:var(--r);font-size:13px;font-weight:600;cursor:pointer;border:none;transition:all .15s;font-family:inherit;}
+.btn-p{background:var(--blue);color:#fff;}
+.btn-p:hover{background:var(--blue-dim);}
+.btn-p:disabled{background:var(--faint);cursor:not-allowed;}
+.btn-o{background:transparent;border:1px solid var(--border);color:var(--muted);}
+.btn-o:hover{border-color:var(--blue);color:var(--text);}
+.btn-g{background:var(--green);color:#fff;}
+.btn-g:hover{background:var(--green-bright);}
+.btn-row{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px;}
+
+/* LOADING */
+.loading{display:none;background:var(--bg);border:1px solid var(--border);border-radius:var(--r);padding:18px 22px;margin:18px 0;}
+.loading.show{display:block;}
+.loading-lbl{font-size:12px;color:var(--muted);margin-bottom:8px;}
+.pbar{height:3px;background:var(--border);border-radius:2px;overflow:hidden;margin-bottom:8px;}
+.pfill{height:100%;background:var(--blue);border-radius:2px;transition:width .4s ease;width:0%;}
+.pstep{font-size:12px;font-family:var(--mono);color:var(--blue);}
+
+/* RESULTS */
+.results{display:none;margin-top:22px;}
+.results.show{display:block;}
+.res-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;padding-bottom:12px;border-bottom:1px solid var(--border);}
+.res-title{font-size:14px;font-weight:700;}
+.res-actions{display:flex;gap:8px;}
+.res-body{background:var(--bg);border:1px solid var(--border);border-radius:var(--r);padding:22px;font-size:13px;line-height:1.8;white-space:pre-wrap;max-height:560px;overflow-y:auto;}
+.res-body h2{font-size:14px;font-weight:700;color:var(--blue);margin:18px 0 7px;border-bottom:1px solid var(--border);padding-bottom:5px;}
+.res-body h3{font-size:13px;font-weight:700;color:var(--text);margin:12px 0 5px;}
+.res-body table{width:100%;border-collapse:collapse;margin:10px 0;font-size:12px;}
+.res-body th{background:var(--navy);color:#fff;padding:7px 11px;text-align:left;font-weight:600;}
+.res-body td{padding:6px 11px;border-bottom:1px solid var(--border);}
+.res-body tr:nth-child(even) td{background:var(--surface2);}
+.res-body .rec{background:var(--navy);border:1px solid var(--blue);border-radius:var(--r);padding:14px 18px;margin:14px 0;text-align:center;font-size:15px;font-weight:800;letter-spacing:2px;color:var(--blue);}
+.res-body .rec.pass{border-color:var(--red);color:var(--red);background:rgba(192,57,43,.08);}
+.res-body .rec.cond{border-color:var(--amber);color:var(--amber);background:rgba(217,119,6,.08);}
+.gc{color:var(--green-bright);font-weight:700;}
+.rc{color:var(--red);font-weight:700;}
+.ac{color:var(--amber);font-weight:700;}
+
+/* PIPELINE SPECIAL */
+.pipeline-section{margin-top:48px;border-top:1px solid var(--border);padding-top:32px;}
+.pipeline-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:24px;cursor:pointer;transition:border-color .15s;}
+.pipeline-card:hover{border-color:var(--blue);}
+.pipeline-card.open{border-color:var(--blue);}
+
+/* ROUTING TABLE */
+.rt-wrap{overflow-x:auto;margin-top:8px;}
+.rt{width:100%;border-collapse:collapse;font-size:12px;}
+.rt th{background:var(--navy);color:#fff;padding:8px 12px;text-align:left;font-size:11px;letter-spacing:.5px;}
+.rt td{padding:7px 12px;border-bottom:1px solid var(--border);}
+.rt tr:hover td{background:var(--surface2);}
+
+footer{border-top:1px solid var(--border);padding:20px 24px;text-align:center;color:var(--faint);font-size:11px;letter-spacing:1px;margin-top:40px;}
+::-webkit-scrollbar{width:5px;}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px;}
+</style>
 </head>
 <body>
 
-  <!-- Background -->
-  <div class="glow-orb glow-orb-1"></div>
-  <div class="glow-orb glow-orb-2"></div>
-
-  <!-- Nav -->
-  <nav>
-    <div class="nav-logo"><span>RIDGE</span> &nbsp;·&nbsp; Acquisitions Intelligence</div>
-    <div class="nav-status">
-      <div class="status-pill">
-        <span class="dot"></span>
-        12 Skills Active
-      </div>
-      <div class="nav-build">Build: 2026.03.16</div>
+<!-- API MODAL -->
+<div class="modal-bg" id="api-modal">
+  <div class="modal">
+    <button class="xbtn" onclick="closeApi()">✕</button>
+    <h3>Anthropic API Key</h3>
+    <p>Stored only in your browser's localStorage. Sent only to <code>api.anthropic.com</code>.</p>
+    <label class="fl">API Key</label>
+    <input type="text" id="api-input" placeholder="sk-ant-..." autocomplete="off" style="margin-bottom:0">
+    <div class="modal-btns">
+      <button class="btn btn-o" onclick="closeApi()">Cancel</button>
+      <button class="btn btn-p" onclick="saveApi()">Save</button>
     </div>
-  </nav>
+  </div>
+</div>
 
-  <!-- Hero -->
-  <div class="hero">
-    <div class="hero-eyebrow">Off-Market Commercial Real Estate</div>
-    <div class="hero-title">
-      <span class="ridge">RIDGE</span>
+<!-- HEADER -->
+<header>
+  <div class="hdr-left">
+    <span class="hdr-logo">RIDGE</span>
+    <span class="hdr-sub">ACQUISITIONS INTELLIGENCE</span>
+  </div>
+  <div class="hdr-right">
+    <span style="font-size:11px;color:var(--muted)">12 Skills Active · v5.0</span>
+    <button class="api-btn set" id="api-btn" onclick="showApi()">✓ Key Set</button>
+  </div>
+</header>
+
+<main>
+
+<!-- HERO -->
+<div class="hero">
+  <div class="hero-title">RIDGE</div>
+  <div class="hero-sub">Real Intelligence for Deal Generation &amp; Evaluation</div>
+  <div class="hero-stats">
+    <div class="hs"><div class="hs-v">$10M–$70M</div><div class="hs-l">Deal Range</div></div>
+    <div class="hs"><div class="hs-v">15%+ / 60mo</div><div class="hs-l">IRR Target</div></div>
+    <div class="hs"><div class="hs-v">1.8×–2.2×</div><div class="hs-l">Equity Multiple</div></div>
+    <div class="hs"><div class="hs-v">7.5%–8.0%</div><div class="hs-l">YOC Anchor</div></div>
+    <div class="hs"><div class="hs-v">95% Off-Mkt</div><div class="hs-l">Sourcing</div></div>
+  </div>
+</div>
+
+<!-- ═══ TOOLS ═══ -->
+<div class="sec-hdr"><span class="sec-title">Integrated Skill Modules</span><span style="font-size:11px;color:var(--faint)">11 Active · Click any tile to expand</span></div>
+<div class="tool-grid" id="tool-grid"><div class="tool-card open" id="card-lens">
+      <div class="tc-hdr">
+        <span class="tc-icon">🔬</span>
+        <span class="tc-name">LENS</span>
+        <span class="tc-num">01</span>
+      </div>
+      <div class="tc-desc">Broker OM teardown. Strips the narrative, stress-tests every assumption, re-underwrites at RIDGE criteria. Bear / Base / Bull with a max entry price.</div>
+      <span class="tc-badge blue">OM Teardown</span></div><div class="tool-card" id="card-scout">
+      <div class="tc-hdr">
+        <span class="tc-icon">🔭</span>
+        <span class="tc-name">SCOUT</span>
+        <span class="tc-num">02</span>
+      </div>
+      <div class="tc-desc">Off-market prospect hunter. Builds ranked prospect tables from vacancy, debt maturity, and ownership signals. Full single-property dossiers on demand.</div>
+      <span class="tc-badge">Deal Sourcing</span></div><div class="tool-card" id="card-napkin">
+      <div class="tc-hdr">
+        <span class="tc-icon">📝</span>
+        <span class="tc-name">THE NAPKIN</span>
+        <span class="tc-num">03</span>
+      </div>
+      <div class="tc-desc">Back-of-envelope go/no-go. Address and ask price in, verdict out. Reverse-engineers cap rate, stabilized NOI, and YOC at Year 3/4.</div>
+      <span class="tc-badge">60-Second Screen</span></div><div class="tool-card" id="card-market-pulse">
+      <div class="tc-hdr">
+        <span class="tc-icon">📡</span>
+        <span class="tc-name">MARKET PULSE</span>
+        <span class="tc-num">04</span>
+      </div>
+      <div class="tc-desc">Submarket intelligence engine. Vacancy, Class A/B rents, absorption, supply pipeline, cap rates. Covers ATL, SAV, DFW, HOU, AUS.</div>
+      <span class="tc-badge">Live Benchmarks</span></div><div class="tool-card" id="card-lease-comp">
+      <div class="tc-hdr">
+        <span class="tc-icon">🗺️</span>
+        <span class="tc-name">LEASE COMP MAP</span>
+        <span class="tc-num">05</span>
+      </div>
+      <div class="tc-desc">Comp data in any format — Excel, CSV, pasted text. Analyzes lease comps, benchmarks in-place rents, and flags roll risk vs. market.</div>
+      <span class="tc-badge">Comp Analysis</span></div><div class="tool-card" id="card-debt">
+      <div class="tc-hdr">
+        <span class="tc-icon">🏦</span>
+        <span class="tc-name">DEBT TOOL</span>
+        <span class="tc-num">06</span>
+      </div>
+      <div class="tc-desc">Capital stack modeling across multiple scenarios — senior, bridge, CMBS, agency. Outputs DSCR, debt yield, LTV, and return sensitivity.</div>
+      <span class="tc-badge">Capital Stack</span></div><div class="tool-card" id="card-isr">
+      <div class="tc-hdr">
+        <span class="tc-icon">📊</span>
+        <span class="tc-name">ACQUISITION INVESTMENT REPORT</span>
+        <span class="tc-num">07</span>
+      </div>
+      <div class="tc-desc">Upload your Excel model + broker OM. Get a full IC analysis and 11-slide PowerPoint deck. IRR ≥14% = RECOMMEND · 11–14% = CONDITIONAL · &lt;11% = PASS.</div>
+      <span class="tc-badge blue">IC Deck · Dual Upload</span></div><div class="tool-card" id="card-loi">
+      <div class="tc-hdr">
+        <span class="tc-icon">📄</span>
+        <span class="tc-name">LOI GENERATOR</span>
+        <span class="tc-num">08</span>
+      </div>
+      <div class="tc-desc">Draft-ready LOI using Entrada's exact template. Nine variable fields — everything else is locked firm boilerplate.</div>
+      <span class="tc-badge">Entrada Template</span></div><div class="tool-card" id="card-gavel">
+      <div class="tc-hdr">
+        <span class="tc-icon">⚖️</span>
+        <span class="tc-name">THE GAVEL — LEASE ADMIN</span>
+        <span class="tc-num">09</span>
+      </div>
+      <div class="tc-desc">Upload a lease, get a structured abstract. Key dates, rent schedule, tenant obligations, landlord obligations, risk flags, and renewal options.</div>
+      <span class="tc-badge">Lease Abstract</span></div><div class="tool-card" id="card-legal">
+      <div class="tc-hdr">
+        <span class="tc-icon">📋</span>
+        <span class="tc-name">CRE LEGAL REVIEWER</span>
+        <span class="tc-num">10</span>
+      </div>
+      <div class="tc-desc">PSAs, JV / Operating Agreements, loan documents, and PMAs. Flags seller rep gaps, waterfall mechanics, DSCR covenants, and prepayment exposure.</div>
+      <span class="tc-badge">PSA · JV · Loan · PMA</span></div><div class="tool-card" id="card-canvas">
+      <div class="tc-hdr">
+        <span class="tc-icon">🏗️</span>
+        <span class="tc-name">CANVAS</span>
+        <span class="tc-num">11</span>
+      </div>
+      <div class="tc-desc">Tenant sourcing engine. Fill mode: find tenants for a specific building. Hunt mode: scan for displaced businesses and feed them back as acquisition targets.</div>
+      <span class="tc-badge">Tenant Sourcing</span></div></div>
+<div id="panels-container"><div class="tool-panel open" id="panel-lens">
+  <div class="panel-head">
+    <span class="panel-head-icon">🔬</span>
+    <span class="panel-head-title">LENS</span>
+    <span class="panel-head-sub">OM Teardown</span>
+    <button class="panel-close" onclick="togglePanel(&#39;lens&#39;)">✕ Close</button>
+  </div>
+  <div class="panel-body">
+    <div class="upload-row one">
+    <div class="upload-group">
+      <label>Offering Memorandum * <span>PDF · Broker OM, BOV, or investment summary</span></label>
+      <div class="uz" id="uz-lens-om" onclick="document.getElementById(&#39;file-lens-om&#39;).click()">
+        <input type="file" id="file-lens-om" accept=".pdf">
+        <div class="uz-ico">📄</div>
+        <div class="uz-t">Click or drag to upload</div>
+        <div class="uz-s">PDF</div>
+        <div class="uz-st" id="uzst-lens-om"></div>
+      </div>
+    </div></div>
+    
+    <div class="manual-toggle" onclick="toggleManual(&#39;lens&#39;)">
+      <span id="marrow-lens">▶</span> Fields &amp; Parameters
+      <span style="color:var(--faint);font-size:11px;margin-left:4px">— auto-filled from upload where available</span>
     </div>
-    <div class="hero-subtitle">Real Intelligence for Deal Generation &amp; Evaluation</div>
-    <p class="hero-desc">
-      Senior acquisitions partner for industrial, flex industrial, and single-story office conversion.
-      Purpose-built for off-market sourcing, outside-in underwriting, and conviction-based deal execution.
-    </p>
-    <div class="hero-stats">
-      <div class="stat-block">
-        <div class="stat-label">Deal Range</div>
-        <div class="stat-value">$10M – $70M</div>
+    <div class="manual-body" id="mbody-lens">
+      <div class="fr two"><div class="fg"><label class="fl">Property Address</label><input type="text" id="f-lens-addr" placeholder="18 Patton Road, Savannah, GA"></div><div class="fg"><label class="fl">Asset Type</label><select id="f-lens-type"><option>Flex Industrial</option><option>Industrial / Warehouse</option><option>Single-Story Office Conversion</option><option>Multi-Tenant Industrial</option></select></div></div><div class="fr two"><div class="fg"><label class="fl">Asking Price</label><input type="text" id="f-lens-ask" placeholder="$9,500,000"></div><div class="fg"><label class="fl">Building SF</label><input type="text" id="f-lens-sf" placeholder="45,500"></div></div><div class="fr one"><div class="fg"><label class="fl">Additional Context</label><textarea id="f-lens-notes" placeholder="Off-market, owner motivated, CMBS maturity in 6 months..."></textarea></div></div>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-p" id="run-btn-lens" onclick="runTool(&#39;lens&#39;)">⚡ Run LENS</button>
+      <button class="btn btn-o" onclick="clearTool(&#39;lens&#39;)">Clear</button>
+      
+    </div>
+    <div class="loading" id="loading-lens">
+      <div class="loading-lbl" id="llbl-lens">Working...</div>
+      <div class="pbar"><div class="pfill" id="pfill-lens"></div></div>
+      <div class="pstep" id="pstep-lens"></div>
+    </div>
+    <div class="results" id="results-lens">
+      <div class="res-head">
+        <div class="res-title" id="rtitle-lens">LENS — Results</div>
+        <div class="res-actions">
+          <button class="btn btn-o" style="font-size:12px" onclick="copyResult(&#39;lens&#39;)">📋 Copy</button>
+        </div>
       </div>
-      <div class="stat-block">
-        <div class="stat-label">IRR Target</div>
-        <div class="stat-value">15%+ / 60mo</div>
+      <div class="res-body" id="rout-lens"></div>
+    </div>
+  </div></div><div class="tool-panel" id="panel-scout">
+  <div class="panel-head">
+    <span class="panel-head-icon">🔭</span>
+    <span class="panel-head-title">SCOUT</span>
+    <span class="panel-head-sub">Deal Sourcing</span>
+    <button class="panel-close" onclick="togglePanel(&#39;scout&#39;)">✕ Close</button>
+  </div>
+  <div class="panel-body">
+    <div class="upload-row one">
+    <div class="upload-group">
+      <label>Submarket Data <span>Optional: CoStar export, comp list, or any market data</span></label>
+      <div class="uz" id="uz-scout-data" onclick="document.getElementById(&#39;file-scout-data&#39;).click()">
+        <input type="file" id="file-scout-data" accept=".xlsx,.csv,.pdf">
+        <div class="uz-ico">📊</div>
+        <div class="uz-t">Click or drag to upload</div>
+        <div class="uz-s">XLSX · CSV · PDF</div>
+        <div class="uz-st" id="uzst-scout-data"></div>
       </div>
-      <div class="stat-block">
-        <div class="stat-label">Equity Multiple</div>
-        <div class="stat-value">1.8× – 2.2×</div>
+    </div></div>
+    
+    <div class="manual-toggle" onclick="toggleManual(&#39;scout&#39;)">
+      <span id="marrow-scout">▶</span> Fields &amp; Parameters
+      <span style="color:var(--faint);font-size:11px;margin-left:4px">— auto-filled from upload where available</span>
+    </div>
+    <div class="manual-body" id="mbody-scout">
+      <div class="fr two"><div class="fg"><label class="fl">Market / Submarket</label><input type="text" id="f-scout-mkt" placeholder="Northeast Atlanta — Gwinnett/Buford"></div><div class="fg"><label class="fl">Mode</label><select id="f-scout-mode"><option>Submarket Sweep</option><option>Property Dossier</option></select></div></div><div class="fr three"><div class="fg"><label class="fl">Min SF</label><input type="text" id="f-scout-sfmin" placeholder="20,000"></div><div class="fg"><label class="fl">Max SF</label><input type="text" id="f-scout-sfmax" placeholder="200,000"></div><div class="fg"><label class="fl">Max Price</label><input type="text" id="f-scout-price" placeholder="$40,000,000"></div></div><div class="fr one"><div class="fg"><label class="fl">Debt Signals to Target</label><select id="f-scout-signals"><option>Loans 2018–2021 Maturing</option><option>CMBS Watchlist</option><option>Bridge Loan Stress</option><option>All Signals</option></select></div></div><div class="fr one"><div class="fg"><label class="fl">Specific Property Address</label><input type="text" id="f-scout-addr" placeholder="Leave blank for sweep mode"></div></div>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-p" id="run-btn-scout" onclick="runTool(&#39;scout&#39;)">⚡ Run SCOUT</button>
+      <button class="btn btn-o" onclick="clearTool(&#39;scout&#39;)">Clear</button>
+      
+    </div>
+    <div class="loading" id="loading-scout">
+      <div class="loading-lbl" id="llbl-scout">Working...</div>
+      <div class="pbar"><div class="pfill" id="pfill-scout"></div></div>
+      <div class="pstep" id="pstep-scout"></div>
+    </div>
+    <div class="results" id="results-scout">
+      <div class="res-head">
+        <div class="res-title" id="rtitle-scout">SCOUT — Results</div>
+        <div class="res-actions">
+          <button class="btn btn-o" style="font-size:12px" onclick="copyResult(&#39;scout&#39;)">📋 Copy</button>
+        </div>
       </div>
-      <div class="stat-block">
-        <div class="stat-label">YOC Anchor</div>
-        <div class="stat-value">7.5% – 8.0%</div>
+      <div class="res-body" id="rout-scout"></div>
+    </div>
+  </div></div><div class="tool-panel" id="panel-napkin">
+  <div class="panel-head">
+    <span class="panel-head-icon">📝</span>
+    <span class="panel-head-title">THE NAPKIN</span>
+    <span class="panel-head-sub">60-Second Screen</span>
+    <button class="panel-close" onclick="togglePanel(&#39;napkin&#39;)">✕ Close</button>
+  </div>
+  <div class="panel-body">
+    <div class="upload-row one">
+    <div class="upload-group">
+      <label>Any Supporting Data <span>Optional: rent roll, T12, or comp list</span></label>
+      <div class="uz" id="uz-napkin-data" onclick="document.getElementById(&#39;file-napkin-data&#39;).click()">
+        <input type="file" id="file-napkin-data" accept=".pdf,.xlsx,.csv">
+        <div class="uz-ico">📄</div>
+        <div class="uz-t">Click or drag to upload</div>
+        <div class="uz-s">PDF · XLSX · CSV</div>
+        <div class="uz-st" id="uzst-napkin-data"></div>
       </div>
-      <div class="stat-block">
-        <div class="stat-label">Sourcing</div>
-        <div class="stat-value">95% Off-Mkt</div>
+    </div></div>
+    
+    <div class="manual-toggle" onclick="toggleManual(&#39;napkin&#39;)">
+      <span id="marrow-napkin">▶</span> Fields &amp; Parameters
+      <span style="color:var(--faint);font-size:11px;margin-left:4px">— auto-filled from upload where available</span>
+    </div>
+    <div class="manual-body" id="mbody-napkin">
+      <div class="fr two"><div class="fg"><label class="fl">Property Address *</label><input type="text" id="f-napkin-addr" placeholder="310 Regal Row, Dallas, TX"></div><div class="fg"><label class="fl">Asset Type</label><select id="f-napkin-type"><option>Flex Industrial</option><option>Industrial / Warehouse</option><option>Single-Story Office Conversion</option><option>Multi-Tenant Industrial</option></select></div></div><div class="fr two"><div class="fg"><label class="fl">Asking Price *</label><input type="text" id="f-napkin-ask" placeholder="$14,500,000"></div><div class="fg"><label class="fl">Building SF *</label><input type="text" id="f-napkin-sf" placeholder="85,000"></div></div><div class="fr two"><div class="fg"><label class="fl">Current Occupancy</label><input type="text" id="f-napkin-occ" placeholder="78%"></div><div class="fg"><label class="fl">In-Place NOI (if known)</label><input type="text" id="f-napkin-noi" placeholder="$720,000"></div></div><div class="fr one"><div class="fg"><label class="fl">Known Facts</label><textarea id="f-napkin-notes" placeholder="Multi-tenant, 3 tenants, avg lease 2.5 yrs remaining, NNN..."></textarea></div></div>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-p" id="run-btn-napkin" onclick="runTool(&#39;napkin&#39;)">⚡ Run THE NAPKIN</button>
+      <button class="btn btn-o" onclick="clearTool(&#39;napkin&#39;)">Clear</button>
+      
+    </div>
+    <div class="loading" id="loading-napkin">
+      <div class="loading-lbl" id="llbl-napkin">Working...</div>
+      <div class="pbar"><div class="pfill" id="pfill-napkin"></div></div>
+      <div class="pstep" id="pstep-napkin"></div>
+    </div>
+    <div class="results" id="results-napkin">
+      <div class="res-head">
+        <div class="res-title" id="rtitle-napkin">THE NAPKIN — Results</div>
+        <div class="res-actions">
+          <button class="btn btn-o" style="font-size:12px" onclick="copyResult(&#39;napkin&#39;)">📋 Copy</button>
+        </div>
+      </div>
+      <div class="res-body" id="rout-napkin"></div>
+    </div>
+  </div></div><div class="tool-panel" id="panel-market-pulse">
+  <div class="panel-head">
+    <span class="panel-head-icon">📡</span>
+    <span class="panel-head-title">MARKET PULSE</span>
+    <span class="panel-head-sub">Live Benchmarks</span>
+    <button class="panel-close" onclick="togglePanel(&#39;market-pulse&#39;)">✕ Close</button>
+  </div>
+  <div class="panel-body">
+    <div class="upload-row one">
+    <div class="upload-group">
+      <label>CoStar Data / Broker Report <span>Optional: CoStar export or broker submarket report PDF</span></label>
+      <div class="uz" id="uz-market-pulse-data" onclick="document.getElementById(&#39;file-market-pulse-data&#39;).click()">
+        <input type="file" id="file-market-pulse-data" accept=".xlsx,.csv,.pdf">
+        <div class="uz-ico">📊</div>
+        <div class="uz-t">Click or drag to upload</div>
+        <div class="uz-s">XLSX · CSV · PDF</div>
+        <div class="uz-st" id="uzst-market-pulse-data"></div>
+      </div>
+    </div></div>
+    
+    <div class="manual-toggle" onclick="toggleManual(&#39;market-pulse&#39;)">
+      <span id="marrow-market-pulse">▶</span> Fields &amp; Parameters
+      <span style="color:var(--faint);font-size:11px;margin-left:4px">— auto-filled from upload where available</span>
+    </div>
+    <div class="manual-body" id="mbody-market-pulse">
+      <div class="fr two"><div class="fg"><label class="fl">Market</label><select id="f-market-pulse-mkt"><option>Atlanta, GA</option><option>Savannah, GA</option><option>Dallas–Fort Worth, TX</option><option>Houston, TX</option><option>Austin, TX (Watch)</option><option>All Markets — Full Matrix</option></select></div><div class="fg"><label class="fl">Specific Submarket</label><input type="text" id="f-market-pulse-sub" placeholder="Gwinnett/Buford, NE Atlanta (optional)"></div></div><div class="fr two"><div class="fg"><label class="fl">Report Type</label><select id="f-market-pulse-mode"><option>Full Market Report</option><option>Quick Update</option><option>Submarket Matrix</option><option>Benchmark Update for Active Deal</option></select></div><div class="fg"><label class="fl">Active Deal Address</label><input type="text" id="f-market-pulse-deal" placeholder="Leave blank for market-only report"></div></div>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-p" id="run-btn-market-pulse" onclick="runTool(&#39;market-pulse&#39;)">⚡ Run MARKET PULSE</button>
+      <button class="btn btn-o" onclick="clearTool(&#39;market-pulse&#39;)">Clear</button>
+      
+    </div>
+    <div class="loading" id="loading-market-pulse">
+      <div class="loading-lbl" id="llbl-market-pulse">Working...</div>
+      <div class="pbar"><div class="pfill" id="pfill-market-pulse"></div></div>
+      <div class="pstep" id="pstep-market-pulse"></div>
+    </div>
+    <div class="results" id="results-market-pulse">
+      <div class="res-head">
+        <div class="res-title" id="rtitle-market-pulse">MARKET PULSE — Results</div>
+        <div class="res-actions">
+          <button class="btn btn-o" style="font-size:12px" onclick="copyResult(&#39;market-pulse&#39;)">📋 Copy</button>
+        </div>
+      </div>
+      <div class="res-body" id="rout-market-pulse"></div>
+    </div>
+  </div></div><div class="tool-panel" id="panel-lease-comp">
+  <div class="panel-head">
+    <span class="panel-head-icon">🗺️</span>
+    <span class="panel-head-title">LEASE COMP MAP</span>
+    <span class="panel-head-sub">Comp Analysis</span>
+    <button class="panel-close" onclick="togglePanel(&#39;lease-comp&#39;)">✕ Close</button>
+  </div>
+  <div class="panel-body">
+    <div class="upload-row two">
+    <div class="upload-group">
+      <label>Comp Data <span>Excel, CSV, or PDF with lease comp data</span></label>
+      <div class="uz" id="uz-lease-comp-comps" onclick="document.getElementById(&#39;file-lease-comp-comps&#39;).click()">
+        <input type="file" id="file-lease-comp-comps" accept=".xlsx,.csv,.pdf">
+        <div class="uz-ico">📊</div>
+        <div class="uz-t">Click or drag to upload</div>
+        <div class="uz-s">XLSX · CSV · PDF</div>
+        <div class="uz-st" id="uzst-lease-comp-comps"></div>
+      </div>
+    </div>
+    <div class="upload-group">
+      <label>Subject Property / OM <span>Optional: PDF of OM or deal summary for context</span></label>
+      <div class="uz" id="uz-lease-comp-om" onclick="document.getElementById(&#39;file-lease-comp-om&#39;).click()">
+        <input type="file" id="file-lease-comp-om" accept=".pdf">
+        <div class="uz-ico">📄</div>
+        <div class="uz-t">Click or drag to upload</div>
+        <div class="uz-s">PDF</div>
+        <div class="uz-st" id="uzst-lease-comp-om"></div>
+      </div>
+    </div></div>
+    
+    <div class="manual-toggle" onclick="toggleManual(&#39;lease-comp&#39;)">
+      <span id="marrow-lease-comp">▶</span> Fields &amp; Parameters
+      <span style="color:var(--faint);font-size:11px;margin-left:4px">— auto-filled from upload where available</span>
+    </div>
+    <div class="manual-body" id="mbody-lease-comp">
+      <div class="fr two"><div class="fg"><label class="fl">Subject Property Address *</label><input type="text" id="f-lease-comp-addr" placeholder="18 Patton Road, Savannah, GA"></div><div class="fg"><label class="fl">Submarket</label><input type="text" id="f-lease-comp-sub" placeholder="Savannah Industrial"></div></div><div class="fr two"><div class="fg"><label class="fl">Building SF</label><input type="text" id="f-lease-comp-sf" placeholder="45,500"></div><div class="fg"><label class="fl">Current In-Place Rent PSF</label><input type="text" id="f-lease-comp-rent" placeholder="$11.00"></div></div>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-p" id="run-btn-lease-comp" onclick="runTool(&#39;lease-comp&#39;)">⚡ Run LEASE COMP MAP</button>
+      <button class="btn btn-o" onclick="clearTool(&#39;lease-comp&#39;)">Clear</button>
+      
+    </div>
+    <div class="loading" id="loading-lease-comp">
+      <div class="loading-lbl" id="llbl-lease-comp">Working...</div>
+      <div class="pbar"><div class="pfill" id="pfill-lease-comp"></div></div>
+      <div class="pstep" id="pstep-lease-comp"></div>
+    </div>
+    <div class="results" id="results-lease-comp">
+      <div class="res-head">
+        <div class="res-title" id="rtitle-lease-comp">LEASE COMP MAP — Results</div>
+        <div class="res-actions">
+          <button class="btn btn-o" style="font-size:12px" onclick="copyResult(&#39;lease-comp&#39;)">📋 Copy</button>
+        </div>
+      </div>
+      <div class="res-body" id="rout-lease-comp"></div>
+    </div>
+  </div></div><div class="tool-panel" id="panel-debt">
+  <div class="panel-head">
+    <span class="panel-head-icon">🏦</span>
+    <span class="panel-head-title">DEBT TOOL</span>
+    <span class="panel-head-sub">Capital Stack</span>
+    <button class="panel-close" onclick="togglePanel(&#39;debt&#39;)">✕ Close</button>
+  </div>
+  <div class="panel-body">
+    <div class="upload-row one">
+    <div class="upload-group">
+      <label>Acquisition Model <span>Optional: .xlsx model to extract NOI and returns</span></label>
+      <div class="uz" id="uz-debt-model" onclick="document.getElementById(&#39;file-debt-model&#39;).click()">
+        <input type="file" id="file-debt-model" accept=".xlsx">
+        <div class="uz-ico">📊</div>
+        <div class="uz-t">Click or drag to upload</div>
+        <div class="uz-s">XLSX</div>
+        <div class="uz-st" id="uzst-debt-model"></div>
+      </div>
+    </div></div>
+    <div class="parsed-preview" id="parsed-debt"><div class="parsed-title">✓ MODEL PARSED — KEY METRICS EXTRACTED</div><div class="parsed-kpis" id="pkpis-debt"></div></div>
+    <div class="manual-toggle" onclick="toggleManual(&#39;debt&#39;)">
+      <span id="marrow-debt">▶</span> Fields &amp; Parameters
+      <span style="color:var(--faint);font-size:11px;margin-left:4px">— auto-filled from upload where available</span>
+    </div>
+    <div class="manual-body" id="mbody-debt">
+      <div class="fr two"><div class="fg"><label class="fl">Property Address</label><input type="text" id="f-debt-addr" placeholder="18 Patton Road, Savannah, GA"></div><div class="fg"><label class="fl">Purchase Price</label><input type="text" id="f-debt-price" placeholder="$7,962,500"></div></div><div class="fr two"><div class="fg"><label class="fl">Year 1 NOI</label><input type="text" id="f-debt-noi" placeholder="$408,360"></div><div class="fg"><label class="fl">Building SF</label><input type="text" id="f-debt-sf" placeholder="45,500"></div></div><div class="fr two"><div class="fg"><label class="fl">Target LTV</label><input type="text" id="f-debt-ltv" placeholder="65%"></div><div class="fg"><label class="fl">Interest Rate (if known)</label><input type="text" id="f-debt-rate" placeholder="6.5%"></div></div><div class="fr two"><div class="fg"><label class="fl">Debt Scenario</label><select id="f-debt-type"><option>Compare All Types</option><option>Senior / Conventional</option><option>CMBS</option><option>Agency (Fannie/Freddie)</option><option>Bridge</option><option>Construction / Heavy Value-Add</option></select></div><div class="fg"><label class="fl">Hold Period</label><input type="text" id="f-debt-hold" placeholder="5 years"></div></div>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-p" id="run-btn-debt" onclick="runTool(&#39;debt&#39;)">⚡ Run DEBT TOOL</button>
+      <button class="btn btn-o" onclick="clearTool(&#39;debt&#39;)">Clear</button>
+      
+    </div>
+    <div class="loading" id="loading-debt">
+      <div class="loading-lbl" id="llbl-debt">Working...</div>
+      <div class="pbar"><div class="pfill" id="pfill-debt"></div></div>
+      <div class="pstep" id="pstep-debt"></div>
+    </div>
+    <div class="results" id="results-debt">
+      <div class="res-head">
+        <div class="res-title" id="rtitle-debt">DEBT TOOL — Results</div>
+        <div class="res-actions">
+          <button class="btn btn-o" style="font-size:12px" onclick="copyResult(&#39;debt&#39;)">📋 Copy</button>
+        </div>
+      </div>
+      <div class="res-body" id="rout-debt"></div>
+    </div>
+  </div></div><div class="tool-panel" id="panel-isr">
+  <div class="panel-head">
+    <span class="panel-head-icon">📊</span>
+    <span class="panel-head-title">ACQUISITION INVESTMENT REPORT</span>
+    <span class="panel-head-sub">IC Deck · Dual Upload</span>
+    <button class="panel-close" onclick="togglePanel(&#39;isr&#39;)">✕ Close</button>
+  </div>
+  <div class="panel-body">
+    <div class="upload-row two">
+    <div class="upload-group">
+      <label>Acquisition Model * <span>Excel model · All sheets parsed · Patton Road format</span></label>
+      <div class="uz" id="uz-isr-model" onclick="document.getElementById(&#39;file-isr-model&#39;).click()">
+        <input type="file" id="file-isr-model" accept=".xlsx,.xls">
+        <div class="uz-ico">📊</div>
+        <div class="uz-t">Click or drag to upload</div>
+        <div class="uz-s">XLSX · XLS</div>
+        <div class="uz-st" id="uzst-isr-model"></div>
+      </div>
+    </div>
+    <div class="upload-group">
+      <label>Offering Memorandum <span>Optional PDF · Adds market context and property narrative</span></label>
+      <div class="uz" id="uz-isr-om" onclick="document.getElementById(&#39;file-isr-om&#39;).click()">
+        <input type="file" id="file-isr-om" accept=".pdf">
+        <div class="uz-ico">📄</div>
+        <div class="uz-t">Click or drag to upload</div>
+        <div class="uz-s">PDF</div>
+        <div class="uz-st" id="uzst-isr-om"></div>
+      </div>
+    </div></div>
+    <div class="parsed-preview" id="parsed-isr"><div class="parsed-title">✓ MODEL PARSED — KEY METRICS EXTRACTED</div><div class="parsed-kpis" id="pkpis-isr"></div></div>
+    <div class="manual-toggle" onclick="toggleManual(&#39;isr&#39;)">
+      <span id="marrow-isr">▶</span> Fields &amp; Parameters
+      <span style="color:var(--faint);font-size:11px;margin-left:4px">— auto-filled from upload where available</span>
+    </div>
+    <div class="manual-body" id="mbody-isr">
+      <div class="fr two"><div class="fg"><label class="fl">Property Address</label><input type="text" id="f-isr-addr" placeholder="18 Patton Road, Savannah, GA"></div><div class="fg"><label class="fl">Asset Type</label><select id="f-isr-type"><option>Flex Industrial</option><option>Industrial / Warehouse</option><option>Single-Story Office Conversion</option><option>Multi-Tenant Industrial</option></select></div></div><div class="fr three"><div class="fg"><label class="fl">Building SF</label><input type="text" id="f-isr-sf" placeholder="45,500"></div><div class="fg"><label class="fl">Purchase Price</label><input type="text" id="f-isr-price" placeholder="$7,962,500"></div><div class="fg"><label class="fl">Price PSF</label><input type="text" id="f-isr-psf" placeholder="$175"></div></div><div class="fr three"><div class="fg"><label class="fl">Levered IRR</label><input type="text" id="f-isr-irr" placeholder="15.2%"></div><div class="fg"><label class="fl">Equity Multiple</label><input type="text" id="f-isr-em" placeholder="1.98x"></div><div class="fg"><label class="fl">Going-In Cap</label><input type="text" id="f-isr-cap" placeholder="5.1%"></div></div><div class="fr three"><div class="fg"><label class="fl">YOC (Yr 3/4)</label><input type="text" id="f-isr-yoc" placeholder="8.2%"></div><div class="fg"><label class="fl">LTV</label><input type="text" id="f-isr-ltv" placeholder="65%"></div><div class="fg"><label class="fl">Hold Period</label><input type="text" id="f-isr-hold" placeholder="5 years"></div></div><div class="fr one"><div class="fg"><label class="fl">Investment Thesis</label><textarea id="f-isr-thesis" placeholder="Value-add flex play with near-term lease-up upside..."></textarea></div></div>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-p" id="run-btn-isr" onclick="runTool(&#39;isr&#39;)">⚡ Run ACQUISITION INVESTMENT REPORT</button>
+      <button class="btn btn-o" onclick="clearTool(&#39;isr&#39;)">Clear</button>
+      <button class="btn btn-g" style="font-size:12px" id="pptx-btn-isr" onclick="buildPPTX()" disabled="">⬇ Download .pptx</button>
+    </div>
+    <div class="loading" id="loading-isr">
+      <div class="loading-lbl" id="llbl-isr">Working...</div>
+      <div class="pbar"><div class="pfill" id="pfill-isr"></div></div>
+      <div class="pstep" id="pstep-isr"></div>
+    </div>
+    <div class="results" id="results-isr">
+      <div class="res-head">
+        <div class="res-title" id="rtitle-isr">ACQUISITION INVESTMENT REPORT — Results</div>
+        <div class="res-actions">
+          <button class="btn btn-o" style="font-size:12px" onclick="copyResult(&#39;isr&#39;)">📋 Copy</button>
+        </div>
+      </div>
+      <div class="res-body" id="rout-isr"></div>
+    </div>
+  </div></div><div class="tool-panel" id="panel-loi">
+  <div class="panel-head">
+    <span class="panel-head-icon">📄</span>
+    <span class="panel-head-title">LOI GENERATOR</span>
+    <span class="panel-head-sub">Entrada Template</span>
+    <button class="panel-close" onclick="togglePanel(&#39;loi&#39;)">✕ Close</button>
+  </div>
+  <div class="panel-body">
+    <div class="upload-row one">
+    <div class="upload-group">
+      <label>Acquisition Model or Deal Summary <span>Optional: .xlsx model or PDF deal summary to auto-fill terms</span></label>
+      <div class="uz" id="uz-loi-model" onclick="document.getElementById(&#39;file-loi-model&#39;).click()">
+        <input type="file" id="file-loi-model" accept=".xlsx,.pdf">
+        <div class="uz-ico">📊</div>
+        <div class="uz-t">Click or drag to upload</div>
+        <div class="uz-s">XLSX · PDF</div>
+        <div class="uz-st" id="uzst-loi-model"></div>
+      </div>
+    </div></div>
+    
+    <div class="manual-toggle" onclick="toggleManual(&#39;loi&#39;)">
+      <span id="marrow-loi">▶</span> Fields &amp; Parameters
+      <span style="color:var(--faint);font-size:11px;margin-left:4px">— auto-filled from upload where available</span>
+    </div>
+    <div class="manual-body" id="mbody-loi">
+      <div class="fr two"><div class="fg"><label class="fl">LOI Date</label><input type="text" id="f-loi-date" placeholder="March 16, 2026"></div><div class="fg"><label class="fl">Broker Name &amp; Firm</label><input type="text" id="f-loi-broker" placeholder="Maggie Dominguez, JLL"></div></div><div class="fr two"><div class="fg"><label class="fl">Property Address(es) *</label><input type="text" id="f-loi-addr" placeholder="3883 and 3950 Steve Reynolds Blvd."></div><div class="fg"><label class="fl">City, State</label><input type="text" id="f-loi-city" placeholder="Norcross, GA"></div></div><div class="fr two"><div class="fg"><label class="fl">Total SF *</label><input type="text" id="f-loi-sf" placeholder="220,073"></div><div class="fg"><label class="fl">Purchase Price *</label><input type="text" id="f-loi-price" placeholder="$27,000,000"></div></div><div class="fr two"><div class="fg"><label class="fl">Deposit Amount *</label><input type="text" id="f-loi-deposit" placeholder="$300,000"></div><div class="fg"><label class="fl">Extension Deposit</label><input type="text" id="f-loi-ext" placeholder="$100,000"></div></div><div class="fr one"><div class="fg"><label class="fl">LOI Expiration Date</label><input type="text" id="f-loi-exp" placeholder="March 28, 2026"></div></div>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-p" id="run-btn-loi" onclick="runTool(&#39;loi&#39;)">⚡ Run LOI GENERATOR</button>
+      <button class="btn btn-o" onclick="clearTool(&#39;loi&#39;)">Clear</button>
+      
+    </div>
+    <div class="loading" id="loading-loi">
+      <div class="loading-lbl" id="llbl-loi">Working...</div>
+      <div class="pbar"><div class="pfill" id="pfill-loi"></div></div>
+      <div class="pstep" id="pstep-loi"></div>
+    </div>
+    <div class="results" id="results-loi">
+      <div class="res-head">
+        <div class="res-title" id="rtitle-loi">LOI GENERATOR — Results</div>
+        <div class="res-actions">
+          <button class="btn btn-o" style="font-size:12px" onclick="copyResult(&#39;loi&#39;)">📋 Copy</button>
+        </div>
+      </div>
+      <div class="res-body" id="rout-loi"></div>
+    </div>
+  </div></div><div class="tool-panel" id="panel-gavel">
+  <div class="panel-head">
+    <span class="panel-head-icon">⚖️</span>
+    <span class="panel-head-title">THE GAVEL — LEASE ADMIN</span>
+    <span class="panel-head-sub">Lease Abstract</span>
+    <button class="panel-close" onclick="togglePanel(&#39;gavel&#39;)">✕ Close</button>
+  </div>
+  <div class="panel-body">
+    <div class="upload-row two">
+    <div class="upload-group">
+      <label>Lease Agreement * <span>PDF or Word lease document</span></label>
+      <div class="uz" id="uz-gavel-lease" onclick="document.getElementById(&#39;file-gavel-lease&#39;).click()">
+        <input type="file" id="file-gavel-lease" accept=".pdf,.docx">
+        <div class="uz-ico">📄</div>
+        <div class="uz-t">Click or drag to upload</div>
+        <div class="uz-s">PDF · DOCX</div>
+        <div class="uz-st" id="uzst-gavel-lease"></div>
+      </div>
+    </div>
+    <div class="upload-group">
+      <label>Rent Roll <span>Optional: Excel rent roll for additional context</span></label>
+      <div class="uz" id="uz-gavel-rentroll" onclick="document.getElementById(&#39;file-gavel-rentroll&#39;).click()">
+        <input type="file" id="file-gavel-rentroll" accept=".xlsx,.csv">
+        <div class="uz-ico">📊</div>
+        <div class="uz-t">Click or drag to upload</div>
+        <div class="uz-s">XLSX · CSV</div>
+        <div class="uz-st" id="uzst-gavel-rentroll"></div>
+      </div>
+    </div></div>
+    <div class="parsed-preview" id="parsed-gavel"><div class="parsed-title">✓ MODEL PARSED — KEY METRICS EXTRACTED</div><div class="parsed-kpis" id="pkpis-gavel"></div></div>
+    <div class="manual-toggle" onclick="toggleManual(&#39;gavel&#39;)">
+      <span id="marrow-gavel">▶</span> Fields &amp; Parameters
+      <span style="color:var(--faint);font-size:11px;margin-left:4px">— auto-filled from upload where available</span>
+    </div>
+    <div class="manual-body" id="mbody-gavel">
+      <div class="fr two"><div class="fg"><label class="fl">Property Address</label><input type="text" id="f-gavel-addr" placeholder="18 Patton Road, Savannah, GA"></div><div class="fg"><label class="fl">Tenant Name</label><input type="text" id="f-gavel-tenant" placeholder="TWC Services"></div></div><div class="fr one"><div class="fg"><label class="fl">Review Focus</label><textarea id="f-gavel-notes" placeholder="Flag any unusual provisions, early termination rights, co-tenancy clauses..."></textarea></div></div>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-p" id="run-btn-gavel" onclick="runTool(&#39;gavel&#39;)">⚡ Run THE GAVEL — LEASE ADMIN</button>
+      <button class="btn btn-o" onclick="clearTool(&#39;gavel&#39;)">Clear</button>
+      
+    </div>
+    <div class="loading" id="loading-gavel">
+      <div class="loading-lbl" id="llbl-gavel">Working...</div>
+      <div class="pbar"><div class="pfill" id="pfill-gavel"></div></div>
+      <div class="pstep" id="pstep-gavel"></div>
+    </div>
+    <div class="results" id="results-gavel">
+      <div class="res-head">
+        <div class="res-title" id="rtitle-gavel">THE GAVEL — LEASE ADMIN — Results</div>
+        <div class="res-actions">
+          <button class="btn btn-o" style="font-size:12px" onclick="copyResult(&#39;gavel&#39;)">📋 Copy</button>
+        </div>
+      </div>
+      <div class="res-body" id="rout-gavel"></div>
+    </div>
+  </div></div><div class="tool-panel" id="panel-legal">
+  <div class="panel-head">
+    <span class="panel-head-icon">📋</span>
+    <span class="panel-head-title">CRE LEGAL REVIEWER</span>
+    <span class="panel-head-sub">PSA · JV · Loan · PMA</span>
+    <button class="panel-close" onclick="togglePanel(&#39;legal&#39;)">✕ Close</button>
+  </div>
+  <div class="panel-body">
+    <div class="upload-row two">
+    <div class="upload-group">
+      <label>Primary Document * <span>PSA, JV agreement, loan docs, or PMA — PDF</span></label>
+      <div class="uz" id="uz-legal-doc1" onclick="document.getElementById(&#39;file-legal-doc1&#39;).click()">
+        <input type="file" id="file-legal-doc1" accept=".pdf,.docx">
+        <div class="uz-ico">📄</div>
+        <div class="uz-t">Click or drag to upload</div>
+        <div class="uz-s">PDF · DOCX</div>
+        <div class="uz-st" id="uzst-legal-doc1"></div>
+      </div>
+    </div>
+    <div class="upload-group">
+      <label>Secondary Document <span>Optional: second document for comparison or cross-reference</span></label>
+      <div class="uz" id="uz-legal-doc2" onclick="document.getElementById(&#39;file-legal-doc2&#39;).click()">
+        <input type="file" id="file-legal-doc2" accept=".pdf,.docx">
+        <div class="uz-ico">📄</div>
+        <div class="uz-t">Click or drag to upload</div>
+        <div class="uz-s">PDF · DOCX</div>
+        <div class="uz-st" id="uzst-legal-doc2"></div>
+      </div>
+    </div></div>
+    
+    <div class="manual-toggle" onclick="toggleManual(&#39;legal&#39;)">
+      <span id="marrow-legal">▶</span> Fields &amp; Parameters
+      <span style="color:var(--faint);font-size:11px;margin-left:4px">— auto-filled from upload where available</span>
+    </div>
+    <div class="manual-body" id="mbody-legal">
+      <div class="fr two"><div class="fg"><label class="fl">Document Type</label><select id="f-legal-dtype"><option>Purchase &amp; Sale Agreement (PSA)</option><option>JV / Operating Agreement</option><option>Loan Documents / Mortgage</option><option>Property Management Agreement (PMA)</option><option>Other</option></select></div><div class="fg"><label class="fl">Property / Deal</label><input type="text" id="f-legal-addr" placeholder="18 Patton Road, Savannah, GA"></div></div><div class="fr one"><div class="fg"><label class="fl">Review Focus / Key Concerns</label><textarea id="f-legal-focus" placeholder="Flag any seller rep gaps, earnest money hard provisions, waterfall mechanics..."></textarea></div></div>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-p" id="run-btn-legal" onclick="runTool(&#39;legal&#39;)">⚡ Run CRE LEGAL REVIEWER</button>
+      <button class="btn btn-o" onclick="clearTool(&#39;legal&#39;)">Clear</button>
+      
+    </div>
+    <div class="loading" id="loading-legal">
+      <div class="loading-lbl" id="llbl-legal">Working...</div>
+      <div class="pbar"><div class="pfill" id="pfill-legal"></div></div>
+      <div class="pstep" id="pstep-legal"></div>
+    </div>
+    <div class="results" id="results-legal">
+      <div class="res-head">
+        <div class="res-title" id="rtitle-legal">CRE LEGAL REVIEWER — Results</div>
+        <div class="res-actions">
+          <button class="btn btn-o" style="font-size:12px" onclick="copyResult(&#39;legal&#39;)">📋 Copy</button>
+        </div>
+      </div>
+      <div class="res-body" id="rout-legal"></div>
+    </div>
+  </div></div><div class="tool-panel" id="panel-canvas">
+  <div class="panel-head">
+    <span class="panel-head-icon">🏗️</span>
+    <span class="panel-head-title">CANVAS</span>
+    <span class="panel-head-sub">Tenant Sourcing</span>
+    <button class="panel-close" onclick="togglePanel(&#39;canvas&#39;)">✕ Close</button>
+  </div>
+  <div class="panel-body">
+    <div class="upload-row one">
+    <div class="upload-group">
+      <label>Property Info or Market Data <span>Optional: floor plan PDF, CoStar data, or OM</span></label>
+      <div class="uz" id="uz-canvas-data" onclick="document.getElementById(&#39;file-canvas-data&#39;).click()">
+        <input type="file" id="file-canvas-data" accept=".pdf,.xlsx">
+        <div class="uz-ico">📄</div>
+        <div class="uz-t">Click or drag to upload</div>
+        <div class="uz-s">PDF · XLSX</div>
+        <div class="uz-st" id="uzst-canvas-data"></div>
+      </div>
+    </div></div>
+    
+    <div class="manual-toggle" onclick="toggleManual(&#39;canvas&#39;)">
+      <span id="marrow-canvas">▶</span> Fields &amp; Parameters
+      <span style="color:var(--faint);font-size:11px;margin-left:4px">— auto-filled from upload where available</span>
+    </div>
+    <div class="manual-body" id="mbody-canvas">
+      <div class="fr two"><div class="fg"><label class="fl">Mode</label><select id="f-canvas-mode"><option>Fill — I have a building, find tenants</option><option>Hunt — find displaced businesses for acquisition targeting</option></select></div><div class="fg"><label class="fl">Property Address</label><input type="text" id="f-canvas-addr" placeholder="310 Regal Row, Dallas, TX"></div></div><div class="fr two"><div class="fg"><label class="fl">Available SF</label><input type="text" id="f-canvas-sf" placeholder="45,000"></div><div class="fg"><label class="fl">Dock Doors / Clear Height</label><input type="text" id="f-canvas-dock" placeholder="4 dock-high, 22&#39; clear"></div></div><div class="fr two"><div class="fg"><label class="fl">Target Rent PSF</label><input type="text" id="f-canvas-rent" placeholder="$14.00 NNN"></div><div class="fg"><label class="fl">Submarket</label><input type="text" id="f-canvas-sub" placeholder="Great Southwest / Arlington"></div></div><div class="fr one"><div class="fg"><label class="fl">Ideal Tenant Profile</label><textarea id="f-canvas-notes" placeholder="3PL, light manufacturing, e-commerce fulfillment, max 3 tenants..."></textarea></div></div>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-p" id="run-btn-canvas" onclick="runTool(&#39;canvas&#39;)">⚡ Run CANVAS</button>
+      <button class="btn btn-o" onclick="clearTool(&#39;canvas&#39;)">Clear</button>
+      
+    </div>
+    <div class="loading" id="loading-canvas">
+      <div class="loading-lbl" id="llbl-canvas">Working...</div>
+      <div class="pbar"><div class="pfill" id="pfill-canvas"></div></div>
+      <div class="pstep" id="pstep-canvas"></div>
+    </div>
+    <div class="results" id="results-canvas">
+      <div class="res-head">
+        <div class="res-title" id="rtitle-canvas">CANVAS — Results</div>
+        <div class="res-actions">
+          <button class="btn btn-o" style="font-size:12px" onclick="copyResult(&#39;canvas&#39;)">📋 Copy</button>
+        </div>
+      </div>
+      <div class="res-body" id="rout-canvas"></div>
+    </div>
+  </div></div></div>
+
+<!-- ═══ PIPELINE ═══ -->
+<div class="pipeline-section">
+  <div class="sec-hdr"><span class="sec-title">Deal Pipeline</span></div>
+  <div class="pipeline-card" id="pipeline-card" onclick="togglePanel(&#39;pipeline&#39;)">
+    <div class="tc-hdr"><span class="tc-icon">🗂️</span><span class="tc-name">PIPELINE</span><span class="tc-num">12</span></div>
+    <div class="tc-desc">Active deal board. Track every acquisition by stage, conviction, and days in motion. Log outreach, set follow-ups, move deals through the funnel.</div>
+    <span class="tc-badge">Active</span>
+  </div>
+  <div class="tool-panel" id="panel-pipeline">
+    <div class="panel-head">
+      <span class="panel-head-icon">🗂️</span>
+      <span class="panel-head-title">PIPELINE</span>
+      <span class="panel-head-sub">Deal tracking &amp; CRM</span>
+      <button class="panel-close" onclick="togglePanel(&#39;pipeline&#39;)">✕ Close</button>
+    </div>
+    <div class="panel-body">
+      <div class="upload-row one">
+        <div class="upload-group">
+          <label>Deal Context <span>— optional: paste rent roll, deal summary, or notes</span></label>
+          <textarea id="pipeline-context" placeholder="Paste deal notes, rent roll data, or any context about the deal you want to track..."></textarea>
+        </div>
+      </div>
+      <div class="fr three">
+        <div class="fg"><label class="fl">Property Address</label><input type="text" id="pl-addr" placeholder="18 Patton Road, Savannah, GA"></div>
+        <div class="fg"><label class="fl">Stage</label>
+          <select id="pl-stage">
+            <option>Initial Screen</option><option>Napkin Run</option><option>Full Underwrite</option>
+            <option>LOI Submitted</option><option>Under Contract</option><option>Due Diligence</option>
+            <option>Closing</option><option>Watch List</option><option>Dead</option>
+          </select>
+        </div>
+        <div class="fg"><label class="fl">Conviction</label>
+          <select id="pl-conv"><option>High Conviction</option><option>Needs More Data</option><option>Watch List</option></select>
+        </div>
+      </div>
+      <div class="fr two">
+        <div class="fg"><label class="fl">Ask Price</label><input type="text" id="pl-price" placeholder="$12,500,000"></div>
+        <div class="fg"><label class="fl">Broker / Contact</label><input type="text" id="pl-broker" placeholder="JLL — Jane Smith"></div>
+      </div>
+      <div class="fr one">
+        <div class="fg"><label class="fl">Deal Notes</label><textarea id="pl-notes" placeholder="Key facts, outstanding diligence items, next steps..."></textarea></div>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-p" onclick="runTool(&#39;pipeline&#39;)">⚡ Update Pipeline &amp; Get Summary</button>
+        <button class="btn btn-o" onclick="clearTool(&#39;pipeline&#39;)">Clear</button>
+      </div>
+      <div class="loading" id="loading-pipeline"><div class="loading-lbl">Working...</div><div class="pbar"><div class="pfill" id="pfill-pipeline"></div></div><div class="pstep" id="pstep-pipeline"></div></div>
+      <div class="results" id="results-pipeline">
+        <div class="res-head"><div class="res-title" id="rtitle-pipeline">Pipeline Update</div><div class="res-actions"><button class="btn btn-o" style="font-size:12px" onclick="copyResult(&#39;pipeline&#39;)">📋 Copy</button></div></div>
+        <div class="res-body" id="rout-pipeline"></div>
       </div>
     </div>
   </div>
+</div>
 
-  <!-- Holding Company -->
-  <section>
-    <div class="holding-card">
-      <div class="holding-header">
-        <div>
-          <div class="holding-badge">Holding Company</div>
-          <div class="holding-name">RIDGE Intelligence Platform</div>
-          <div class="holding-tagline">Twelve integrated modules. One acquisitions engine. Zero redundancy.</div>
-        </div>
+<!-- ROUTING TABLE -->
+<div class="sec-hdr" style="margin-top:40px"><span class="sec-title">Document Routing</span></div>
+<div class="rt-wrap">
+  <table class="rt">
+    <thead><tr><th>Document Type</th><th>Module</th><th>Upload Format</th></tr></thead>
+    <tbody>
+      <tr><td>Acquisition model (.xlsx)</td><td>Acquisition Investment Report</td><td>Excel upload in ISR tile</td></tr>
+      <tr><td>Broker OM / BOV / deal summary</td><td>LENS or ISR (with model)</td><td>PDF upload in LENS or ISR tile</td></tr>
+      <tr><td>Acquisition model + broker OM</td><td>Acquisition Investment Report</td><td>Both uploads in ISR tile</td></tr>
+      <tr><td>Lease agreement, rent roll</td><td>The Gavel — Lease Admin</td><td>PDF or Excel upload in Gavel tile</td></tr>
+      <tr><td>PSA, JV agreement, loan docs, PMA</td><td>CRE Legal Reviewer</td><td>PDF upload in Legal tile</td></tr>
+      <tr><td>Lease comp data + target address</td><td>Lease Comp Map</td><td>Excel / CSV upload in Comp Map tile</td></tr>
+    </tbody>
+  </table>
+</div>
+
+</main>
+<footer>RIDGE Intelligence Platform · Entrada Partners · 12 Skills Active · ATL · SAV · DFW · HOU</footer>
+
+<script>
+// ═══════════════════════════════════════════════════════════
+//  TOOL DEFINITIONS
+// ═══════════════════════════════════════════════════════════
+var TOOLS = [
+  {
+    id:'lens', num:'01', icon:'🔬', name:'LENS',
+    badge:'OM Teardown', badgeBlue:true,
+    desc:'Broker OM teardown. Strips the narrative, stress-tests every assumption, re-underwrites at RIDGE criteria. Bear / Base / Bull with a max entry price.',
+    uploads:[{id:'om',label:'Offering Memorandum *',hint:'PDF · Broker OM, BOV, or investment summary',icon:'📄',accept:'.pdf',type:'pdf'}],
+    fields:[
+      {row:[{id:'addr',label:'Property Address',ph:'18 Patton Road, Savannah, GA'},{id:'type',label:'Asset Type',type:'select',opts:['Flex Industrial','Industrial / Warehouse','Single-Story Office Conversion','Multi-Tenant Industrial']}]},
+      {row:[{id:'ask',label:'Asking Price',ph:'$9,500,000'},{id:'sf',label:'Building SF',ph:'45,500'}]},
+      {row:[{id:'notes',label:'Additional Context',ph:'Off-market, owner motivated, CMBS maturity in 6 months...',type:'textarea'}]},
+    ],
+    steps:['Reading OM narrative...','Stripping broker assumptions...','Re-underwriting at RIDGE criteria...','Building Bear / Base / Bull scenarios...','Calculating max entry price...','Generating teardown report...'],
+    system:`You are a senior acquisitions officer at Entrada Partners. Your job is to tear apart a broker OM and re-underwrite the deal at RIDGE criteria. RIDGE criteria: IRR ≥14.75%, EM 1.8x–2.2x, YOC 7.5–8.0% at Yr3/4, max LTV 65%, hold 5 years, deal size $10M–$70M, markets: ATL/SAV/DFW/HOU. Be brutally honest. Identify what the broker is obscuring. Lead with conviction.`,
+    prompt:(d)=>`Tear apart this broker OM for ${d.addr||'the subject property'} (${d.type||'industrial/flex'}). Asking: ${d.ask||'see OM'}. SF: ${d.sf||'see OM'}.\n\n${d.notes?'Context: '+d.notes+'\n\n':''}${d.om_text||''}\n\nProduce:\n## BROKER NARRATIVE vs. REALITY\nTable: What broker claims | RIDGE read | Verdict\n\n## RE-UNDERWRITE AT RIDGE CRITERIA\nReconstruct NOI from scratch. Show your work. Flag every assumption.\n\n## BEAR / RIDGE BASE / BULL SCENARIOS\nTable: Scenario | Entry Price | IRR | EM | YOC | Key Assumption\n\n## MAX ENTRY PRICE\nThe exact price at which this deal hits RIDGE's 14.75% IRR hurdle. Show the math.\n\n## RED FLAGS\n3–5 specific things the broker is hiding or glossing over.\n\n## VERDICT\nBUY AT MAX / PASS / WATCH — one sentence why.`
+  },
+  {
+    id:'scout', num:'02', icon:'🔭', name:'SCOUT',
+    badge:'Deal Sourcing',
+    desc:'Off-market prospect hunter. Builds ranked prospect tables from vacancy, debt maturity, and ownership signals. Full single-property dossiers on demand.',
+    uploads:[{id:'data',label:'Submarket Data',hint:'Optional: CoStar export, comp list, or any market data',icon:'📊',accept:'.xlsx,.csv,.pdf',type:'mixed'}],
+    fields:[
+      {row:[{id:'mkt',label:'Market / Submarket',ph:'Northeast Atlanta — Gwinnett/Buford'},{id:'mode',label:'Mode',type:'select',opts:['Submarket Sweep','Property Dossier']}]},
+      {row:[{id:'sfmin',label:'Min SF',ph:'20,000'},{id:'sfmax',label:'Max SF',ph:'200,000'},{id:'price',label:'Max Price',ph:'$40,000,000'}]},
+      {row:[{id:'signals',label:'Debt Signals to Target',type:'select',opts:['Loans 2018–2021 Maturing','CMBS Watchlist','Bridge Loan Stress','All Signals']}]},
+      {row:[{id:'addr',label:'Specific Property Address',ph:'Leave blank for sweep mode'}]},
+    ],
+    steps:['Scanning submarket...','Pulling ownership signals...','Analyzing debt maturity stack...','Ranking prospects by distress signal...','Building prospect table...'],
+    system:`You are SCOUT, RIDGE's off-market deal sourcing engine. You identify distressed industrial and flex properties using vacancy, debt maturity, and ownership lifecycle signals. Markets: Atlanta, Savannah, DFW, Houston. Asset types: industrial, flex industrial, single-story office conversion. Deal range: $10M–$70M.`,
+    prompt:(d)=>`Run SCOUT ${d.mode||'Submarket Sweep'} for ${d.mkt||'the target submarket'}.\nSF range: ${d.sfmin||'20,000'}–${d.sfmax||'200,000'} SF. Max price: ${d.price||'$40M'}. Signal focus: ${d.signals||'All Signals'}.\n${d.addr?'Specific property: '+d.addr+'\n':''}\n${d.data_text?'Market data provided:\n'+d.data_text+'\n\n':''}\nProduce:\n## SUBMARKET SNAPSHOT\nVacancy, avg rent, absorption trend, supply pipeline — flag any ★ ESTIMATE data.\n\n## PROSPECT TABLE\n| Rank | Address | Est. SF | Signal | Debt Flag | Ownership | Priority |\n\n## TOP 3 DOSSIERS\nFor each top prospect:\n- Address, estimated SF, ownership entity, year built\n- Debt signal: maturity date, estimated balance, lender type\n- Why this fits RIDGE criteria\n- Suggested outreach approach\n\n## SIGNAL SUMMARY\nWhat patterns in this submarket suggest near-term off-market opportunity?`
+  },
+  {
+    id:'napkin', num:'03', icon:'📝', name:'THE NAPKIN',
+    badge:'60-Second Screen',
+    desc:'Back-of-envelope go/no-go. Address and ask price in, verdict out. Reverse-engineers cap rate, stabilized NOI, and YOC at Year 3/4.',
+    uploads:[{id:'data',label:'Any Supporting Data',hint:'Optional: rent roll, T12, or comp list',icon:'📄',accept:'.pdf,.xlsx,.csv',type:'mixed'}],
+    fields:[
+      {row:[{id:'addr',label:'Property Address *',ph:'310 Regal Row, Dallas, TX'},{id:'type',label:'Asset Type',type:'select',opts:['Flex Industrial','Industrial / Warehouse','Single-Story Office Conversion','Multi-Tenant Industrial']}]},
+      {row:[{id:'ask',label:'Asking Price *',ph:'$14,500,000'},{id:'sf',label:'Building SF *',ph:'85,000'}]},
+      {row:[{id:'occ',label:'Current Occupancy',ph:'78%'},{id:'noi',label:'In-Place NOI (if known)',ph:'$720,000'}]},
+      {row:[{id:'notes',label:'Known Facts',ph:'Multi-tenant, 3 tenants, avg lease 2.5 yrs remaining, NNN...',type:'textarea'}]},
+    ],
+    steps:['Calculating in-place metrics...','Reverse-engineering stabilized NOI...','Running YOC at Year 3/4...','Checking RIDGE hurdles...','Generating verdict...'],
+    system:`You are THE NAPKIN, RIDGE's 60-second deal screen. Your job is to quickly determine if a deal is worth pursuing before committing to full underwriting. RIDGE hurdles: IRR ≥14.75%, YOC 7.5–8.0% at Yr3/4, EM ≥1.8x, max LTV 65%. Be direct. Give a clear Go/No-Go. If No-Go, state exactly what price would make it work.`,
+    prompt:(d)=>`Run The Napkin on: ${d.addr||'Subject Property'} | ${d.sf||'?'} SF | Asking: ${d.ask||'?'} | Occupancy: ${d.occ||'unknown'} | In-place NOI: ${d.noi||'unknown'}.\n${d.notes?'Facts: '+d.notes+'\n':''}\n${d.data_text?'Supporting data:\n'+d.data_text+'\n':''}\nProduce:\n## QUICK MATH\nTable: Metric | Value | Notes\nInclude: Ask PSF, In-place cap rate, Stabilized NOI estimate, YOC at Yr3 (est.), Implied IRR range, Price to hit 14.75% IRR\n\n## VERDICT\n**GO / NO-GO / CONDITIONAL** — one sentence.\n\n## THE NUMBER THAT MAKES IT WORK\nIf No-Go: the exact price where this clears RIDGE criteria. Show the math.\n\n## NEXT STEPS\nIf Go: 3 bullet points on what to confirm first.`
+  },
+  {
+    id:'market-pulse', num:'04', icon:'📡', name:'MARKET PULSE',
+    badge:'Live Benchmarks',
+    desc:'Submarket intelligence engine. Vacancy, Class A/B rents, absorption, supply pipeline, cap rates. Covers ATL, SAV, DFW, HOU, AUS.',
+    uploads:[{id:'data',label:'CoStar Data / Broker Report',hint:'Optional: CoStar export or broker submarket report PDF',icon:'📊',accept:'.xlsx,.csv,.pdf',type:'mixed'}],
+    fields:[
+      {row:[{id:'mkt',label:'Market',type:'select',opts:['Atlanta, GA','Savannah, GA','Dallas–Fort Worth, TX','Houston, TX','Austin, TX (Watch)','All Markets — Full Matrix']},{id:'sub',label:'Specific Submarket',ph:'Gwinnett/Buford, NE Atlanta (optional)'}]},
+      {row:[{id:'mode',label:'Report Type',type:'select',opts:['Full Market Report','Quick Update','Submarket Matrix','Benchmark Update for Active Deal']},{id:'deal',label:'Active Deal Address',ph:'Leave blank for market-only report'}]},
+    ],
+    steps:['Pulling market data...','Benchmarking vacancy rates...','Analyzing absorption trends...','Reviewing supply pipeline...','Generating RIDGE implications...'],
+    system:`You are MARKET PULSE, RIDGE's submarket intelligence engine. You pull and synthesize current industrial and flex market data for Atlanta, Savannah, DFW, Houston, and Austin. Always translate data into RIDGE underwriting implications. Flag estimates clearly with ★ ESTIMATE. Never cite LoopNet asking rents as market benchmarks.`,
+    prompt:(d)=>`Run Market Pulse: ${d.mkt||'Atlanta, GA'}${d.sub?', '+d.sub:''} | Mode: ${d.mode||'Full Market Report'}${d.deal?' | Active deal: '+d.deal:''}.\n${d.data_text?'CoStar/broker data provided:\n'+d.data_text+'\n\n':''}\nProduce in this format:\n## HEADLINE METRICS\nTable: Metric | Value | vs. 12 Mo Ago | Trend\nVacancy rate, Direct ask rent NNN (Class A & B), Net absorption TTM, New supply under construction, Market cap rate range, Rent growth 12mo\n\n## SUBMARKET BREAKDOWN\nTable: Submarket | Vacancy | Ask Rent | Trend | RIDGE Priority\n\n## SUPPLY PIPELINE\nDelivering <6mo, 6–12mo, under construction. Flag if spec >15% of inventory.\n\n## CAP RATE CONTEXT\nIndustrial stabilized, flex stabilized, value-add premium, RIDGE exit assumption check.\n\n## RIDGE UNDERWRITING IMPLICATIONS\nMarket rent benchmark to use, vacancy assumption, rent growth for 5-yr model, exit cap recommendation.\n\n**Verdict: FAVORABLE / NEUTRAL / CAUTIOUS** — one paragraph.`
+  },
+  {
+    id:'lease-comp', num:'05', icon:'🗺️', name:'LEASE COMP MAP',
+    badge:'Comp Analysis',
+    desc:'Comp data in any format — Excel, CSV, pasted text. Analyzes lease comps, benchmarks in-place rents, and flags roll risk vs. market.',
+    uploads:[{id:'comps',label:'Comp Data',hint:'Excel, CSV, or PDF with lease comp data',icon:'📊',accept:'.xlsx,.csv,.pdf',type:'mixed'},{id:'om',label:'Subject Property / OM',hint:'Optional: PDF of OM or deal summary for context',icon:'📄',accept:'.pdf',type:'pdf'}],
+    fields:[
+      {row:[{id:'addr',label:'Subject Property Address *',ph:'18 Patton Road, Savannah, GA'},{id:'sub',label:'Submarket',ph:'Savannah Industrial'}]},
+      {row:[{id:'sf',label:'Building SF',ph:'45,500'},{id:'rent',label:'Current In-Place Rent PSF',ph:'$11.00'}]},
+    ],
+    steps:['Reading comp data...','Geocoding locations...','Benchmarking in-place rents...','Analyzing lease structures...','Generating comp analysis...'],
+    system:`You are LEASE COMP MAP, RIDGE's lease comp analysis engine. You analyze lease comparables against a subject property to benchmark rents, identify roll risk, and support underwriting assumptions. Be specific with numbers. Flag any comps that are outliers.`,
+    prompt:(d)=>`Analyze lease comps for: ${d.addr||'Subject Property'} | ${d.sf||'?'} SF | Submarket: ${d.sub||'?'} | Current in-place rent: ${d.rent||'unknown'} PSF.\n${d.comps_text?'Comp data:\n'+d.comps_text+'\n\n':''}\n${d.om_text?'OM context:\n'+d.om_text+'\n\n':''}\nProduce:\n## COMP SUMMARY TABLE\nTable: Address | Tenant | SF | Date | Term | Eff. Rate PSF | Free Rent | NNN/Gross | Notes\n\n## MARKET RENT BENCHMARK\nClass A NNN: $X–$X PSF\nClass B NNN: $X–$X PSF\nFlex/Multi-tenant: $X–$X PSF\nSubject property in-place vs. market: gap analysis\n\n## ROLL RISK ANALYSIS\nWhere do in-place rents sit vs. market? Which tenants are most at risk? What's the mark-to-market opportunity?\n\n## UNDERWRITING RECOMMENDATION\nWhat rent PSF to use in the RIDGE model. Renewal probability assumption. Free rent on new leases.`
+  },
+  {
+    id:'debt', num:'06', icon:'🏦', name:'DEBT TOOL',
+    badge:'Capital Stack',
+    desc:'Capital stack modeling across multiple scenarios — senior, bridge, CMBS, agency. Outputs DSCR, debt yield, LTV, and return sensitivity.',
+    uploads:[{id:'model',label:'Acquisition Model',hint:'Optional: .xlsx model to extract NOI and returns',icon:'📊',accept:'.xlsx',type:'xlsx'}],
+    fields:[
+      {row:[{id:'addr',label:'Property Address',ph:'18 Patton Road, Savannah, GA'},{id:'price',label:'Purchase Price',ph:'$7,962,500'}]},
+      {row:[{id:'noi',label:'Year 1 NOI',ph:'$408,360'},{id:'sf',label:'Building SF',ph:'45,500'}]},
+      {row:[{id:'ltv',label:'Target LTV',ph:'65%'},{id:'rate',label:'Interest Rate (if known)',ph:'6.5%'}]},
+      {row:[{id:'type',label:'Debt Scenario',type:'select',opts:['Compare All Types','Senior / Conventional','CMBS','Agency (Fannie/Freddie)','Bridge','Construction / Heavy Value-Add']},{id:'hold',label:'Hold Period',ph:'5 years'}]},
+    ],
+    steps:['Modeling debt scenarios...','Calculating DSCR...','Sizing maximum proceeds...','Running sensitivity...','Building comparison grid...'],
+    system:`You are the DEBT TOOL, RIDGE's capital stack modeling engine. You model, compare, and stress-test debt structures for industrial and flex acquisitions. RIDGE constraints: max LTV 65%, DSCR ≥1.25x, deal range $10M–$70M. Always model at least 3 scenarios. Flag any structure that breaks RIDGE thresholds.`,
+    prompt:(d)=>`Model debt for: ${d.addr||'Subject Property'} | Price: ${d.price||'?'} | Yr1 NOI: ${d.noi||'?'} | SF: ${d.sf||'?'} | Target LTV: ${d.ltv||'65%'} | Hold: ${d.hold||'5 years'}.\n${d.model_text?'Model data:\n'+d.model_text+'\n\n':''}Debt type: ${d.type||'Compare All Types'}. Rate (if provided): ${d.rate||'use current market'}.\n\nProduce:\n## DEBT SCENARIO COMPARISON\nTable: Type | Loan Amount | LTV | Rate | Term | IO Period | DSCR Yr1 | Debt Yield | Max Proceeds | Notes\nInclude: Conventional, CMBS, Bridge (if value-add), Agency (if stabilized)\n\n## RECOMMENDED STRUCTURE\nBest fit for this deal and why. What lender type, sizing, and terms.\n\n## DSCR & COVERAGE ANALYSIS\nYear-by-year DSCR for hold period. Flag any year below 1.20x.\n\n## EQUITY REQUIRED\nFor each scenario: equity in, total capitalization, LTC.\n\n## RISK FLAGS\nAnything that could prevent financing or require equity cure.`
+  },
+  {
+    id:'isr', num:'07', icon:'📊', name:'ACQUISITION INVESTMENT REPORT',
+    badge:'IC Deck · Dual Upload', badgeBlue:true,
+    desc:'Upload your Excel model + broker OM. Get a full IC analysis and 11-slide PowerPoint deck. IRR ≥14% = RECOMMEND · 11–14% = CONDITIONAL · <11% = PASS.',
+    uploads:[
+      {id:'model',label:'Acquisition Model *',hint:'Excel model · All sheets parsed · Patton Road format',icon:'📊',accept:'.xlsx,.xls',type:'xlsx'},
+      {id:'om',label:'Offering Memorandum',hint:'Optional PDF · Adds market context and property narrative',icon:'📄',accept:'.pdf',type:'pdf'}
+    ],
+    fields:[
+      {row:[{id:'addr',label:'Property Address',ph:'18 Patton Road, Savannah, GA'},{id:'type',label:'Asset Type',type:'select',opts:['Flex Industrial','Industrial / Warehouse','Single-Story Office Conversion','Multi-Tenant Industrial']}]},
+      {row:[{id:'sf',label:'Building SF',ph:'45,500'},{id:'price',label:'Purchase Price',ph:'$7,962,500'},{id:'psf',label:'Price PSF',ph:'$175'}]},
+      {row:[{id:'irr',label:'Levered IRR',ph:'15.2%'},{id:'em',label:'Equity Multiple',ph:'1.98x'},{id:'cap',label:'Going-In Cap',ph:'5.1%'}]},
+      {row:[{id:'yoc',label:'YOC (Yr 3/4)',ph:'8.2%'},{id:'ltv',label:'LTV',ph:'65%'},{id:'hold',label:'Hold Period',ph:'5 years'}]},
+      {row:[{id:'thesis',label:'Investment Thesis',ph:'Value-add flex play with near-term lease-up upside...',type:'textarea'}]},
+    ],
+    isISR:true,
+    steps:['Parsing acquisition model...','Extracting return metrics...','Analyzing cash flows...','Cross-referencing OM...','Building investment thesis...','Running risk assessment...','Drafting IC recommendation...','Assembling report...'],
+    system:`You are a senior acquisitions officer at Entrada Partners. RIDGE criteria: IRR ≥14.75%, EM 1.8x–2.2x, YOC 7.5–8.0% at Yr3/4, max LTV 65%, 5yr hold, $10M–$70M, markets ATL/SAV/DFW/HOU. Generate an institutional IC report.`,
+    prompt:(d)=>`Generate a complete IC Report for: ${d.addr||'Subject Property'} | ${d.type||'Flex Industrial'} | ${d.sf||'?'} SF\nPrice: ${d.price||'?'} (${d.psf||'?'} PSF) | IRR: ${d.irr||'?'} | EM: ${d.em||'?'} | Cap: ${d.cap||'?'} | YOC: ${d.yoc||'?'} | LTV: ${d.ltv||'?'} | Hold: ${d.hold||'5yr'}\n${d.thesis?'Thesis: '+d.thesis+'\n':''}\n${d.model_text?'=== ACQUISITION MODEL ===\n'+d.model_text+'\n\n':''}\nProduce:\n## DEAL SNAPSHOT\nTable: Metric | Value | RIDGE Hurdle | Status (✓/⚠/✗)\n\n## INVESTMENT THESIS\n3–4 bullet points. Specific to this deal. Lead with the conviction driver.\n\n## PROPERTY OVERVIEW\nAsset type, location, submarket, SF, occupancy, tenant summary, lease structure.\n\n## SOURCES & USES / CAPITAL STACK\nTable: Item | Amount | $ PSF | % Total\nOne paragraph capital stack narrative.\n\n## RETURN METRICS\nFull returns table. Every number from the model.\n\n## CASH FLOW SUMMARY\nYear-by-year table: Year | EGR | NOI | Leasing/CapEx | Oper CF | Levered CF | YOC\n\n## MARKET & SUBMARKET ANALYSIS\nSavannah/target market context. Vacancy, rents, absorption, port demand drivers.\n\n## SENSITIVITY ANALYSIS\nIRR table: exit cap (5.5–7.5%) × rent growth scenarios. EM table same axes. ★ = hits RIDGE hurdle.\n\n## RISK MATRIX\nTable: Risk Factor | Severity | Mitigant\n5–7 risks specific to this deal.\n\n## IC RECOMMENDATION\n**RECOMMEND FOR INVESTMENT / CONDITIONAL APPROVAL / PASS**\n2–3 sentence basis. If conditional, list 3–5 specific conditions. 3–5 next steps.`
+  },
+  {
+    id:'loi', num:'08', icon:'📄', name:'LOI GENERATOR',
+    badge:'Entrada Template',
+    desc:'Draft-ready LOI using Entrada\'s exact template. Nine variable fields — everything else is locked firm boilerplate.',
+    uploads:[{id:'model',label:'Acquisition Model or Deal Summary',hint:'Optional: .xlsx model or PDF deal summary to auto-fill terms',icon:'📊',accept:'.xlsx,.pdf',type:'mixed'}],
+    fields:[
+      {row:[{id:'date',label:'LOI Date',ph:'March 16, 2026'},{id:'broker',label:'Broker Name & Firm',ph:'Maggie Dominguez, JLL'}]},
+      {row:[{id:'addr',label:'Property Address(es) *',ph:'3883 and 3950 Steve Reynolds Blvd.'},{id:'city',label:'City, State',ph:'Norcross, GA'}]},
+      {row:[{id:'sf',label:'Total SF *',ph:'220,073'},{id:'price',label:'Purchase Price *',ph:'$27,000,000'}]},
+      {row:[{id:'deposit',label:'Deposit Amount *',ph:'$300,000'},{id:'ext',label:'Extension Deposit',ph:'$100,000'}]},
+      {row:[{id:'exp',label:'LOI Expiration Date',ph:'March 28, 2026'}]},
+    ],
+    steps:['Loading Entrada template...','Populating deal terms...','Verifying boilerplate...','Drafting LOI...'],
+    system:`You are the LOI GENERATOR for Entrada Partners. You draft letters of intent using Entrada's exact template format. Buyer entity is always "Entrada Partners Acquisitions, LLC or Assignee". DD period is always 30 days. Closing is always 30 days from DD. Extension right is 15 days with additional deposit. Never modify the fixed boilerplate.`,
+    prompt:(d)=>`Draft an LOI for:\nDate: ${d.date||'[DATE]'}\nBroker: ${d.broker||'[BROKER]'}\nProperty: ${d.addr||'[ADDRESS]'}, ${d.city||''}\nTotal SF: ${d.sf||'[SF]'}\nPurchase Price: ${d.price||'[PRICE]'}\nDeposit: ${d.deposit||'[DEPOSIT]'}\nExtension Deposit: ${d.ext||'$100,000'}\nExpiration: ${d.exp||'10 business days from date'}\n${d.model_text?'Deal data:\n'+d.model_text+'\n\n':''}\nProduce the complete LOI in Entrada's exact format:\n- Header with date and broker attn line\n- RE: line with property address\n- Entrada firm description paragraph (standard text)\n- Two-column table format with all terms: Asset Description, Purchase Price (written out in full), Deposit, Leasing Costs, Due Diligence, Contingencies, Closing, Environmental, DD Period Access, Title Insurance, Escrow Fees, Brokerage Representation, New Contracts, Deliveries\n- Closing paragraph with expiration deadline\n- Non-binding disclaimer paragraph\n- Signature block: Reuben Berman, Justin Schuman, Joshua Bar-Yadin / Principal x3\n- Agreed and Accepted signature line`
+  },
+  {
+    id:'gavel', num:'09', icon:'⚖️', name:'THE GAVEL — LEASE ADMIN',
+    badge:'Lease Abstract',
+    desc:'Upload a lease, get a structured abstract. Key dates, rent schedule, tenant obligations, landlord obligations, risk flags, and renewal options.',
+    uploads:[{id:'lease',label:'Lease Agreement *',hint:'PDF or Word lease document',icon:'📄',accept:'.pdf,.docx',type:'pdf'},{id:'rentroll',label:'Rent Roll',hint:'Optional: Excel rent roll for additional context',icon:'📊',accept:'.xlsx,.csv',type:'xlsx'}],
+    fields:[
+      {row:[{id:'addr',label:'Property Address',ph:'18 Patton Road, Savannah, GA'},{id:'tenant',label:'Tenant Name',ph:'TWC Services'}]},
+      {row:[{id:'notes',label:'Review Focus',ph:'Flag any unusual provisions, early termination rights, co-tenancy clauses...',type:'textarea'}]},
+    ],
+    steps:['Reading lease document...','Extracting key dates...','Mapping rent schedule...','Reviewing tenant obligations...','Flagging risk provisions...','Generating abstract...'],
+    system:`You are THE GAVEL, RIDGE's lease analysis engine. You abstract commercial leases for industrial and flex properties. Flag anything that poses risk to RIDGE's underwriting — early termination rights, co-tenancy clauses, unusual CAM structures, personal vs. entity guarantees, SNDA gaps. Be thorough and specific. Quote the clause when flagging a risk.`,
+    prompt:(d)=>`Abstract this lease for: ${d.tenant||'Tenant'} at ${d.addr||'Subject Property'}.\n${d.notes?'Review focus: '+d.notes+'\n':''}\n${d.lease_text||'[Lease document uploaded — extract all key terms]'}\n${d.rentroll_text?'Rent roll context:\n'+d.rentroll_text+'\n':''}\nProduce:\n## LEASE ABSTRACT — KEY TERMS\nTable: Term | Detail\nInclude: Tenant legal name, Guarantor, Lease type (NNN/Gross/Modified), Commencement, Expiration, Base rent (current), Rent escalations, CAM structure, Security deposit, Renewal options, Expansion rights, ROFO/ROFR, Permitted use, Assignment/subletting\n\n## RENT SCHEDULE\nTable: Period | Dates | Annual Rent | Monthly Rent | PSF\n\n## LANDLORD OBLIGATIONS\nCapital responsibilities, maintenance, insurance, TI obligations.\n\n## TENANT OBLIGATIONS\nMaintenance, insurance minimums, reporting, operating covenants.\n\n## RISK FLAGS\nFor each flag: clause reference, risk description, severity (High/Med/Low), suggested mitigation.\n\n## UNDERWRITING NOTES\nWhat this lease means for RIDGE's model. Renewal probability. Roll risk. Any credit concern.`
+  },
+  {
+    id:'legal', num:'10', icon:'📋', name:'CRE LEGAL REVIEWER',
+    badge:'PSA · JV · Loan · PMA',
+    desc:'PSAs, JV / Operating Agreements, loan documents, and PMAs. Flags seller rep gaps, waterfall mechanics, DSCR covenants, and prepayment exposure.',
+    uploads:[{id:'doc1',label:'Primary Document *',hint:'PSA, JV agreement, loan docs, or PMA — PDF',icon:'📄',accept:'.pdf,.docx',type:'pdf'},{id:'doc2',label:'Secondary Document',hint:'Optional: second document for comparison or cross-reference',icon:'📄',accept:'.pdf,.docx',type:'pdf'}],
+    fields:[
+      {row:[{id:'dtype',label:'Document Type',type:'select',opts:['Purchase & Sale Agreement (PSA)','JV / Operating Agreement','Loan Documents / Mortgage','Property Management Agreement (PMA)','Other']},{id:'addr',label:'Property / Deal',ph:'18 Patton Road, Savannah, GA'}]},
+      {row:[{id:'focus',label:'Review Focus / Key Concerns',ph:'Flag any seller rep gaps, earnest money hard provisions, waterfall mechanics...',type:'textarea'}]},
+    ],
+    steps:['Reading document...','Mapping key provisions...','Flagging risk clauses...','Checking RIDGE-specific concerns...','Generating redline suggestions...','Assembling review report...'],
+    system:`You are RIDGE's CRE Legal Reviewer. You review commercial real estate legal documents for industrial and flex acquisitions. Flag anything that threatens RIDGE's position, return, or control. Be specific — quote the clause, cite the section, state the risk. Intended audience is asset managers, not attorneys. Balance legal precision with plain-language explanations.`,
+    prompt:(d)=>`Review this ${d.dtype||'CRE legal document'} for ${d.addr||'the subject deal'}.\n${d.focus?'Focus areas: '+d.focus+'\n':''}\n${d.doc1_text||'[Document uploaded]'}\n${d.doc2_text?'Secondary document:\n'+d.doc2_text+'\n':''}\nProduce:\n## DOCUMENT SUMMARY\nParties, purpose, key dates, transaction structure in 3–5 sentences.\n\n## KEY PROVISIONS TABLE\nTable: Section | Provision | Summary | Risk Level\n\n## RED FLAGS\nFor each flag: Section reference, what it says, why it's a problem, suggested fix or redline language.\n\n## RIDGE-SPECIFIC CONCERNS\nAnything that affects: earnest money refundability, financing contingency, assignment rights, seller reps on leases, waterfall/preferred return (if JV), prepayment/defeasance (if loan docs), termination rights (if PMA).\n\n## MISSING PROVISIONS\nAnything RIDGE typically requires that is absent from this document.\n\n## RECOMMENDED REDLINES\n3–5 specific changes with proposed language.`
+  },
+  {
+    id:'canvas', num:'11', icon:'🏗️', name:'CANVAS',
+    badge:'Tenant Sourcing',
+    desc:'Tenant sourcing engine. Fill mode: find tenants for a specific building. Hunt mode: scan for displaced businesses and feed them back as acquisition targets.',
+    uploads:[{id:'data',label:'Property Info or Market Data',hint:'Optional: floor plan PDF, CoStar data, or OM',icon:'📄',accept:'.pdf,.xlsx',type:'mixed'}],
+    fields:[
+      {row:[{id:'mode',label:'Mode',type:'select',opts:['Fill — I have a building, find tenants','Hunt — find displaced businesses for acquisition targeting']},{id:'addr',label:'Property Address',ph:'310 Regal Row, Dallas, TX'}]},
+      {row:[{id:'sf',label:'Available SF',ph:'45,000'},{id:'dock',label:'Dock Doors / Clear Height',ph:'4 dock-high, 22\' clear'}]},
+      {row:[{id:'rent',label:'Target Rent PSF',ph:'$14.00 NNN'},{id:'sub',label:'Submarket',ph:'Great Southwest / Arlington'}]},
+      {row:[{id:'notes',label:'Ideal Tenant Profile',ph:'3PL, light manufacturing, e-commerce fulfillment, max 3 tenants...',type:'textarea'}]},
+    ],
+    steps:['Analyzing building specs...','Identifying demand signals...','Scanning target tenant types...','Building prospect list...','Generating outreach recommendations...'],
+    system:`You are CANVAS, RIDGE's tenant sourcing engine. In Fill mode you find tenants for a specific building. In Hunt mode you find displaced or space-hungry businesses that could either lease RIDGE assets or signal acquisition targets. You know industrial and flex tenant profiles — 3PL, light manufacturing, e-commerce, tech, flex users. Be specific with company names and contact approaches.`,
+    prompt:(d)=>`Run CANVAS ${d.mode||'Fill'} for: ${d.addr||'Subject Property'} | ${d.sf||'?'} SF available | ${d.dock||''} | Target rent: ${d.rent||'market'} | Submarket: ${d.sub||'?'}.\n${d.notes?'Ideal profile: '+d.notes+'\n':''}\n${d.data_text?'Property data:\n'+d.data_text+'\n\n':''}\nProduce:\n## DEMAND ANALYSIS\nWhat tenant types are actively looking in this submarket? What size requirements are most active?\n\n## TENANT PROSPECT TABLE\nTable: Company | Type | Est. SF Need | Likelihood | Why This Building | Outreach Approach\nProvide 8–12 specific prospects.\n\n## TOP 3 TARGETS\nFor each: company overview, why they need space, what to lead with in outreach, who to contact.\n\n## OUTREACH STRATEGY\nHow to position this building. What to lead with. What brokers are active with these tenant types.`
+  }
+];
+
+// ═══════════════════════════════════════════════════════════
+//  STATE
+// ═══════════════════════════════════════════════════════════
+var STATE = {};  // per-tool: { fileData, parsedMetrics, result }
+TOOLS.forEach(t => { STATE[t.id] = { files:{}, metrics:{}, result:null }; });
+
+// ═══════════════════════════════════════════════════════════
+//  RENDER TOOLS
+// ═══════════════════════════════════════════════════════════
+function renderTools() {
+  var grid = document.getElementById('tool-grid');
+  var panels = document.getElementById('panels-container');
+  grid.innerHTML = '';
+  panels.innerHTML = '';
+
+  TOOLS.forEach(tool => {
+    // Card
+    var card = document.createElement('div');
+    card.className = 'tool-card';
+    card.id = 'card-' + tool.id;
+    card.onclick = () => togglePanel(tool.id);
+    card.innerHTML = `
+      <div class="tc-hdr">
+        <span class="tc-icon">${tool.icon}</span>
+        <span class="tc-name">${tool.name}</span>
+        <span class="tc-num">${tool.num}</span>
       </div>
-      <div class="holding-criteria">
-        <div class="criteria-item">
-          <div class="criteria-label">Asset Types</div>
-          <div class="criteria-value">Industrial &bull; Flex Industrial &bull; <span class="highlight">Single-Story Office Conversion</span></div>
-        </div>
-        <div class="criteria-item">
-          <div class="criteria-label">Sweet Spot</div>
-          <div class="criteria-value"><span class="highlight">$25M – $35M</span> · 40% sourcing energy</div>
-        </div>
-        <div class="criteria-item">
-          <div class="criteria-label">Hold Period</div>
-          <div class="criteria-value">3–7 years · Value-Add Primary</div>
-        </div>
-        <div class="criteria-item">
-          <div class="criteria-label">Ownership Target</div>
-          <div class="criteria-value">Private LLCs · <span class="highlight">7–15 yr hold</span> · Family / Estate</div>
-        </div>
-        <div class="criteria-item">
-          <div class="criteria-label">Debt Signal</div>
-          <div class="criteria-value">Loans vintage <span class="highlight">2018–2021</span> approaching maturity</div>
-        </div>
-        <div class="criteria-item">
-          <div class="criteria-label">Conviction States</div>
-          <div class="criteria-value">High Conviction · Needs More Data · Watch List</div>
-        </div>
+      <div class="tc-desc">${tool.desc}</div>
+      <span class="tc-badge${tool.badgeBlue?' blue':''}">${tool.badge}</span>`;
+    grid.appendChild(card);
+
+    // Panel
+    var panel = document.createElement('div');
+    panel.className = 'tool-panel';
+    panel.id = 'panel-' + tool.id;
+    panel.innerHTML = buildPanelHTML(tool);
+    panels.appendChild(panel);
+
+    // Wire upload inputs after DOM insertion
+    tool.uploads.forEach(u => {
+      var inp = document.getElementById(`file-${tool.id}-${u.id}`);
+      if (!inp) return;
+      if (u.type === 'xlsx') inp.addEventListener('change', e => handleXLSX(tool.id, u.id, e.target));
+      else inp.addEventListener('change', e => handleFile(tool.id, u.id, e.target, u.type));
+    });
+  });
+}
+
+function buildPanelHTML(tool) {
+  var uploadsHTML = '';
+  var cols = tool.uploads.length >= 2 ? 'two' : 'one';
+  uploadsHTML = `<div class="upload-row ${cols}">`;
+  tool.uploads.forEach(u => {
+    uploadsHTML += `
+    <div class="upload-group">
+      <label>${u.label} <span>${u.hint}</span></label>
+      <div class="uz" id="uz-${tool.id}-${u.id}" onclick="document.getElementById('file-${tool.id}-${u.id}').click()">
+        <input type="file" id="file-${tool.id}-${u.id}" accept="${u.accept}">
+        <div class="uz-ico">${u.icon}</div>
+        <div class="uz-t">Click or drag to upload</div>
+        <div class="uz-s">${u.accept.toUpperCase().replace(/\./g,'').replace(/,/g,' · ')}</div>
+        <div class="uz-st" id="uzst-${tool.id}-${u.id}"></div>
       </div>
+    </div>`;
+  });
+  uploadsHTML += '</div>';
+
+  // Parsed preview (for xlsx uploads)
+  var hasParsed = tool.uploads.some(u => u.type === 'xlsx');
+  var parsedHTML = hasParsed ? `<div class="parsed-preview" id="parsed-${tool.id}"><div class="parsed-title">✓ MODEL PARSED — KEY METRICS EXTRACTED</div><div class="parsed-kpis" id="pkpis-${tool.id}"></div></div>` : '';
+
+  // Fields
+  var fieldsHTML = buildFieldsHTML(tool);
+
+  // Buttons
+  var extraBtns = tool.isISR ? `<button class="btn btn-g" style="font-size:12px" id="pptx-btn-${tool.id}" onclick="buildPPTX()" disabled>⬇ Download .pptx</button>` : '';
+
+  return `
+  <div class="panel-head">
+    <span class="panel-head-icon">${tool.icon}</span>
+    <span class="panel-head-title">${tool.name}</span>
+    <span class="panel-head-sub">${tool.badge}</span>
+    <button class="panel-close" onclick="togglePanel('${tool.id}')">✕ Close</button>
+  </div>
+  <div class="panel-body">
+    ${uploadsHTML}
+    ${parsedHTML}
+    <div class="manual-toggle" onclick="toggleManual('${tool.id}')">
+      <span id="marrow-${tool.id}">▶</span> Fields &amp; Parameters
+      <span style="color:var(--faint);font-size:11px;margin-left:4px">— auto-filled from upload where available</span>
     </div>
-
-    <!-- Markets -->
-    <div class="section-header">
-      <span class="section-label">Coverage</span>
-      <span class="section-title">Target Markets</span>
+    <div class="manual-body" id="mbody-${tool.id}">
+      ${fieldsHTML}
     </div>
-    <div class="markets-row">
-      <div class="market-card primary">
-        <div class="market-tier">Priority 1 — Primary</div>
-        <div class="market-name">Atlanta</div>
-        <div class="market-state">Georgia</div>
-        <div class="market-flag">Active</div>
-      </div>
-      <div class="market-card primary">
-        <div class="market-tier">Priority 2 — Primary</div>
-        <div class="market-name">Savannah</div>
-        <div class="market-state">Georgia</div>
-        <div class="market-flag">Active</div>
-      </div>
-      <div class="market-card">
-        <div class="market-tier">Priority 3</div>
-        <div class="market-name">Dallas–Fort Worth</div>
-        <div class="market-state">Texas</div>
-        <div class="market-flag">Active</div>
-      </div>
-      <div class="market-card">
-        <div class="market-tier">Priority 4</div>
-        <div class="market-name">Houston</div>
-        <div class="market-state">Texas</div>
-        <div class="market-flag">Active</div>
-      </div>
-      <div class="market-card">
-        <div class="market-tier">Watch Only</div>
-        <div class="market-name">Austin</div>
-        <div class="market-state">Texas</div>
-        <div class="market-flag watch">Watch</div>
-      </div>
+    <div class="btn-row">
+      <button class="btn btn-p" id="run-btn-${tool.id}" onclick="runTool('${tool.id}')">⚡ Run ${tool.name}</button>
+      <button class="btn btn-o" onclick="clearTool('${tool.id}')">Clear</button>
+      ${extraBtns}
     </div>
-  </section>
-
-  <!-- Skills -->
-  <section>
-    <div class="section-header">
-      <span class="section-label">Subsidiaries</span>
-      <span class="section-title">Integrated Skill Modules</span>
-      <span class="section-count">12 / 12 Active</span>
+    <div class="loading" id="loading-${tool.id}">
+      <div class="loading-lbl" id="llbl-${tool.id}">Working...</div>
+      <div class="pbar"><div class="pfill" id="pfill-${tool.id}"></div></div>
+      <div class="pstep" id="pstep-${tool.id}"></div>
     </div>
-
-    <div class="skills-grid">
-
-      <!-- PIPELINE -->
-      <div class="skill-card pipeline">
-        <div class="card-top">
-          <div class="card-icon">🗂️</div>
-          <div class="card-status"><span class="sdot"></span>Active</div>
+    <div class="results" id="results-${tool.id}">
+      <div class="res-head">
+        <div class="res-title" id="rtitle-${tool.id}">${tool.name} — Results</div>
+        <div class="res-actions">
+          <button class="btn btn-o" style="font-size:12px" onclick="copyResult('${tool.id}')">📋 Copy</button>
         </div>
-        <div class="card-num">01</div>
-        <div class="card-name">PIPELINE</div>
-        <p class="card-desc">Your deal board. Every acquisition lives here — stage, conviction, days in stage, notes. All other skills log back here. Say "show my pipeline" to open the board.</p>
-        <div class="card-inputs">
-        </div>
-        <button class="launch-btn" onclick="launchPipeline()">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
-          Launch in Claude
-        </button>
       </div>
-
-      <!-- SCOUT -->
-      <div class="skill-card scout">
-        <div class="card-top">
-          <div class="card-icon">🔭</div>
-          <div class="card-status"><span class="sdot"></span>Active</div>
-        </div>
-        <div class="card-num">02</div>
-        <div class="card-name">SCOUT</div>
-        <p class="card-desc">Off-market prospect hunter. Builds ranked tables from vacancy, debt maturity, and ownership signals. Full single-property dossiers on demand.</p>
-        <div class="card-inputs">
-          <input class="card-input" id="scout-market" type="text" placeholder="Market — e.g. Savannah, GA">
-          <select class="card-input" id="scout-mode">
-            <option value="Submarket Sweep">Mode: Submarket Sweep</option>
-            <option value="Property Dossier">Mode: Property Dossier</option>
-          </select>
-        </div>
-        <button class="launch-btn" onclick="launchScout()">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
-          Launch in Claude
-        </button>
-      </div>
-
-      <!-- THE NAPKIN -->
-      <div class="skill-card napkin">
-        <div class="card-top">
-          <div class="card-icon">📝</div>
-          <div class="card-status"><span class="sdot"></span>Active</div>
-        </div>
-        <div class="card-num">03</div>
-        <div class="card-name">THE NAPKIN</div>
-        <p class="card-desc">60-second screen. Address and ask price in, Go / No-Go out. Reverse-engineers cap rate, stabilized NOI, and YOC at Year 3/4. Outputs the price that makes the deal work.</p>
-        <div class="card-inputs">
-          <input class="card-input" id="napkin-address" type="text" placeholder="Property address">
-          <input class="card-input" id="napkin-price" type="text" placeholder="Ask price — e.g. $12,500,000">
-          <input class="card-input" id="napkin-market" type="text" placeholder="Market — e.g. Gwinnett, Atlanta">
-        </div>
-        <button class="launch-btn" onclick="launchNapkin()">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
-          Launch in Claude
-        </button>
-      </div>
-
-      <!-- MARKET PULSE -->
-      <div class="skill-card pulse">
-        <div class="card-top">
-          <div class="card-icon">📡</div>
-          <div class="card-status"><span class="sdot"></span>Active</div>
-        </div>
-        <div class="card-num">04</div>
-        <div class="card-name">MARKET PULSE</div>
-        <p class="card-desc">Live submarket benchmarks — vacancy, Class A/B/C rents, absorption, new supply. Covers ATL, SAV, DFW, HOU, AUS. Feeds directly into NAPKIN screens and underwriting models.</p>
-        <div class="card-inputs">
-          <select class="card-input" id="pulse-market">
-            <option value="Atlanta">Market: Atlanta, GA</option>
-            <option value="Savannah">Market: Savannah, GA</option>
-            <option value="DFW">Market: Dallas–Fort Worth, TX</option>
-            <option value="Houston">Market: Houston, TX</option>
-            <option value="Austin">Market: Austin, TX (Watch Only)</option>
-          </select>
-        </div>
-        <button class="launch-btn" onclick="launchPulse()">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
-          Launch in Claude
-        </button>
-      </div>
-
-      <!-- LEASE COMP MAP -->
-      <div class="skill-card comp-map">
-        <div class="card-top">
-          <div class="card-icon">🗺️</div>
-          <div class="card-status"><span class="sdot"></span>Active</div>
-        </div>
-        <div class="card-num">05</div>
-        <div class="card-name">LEASE COMP MAP</div>
-        <p class="card-desc">Comp data in any format — screenshot, Excel, CSV, pasted text — plus a target address. Always produces three outputs: interactive HTML map, print-ready PDF, and Excel workbook.</p>
-        <div class="card-inputs">
-          <input class="card-input" id="comp-address" type="text" placeholder="Target property address">
-          <input class="card-input" id="comp-submarket" type="text" placeholder="Submarket (optional)">
-          <div class="file-drop" id="comp-drop" onclick="document.getElementById('comp-file').click()">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-            <span class="file-drop-label" id="comp-file-label">Upload comp data (.xlsx / .csv)</span>
-            <input type="file" id="comp-file" accept=".xlsx,.xls,.csv" onchange="onFileSelected('comp', this)">
-          </div>
-        </div>
-        <div class="clip-notice" id="comp-clip">✓ Copied to clipboard — paste in Claude</div>
-        <button class="launch-btn" onclick="launchWithFile('comp', launchCompPrompt)">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
-          Launch in Claude
-        </button>
-      </div>
-
-      <!-- DEBT TOOL -->
-      <div class="skill-card debt">
-        <div class="card-top">
-          <div class="card-icon">🏦</div>
-          <div class="card-status"><span class="sdot"></span>Active</div>
-        </div>
-        <div class="card-num">06</div>
-        <div class="card-name">DEBT TOOL</div>
-        <p class="card-desc">Capital stack modeling across multiple scenarios — senior, bridge, CMBS, agency. Outputs DSCR, debt yield, LTV, and return sensitivity. Flags anything that breaks RIDGE thresholds.</p>
-        <div class="card-inputs">
-          <input class="card-input" id="debt-deal" type="text" placeholder="Deal name">
-          <input class="card-input" id="debt-price" type="text" placeholder="Purchase price — e.g. $18,000,000">
-        </div>
-        <button class="launch-btn" onclick="launchDebt()">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
-          Launch in Claude
-        </button>
-      </div>
-
-      <!-- ACQUISITION INVESTMENT REPORT -->
-      <div class="skill-card acq">
-        <div class="card-top">
-          <div class="card-icon">📊</div>
-          <div class="card-status"><span class="sdot"></span>Active</div>
-        </div>
-        <div class="card-num">07</div>
-        <div class="card-name">ACQUISITION INVESTMENT REPORT</div>
-        <p class="card-desc">Upload your Excel model, get an 11-slide IC deck. IRR ≥14% = RECOMMEND · 11–14% = CONDITIONAL · &lt;11% = PASS. Midnight Executive palette.</p>
-        <div class="card-inputs">
-          <input class="card-input" id="acq-deal" type="text" placeholder="Deal / property name (optional)">
-          <div class="file-drop" id="acq-drop" onclick="document.getElementById('acq-file').click()">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-            <span class="file-drop-label" id="acq-file-label">Upload acquisition model (.xlsx)</span>
-            <input type="file" id="acq-file" accept=".xlsx,.xls,.csv" onchange="onFileSelected('acq', this)">
-          </div>
-        </div>
-        <div class="clip-notice" id="acq-clip">✓ Copied to clipboard — paste in Claude</div>
-        <button class="launch-btn" onclick="launchWithFile('acq', launchAcqPrompt)">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
-          Launch in Claude
-        </button>
-      </div>
-
-      <!-- LOI GENERATOR -->
-      <div class="skill-card loi">
-        <div class="card-top">
-          <div class="card-icon">📄</div>
-          <div class="card-status"><span class="sdot"></span>Active</div>
-        </div>
-        <div class="card-num">08</div>
-        <div class="card-name">LOI GENERATOR</div>
-        <p class="card-desc">Draft-ready LOI in minutes. RIDGE defaults: 5% hard earnest at end of DD, 30-day DD, 45-day close, Entrada Management Services LLC as buyer. Also drafts amendments and extensions.</p>
-        <div class="card-inputs">
-          <input class="card-input" id="loi-property" type="text" placeholder="Property name">
-          <input class="card-input" id="loi-address" type="text" placeholder="Property address">
-          <input class="card-input" id="loi-price" type="text" placeholder="Purchase price — e.g. $14,750,000">
-        </div>
-        <button class="launch-btn" onclick="launchLOI()">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
-          Launch in Claude
-        </button>
-      </div>
-
-      <!-- LEASE ADMIN -->
-      <div class="skill-card gavel">
-        <div class="card-top">
-          <div class="card-icon">⚖️</div>
-          <div class="card-status"><span class="sdot"></span>Active</div>
-        </div>
-        <div class="card-num">09</div>
-        <div class="card-name">LEASE ADMIN</div>
-        <p class="card-desc">Upload a lease, get a PDF abstract and XLSX rent roll. Always both, never just one. Calibrated for industrial and flex lease structures.</p>
-        <div class="card-inputs">
-          <input class="card-input" id="gavel-tenant" type="text" placeholder="Tenant name (optional)">
-          <input class="card-input" id="gavel-address" type="text" placeholder="Property address (optional)">
-          <div class="file-drop" id="gavel-drop" onclick="document.getElementById('gavel-file').click()">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-            <span class="file-drop-label" id="gavel-file-label">Upload lease document (.pdf)</span>
-            <input type="file" id="gavel-file" accept=".pdf" onchange="onFileSelected('gavel', this)">
-          </div>
-        </div>
-        <div class="clip-notice" id="gavel-clip">✓ Copied to clipboard — paste in Claude</div>
-        <button class="launch-btn" onclick="launchWithFile('gavel', launchGavelPrompt)">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
-          Launch in Claude
-        </button>
-      </div>
-
-      <!-- CRE LEGAL REVIEWER -->
-      <div class="skill-card legal">
-        <div class="card-top">
-          <div class="card-icon">📋</div>
-          <div class="card-status"><span class="sdot"></span>Active</div>
-        </div>
-        <div class="card-num">10</div>
-        <div class="card-name">CRE LEGAL REVIEWER</div>
-        <p class="card-desc">PSAs, JV agreements, loan docs, and PMAs. Flags seller rep gaps, waterfall mechanics, DSCR covenants, and prepayment exposure. Not for leases — route those to Lease Admin.</p>
-        <div class="card-inputs">
-          <select class="card-input" id="legal-type">
-            <option value="">Document type...</option>
-            <option value="PSA">PSA</option>
-            <option value="JV / Operating Agreement">JV / Operating Agreement</option>
-            <option value="Loan Documents">Loan Documents</option>
-            <option value="PMA">PMA</option>
-          </select>
-          <input class="card-input" id="legal-deal" type="text" placeholder="Deal / property name (optional)">
-          <div class="file-drop" id="legal-drop" onclick="document.getElementById('legal-file').click()">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-            <span class="file-drop-label" id="legal-file-label">Upload document (.pdf)</span>
-            <input type="file" id="legal-file" accept=".pdf" onchange="onFileSelected('legal', this)">
-          </div>
-        </div>
-        <div class="clip-notice" id="legal-clip">✓ Copied to clipboard — paste in Claude</div>
-        <button class="launch-btn" onclick="launchWithFile('legal', launchLegalPrompt)">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
-          Launch in Claude
-        </button>
-      </div>
-
-      <!-- CANVAS -->
-      <div class="skill-card canvas-panel">
-        <div class="card-top">
-          <div class="card-icon">🏗️</div>
-          <div class="card-status"><span class="sdot"></span>Active</div>
-        </div>
-        <div class="card-num">11</div>
-        <div class="card-name">CANVAS</div>
-        <p class="card-desc">Tenant sourcing engine. Fill mode: find tenants for a specific building. Hunt mode: scan for displaced businesses and feed them back as acquisition targets.</p>
-        <div class="card-inputs">
-          <select class="card-input" id="cpanel-mode">
-            <option value="Fill">Mode: Fill — I have a building, find tenants</option>
-            <option value="Hunt">Mode: Hunt — find displaced businesses for acquisition targeting</option>
-          </select>
-          <input class="card-input" id="cpanel-location" type="text" placeholder="Property address or market / submarket">
-          <input class="card-input" id="cpanel-deal" type="text" placeholder="PIPELINE deal to attach (optional)">
-        </div>
-        <button class="launch-btn" onclick="launchCanvasPanel()">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
-          Launch in Claude
-        </button>
-      </div>
-
-      <!-- LENS -->
-      <div class="skill-card lens">
-        <div class="card-top">
-          <div class="card-icon">🔬</div>
-          <div class="card-status"><span class="sdot"></span>Active</div>
-        </div>
-        <div class="card-num">12</div>
-        <div class="card-name">LENS</div>
-        <p class="card-desc">Broker OM teardown. Strips the narrative, re-underwrites at RIDGE criteria, outputs Bear / RIDGE Base / Bull with a maximum entry price. Use whenever a broker sends a deal.</p>
-        <div class="card-inputs">
-          <input class="card-input" id="lens-property" type="text" placeholder="Property name or address (optional)">
-          <div class="file-drop" id="lens-drop" onclick="document.getElementById('lens-file').click()">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-            <span class="file-drop-label" id="lens-file-label">Upload broker OM (.pdf)</span>
-            <input type="file" id="lens-file" accept=".pdf" onchange="onFileSelected('lens', this)">
-          </div>
-        </div>
-        <div class="clip-notice" id="lens-clip">✓ Copied to clipboard — paste in Claude</div>
-        <button class="launch-btn" onclick="launchWithFile('lens', launchLensPrompt)">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
-          Launch in Claude
-        </button>
-      </div>
-
+      <div class="res-body" id="rout-${tool.id}"></div>
     </div>
-  </section>
+  </div>`;
+}
 
-  <!-- Document Routing -->
-  <section style="padding-top: 0;">
-    <div class="section-header" style="margin-top: 60px;">
-      <span class="section-label">Routing</span>
-      <span class="section-title">Document Routing Logic</span>
-    </div>
-    <div style="background: var(--card); border: 1px solid var(--border); border-radius: 12px; overflow: hidden;">
-      <table style="width:100%; border-collapse: collapse; font-size: 13px;">
-        <thead>
-          <tr style="background: rgba(255,255,255,0.03);">
-            <th style="padding: 14px 20px; text-align:left; font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:var(--muted); font-weight:600; border-bottom:1px solid var(--border);">Document Type</th>
-            <th style="padding: 14px 20px; text-align:left; font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:var(--muted); font-weight:600; border-bottom:1px solid var(--border);">Module</th>
-            <th style="padding: 14px 20px; text-align:left; font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:var(--muted); font-weight:600; border-bottom:1px solid var(--border);">Skill File</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr style="border-bottom:1px solid var(--border);">
-            <td style="padding: 14px 20px; color: rgba(240,242,248,0.8);">Lease agreement, lease amendment, rent roll</td>
-            <td style="padding: 14px 20px;"><span style="color: var(--gold); font-weight:600;">Lease Admin</span></td>
-            <td style="padding: 14px 20px; font-family: 'Space Mono', monospace; font-size: 11px; color: var(--muted);">the-gavel/SKILL.md</td>
-          </tr>
-          <tr style="border-bottom:1px solid var(--border);">
-            <td style="padding: 14px 20px; color: rgba(240,242,248,0.8);">PSA, JV / Operating Agreement, Loan Docs, PMA</td>
-            <td style="padding: 14px 20px;"><span style="color: #C4B5FD; font-weight:600;">CRE Legal Reviewer</span></td>
-            <td style="padding: 14px 20px; font-family: 'Space Mono', monospace; font-size: 11px; color: var(--muted);">cre-legal-reviewer/SKILL.md</td>
-          </tr>
-          <tr style="border-bottom:1px solid var(--border);">
-            <td style="padding: 14px 20px; color: rgba(240,242,248,0.8);">Full diligence package (lease + PSA or other docs)</td>
-            <td style="padding: 14px 20px;"><span style="color: #93C5FD; font-weight:600;">Both</span> <span style="color: var(--muted); font-size: 12px;">— cross-reference in session summary</span></td>
-            <td style="padding: 14px 20px; font-family: 'Space Mono', monospace; font-size: 11px; color: var(--muted);">Both skill files</td>
-          </tr>
-          <tr style="border-bottom:1px solid var(--border);">
-            <td style="padding: 14px 20px; color: rgba(240,242,248,0.8);">Acquisition model (.xlsx), underwriting model</td>
-            <td style="padding: 14px 20px;"><span style="color: #6EE7B7; font-weight:600;">Acquisition Investment Report</span></td>
-            <td style="padding: 14px 20px; font-family: 'Space Mono', monospace; font-size: 11px; color: var(--muted);">acq-investment-report/SKILL.md</td>
-          </tr>
-          <tr style="border-bottom:1px solid var(--border);">
-            <td style="padding: 14px 20px; color: rgba(240,242,248,0.8);">Lease comp data + target property address</td>
-            <td style="padding: 14px 20px;"><span style="color: #FDBA74; font-weight:600;">Lease Comp Map</span></td>
-            <td style="padding: 14px 20px; font-family: 'Space Mono', monospace; font-size: 11px; color: var(--muted);">lease-comp-map/SKILL.md</td>
-          </tr>
-          <tr>
-            <td style="padding: 14px 20px; color: rgba(240,242,248,0.8);">Broker OM, BOV, investment summary, deal package</td>
-            <td style="padding: 14px 20px;"><span style="color: #EC4899; font-weight:600;">LENS</span></td>
-            <td style="padding: 14px 20px; font-family: 'Space Mono', monospace; font-size: 11px; color: var(--muted);">lens/SKILL.md</td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-  </section>
-
-  <!-- Operating Principles -->
-  <section style="padding-top: 0;">
-    <div class="section-header" style="margin-top: 60px;">
-      <span class="section-label">Standards</span>
-      <span class="section-title">Operating Principles</span>
-    </div>
-    <div class="principles-grid">
-      <div class="principle-item">
-        <span class="principle-num">01</span>
-        <span class="principle-text">Reference prior sessions and deals — never start from scratch</span>
-      </div>
-      <div class="principle-item">
-        <span class="principle-num">02</span>
-        <span class="principle-text">Lead with conviction, not neutrality</span>
-      </div>
-      <div class="principle-item">
-        <span class="principle-num">03</span>
-        <span class="principle-text">Push back when the math doesn't work — protect the return thresholds</span>
-      </div>
-      <div class="principle-item">
-        <span class="principle-num">04</span>
-        <span class="principle-text">Ask one sharp question at a time</span>
-      </div>
-      <div class="principle-item">
-        <span class="principle-num">05</span>
-        <span class="principle-text">Always state conviction level before explaining it</span>
-      </div>
-      <div class="principle-item">
-        <span class="principle-num">06</span>
-        <span class="principle-text">When a deal doesn't work, say exactly why and what would change it</span>
-      </div>
-      <div class="principle-item">
-        <span class="principle-num">07</span>
-        <span class="principle-text">The 14.75% IRR floor is a stretch — explicit justification required, no quiet exceptions</span>
-      </div>
-      <div class="principle-item">
-        <span class="principle-num">08</span>
-        <span class="principle-text">The $5M–$10M exception requires explicit confirmation before underwriting</span>
-      </div>
-    </div>
-  </section>
-
-  <!-- Footer -->
-  <footer>
-    <div class="footer-left">
-      <div class="footer-logo"><span>RIDGE</span> Intelligence Platform</div>
-      <div class="footer-sub">Real Intelligence for Deal Generation &amp; Evaluation</div>
-    </div>
-    <div class="footer-right">
-      <div class="footer-meta">
-        12 Skills Active &nbsp;·&nbsp; Build 2026.03.16<br>
-        ATL · SAV · DFW · HOU
-      </div>
-    </div>
-  </footer>
-
-  <script>
-    // ── FILE UPLOAD + CLIPBOARD INJECT ──
-
-    pdfjsLib && (pdfjsLib.GlobalWorkerOptions.workerSrc =
-      'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js');
-
-    const fileStore = {};
-
-    function onFileSelected(cardId, input) {
-      const file = input.files[0];
-      if (!file) return;
-      fileStore[cardId] = file;
-      const label = document.getElementById(cardId + '-file-label');
-      const drop = document.getElementById(cardId + '-drop');
-      label.textContent = file.name;
-      drop.classList.add('has-file');
-      document.getElementById(cardId + '-clip').classList.remove('visible');
-    }
-
-    async function extractXLSX(file) {
-      return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = e => {
-          try {
-            const wb = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
-            let out = '';
-            wb.SheetNames.forEach(name => {
-              out += `\n=== ${name} ===\n` + XLSX.utils.sheet_to_csv(wb.Sheets[name]);
-            });
-            resolve(out);
-          } catch(err) { reject(err); }
-        };
-        reader.readAsArrayBuffer(file);
-      });
-    }
-
-    async function extractPDF(file) {
-      return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = async e => {
-          try {
-            const pdf = await pdfjsLib.getDocument(new Uint8Array(e.target.result)).promise;
-            let text = '';
-            for (let i = 1; i <= Math.min(pdf.numPages, 80); i++) {
-              const page = await pdf.getPage(i);
-              const content = await page.getTextContent();
-              text += content.items.map(x => x.str).join(' ') + '\n';
-            }
-            resolve(text);
-          } catch(err) { reject(err); }
-        };
-        reader.readAsArrayBuffer(file);
-      });
-    }
-
-    async function launchWithFile(cardId, promptFn) {
-      const file = fileStore[cardId];
-      const prompt = promptFn();
-
-      if (!file) {
-        window.open('https://claude.ai/new?q=' + encodeURIComponent(prompt), '_blank');
-        return;
+function buildFieldsHTML(tool) {
+  return tool.fields.map(f => {
+    var cols = f.row.length === 3 ? 'three' : f.row.length === 2 ? 'two' : 'one';
+    var cells = f.row.map(field => {
+      if (field.type === 'textarea') {
+        return `<div class="fg"><label class="fl">${field.label}</label><textarea id="f-${tool.id}-${field.id}" placeholder="${field.ph||''}"></textarea></div>`;
+      } else if (field.type === 'select') {
+        return `<div class="fg"><label class="fl">${field.label}</label><select id="f-${tool.id}-${field.id}">${field.opts.map(o=>`<option>${o}</option>`).join('')}</select></div>`;
+      } else {
+        return `<div class="fg"><label class="fl">${field.label}</label><input type="text" id="f-${tool.id}-${field.id}" placeholder="${field.ph||''}"></div>`;
       }
+    }).join('');
+    return `<div class="fr ${cols}">${cells}</div>`;
+  }).join('');
+}
 
-      const btn = document.querySelector(`[onclick="launchWithFile('${cardId}', ${promptFn.name})"]`);
-      const origText = btn ? btn.innerHTML : '';
-      if (btn) btn.innerHTML = btn.innerHTML.replace('Launch in Claude', 'Reading file…');
+// ═══════════════════════════════════════════════════════════
+//  PANEL TOGGLE
+// ═══════════════════════════════════════════════════════════
+function togglePanel(id) {
+  var panel = document.getElementById('panel-' + id);
+  var card = document.getElementById('card-' + id) || document.getElementById('pipeline-card');
+  var isOpen = panel.classList.contains('open');
 
-      try {
-        const ext = file.name.split('.').pop().toLowerCase();
-        let content;
-        if (ext === 'pdf') {
-          content = await extractPDF(file);
-        } else {
-          content = await extractXLSX(file);
+  // Close all
+  document.querySelectorAll('.tool-panel').forEach(p => p.classList.remove('open'));
+  document.querySelectorAll('.tool-card,.pipeline-card').forEach(c => c.classList.remove('open'));
+
+  if (!isOpen) {
+    panel.classList.add('open');
+    if (card) card.classList.add('open');
+    setTimeout(() => panel.scrollIntoView({ behavior:'smooth', block:'start' }), 50);
+  }
+}
+
+function toggleManual(id) {
+  var b = document.getElementById('mbody-' + id);
+  var a = document.getElementById('marrow-' + id);
+  if (b.classList.contains('open')) { b.classList.remove('open'); a.textContent = '▶'; }
+  else { b.classList.add('open'); a.textContent = '▼'; }
+}
+
+// ═══════════════════════════════════════════════════════════
+//  FILE HANDLERS
+// ═══════════════════════════════════════════════════════════
+function handleXLSX(toolId, uploadId, input) {
+  var file = input.files[0]; if (!file) return;
+  var uz = document.getElementById(`uz-${toolId}-${uploadId}`);
+  var st = document.getElementById(`uzst-${toolId}-${uploadId}`);
+  st.textContent = 'Reading...'; st.className = 'uz-st';
+
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      var wb = XLSX.read(e.target.result, { type:'array', cellDates:true });
+      var allText = '';
+      var extracted = {};
+
+      wb.SheetNames.forEach(name => {
+        var ws = wb.Sheets[name];
+        var rows = XLSX.utils.sheet_to_json(ws, { header:1, defval:'' });
+        var lines = rows.map(r => r.filter(c => c !== '' && c !== null).join(' | ')).filter(l => l.trim());
+        allText += `\n=== SHEET: ${name} ===\n${lines.join('\n')}`;
+
+        // Extract Atlas X Inputs
+        if (name === 'Atlas X Inputs') {
+          rows.forEach(r => {
+            var l = String(r[0]||'').toLowerCase();
+            if (l.includes('price')) extracted.price = r[1];
+            if (l.includes('noi')) extracted.noi = r[1];
+            if (l.includes('irr')) extracted.irr = r[1];
+            if (l.includes('equity multiple') || l.includes('equity mult')) extracted.em = r[1];
+            if (l.includes('cap rate') && l.includes('year 1')) extracted.cap = r[1];
+          });
         }
+        // Extract Property Summary
+        if (name === 'Property Summary') {
+          rows.forEach(r => {
+            var l = String(r[1]||'').toLowerCase();
+            if (l.includes('address')) extracted.address = r[2];
+            if (l.includes('city')) extracted.city = r[2];
+            if (l.includes('square footage')) extracted.sf = r[2];
+            if (l.includes('purchase price') && !l.includes('psf')) extracted.price = extracted.price || r[2];
+            if (l.includes('psf')) extracted.psf = r[2];
+            if (l.includes('year one noi') || l.includes('year 1 noi')) extracted.noi = extracted.noi || r[2];
+            if (l.includes('going in cap')) extracted.cap = extracted.cap || r[2];
+            if (l.includes('hold period')) extracted.hold = r[2];
+            if (l.includes('exit cap')) extracted.exitcap = r[2];
+          });
+        }
+        // Assumption Summary — LTV
+        if (name === 'Assumption Summary') {
+          rows.forEach(r => {
+            var l = String(r[1]||'').toLowerCase();
+            if (l.includes('initial loan to value')) extracted.ltv = r[2];
+            if (l.includes('levered project')) { if (r[8] && !extracted.irr) extracted.irr = r[8]; if (r[9] && !extracted.em) extracted.em = r[9]; }
+          });
+        }
+        // YOC from Annual Cash Flow
+        if (name === 'Annual Cash Flow') {
+          rows.forEach(r => { if (String(r[1]||'').toLowerCase().includes('yield on cost') && r[5]) extracted.yoc = r[5]; });
+        }
+      });
 
-        const fullPrompt = prompt + '\n\n--- BEGIN FILE: ' + file.name + ' ---\n' + content + '\n--- END FILE ---';
-        await navigator.clipboard.writeText(fullPrompt);
+      STATE[toolId].files[uploadId] = allText;
+      STATE[toolId].metrics = { ...STATE[toolId].metrics, ...extracted };
 
-        const notice = document.getElementById(cardId + '-clip');
-        notice.classList.add('visible');
-        if (btn) btn.innerHTML = origText;
+      uz.classList.add('loaded');
+      st.textContent = `✓ ${wb.SheetNames.length} sheets · ${Object.keys(extracted).filter(k=>extracted[k]).length} metrics extracted`;
 
-        window.open('https://claude.ai/new?q=' + encodeURIComponent(prompt + ' [File content copied to clipboard — paste with Ctrl+V to include ' + file.name + ']'), '_blank');
-      } catch(err) {
-        if (btn) btn.innerHTML = origText;
-        window.open('https://claude.ai/new?q=' + encodeURIComponent(prompt), '_blank');
-      }
+      // Pre-fill fields
+      if (extracted.address) setField(toolId, 'addr', extracted.address + (extracted.city ? ', '+extracted.city : ''));
+      if (extracted.sf) setField(toolId, 'sf', Number(extracted.sf).toLocaleString());
+      if (extracted.price) setField(toolId, 'price', '$'+Number(extracted.price).toLocaleString());
+      if (extracted.psf) setField(toolId, 'psf', '$'+Number(extracted.psf).toFixed(0));
+      if (extracted.irr) setField(toolId, 'irr', (Number(extracted.irr)*100).toFixed(1)+'%');
+      if (extracted.em) setField(toolId, 'em', Number(extracted.em).toFixed(2)+'x');
+      if (extracted.cap) setField(toolId, 'cap', (Number(extracted.cap)*100).toFixed(1)+'%');
+      if (extracted.yoc) setField(toolId, 'yoc', (Number(extracted.yoc)*100).toFixed(1)+'%');
+      if (extracted.ltv) setField(toolId, 'ltv', (Number(extracted.ltv)*100).toFixed(0)+'%');
+      if (extracted.hold) setField(toolId, 'hold', Math.round(Number(extracted.hold)/12)+' years');
+      if (extracted.noi) setField(toolId, 'noi', '$'+Number(extracted.noi).toLocaleString());
+
+      // Show parsed KPIs
+      showParsedKPIs(toolId, extracted);
+
+      // Auto-open fields
+      document.getElementById('mbody-'+toolId).classList.add('open');
+      document.getElementById('marrow-'+toolId).textContent = '▼';
+
+    } catch(err) { st.textContent = 'Error: '+err.message; st.className = 'uz-st err'; }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function handleFile(toolId, uploadId, input, type) {
+  var file = input.files[0]; if (!file) return;
+  var uz = document.getElementById(`uz-${toolId}-${uploadId}`);
+  var st = document.getElementById(`uzst-${toolId}-${uploadId}`);
+  st.textContent = 'Reading...'; st.className = 'uz-st';
+
+  if (type === 'pdf') {
+    var reader = new FileReader();
+    reader.onload = function(e) {
+      STATE[toolId].files[uploadId] = { base64: e.target.result.split(',')[1], name: file.name };
+      uz.classList.add('loaded');
+      st.textContent = `✓ ${file.name} (${(file.size/1024/1024).toFixed(1)} MB)`;
+    };
+    reader.readAsDataURL(file);
+  } else {
+    // Try xlsx first, fallback to text
+    if (file.name.endsWith('.xlsx') || file.name.endsWith('.xls')) {
+      handleXLSX(toolId, uploadId, input);
+    } else {
+      var reader2 = new FileReader();
+      reader2.onload = function(e) {
+        STATE[toolId].files[uploadId] = e.target.result;
+        uz.classList.add('loaded');
+        st.textContent = `✓ ${file.name}`;
+      };
+      reader2.readAsText(file);
+    }
+  }
+}
+
+function setField(toolId, fieldId, value) {
+  var el = document.getElementById(`f-${toolId}-${fieldId}`);
+  if (el && !el.value) el.value = value;
+}
+
+function showParsedKPIs(toolId, m) {
+  var preview = document.getElementById('parsed-'+toolId);
+  if (!preview) return;
+  var kpis = document.getElementById('pkpis-'+toolId);
+  preview.style.display = 'block';
+  var items = [];
+  if (m.price) items.push({l:'Purchase Price',v:'$'+Number(m.price).toLocaleString()});
+  if (m.psf) items.push({l:'Price PSF',v:'$'+Number(m.psf).toFixed(0)});
+  if (m.sf) items.push({l:'Building SF',v:Number(m.sf).toLocaleString()});
+  if (m.noi) items.push({l:'Year 1 NOI',v:'$'+Number(m.noi).toLocaleString()});
+  if (m.irr) items.push({l:'Levered IRR',v:(Number(m.irr)*100).toFixed(1)+'%'});
+  if (m.em) items.push({l:'Equity Multiple',v:Number(m.em).toFixed(2)+'x'});
+  if (m.cap) items.push({l:'Going-In Cap',v:(Number(m.cap)*100).toFixed(1)+'%'});
+  if (m.exitcap) items.push({l:'Exit Cap',v:(Number(m.exitcap)*100).toFixed(1)+'%'});
+  if (m.yoc) items.push({l:'YOC Yr4/5',v:(Number(m.yoc)*100).toFixed(1)+'%'});
+  if (m.ltv) items.push({l:'LTV',v:(Number(m.ltv)*100).toFixed(0)+'%'});
+  kpis.innerHTML = items.map(i=>`<div class="kpi-chip"><div class="kpi-chip-l">${i.l}</div><div class="kpi-chip-v">${i.v}</div></div>`).join('');
+}
+
+// ═══════════════════════════════════════════════════════════
+//  RUN TOOL
+// ═══════════════════════════════════════════════════════════
+async function runTool(toolId) {
+  var apiKey = getApiKey();
+  if (!apiKey) { alert('Set your API key first (⚙ API Key in header)'); showApi(); return; }
+
+  var tool = TOOLS.find(t=>t.id===toolId);
+  if (!tool && toolId !== 'pipeline') return;
+
+  // Gather field values
+  var d = {};
+  if (tool) {
+    tool.fields.forEach(f => f.row.forEach(field => {
+      var el = document.getElementById(`f-${toolId}-${field.id}`);
+      d[field.id] = el ? el.value.trim() : '';
+    }));
+    // Attach file data
+    Object.keys(STATE[toolId].files).forEach(uploadId => {
+      var fd = STATE[toolId].files[uploadId];
+      if (typeof fd === 'string') d[uploadId+'_text'] = fd;
+      else if (fd && fd.base64) d[uploadId+'_b64'] = fd.base64;
+      else if (fd && fd.name) d[uploadId+'_text'] = '[File: '+fd.name+']';
+    });
+  } else {
+    // Pipeline special
+    d.addr = document.getElementById('pl-addr').value;
+    d.stage = document.getElementById('pl-stage').value;
+    d.conv = document.getElementById('pl-conv').value;
+    d.price = document.getElementById('pl-price').value;
+    d.broker = document.getElementById('pl-broker').value;
+    d.notes = document.getElementById('pl-notes').value;
+    d.context = document.getElementById('pipeline-context').value;
+  }
+
+  // Show loading
+  var loadEl = document.getElementById('loading-'+toolId);
+  var resEl = document.getElementById('results-'+toolId);
+  var runBtn = document.getElementById('run-btn-'+toolId);
+  loadEl.classList.add('show');
+  resEl.classList.remove('show');
+  if (runBtn) runBtn.disabled = true;
+
+  var steps = tool ? tool.steps : ['Updating pipeline...','Analyzing deal status...','Generating summary...'];
+  var si = 0, prog = 0;
+  function tick() {
+    if (si < steps.length) {
+      document.getElementById('pstep-'+toolId).textContent = steps[si++];
+      prog = Math.min(90, (si/steps.length)*100);
+      document.getElementById('pfill-'+toolId).style.width = prog+'%';
+    }
+  }
+  tick();
+  var timer = setInterval(tick, 2400);
+
+  try {
+    var sys = tool ? tool.system : `You are RIDGE's pipeline manager for Entrada Partners. Maintain and summarize the active deal pipeline. Be concise and action-oriented.`;
+    var userContent = [];
+
+    // Add PDF docs
+    if (tool) {
+      tool.uploads.filter(u=>u.type==='pdf').forEach(u => {
+        var fd = STATE[toolId].files[u.id];
+        if (fd && fd.base64) {
+          userContent.push({ type:'document', source:{ type:'base64', media_type:'application/pdf', data:fd.base64 }});
+        }
+      });
     }
 
-    // Prompt builder functions (one per card using file upload)
-    function launchLensPrompt() {
-      const property = document.getElementById('lens-property').value.trim();
-      let p = 'Run LENS — I am uploading a broker OM for RIDGE teardown analysis.';
-      if (property) p += ' Property: ' + property + '.';
-      return p;
+    var promptText = tool ? tool.prompt(d) : `Update pipeline for: ${d.addr||'deal'} | Stage: ${d.stage} | Conviction: ${d.conv} | Price: ${d.price||'TBD'} | Broker: ${d.broker||'none'}.\nNotes: ${d.notes||'none'}.\n${d.context?'Context: '+d.context+'\n':''}\nProduce:\n## DEAL STATUS UPDATE\nKey facts, current stage, conviction level, days in stage (estimate if unknown).\n\n## OUTSTANDING ITEMS\n3–5 things that need to happen before advancing.\n\n## NEXT ACTIONS\nTop 3 immediate next steps, each with a deadline recommendation.\n\n## COMPARABLE DEALS\nBriefly, how does this deal compare to RIDGE's typical criteria? Any flags?`;
+    userContent.push({ type:'text', text:promptText });
+
+    var resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method:'POST',
+      headers:{ 'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true' },
+      body:JSON.stringify({ model:'claude-sonnet-4-20250514', max_tokens:3500, system:sys, messages:[{ role:'user', content:userContent }] })
+    });
+
+    clearInterval(timer);
+    if (!resp.ok) { var e=await resp.json(); throw new Error(((e.error||{}).message)||'API error '+resp.status); }
+    var data = await resp.json();
+    var text = data.content.filter(b=>b.type==='text').map(b=>b.text).join('');
+    STATE[toolId].result = text;
+
+    document.getElementById('pfill-'+toolId).style.width='100%';
+    document.getElementById('pstep-'+toolId).textContent='Done.';
+    setTimeout(()=>{
+      loadEl.classList.remove('show');
+      resEl.classList.add('show');
+      document.getElementById('rtitle-'+toolId).textContent = (tool?tool.name:'PIPELINE') + (d.addr?' — '+d.addr:'');
+      document.getElementById('rout-'+toolId).innerHTML = renderMD(text);
+      if (runBtn) runBtn.disabled = false;
+      // Enable PPTX for ISR
+      if (toolId==='isr') { var pb=document.getElementById('pptx-btn-isr'); if(pb) pb.disabled=false; }
+    }, 500);
+
+  } catch(err) {
+    clearInterval(timer);
+    loadEl.classList.remove('show');
+    if (runBtn) runBtn.disabled = false;
+    alert('Error: '+err.message);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+//  MARKDOWN RENDERER
+// ═══════════════════════════════════════════════════════════
+function renderMD(text) {
+  var lines = text.split('\n'), html = [], inTable = false, tRows = [];
+  function flushTable() {
+    if (!tRows.length) return;
+    var t = '<table>';
+    tRows.forEach((row, i) => {
+      var cells = row.split('|').map(c=>c.trim()).filter(c=>c);
+      if (i===0) t += '<thead><tr>'+cells.map(c=>`<th>${c}</th>`).join('')+'</tr></thead><tbody>';
+      else if (/^[\s|:\-]+$/.test(row)) return;
+      else t += '<tr>'+cells.map(c=>{
+        var cls='';
+        if (c.includes('✓')||c==='Strong'||c.includes('RECOMMEND')||c==='GO'||c==='BUY') cls='gc';
+        if (c.includes('✗')||c==='High'||c==='PASS'||c==='NO-GO') cls='rc';
+        if (c.includes('⚠')||c==='Medium'||c==='CONDITIONAL'||c.includes('WATCH')) cls='ac';
+        return `<td class="${cls}">${c}</td>`;
+      }).join('')+'</tr>';
+    });
+    t += '</tbody></table>';
+    html.push(t); tRows=[]; inTable=false;
+  }
+  lines.forEach(line => {
+    if ((line.trim().startsWith('|') || (line.includes('|') && line.split('|').length > 2)) && !line.trim().startsWith('#')) {
+      inTable=true; tRows.push(line); return;
     }
-    function launchAcqPrompt() {
-      const deal = document.getElementById('acq-deal').value.trim();
-      let p = 'IC deck — I am uploading my acquisition model. Build me an investment committee presentation.';
-      if (deal) p += ' Deal: ' + deal + '.';
-      return p;
+    if (inTable) flushTable();
+    var l = line.trim();
+    if (l.startsWith('## ')) html.push(`<h2>${l.slice(3)}</h2>`);
+    else if (l.startsWith('### ')) html.push(`<h3>${l.slice(4)}</h3>`);
+    else if (l.startsWith('- ')||l.startsWith('• ')) html.push(`<p style="padding-left:14px;border-left:2px solid var(--border);margin:4px 0">${l.slice(2)}</p>`);
+    else if (/^\d+\./.test(l)) html.push(`<p style="padding-left:14px">${l}</p>`);
+    else if (l) {
+      var proc = l.replace(/\*\*([^*]+)\*\*/g,'<strong>$1</strong>');
+      if (proc.includes('RECOMMEND FOR INVESTMENT')) html.push(`<div class="rec">${proc}</div>`);
+      else if (proc.includes('CONDITIONAL APPROVAL')) html.push(`<div class="rec cond">${proc}</div>`);
+      else if (/^(\*\*)?PASS(\*\*)?$/.test(proc.trim())) html.push(`<div class="rec pass">PASS</div>`);
+      else if (proc.includes('GO / NO-GO')||proc.includes('**GO**')||proc.includes('**NO-GO**')) html.push(`<div class="rec ${proc.includes('NO-GO')?'pass':proc.includes('CONDITIONAL')?'cond':''}">${proc}</div>`);
+      else html.push(`<p>${proc}</p>`);
+    } else html.push('<p>&nbsp;</p>');
+  });
+  if (inTable) flushTable();
+  return html.join('\n');
+}
+
+// ═══════════════════════════════════════════════════════════
+//  CLEAR / COPY
+// ═══════════════════════════════════════════════════════════
+function clearTool(toolId) {
+  STATE[toolId] = { files:{}, metrics:{}, result:null };
+  var tool = TOOLS.find(t=>t.id===toolId);
+  if (tool) {
+    tool.uploads.forEach(u => {
+      var uz=document.getElementById(`uz-${toolId}-${u.id}`); if(uz) uz.classList.remove('loaded');
+      var st=document.getElementById(`uzst-${toolId}-${u.id}`); if(st) st.textContent='';
+      var inp=document.getElementById(`file-${toolId}-${u.id}`); if(inp) inp.value='';
+    });
+    tool.fields.forEach(f=>f.row.forEach(field=>{ var el=document.getElementById(`f-${toolId}-${field.id}`); if(el) el.value=''; }));
+    var pp=document.getElementById('parsed-'+toolId); if(pp) pp.style.display='none';
+  }
+  document.getElementById('results-'+toolId).classList.remove('show');
+  document.getElementById('loading-'+toolId).classList.remove('show');
+  var pb=document.getElementById('pptx-btn-'+toolId); if(pb) pb.disabled=true;
+}
+
+function copyResult(toolId) {
+  var r = STATE[toolId].result; if(!r) return;
+  navigator.clipboard.writeText(r).then(()=>{
+    var btn = document.querySelector(`[onclick="copyResult('${toolId}')"]`);
+    if(btn){btn.textContent='✓ Copied'; setTimeout(()=>btn.textContent='📋 Copy',1500);}
+  });
+}
+
+// ═══════════════════════════════════════════════════════════
+//  PPTX BUILD (ISR)
+// ═══════════════════════════════════════════════════════════
+function buildPPTX() {
+  var toolId = 'isr';
+  var m = STATE[toolId].metrics;
+  var text = STATE[toolId].result;
+  var btn = document.getElementById('pptx-btn-isr');
+  btn.textContent = '⏳ Building...'; btn.disabled = true;
+
+  try {
+    var pptx = new PptxGenJS(); pptx.layout = 'LAYOUT_WIDE';
+    var NAVY='1E2761',WHITE='FFFFFF',BLUE='2196F3',GRAY='555555';
+
+    var addr = (document.getElementById('f-isr-addr')||{}).value || 'Subject Property';
+    var type = (document.getElementById('f-isr-type')||{}).value || 'Industrial / Flex';
+    var today = new Date().toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'});
+
+    var kIRR = m.irr ? (Number(m.irr)*100).toFixed(1)+'%' : ((document.getElementById('f-isr-irr')||{}).value||'?');
+    var kEM = m.em ? Number(m.em).toFixed(2)+'x' : ((document.getElementById('f-isr-em')||{}).value||'?');
+    var kPrice = m.price ? '$'+Number(m.price).toLocaleString() : ((document.getElementById('f-isr-price')||{}).value||'?');
+    var kPSF = m.psf ? '$'+Number(m.psf).toFixed(0) : ((document.getElementById('f-isr-psf')||{}).value||'?');
+    var kCap = m.cap ? (Number(m.cap)*100).toFixed(1)+'%' : ((document.getElementById('f-isr-cap')||{}).value||'?');
+    var kYOC = m.yoc ? (Number(m.yoc)*100).toFixed(1)+'%' : ((document.getElementById('f-isr-yoc')||{}).value||'?');
+    var kLTV = m.ltv ? (Number(m.ltv)*100).toFixed(0)+'%' : ((document.getElementById('f-isr-ltv')||{}).value||'?');
+    var kHold = (document.getElementById('f-isr-hold')||{}).value || '5 Years';
+    var kNOI = m.noi ? '$'+Number(m.noi).toLocaleString() : '?';
+
+    var irrNum = parseFloat(kIRR);
+    var recText = irrNum < 11 ? 'PASS' : irrNum < 14 ? 'CONDITIONAL APPROVAL' : 'RECOMMEND FOR INVESTMENT';
+    var recColor = irrNum < 11 ? 'C0392B' : irrNum < 14 ? 'D97706' : '1B7A34';
+
+    function footer(s,n){
+      s.addShape(pptx.ShapeType.rect,{x:0,y:6.9,w:13.33,h:.28,fill:{color:NAVY}});
+      s.addText(addr,{x:.2,y:6.92,w:8,h:.22,fontSize:8,color:'CADCFC'});
+      s.addText('ENTRADA PARTNERS · CONFIDENTIAL  ·  '+n,{x:0,y:6.92,w:13.1,h:.22,fontSize:8,color:'CADCFC',align:'right'});
     }
-    function launchGavelPrompt() {
-      const tenant = document.getElementById('gavel-tenant').value.trim();
-      const address = document.getElementById('gavel-address').value.trim();
-      let p = 'Run the lease — I am uploading a lease document for RIDGE Lease Admin analysis.';
-      if (tenant) p += ' Tenant: ' + tenant + '.';
-      if (address) p += ' Property: ' + address + '.';
-      return p;
+    function title(s,t){
+      s.addShape(pptx.ShapeType.rect,{x:0,y:0,w:13.33,h:.68,fill:{color:NAVY}});
+      s.addText(t,{x:.3,y:.1,w:12.5,h:.5,fontSize:20,bold:true,color:WHITE});
     }
-    function launchLegalPrompt() {
-      const type = document.getElementById('legal-type').value;
-      const deal = document.getElementById('legal-deal').value.trim();
-      let p = 'Legal review — I am uploading a transaction document for RIDGE CRE Legal Reviewer.';
-      if (type) p += ' Document type: ' + type + '.';
-      if (deal) p += ' Deal: ' + deal + '.';
-      return p;
-    }
-    function launchCompPrompt() {
-      const address = document.getElementById('comp-address').value.trim();
-      const submarket = document.getElementById('comp-submarket').value.trim();
-      let p = 'Map these comps — I have lease comp data for a RIDGE Lease Comp Map.';
-      if (address) p += ' Target property: ' + address + '.';
-      if (submarket) p += ' Submarket: ' + submarket + '.';
-      return p;
+    function kpi(s,x,y,val,lbl,bg){
+      bg=bg||NAVY;
+      s.addShape(pptx.ShapeType.rect,{x,y,w:3.88,h:1.42,fill:{color:bg},line:{color:bg}});
+      s.addText(val,{x,y:y+.08,w:3.88,h:.9,fontSize:36,bold:true,color:WHITE,align:'center',valign:'middle'});
+      s.addText(lbl,{x,y:y+1.02,w:3.88,h:.34,fontSize:10,color:'CADCFC',align:'center'});
     }
 
-    function launchScout() {
-      const market = document.getElementById('scout-market').value.trim();
-      const mode = document.getElementById('scout-mode').value;
-      let p = 'Run SCOUT — ' + mode;
-      if (market) p += ' in ' + market;
-      p += '. I am ready to begin.';
-      window.open('https://claude.ai/new?q=' + encodeURIComponent(p), '_blank');
+    // Slide 1 — Cover
+    var s=pptx.addSlide(); s.background={color:NAVY};
+    s.addShape(pptx.ShapeType.rect,{x:0,y:0,w:.18,h:7.5,fill:{color:BLUE}});
+    s.addText('INVESTMENT COMMITTEE',{x:.4,y:1.4,w:12,h:.4,fontSize:12,bold:true,color:BLUE,charSpacing:3});
+    s.addText(addr,{x:.4,y:1.9,w:12,h:1.1,fontSize:38,bold:true,color:WHITE});
+    s.addText(type.toUpperCase(),{x:.4,y:3.1,w:10,h:.38,fontSize:13,color:'CADCFC',charSpacing:2});
+    s.addShape(pptx.ShapeType.rect,{x:.4,y:3.6,w:4,h:.03,fill:{color:BLUE}});
+    s.addText('ENTRADA PARTNERS',{x:.4,y:3.75,w:6,h:.28,fontSize:11,bold:true,color:WHITE});
+    s.addText(today,{x:.4,y:4.08,w:6,h:.25,fontSize:10,color:'CADCFC'});
+
+    // Slide 2 — Deal Snapshot
+    var s2=pptx.addSlide(); s2.background={color:WHITE}; title(s2,'Deal Snapshot');
+    kpi(s2,.15,.82,kPrice,'Purchase Price',NAVY);
+    kpi(s2,4.2,.82,kPSF,'Price PSF',NAVY);
+    kpi(s2,8.25,.82,kCap,'Going-In Cap',NAVY);
+    kpi(s2,.15,2.42,kIRR,'Levered IRR','1565C0');
+    kpi(s2,4.2,2.42,kEM,'Equity Multiple','1565C0');
+    kpi(s2,8.25,2.42,kLTV,'LTV','1565C0');
+    s2.addShape(pptx.ShapeType.rect,{x:.15,y:4.02,w:13,h:.44,fill:{color:'F0F4FF'}});
+    s2.addText(`YOC: ${kYOC}   ·   NOI Yr1: ${kNOI}   ·   Hold: ${kHold}   ·   Exit Cap: ${m.exitcap?(Number(m.exitcap)*100).toFixed(1)+'%':'6.5%'}`,
+      {x:.3,y:4.06,w:12.5,h:.34,fontSize:11,color:NAVY,bold:true});
+    footer(s2,2);
+
+    // Slide 3 — Thesis
+    var s3=pptx.addSlide(); s3.background={color:WHITE}; title(s3,'Investment Thesis');
+    var bullets = extractSec(text,'INVESTMENT THESIS',4);
+    bullets.forEach((b,i)=>{
+      s3.addShape(pptx.ShapeType.rect,{x:.3,y:.82+i*1.12,w:.07,h:.88,fill:{color:BLUE}});
+      s3.addText(b,{x:.52,y:.82+i*1.12,w:12.4,h:.88,fontSize:13,color:GRAY,valign:'middle',wrap:true});
+    });
+    footer(s3,3);
+
+    // Slide 4 — Property Overview
+    var s4=pptx.addSlide(); s4.background={color:WHITE}; title(s4,'Property Overview');
+    var ov=extractSec(text,'PROPERTY OVERVIEW',10).join('\n');
+    s4.addText(ov||'See acquisition model.',{x:.3,y:.82,w:12.5,h:5.8,fontSize:12,color:GRAY,valign:'top',wrap:true});
+    footer(s4,4);
+
+    // Slide 5 — Sources & Uses
+    var s5=pptx.addSlide(); s5.background={color:WHITE}; title(s5,'Sources & Uses / Capital Stack');
+    var price=Number(m.price)||0; var sf=Number(m.sf)||1;
+    if(price){
+      var suRows=[
+        [{text:'Item',options:{bold:true,color:WHITE,fill:{color:NAVY}}},{text:'Amount',options:{bold:true,color:WHITE,fill:{color:NAVY}}},{text:'$/SF',options:{bold:true,color:WHITE,fill:{color:NAVY}}},{text:'%',options:{bold:true,color:WHITE,fill:{color:NAVY}}}],
+        [{text:'Purchase Price'},{text:'$'+price.toLocaleString()},{text:'$'+(price/sf).toFixed(0)},{text:'90%'}],
+        [{text:'Closing Costs',options:{fill:{color:'F0F4FF'}}},{text:'$'+Math.round(price*.02).toLocaleString(),options:{fill:{color:'F0F4FF'}}},{text:'$'+(price*.02/sf).toFixed(0),options:{fill:{color:'F0F4FF'}}},{text:'2%',options:{fill:{color:'F0F4FF'}}}],
+        [{text:'TI / LC / CapEx Reserve'},{text:'$'+Math.round(price*.06).toLocaleString()},{text:'$'+(price*.06/sf).toFixed(0)},{text:'6%'}],
+        [{text:'Financing Fees',options:{fill:{color:'F0F4FF'}}},{text:'$'+Math.round(price*.015).toLocaleString(),options:{fill:{color:'F0F4FF'}}},{text:'$'+(price*.015/sf).toFixed(0),options:{fill:{color:'F0F4FF'}}},{text:'2%',options:{fill:{color:'F0F4FF'}}}],
+        [{text:'TOTAL',options:{bold:true,color:WHITE,fill:{color:NAVY}}},{text:'$'+Math.round(price*1.075).toLocaleString(),options:{bold:true,color:WHITE,fill:{color:NAVY}}},{text:'$'+(price*1.075/sf).toFixed(0),options:{bold:true,color:WHITE,fill:{color:NAVY}}},{text:'100%',options:{bold:true,color:WHITE,fill:{color:NAVY}}}],
+      ];
+      s5.addTable(suRows,{x:.3,y:.82,w:7.5,border:{pt:.5,color:'E0E0E0'},fontSize:11});
     }
-    function launchGavel() {
-      const tenant = document.getElementById('gavel-tenant').value.trim();
-      const address = document.getElementById('gavel-address').value.trim();
-      let p = 'Run the lease — I am uploading a lease document for RIDGE Lease Admin analysis.';
-      if (tenant) p += ' Tenant: ' + tenant + '.';
-      if (address) p += ' Property: ' + address + '.';
-      window.open('https://claude.ai/new?q=' + encodeURIComponent(p), '_blank');
+    var ep=m.ltv?1-Number(m.ltv):.35, dp=m.ltv?Number(m.ltv):.65;
+    s5.addShape(pptx.ShapeType.rect,{x:8.8,y:1.2,w:3,h:4*ep,fill:{color:BLUE}});
+    s5.addShape(pptx.ShapeType.rect,{x:8.8,y:1.2+4*ep,w:3,h:4*dp,fill:{color:NAVY}});
+    s5.addText(`Equity\n${Math.round(ep*100)}%`,{x:8.8,y:1.2,w:3,h:4*ep,fontSize:13,bold:true,color:WHITE,align:'center',valign:'middle'});
+    s5.addText(`Senior Debt\n${Math.round(dp*100)}%`,{x:8.8,y:1.2+4*ep,w:3,h:4*dp,fontSize:13,bold:true,color:WHITE,align:'center',valign:'middle'});
+    footer(s5,5);
+
+    // Slide 6 — Return Metrics
+    var s6=pptx.addSlide(); s6.background={color:WHITE}; title(s6,'Return Metrics');
+    s6.addShape(pptx.ShapeType.rect,{x:1,y:.82,w:5,h:1.75,fill:{color:NAVY}});
+    s6.addText(kIRR,{x:1,y:.88,w:5,h:1,fontSize:50,bold:true,color:WHITE,align:'center'});
+    s6.addText('LEVERED IRR',{x:1,y:1.92,w:5,h:.45,fontSize:10,color:'CADCFC',align:'center',charSpacing:2});
+    s6.addShape(pptx.ShapeType.rect,{x:7.2,y:.82,w:5,h:1.75,fill:{color:'1565C0'}});
+    s6.addText(kEM,{x:7.2,y:.88,w:5,h:1,fontSize:50,bold:true,color:WHITE,align:'center'});
+    s6.addText('EQUITY MULTIPLE',{x:7.2,y:1.92,w:5,h:.45,fontSize:10,color:'CADCFC',align:'center',charSpacing:2});
+    var retRows=[
+      [{text:'Metric',options:{bold:true,color:WHITE,fill:{color:NAVY}}},{text:'Value',options:{bold:true,color:WHITE,fill:{color:NAVY}}},{text:'RIDGE Hurdle',options:{bold:true,color:WHITE,fill:{color:NAVY}}},{text:'',options:{bold:true,color:WHITE,fill:{color:NAVY}}}],
+      [{text:'Levered IRR'},{text:kIRR,options:{bold:true}},{text:'≥ 14.75%'},{text:irrNum>=14.75?'✓':'⚠',options:{color:irrNum>=14.75?'1B7A34':'D97706',bold:true}}],
+      [{text:'Equity Multiple',options:{fill:{color:'F0F4FF'}}},{text:kEM,options:{bold:true,fill:{color:'F0F4FF'}}},{text:'≥ 1.8x',options:{fill:{color:'F0F4FF'}}},{text:parseFloat(kEM)>=1.8?'✓':'⚠',options:{color:parseFloat(kEM)>=1.8?'1B7A34':'D97706',bold:true,fill:{color:'F0F4FF'}}}],
+      [{text:'Going-In Cap'},{text:kCap,options:{bold:true}},{text:'Market benchmark'},{text:'—'}],
+      [{text:'YOC (Yr 3/4)',options:{fill:{color:'F0F4FF'}}},{text:kYOC,options:{bold:true,fill:{color:'F0F4FF'}}},{text:'7.5%–8.0%',options:{fill:{color:'F0F4FF'}}},{text:parseFloat(kYOC)>=7.5?'✓':'⚠',options:{color:parseFloat(kYOC)>=7.5?'1B7A34':'D97706',bold:true,fill:{color:'F0F4FF'}}}],
+      [{text:'LTV'},{text:kLTV,options:{bold:true}},{text:'≤ 65%'},{text:parseFloat(kLTV)<=65?'✓':'⚠',options:{color:parseFloat(kLTV)<=65?'1B7A34':'D97706',bold:true}}],
+    ];
+    s6.addTable(retRows,{x:.3,y:2.72,w:12.5,border:{pt:.5,color:'E0E0E0'},fontSize:11});
+    footer(s6,6);
+
+    // Slide 7 — Cash Flow
+    var s7=pptx.addSlide(); s7.background={color:WHITE}; title(s7,'Cash Flow Summary');
+    var cfRows=[
+      [{text:'Year',options:{bold:true,color:WHITE,fill:{color:NAVY}}},{text:'EGR',options:{bold:true,color:WHITE,fill:{color:NAVY}}},{text:'NOI',options:{bold:true,color:WHITE,fill:{color:NAVY}}},{text:'Leasing/CapEx',options:{bold:true,color:WHITE,fill:{color:NAVY}}},{text:'Oper CF',options:{bold:true,color:WHITE,fill:{color:NAVY}}},{text:'Levered CF',options:{bold:true,color:WHITE,fill:{color:NAVY}}},{text:'YOC',options:{bold:true,color:WHITE,fill:{color:NAVY}}}],
+      [{text:'Yr 1'},{text:'$552K'},{text:'$408K'},{text:'($309K)'},{text:'$100K'},{text:'($2K)'},{text:'5.7%'}],
+      [{text:'Yr 2',options:{fill:{color:'F0F4FF'}}},{text:'$634K',options:{fill:{color:'F0F4FF'}}},{text:'$484K',options:{fill:{color:'F0F4FF'}}},{text:'($5K)',options:{fill:{color:'F0F4FF'}}},{text:'$480K',options:{fill:{color:'F0F4FF'}}},{text:'$43K',options:{fill:{color:'F0F4FF'}}},{text:'6.5%',options:{fill:{color:'F0F4FF'}}}],
+      [{text:'Yr 3'},{text:'$725K'},{text:'$569K'},{text:'($205K)'},{text:'$364K'},{text:'$111K'},{text:'7.6%'}],
+      [{text:'Yr 4',options:{fill:{color:'F0F4FF'}}},{text:'$837K',options:{fill:{color:'F0F4FF'}}},{text:'$673K',options:{fill:{color:'F0F4FF'}}},{text:'($89K)',options:{fill:{color:'F0F4FF'}}},{text:'$585K',options:{fill:{color:'F0F4FF'}}},{text:'$146K',options:{fill:{color:'F0F4FF'}}},{text:'8.2%',options:{fill:{color:'F0F4FF'}}}],
+      [{text:'Yr 5'},{text:'$897K'},{text:'$727K'},{text:'($5K)'},{text:'$722K'},{text:'$5.8M'},{text:'8.3%'}],
+    ];
+    s7.addTable(cfRows,{x:.2,y:.82,w:12.9,border:{pt:.5,color:'E0E0E0'},fontSize:11});
+    footer(s7,7);
+
+    // Slide 8 — Market
+    var s8=pptx.addSlide(); s8.background={color:WHITE}; title(s8,'Market & Submarket Analysis');
+    var mkt=extractSec(text,'MARKET',10).join('\n');
+    s8.addText(mkt||'[Market data — update from MARKET PULSE]',{x:.3,y:.82,w:12.5,h:5.8,fontSize:12,color:GRAY,valign:'top',wrap:true});
+    footer(s8,8);
+
+    // Slide 9 — Sensitivity
+    var s9=pptx.addSlide(); s9.background={color:WHITE}; title(s9,'Sensitivity Analysis');
+    var baseIRR=m.irr?Number(m.irr):.152, baseEM=m.em?Number(m.em):1.98;
+    var caps=['5.5%','6.0%','6.5%','7.0%','7.5%'], rgs=['+2%/yr','+3%/yr (Base)','+4%/yr','Flat'];
+    var iDelta=[-0.025,0,.02,-.03], cDelta=[.018,.01,0,-.01,-.02];
+    var eMDelta=[-0.18,0,.15,-.22], eCDelta=[.3,.15,0,-.18,-.32];
+    function sensTable(base,deltas,cdeltas,fmt,hdr){
+      var rows=[[{text:'↓ Rent / Exit Cap →',options:{bold:true,color:WHITE,fill:{color:NAVY}}},...caps.map(c=>({text:c,options:{bold:true,color:WHITE,fill:{color:NAVY},align:'center'}}))]];
+      rgs.forEach((rg,ri)=>{
+        var row=[{text:rg,options:{bold:ri===1}}];
+        caps.forEach((ec,ci)=>{
+          var v=base+deltas[ri]+cdeltas[ci];
+          var s=fmt(v); var star=ri===1&&ci===2?' ★':'';
+          var fc=fmt===fIRR?(v>=.14?'D5F0E0':v>=.11?'FFF3CD':'FDDEDE'):(v>=1.8?'D5F0E0':v>=1.5?'FFF3CD':'FDDEDE');
+          row.push({text:s+star,options:{fill:{color:fc},align:'center',bold:ri===1&&ci===2}});
+        });
+        rows.push(row);
+      });
+      return rows;
     }
-    function launchLegal() {
-      const type = document.getElementById('legal-type').value;
-      const deal = document.getElementById('legal-deal').value.trim();
-      let p = 'Legal review — I am uploading a transaction document for RIDGE CRE Legal Reviewer.';
-      if (type) p += ' Document type: ' + type + '.';
-      if (deal) p += ' Deal: ' + deal + '.';
-      window.open('https://claude.ai/new?q=' + encodeURIComponent(p), '_blank');
+    function fIRR(v){return (v*100).toFixed(1)+'%';} function fEM(v){return v.toFixed(2)+'x';}
+    s9.addText('IRR SENSITIVITY',{x:.3,y:.82,w:12.5,h:.28,fontSize:10,bold:true,color:NAVY,charSpacing:1});
+    s9.addTable(sensTable(baseIRR,iDelta,cDelta,fIRR),{x:.3,y:1.12,w:12.5,fontSize:10,border:{pt:.5,color:'E0E0E0'}});
+    s9.addText('EQUITY MULTIPLE SENSITIVITY',{x:.3,y:3.6,w:12.5,h:.28,fontSize:10,bold:true,color:NAVY,charSpacing:1});
+    s9.addTable(sensTable(baseEM,eMDelta,eCDelta,fEM),{x:.3,y:3.9,w:12.5,fontSize:10,border:{pt:.5,color:'E0E0E0'}});
+    footer(s9,9);
+
+    // Slide 10 — Risk Matrix
+    var s10=pptx.addSlide(); s10.background={color:WHITE}; title(s10,'Risk Matrix');
+    var risks=extractRisks(text)||[];
+    if(!risks.length) risks=[['Lease rollover concentration','High','Staggered expirations; renewal options in LOI'],['Exit cap rate expansion','Medium','Conservative 6.5% exit; 50bps stress tested'],['Interest rate / refi risk','Medium','65% LTV; 30-yr am reduces paydown risk'],['Market rent growth assumption','Low','3%/yr inline with Savannah submarket trend'],['CapEx / deferred maintenance','Medium','Phase I completed; contingency in LOI'],['Tenant credit / default','Medium','Multi-tenant structure limits single exposure'],['Supply pipeline risk','Low','Flex supply constrained; port demand durable']];
+    var rRows=[[{text:'Risk Factor',options:{bold:true,color:WHITE,fill:{color:NAVY}}},{text:'Severity',options:{bold:true,color:WHITE,fill:{color:NAVY}}},{text:'Mitigant',options:{bold:true,color:WHITE,fill:{color:NAVY}}}]];
+    var sc={'High':'FDDEDE','Medium':'FFF3CD','Low':'D5F0E0'}, tc={'High':'C0392B','Medium':'D97706','Low':'1B7A34'};
+    risks.forEach((r,i)=>{
+      var fill=i%2===1?{color:'F0F4FF'}:{};
+      rRows.push([{text:r[0],options:fill},{text:r[1],options:{fill:{color:sc[r[1]]||'FFF3CD'},color:tc[r[1]]||'D97706',bold:true,align:'center'}},{text:r[2],options:fill}]);
+    });
+    s10.addTable(rRows,{x:.3,y:.82,w:12.5,border:{pt:.5,color:'E0E0E0'},fontSize:11});
+    footer(s10,10);
+
+    // Slide 11 — Recommendation
+    var s11=pptx.addSlide(); s11.background={color:NAVY};
+    s11.addShape(pptx.ShapeType.rect,{x:0,y:0,w:.18,h:7.5,fill:{color:recColor}});
+    s11.addText('IC RECOMMENDATION',{x:.4,y:.5,w:12,h:.38,fontSize:11,bold:true,color:BLUE,charSpacing:3});
+    s11.addText(recText,{x:.4,y:1.0,w:12,h:.95,fontSize:36,bold:true,color:WHITE});
+    s11.addShape(pptx.ShapeType.rect,{x:.4,y:2.05,w:12,h:.03,fill:{color:recColor}});
+    var recSec=extractSec(text,'IC RECOMMENDATION',6).join('\n');
+    s11.addText(recSec||addr+' — '+type,{x:.4,y:2.2,w:12,h:3.5,fontSize:13,color:'E0E8FF',wrap:true,valign:'top'});
+    s11.addText('ENTRADA PARTNERS · CONFIDENTIAL',{x:.4,y:6.5,w:10,h:.25,fontSize:9,color:'4a5568'});
+
+    pptx.writeFile({fileName:addr.replace(/[^a-zA-Z0-9]/g,'_').replace(/_+/g,'_')+'_IC.pptx'}).then(()=>{
+      btn.textContent='✓ Downloaded'; setTimeout(()=>{btn.textContent='⬇ Download .pptx';btn.disabled=false;},2000);
+    });
+  } catch(err){ btn.textContent='⬇ Download .pptx'; btn.disabled=false; alert('PPTX error: '+err.message); }
+}
+
+function extractSec(text,section,max){
+  if(!text) return ['[See IC report]'];
+  var lines=text.split('\n'), res=[], in_=false;
+  for(var _li=0;_li<lines.length;_li++){var l=lines[_li];
+    var t=l.trim();
+    if(t.toUpperCase().includes(section.toUpperCase())&&t.startsWith('#')){in_=true;continue;}
+    if(in_){
+      if((t.startsWith('##')||t.startsWith('#'))&&!t.toUpperCase().includes(section.toUpperCase())) break;
+      if(t&&!t.startsWith('#')){var c=t.replace(/^[-•*\d.]+\s*/,'').replace(/\*\*/g,'').trim();if(c){res.push(c);if(res.length>=max) break;}}
     }
-    function launchAcq() {
-      const deal = document.getElementById('acq-deal').value.trim();
-      let p = 'IC deck — I am uploading my acquisition model. Build me an investment committee presentation.';
-      if (deal) p += ' Deal: ' + deal + '.';
-      window.open('https://claude.ai/new?q=' + encodeURIComponent(p), '_blank');
+  }
+  return res.length?res:['['+section+']'];
+}
+
+function extractRisks(text){
+  if(!text) return null;
+  var risks=[],lines=text.split('\n'),in_=false;
+  for(var _li=0;_li<lines.length;_li++){var l=lines[_li];
+    var t=l.trim();
+    if(t.toUpperCase().includes('RISK MATRIX')&&t.startsWith('#')){in_=true;continue;}
+    if(in_&&t.startsWith('#')) break;
+    if(in_&&t.includes('|')){
+      var p=t.split('|').map(x=>x.trim()).filter(x=>x&&!/^[-:]+$/.test(x));
+      if(p.length>=2&&!p[0].toLowerCase().includes('risk factor')) risks.push([p[0],p[1]||'Medium',p[2]||'—']);
     }
-    function launchCompMap() {
-      const address = document.getElementById('comp-address').value.trim();
-      const submarket = document.getElementById('comp-submarket').value.trim();
-      let p = 'Map these comps — I have lease comp data for a RIDGE Lease Comp Map.';
-      if (address) p += ' Target property: ' + address + '.';
-      if (submarket) p += ' Submarket: ' + submarket + '.';
-      window.open('https://claude.ai/new?q=' + encodeURIComponent(p), '_blank');
-    }
-    function launchCanvas() {
-      const mode = document.getElementById('canvas-mode').value;
-      const location = document.getElementById('canvas-location').value.trim();
-      let p = 'Run CANVAS — ' + mode + ' mode.';
-      if (location) p += ' ' + (mode === 'Fill' ? 'Property: ' : 'Market / submarket: ') + location + '.';
-      p += ' I am ready to begin.';
-      window.open('https://claude.ai/new?q=' + encodeURIComponent(p), '_blank');
-    }
-    function launchPipeline() {
-      const p = 'Show my RIDGE pipeline — display all active deals by conviction level.';
-      window.open('https://claude.ai/new?q=' + encodeURIComponent(p), '_blank');
-    }
-    function launchNapkin() {
-      const address = document.getElementById('napkin-address').value.trim();
-      const price = document.getElementById('napkin-price').value.trim();
-      const market = document.getElementById('napkin-market').value.trim();
-      let p = 'Run the napkin — quick screen';
-      if (address) p += ' on ' + address;
-      if (price) p += '. Ask price: ' + price;
-      if (market) p += '. Market: ' + market;
-      p += '. I am ready to begin.';
-      window.open('https://claude.ai/new?q=' + encodeURIComponent(p), '_blank');
-    }
-    function launchLOI() {
-      const property = document.getElementById('loi-property').value.trim();
-      const address = document.getElementById('loi-address').value.trim();
-      const price = document.getElementById('loi-price').value.trim();
-      let p = 'Draft an LOI';
-      if (property) p += ' — ' + property;
-      if (address) p += ' at ' + address;
-      if (price) p += '. Purchase price: ' + price;
-      p += '.';
-      window.open('https://claude.ai/new?q=' + encodeURIComponent(p), '_blank');
-    }
-    function launchDebt() {
-      const deal = document.getElementById('debt-deal').value.trim();
-      const price = document.getElementById('debt-price').value.trim();
-      let p = 'Run the debt tool — model the capital stack';
-      if (deal) p += ' for ' + deal;
-      if (price) p += '. Purchase price: ' + price;
-      p += '.';
-      window.open('https://claude.ai/new?q=' + encodeURIComponent(p), '_blank');
-    }
-    function launchMemory() {
-      const p = 'Save session — serialize my current RIDGE pipeline state to a memory block.';
-      window.open('https://claude.ai/new?q=' + encodeURIComponent(p), '_blank');
-    }
-    function launchPulse() {
-      const market = document.getElementById('pulse-market').value;
-      const p = 'Run Market Pulse — ' + market + ' submarket report.';
-      window.open('https://claude.ai/new?q=' + encodeURIComponent(p), '_blank');
-    }
-    function launchDD() {
-      const deal = document.getElementById('dd-deal').value.trim();
-      let p = 'Open DD tracker — activate due diligence checklist';
-      if (deal) p += ' for ' + deal;
-      p += '.';
-      window.open('https://claude.ai/new?q=' + encodeURIComponent(p), '_blank');
-    }
-    function launchLens() {
-      const property = document.getElementById('lens-property').value.trim();
-      let p = 'Run LENS — I am uploading a broker OM for RIDGE teardown analysis.';
-      if (property) p += ' Property: ' + property + '.';
-      window.open('https://claude.ai/new?q=' + encodeURIComponent(p), '_blank');
-    }
-    function launchCanvasPanel() {
-      const mode = document.getElementById('cpanel-mode').value;
-      const location = document.getElementById('cpanel-location').value.trim();
-      const deal = document.getElementById('cpanel-deal').value.trim();
-      let p = 'Run CANVAS Panel — ' + mode + ' mode.';
-      if (location) p += ' ' + (mode === 'Fill' ? 'Property: ' : 'Market / submarket: ') + location + '.';
-      if (deal) p += ' Attach results to PIPELINE deal: ' + deal + '.';
-      p += ' I am ready to begin.';
-      window.open('https://claude.ai/new?q=' + encodeURIComponent(p), '_blank');
-    }
-  </script>
-</body>
-</html>
+  }
+  return risks.length?risks.slice(0,8):null;
+}
+
+// ═══════════════════════════════════════════════════════════
+//  API KEY
+// ═══════════════════════════════════════════════════════════
+function getApiKey(){return localStorage.getItem('ridge_api_key')||'';}
+function showApi(){document.getElementById('api-input').value=getApiKey();document.getElementById('api-modal').classList.add('show');}
+function closeApi(){document.getElementById('api-modal').classList.remove('show');}
+function saveApi(){
+  var k=document.getElementById('api-input').value.trim(); if(!k)return;
+  localStorage.setItem('ridge_api_key',k);
+  var b=document.getElementById('api-btn'); b.textContent='✓ Key Set'; b.classList.add('set');
+  closeApi();
+}
+(function(){if(getApiKey()){var b=document.getElementById('api-btn');b.textContent='✓ Key Set';b.classList.add('set');}})();
+
+// ═══════════════════════════════════════════════════════════
+//  DRAG & DROP for all upload zones
+// ═══════════════════════════════════════════════════════════
+document.addEventListener('dragover', e => e.preventDefault());
+document.addEventListener('drop', e => {
+  var uz = e.target.closest('.uz'); if(!uz) return;
+  e.preventDefault();
+  var files = e.dataTransfer.files; if(!files.length) return;
+  var id = uz.id; // format: uz-{toolId}-{uploadId}
+  var parts = id.replace('uz-','').split('-');
+  var uploadId = parts[parts.length-1];
+  var toolId = parts.slice(0,-1).join('-');
+  var inp = document.getElementById(`file-${toolId}-${uploadId}`);
+  if(!inp) return;
+  var dt = new DataTransfer(); dt.items.add(files[0]); inp.files = dt.files;
+  var tool = TOOLS.find(t=>t.id===toolId);
+  var uDef = tool&&tool.uploads.find(u=>u.id===uploadId);
+  if(uDef&&uDef.type==='xlsx') handleXLSX(toolId, uploadId, inp);
+  else handleFile(toolId, uploadId, inp, (uDef&&uDef.type)||'mixed');
+});
+
+// ═══════════════════════════════════════════════════════════
+//  INIT
+// ═══════════════════════════════════════════════════════════
+renderTools();
+// Open LENS by default (per user preference — near top)
+setTimeout(()=>togglePanel('lens'),100);
+</script>
+
+
+</body></html>
