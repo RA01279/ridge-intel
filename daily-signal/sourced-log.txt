@@ -1,0 +1,5 @@
+# RIDGE DAILY SIGNAL — Sourced Properties Log
+# Properties listed here will be excluded from future daily reports
+# UNLESS a new signal fires (vacancy jumps, newly listed for sale, etc.)
+# Format: one address per line
+# Last updated: 2026-03-16

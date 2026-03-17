@@ -1057,13 +1057,14 @@ var TOOLS = [
     badge:'Daily Prospects',
     shortDesc:'Upload CoStar exports → 15 ranked prospects with owner contacts.',
     desc:'Upload CoStar exports → 15 ranked prospects with owner contacts.',
-    uploads:[{id:'costar',label:'CoStar Export Files',hint:'Upload one or more CoStar XLSX exports from your CoStar Reports folder',icon:'📁',accept:'.xlsx',type:'xlsx'}],
+    uploads:[{id:'costar',label:'CoStar Export Files',hint:'Drag all files from your CoStar Reports folder — multi-file supported',icon:'📁',accept:'.xlsx',type:'xlsx',multiple:true}],
     fields:[
       {row:[{id:'date',label:'Report Date',ph:'March 16, 2026'},{id:'notes',label:'Focus / Notes',ph:'Prioritize Savannah and NE Atlanta this week...'}]},
+      {row:[{id:'sourced',label:'Previously Sourced (paste to exclude)',ph:'123 Industrial Blvd, Savannah\n456 Port Ave, Atlanta\n...',type:'textarea'}]},
     ],
     steps:['Parsing CoStar data...','Scoring vacancy signals...','Ranking prospects...','Identifying owner contacts...','Building report...'],
     system:`You are DAILY SIGNAL, RIDGE's daily acquisition lead generator for Entrada Partners. Score and rank properties from CoStar export data using RIDGE's signal scoring system. RIDGE criteria: industrial and flex, $10M–$70M, ATL/SAV/DFW/HOU, IRR ≥14.75%. Be direct. Rank ruthlessly. Surface the best 15 prospects with owner contact info.`,
-    prompt:(d)=>`Run Daily Signal report for ${d.date||'today'}.\n${d.notes?'Focus: '+d.notes+'\n':''}\n${d.costar_text?'CoStar data:\n'+d.costar_text:''}`
+    prompt:(d)=>`Run Daily Signal report for ${d.date||'today'}.\n${d.notes?'Focus: '+d.notes+'\n':''}\n${d.sourced?'PREVIOUSLY SOURCED — exclude these unless new signal:\n'+d.sourced+'\n\n':''}\n${d.costar_text?'CoStar data:\n'+d.costar_text:''}`
   },
   {
     id:'canvas', num:'12', icon:'🏗️', name:'CANVAS',
@@ -1123,7 +1124,10 @@ function renderTools() {
     tool.uploads.forEach(u => {
       var inp = document.getElementById(`file-${tool.id}-${u.id}`);
       if (!inp) return;
-      if (u.type === 'xlsx') inp.addEventListener('change', e => handleXLSX(tool.id, u.id, e.target));
+      if (u.type === 'xlsx') inp.addEventListener('change', e => {
+        if (u.multiple && e.target.files.length > 1) handleMultiXLSX(tool.id, u.id, e.target);
+        else handleXLSX(tool.id, u.id, e.target);
+      });
       else inp.addEventListener('change', e => handleFile(tool.id, u.id, e.target, u.type));
     });
   });
@@ -1138,7 +1142,7 @@ function buildPanelHTML(tool) {
     <div class="upload-group">
       <label>${u.label} <span>${u.hint}</span></label>
       <div class="uz" id="uz-${tool.id}-${u.id}" onclick="document.getElementById('file-${tool.id}-${u.id}').click()">
-        <input type="file" id="file-${tool.id}-${u.id}" accept="${u.accept}">
+        <input type="file" id="file-${tool.id}-${u.id}" accept="${u.accept}"${u.multiple?' multiple':''}>
         <div class="uz-ico">${u.icon}</div>
         <div class="uz-t">Click or drag to upload</div>
         <div class="uz-s">${u.accept.toUpperCase().replace(/\./g,'').replace(/,/g,' · ')}</div>
@@ -1330,6 +1334,34 @@ function handleXLSX(toolId, uploadId, input) {
     } catch(err) { st.textContent = 'Error: '+err.message; st.className = 'uz-st err'; }
   };
   reader.readAsArrayBuffer(file);
+}
+
+function handleMultiXLSX(toolId, uploadId, input) {
+  var files = Array.from(input.files);
+  var uz = document.getElementById('uz-' + toolId + '-' + uploadId);
+  var st = document.getElementById('uzst-' + toolId + '-' + uploadId);
+  st.textContent = 'Reading ' + files.length + ' files...'; st.className = 'uz-st';
+  var allText = ''; var done = 0;
+  files.forEach(function(file) {
+    var reader = new FileReader();
+    reader.onload = function(e) {
+      try {
+        var wb = XLSX.read(e.target.result, { type:'array' });
+        wb.SheetNames.forEach(function(name) {
+          var rows = XLSX.utils.sheet_to_json(wb.Sheets[name], { header:1, defval:'' });
+          var lines = rows.map(function(r){ return r.filter(function(c){ return c!==''; }).join(' | '); }).filter(function(l){ return l.trim(); });
+          allText += '\n=== FILE: ' + file.name + ' / SHEET: ' + name + ' ===\n' + lines.join('\n');
+        });
+      } catch(err) {}
+      done++;
+      if (done === files.length) {
+        STATE[toolId].files[uploadId] = allText;
+        uz.classList.add('loaded');
+        st.textContent = '✓ ' + files.length + ' files · ' + files.map(function(f){return f.name;}).join(', ');
+      }
+    };
+    reader.readAsArrayBuffer(file);
+  });
 }
 
 function handleFile(toolId, uploadId, input, type) {

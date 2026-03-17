@@ -86,6 +86,23 @@ Top 3 prospects to call today. For each: one sentence on the specific angle to l
 
 ---
 
+## Re-Signal Rule
+
+If a property appears in the "Previously Sourced" list, exclude it from the top 15 UNLESS:
+- Vacancy % has increased by 5+ points since likely last run
+- For Sale status is now Yes (was No before)
+- A new owner appears (ownership transfer signal)
+
+If a previously sourced property re-qualifies, flag it clearly: **⚡ RE-SIGNAL** with a note on what changed.
+
+---
+
+## Workflow
+
+After each daily run, copy the 15 surfaced addresses into the "Previously Sourced" field for the next run. This keeps the list fresh — you will never see the same property twice unless it earns its way back with a new signal.
+
+---
+
 ## Notes
 
 - If owner phone is missing, note "No direct contact — research via county records"
