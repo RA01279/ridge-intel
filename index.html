@@ -88,6 +88,8 @@ main{max-width:1120px;margin:0 auto;padding:32px 20px;}
 .uz-st{font-size:11px;font-family:var(--mono);color:var(--green-bright);margin-top:6px;font-weight:600;}
 .uz-st.err{color:var(--red);}
 input[type=file]{display:none;}
+.refresh-btn{margin-top:6px;background:none;border:1px solid var(--border);color:var(--muted);font-size:11px;padding:4px 10px;cursor:pointer;border-radius:3px;}
+.refresh-btn:hover{color:var(--text);border-color:var(--text);}
 
 /* PARSED PREVIEW */
 .parsed-preview{background:var(--surface2);border:1px solid var(--border);border-radius:var(--r);padding:14px;margin-bottom:20px;display:none;}
@@ -1057,7 +1059,7 @@ var TOOLS = [
     badge:'Daily Prospects',
     shortDesc:'Upload CoStar exports → 15 ranked prospects with owner contacts.',
     desc:'Upload CoStar exports → 15 ranked prospects with owner contacts.',
-    uploads:[{id:'costar',label:'CoStar Export Files',hint:'Drag all files from your CoStar Reports folder — multi-file supported',icon:'📁',accept:'.xlsx',type:'xlsx',multiple:true}],
+    uploads:[{id:'costar',label:'CoStar Reports Folder',hint:'Select your CoStar Reports folder — all XLSX files load automatically',icon:'📁',accept:'.xlsx',type:'xlsx',folder:true}],
     fields:[
       {row:[{id:'date',label:'Report Date',ph:'March 16, 2026'},{id:'notes',label:'Focus / Notes',ph:'Prioritize Savannah and NE Atlanta this week...'}]},
       {row:[{id:'sourced',label:'Previously Sourced (paste to exclude)',ph:'123 Industrial Blvd, Savannah\n456 Port Ave, Atlanta\n...',type:'textarea'}]},
@@ -1122,6 +1124,7 @@ function renderTools() {
 
     // Wire upload inputs after DOM insertion
     tool.uploads.forEach(u => {
+      if (u.folder) return; // folder-type uses pickCoStarFolder() onclick, no input element
       var inp = document.getElementById(`file-${tool.id}-${u.id}`);
       if (!inp) return;
       if (u.type === 'xlsx') inp.addEventListener('change', e => {
@@ -1138,7 +1141,20 @@ function buildPanelHTML(tool) {
   var cols = tool.uploads.length >= 2 ? 'two' : 'one';
   uploadsHTML = `<div class="upload-row ${cols}">`;
   tool.uploads.forEach(u => {
-    uploadsHTML += `
+    if (u.folder) {
+      uploadsHTML += `
+    <div class="upload-group">
+      <label>${u.label} <span>${u.hint}</span></label>
+      <div class="uz" id="uz-${tool.id}-${u.id}" onclick="pickCoStarFolder('${tool.id}','${u.id}')">
+        <div class="uz-ico">${u.icon}</div>
+        <div class="uz-t">Click to select folder</div>
+        <div class="uz-s">Scans all XLSX files inside automatically</div>
+        <div class="uz-st" id="uzst-${tool.id}-${u.id}"></div>
+      </div>
+      <button class="refresh-btn" id="refresh-${tool.id}-${u.id}" onclick="event.stopPropagation();refreshCoStarFolder('${tool.id}','${u.id}')" style="display:none">↺ Refresh Folder</button>
+    </div>`;
+    } else {
+      uploadsHTML += `
     <div class="upload-group">
       <label>${u.label} <span>${u.hint}</span></label>
       <div class="uz" id="uz-${tool.id}-${u.id}" onclick="document.getElementById('file-${tool.id}-${u.id}').click()">
@@ -1149,6 +1165,7 @@ function buildPanelHTML(tool) {
         <div class="uz-st" id="uzst-${tool.id}-${u.id}"></div>
       </div>
     </div>`;
+    }
   });
   uploadsHTML += '</div>';
 
@@ -1362,6 +1379,74 @@ function handleMultiXLSX(toolId, uploadId, input) {
     };
     reader.readAsArrayBuffer(file);
   });
+}
+
+var _folderHandles = {};
+
+async function pickCoStarFolder(toolId, uploadId) {
+  if (!window.showDirectoryPicker) {
+    showToast('Folder picker not supported — use Chrome or Edge');
+    return;
+  }
+  try {
+    var dirHandle = await window.showDirectoryPicker({ mode:'read' });
+    _folderHandles[toolId + '-' + uploadId] = dirHandle;
+    await loadFolderFiles(toolId, uploadId, dirHandle);
+  } catch(e) {
+    if (e.name !== 'AbortError') showToast('Could not open folder: ' + e.message);
+  }
+}
+
+async function refreshCoStarFolder(toolId, uploadId) {
+  var dirHandle = _folderHandles[toolId + '-' + uploadId];
+  if (!dirHandle) { pickCoStarFolder(toolId, uploadId); return; }
+  await loadFolderFiles(toolId, uploadId, dirHandle);
+}
+
+async function loadFolderFiles(toolId, uploadId, dirHandle) {
+  var uz = document.getElementById('uz-' + toolId + '-' + uploadId);
+  var st = document.getElementById('uzst-' + toolId + '-' + uploadId);
+  var btn = document.getElementById('refresh-' + toolId + '-' + uploadId);
+  st.textContent = 'Scanning folder...'; st.className = 'uz-st';
+
+  var entries = [];
+  for await (var entry of dirHandle.values()) {
+    if (entry.kind === 'file' && /\.xlsx$/i.test(entry.name)) entries.push(entry);
+  }
+
+  if (!entries.length) {
+    st.textContent = '⚠ No XLSX files found in ' + dirHandle.name;
+    return;
+  }
+
+  st.textContent = 'Loading ' + entries.length + ' files...';
+  var allText = ''; var done = 0;
+
+  for (var fh of entries) {
+    var file = await fh.getFile();
+    await new Promise(function(resolve) {
+      var reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          var wb = XLSX.read(e.target.result, { type:'array' });
+          wb.SheetNames.forEach(function(name) {
+            var rows = XLSX.utils.sheet_to_json(wb.Sheets[name], { header:1, defval:'' });
+            var lines = rows.map(function(r){ return r.filter(function(c){ return c!==''; }).join(' | '); }).filter(function(l){ return l.trim(); });
+            allText += '\n=== FILE: ' + file.name + ' / SHEET: ' + name + ' ===\n' + lines.join('\n');
+          });
+        } catch(err) {}
+        done++;
+        resolve();
+      };
+      reader.onerror = resolve;
+      reader.readAsArrayBuffer(file);
+    });
+  }
+
+  STATE[toolId].files[uploadId] = allText;
+  uz.classList.add('loaded');
+  st.textContent = '✓ ' + entries.length + ' files loaded from ' + dirHandle.name;
+  if (btn) btn.style.display = 'inline-block';
 }
 
 function handleFile(toolId, uploadId, input, type) {
