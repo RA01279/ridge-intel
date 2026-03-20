@@ -1473,6 +1473,46 @@ function clearDailySourced() {
   }
 }
 
+function getDSOutreachAngle(p) {
+  var sub = p.submarket || p.city || 'your submarket';
+  var addr = p.address;
+  var yh = p.yearsHeld;
+  if (p.forSaleRaw) {
+    return {
+      angle: 'Listed Asset — Direct Approach',
+      script: 'Hi [Owner Name], my name is [Your Name] with Entrada Partners — we are institutional industrial buyers actively acquiring in ' + sub + '. We saw ' + addr + ' is on the market and wanted to connect directly. We close in 60 days with no financing contingency and no broker on our side. Would you have 10 minutes this week to connect?'
+    };
+  }
+  if (p.vacancyN >= 35 && yh >= 7) {
+    return {
+      angle: 'High Vacancy + Long Hold — Repositioning Conversation',
+      script: 'Hi [Owner Name], I am [Your Name] with Entrada Partners. We invest in industrial and flex properties in ' + sub + ' — specifically assets at a natural inflection point. ' + addr + ' caught our attention. We would love to have a brief conversation about your long-term plans for the asset and whether a sale makes sense.'
+    };
+  }
+  if (yh >= 12) {
+    return {
+      angle: 'Long-Term Hold — Capital Event',
+      script: 'Hi [Owner Name], I am [Your Name] with Entrada Partners. After ' + yh + ' years of ownership, many owners in ' + sub + ' are thinking through a capital event or succession plan. We are active buyers and would value the chance to introduce ourselves and learn more about your goals for ' + addr + '.'
+    };
+  }
+  if (p.vacancyN >= 20) {
+    return {
+      angle: 'Vacancy Play — Repositioning Capital',
+      script: 'Hi [Owner Name], I am [Your Name] with Entrada Partners. We are tracking industrial vacancy in ' + sub + ' and ' + addr + ' is on our radar. We have experience repositioning multi-tenant assets like this and would be interested in a conversation about whether a sale makes sense for you.'
+    };
+  }
+  if (p.belowMarket) {
+    return {
+      angle: 'Below-Market Rents — Mark-to-Market Opportunity',
+      script: 'Hi [Owner Name], I am [Your Name] with Entrada Partners. We are active buyers in ' + sub + ' focused on properties with near-term rent growth potential. ' + addr + ' fits what we are looking for. Would you be open to a brief call this week?'
+    };
+  }
+  return {
+    angle: 'Market Presence — Acquisition Outreach',
+    script: 'Hi [Owner Name], I am [Your Name] with Entrada Partners. We are actively acquiring industrial and flex properties in ' + sub + ' and ' + addr + ' fits our investment criteria well. I would love to introduce myself and learn more about your long-term plans for the asset.'
+  };
+}
+
 async function exportDailySignalXLSX() {
   var rows = (STATE['daily-signal'] || {})._rows;
   if (!rows || !rows.length) { showToast('Select CoStar folder first'); return; }
@@ -1501,22 +1541,31 @@ async function exportDailySignalXLSX() {
     if (!address) return;
     totalScreened++;
 
-    var rba       = parseFloat(String(col(r,['RBA','Rentable Building'])).replace(/[^0-9.]/g,'')) || 0;
-    var vacancy   = parseFloat(String(col(r,['Vacancy %','Vacancy Pct','Vacancy Rate'])).replace(/[^0-9.]/g,'')) || 0;
-    var pctLeased = parseFloat(String(col(r,['Percent Leased','% Leased'])).replace(/[^0-9.]/g,'')) || 0;
-    var forSale   = String(col(r,['For Sale Status','For Sale'])).trim().toLowerCase();
-    var lastSale  = String(col(r,['Last Sale Date','Last Sale']) || '').trim();
-    var rentSF    = parseFloat(String(col(r,['Rent/SF','Rent Per SF','Asking Rent'])).replace(/[^0-9.]/g,'')) || 0;
-    var yearBuilt = parseInt(String(col(r,['Year Built']))) || 0;
-    var phone     = String(col(r,['Recorded Owner Phone','Owner Phone']) || '').trim();
-    var city      = String(col(r,['City']) || '').trim();
-    var submarket = String(col(r,['Submarket Name','Submarket']) || '').trim();
-    var availSF   = parseFloat(String(col(r,['Total Available Space','Available SF','Avail'])).replace(/[^0-9.]/g,'')) || 0;
-    var owner     = String(col(r,['Recorded Owner Name','Owner Name']) || '').trim();
-    var propType  = String(col(r,['Property Type','Type']) || '').toLowerCase();
-    var ceilHt    = String(col(r,['Ceiling Ht','Clear Height']) || '').trim();
-    var docks     = String(col(r,['Number Of Loading Docks','Loading Docks','Docks']) || '').trim();
-    var driveIns  = String(col(r,['Drive Ins','Drive-Ins']) || '').trim();
+    var rba          = parseFloat(String(col(r,['RBA','Rentable Building'])).replace(/[^0-9.]/g,'')) || 0;
+    var vacancy      = parseFloat(String(col(r,['Vacancy %','Vacancy Pct','Vacancy Rate'])).replace(/[^0-9.]/g,'')) || 0;
+    var pctLeased    = parseFloat(String(col(r,['Percent Leased','% Leased'])).replace(/[^0-9.]/g,'')) || 0;
+    var forSale      = String(col(r,['For Sale Status','For Sale'])).trim().toLowerCase();
+    var forSalePrice = String(col(r,['For Sale Price']) || '').trim();
+    var lastSale     = String(col(r,['Last Sale Date','Last Sale']) || '').trim();
+    var lastSaleAmt  = String(col(r,['Last Sale Price']) || '').trim();
+    var rentSF       = parseFloat(String(col(r,['Rent/SF','Rent Per SF','Asking Rent'])).replace(/[^0-9.]/g,'')) || 0;
+    var yearBuilt    = parseInt(String(col(r,['Year Built']))) || 0;
+    var yearRenovated= parseInt(String(col(r,['Year Renovated']))) || 0;
+    var phone        = String(col(r,['Recorded Owner Phone','Owner Phone']) || '').trim();
+    var city         = String(col(r,['City']) || '').trim();
+    var submarket    = String(col(r,['Submarket Name','Submarket']) || '').trim();
+    var availSF      = parseFloat(String(col(r,['Total Available Space','Available SF','Avail'])).replace(/[^0-9.]/g,'')) || 0;
+    var owner        = String(col(r,['Recorded Owner Name','Owner Name']) || '').trim();
+    var ownerAddr    = String(col(r,['Recorded Owner Address']) || '').trim();
+    var propType     = String(col(r,['Property Type','Type']) || '').toLowerCase();
+    var bldgClass    = String(col(r,['Building Class','Class']) || '').trim();
+    var tenancy      = String(col(r,['Tenancy']) || '').trim();
+    var ceilHt       = String(col(r,['Ceiling Ht','Clear Height']) || '').trim();
+    var docks        = String(col(r,['Number Of Loading Docks','Loading Docks','Docks']) || '').trim();
+    var driveIns     = String(col(r,['Drive Ins','Drive-Ins']) || '').trim();
+    var power        = String(col(r,['Power']) || '').trim();
+    var rail         = String(col(r,['Rail Lines','Rail']) || '').trim();
+    var propName     = String(col(r,['Property Name']) || '').trim();
 
     if (rba < 10000 || rba > 300000) { disqualified++; return; }
     if (pctLeased >= 100 && forSale !== 'yes' && vacancy === 0) { disqualified++; return; }
@@ -1530,21 +1579,42 @@ async function exportDailySignalXLSX() {
 
     var score = 0; var signals = [];
 
-    if (vacancy >= 30)       { score += 4; signals.push(vacancy.toFixed(1) + '% vacant'); }
-    else if (vacancy >= 15)  { score += 2; signals.push(vacancy.toFixed(1) + '% vacant'); }
-    if (forSale === 'yes')   { score += 4; signals.push('listed for sale'); }
+    // Vacancy signal (0-5 pts)
+    if (vacancy >= 50)       { score += 5; signals.push(vacancy.toFixed(0) + '% vacant'); }
+    else if (vacancy >= 35)  { score += 4; signals.push(vacancy.toFixed(0) + '% vacant'); }
+    else if (vacancy >= 20)  { score += 3; signals.push(vacancy.toFixed(0) + '% vacant'); }
+    else if (vacancy >= 10)  { score += 1; signals.push(vacancy.toFixed(0) + '% vacant'); }
 
+    // For sale signal (0-4 pts)
+    var forSaleRaw = forSale && forSale !== '' && forSale !== 'no' && forSale !== 'not for sale';
+    if (forSaleRaw) { score += 4; signals.push('listed for sale' + (forSalePrice ? ' · ' + forSalePrice : '')); }
+
+    // Hold period signal (0-4 pts)
     var saleYear = null;
     var m = lastSale.match(/(\d{4})/);
     if (m) saleYear = parseInt(m[1]);
     var yearsHeld = saleYear ? today.getFullYear() - saleYear : null;
-    if (yearsHeld > 10)      { score += 3; signals.push(yearsHeld + '-year hold'); }
-    else if (yearsHeld >= 5) { score += 2; signals.push(yearsHeld + '-year hold'); }
+    if (yearsHeld >= 12)     { score += 4; signals.push(yearsHeld + '-yr hold'); }
+    else if (yearsHeld >= 8) { score += 3; signals.push(yearsHeld + '-yr hold'); }
+    else if (yearsHeld >= 5) { score += 2; signals.push(yearsHeld + '-yr hold'); }
+    else if (yearsHeld >= 3) { score += 1; signals.push(yearsHeld + '-yr hold'); }
 
-    if (rba >= 15000 && rba <= 200000) score += 1;
-    if (phone && phone.length > 5)     { score += 1; signals.push('direct contact'); }
-    if (rentSF > 0 && rentSF < 10)     { score += 1; signals.push('$' + rentSF.toFixed(2) + '/SF asking'); }
-    if (yearBuilt > 0 && yearBuilt < 1995) { score += 1; signals.push('built ' + yearBuilt); }
+    // Direct contact (0-2 pts)
+    if (phone && phone.replace(/[^0-9]/g,'').length >= 10) { score += 2; signals.push('direct phone'); }
+
+    // Building age / renovation signal (0-2 pts)
+    var currentYr = today.getFullYear();
+    var neverRenovated = !yearRenovated || yearRenovated < 2000;
+    if (yearBuilt > 0 && yearBuilt < 2000 && neverRenovated) { score += 2; signals.push('built ' + yearBuilt + ' · unrenovated'); }
+    else if (yearBuilt > 0 && yearBuilt < 2010)              { score += 1; signals.push('built ' + yearBuilt); }
+
+    // Below-market rent (0-1 pt)
+    var belowMarket = rentSF > 0 && rentSF < 9;
+    if (belowMarket) { score += 1; signals.push('$' + rentSF.toFixed(2) + '/SF — below market'); }
+
+    // Rail served (0-1 pt)
+    var railServed = rail && rail.toLowerCase() !== 'none' && rail.trim() !== '';
+    if (railServed) { score += 1; signals.push('rail served'); }
 
     if (score === 0) return;
 
@@ -1556,19 +1626,38 @@ async function exportDailySignalXLSX() {
     if (signals.length > 1) signalText += ' · ' + signals.slice(1).join(' · ');
     if (reSignal) signalText = '⚡ RE-SIGNAL: ' + signalText;
 
+    var outreach = getDSOutreachAngle({ address, submarket, city, vacancyN: vacancy, yearsHeld, forSaleRaw, belowMarket });
+    var mapLink  = 'https://maps.google.com/?q=' + encodeURIComponent(address + (city ? ', ' + city : '')) + '&t=k';
+
     results.push({
-      score, address, city, submarket, owner,
-      rba:      rba ? Math.round(rba/100)*100 : 0,
-      vacancyN: vacancy,
-      vacancy:  vacancy ? vacancy.toFixed(1)+'%' : '0%',
-      availSF:  availSF ? Math.round(availSF/100)*100 : 0,
-      lastSale: lastSale || '—',
-      phone:    (phone && phone.length > 5) ? phone : 'Research via county records',
-      signal:   signalText,
-      ceilHt:   ceilHt || '—',
-      docks:    docks || '—',
-      driveIns: driveIns || '—',
-      reSignal
+      score, address, city, submarket, owner, ownerAddr,
+      rba:          rba ? Math.round(rba/100)*100 : 0,
+      vacancyN:     vacancy,
+      vacancy:      vacancy ? vacancy.toFixed(1)+'%' : '0%',
+      availSF:      availSF ? Math.round(availSF/100)*100 : 0,
+      lastSale:     lastSale || '—',
+      lastSaleAmt:  lastSaleAmt || '—',
+      yearsHeld:    yearsHeld,
+      phone:        (phone && phone.replace(/[^0-9]/g,'').length >= 10) ? phone : 'Research via county records',
+      signal:       signalText,
+      ceilHt:       ceilHt || '—',
+      docks:        docks || '—',
+      driveIns:     driveIns || '—',
+      power:        power || '—',
+      rail:         rail || '—',
+      bldgClass:    bldgClass || '—',
+      tenancy:      tenancy || '—',
+      yearBuilt:    yearBuilt || '—',
+      yearRenovated:yearRenovated || '—',
+      rentSF:       rentSF ? '$' + rentSF.toFixed(2) + '/SF' : '—',
+      forSalePrice: forSalePrice || '—',
+      propName:     propName || '',
+      outreachAngle: outreach.angle,
+      callScript:   outreach.script,
+      mapLink,
+      reSignal,
+      forSaleRaw,
+      belowMarket
     });
   });
 
@@ -1651,8 +1740,8 @@ async function exportDailySignalXLSX() {
   }
 
   // ── Row 6: Column headers ──────────────────────────────────
-  var COLS = ['#','Score','Address','City','Submarket','RBA (SF)','Vacancy','Avail SF','Last Sale','Ceil Ht','Docks','D-I','Owner','Phone','Signal'];
-  var COL_WIDTHS = [4, 6.5, 42, 18, 22, 11, 9, 11, 11, 9, 6, 6, 32, 22, 52];
+  var COLS = ['#','Score','Address','City','Submarket','Class','RBA (SF)','Vacancy','Last Sale','Yrs Held','Ceil Ht','Docks','D-I','Power','Rail','Owner','Phone','Signal','Outreach Angle'];
+  var COL_WIDTHS = [4, 6.5, 40, 16, 22, 8, 11, 9, 11, 8, 9, 6, 5, 14, 12, 28, 20, 46, 30];
   ws.columns = COL_WIDTHS.map(function(w){ return { width: w }; });
 
   var hdrRow = ws.getRow(6);
@@ -1677,10 +1766,11 @@ async function exportDailySignalXLSX() {
     var bg = idx % 2 === 0 ? rowFill : altFill;
 
     var vals = [
-      idx+1, p.score, p.address, p.city, p.submarket,
-      p.rba || '—', p.vacancy, p.availSF || '—', p.lastSale,
-      p.ceilHt, p.docks, p.driveIns,
-      p.owner, p.phone, p.signal
+      idx+1, p.score, p.address, p.city, p.submarket, p.bldgClass,
+      p.rba || '—', p.vacancy, p.lastSale,
+      p.yearsHeld ? p.yearsHeld + ' yrs' : '—',
+      p.ceilHt, p.docks, p.driveIns, p.power, p.rail,
+      p.owner, p.phone, p.signal, p.outreachAngle
     ];
 
     vals.forEach(function(v, ci) {
@@ -1746,6 +1836,102 @@ async function exportDailySignalXLSX() {
     ws.getCell('N' + rn).font  = { size:9, name:'Calibri', color:{ argb: MUTED }, italic:true };
     ws.getCell('N' + rn).fill  = fillSolid(LGRAY);
     ws.getRow(rn).height = 18;
+  });
+
+  // ── Sheet 2: Call Sheet ────────────────────────────────────
+  var ws2 = wb.addWorksheet('Call Sheet');
+  ws2.columns = [{width:18},{width:52},{width:18},{width:52}];
+
+  var CARD_LABEL = '0D1B2A'; // navy
+  var CARD_VAL   = 'F8FAFC'; // near-white
+  var CARD_HEAD  = '1E3A5F'; // mid-navy
+  var CARD_SEP   = '2563EB'; // accent blue
+  var CARD_SCRIPT= 'EFF6FF'; // light blue
+
+  function csCell(row, col, val, opts) {
+    opts = opts || {};
+    var c = ws2.getCell(row, col);
+    c.value = val;
+    c.font  = { name:'Calibri', size: opts.size||10, bold:opts.bold||false, italic:opts.italic||false, color:{argb: opts.color||'0F172A'} };
+    c.fill  = {type:'pattern', pattern:'solid', fgColor:{argb: opts.bg||'FFFFFF'}};
+    c.alignment = {vertical:'top', horizontal: opts.align||'left', wrapText: opts.wrap||false, indent: opts.indent||0};
+    c.border = opts.border||{};
+    return c;
+  }
+
+  var cs2Row = 1;
+  top15.forEach(function(p, idx) {
+    // Header bar — rank + address
+    ws2.mergeCells(cs2Row, 1, cs2Row, 4);
+    var hc = ws2.getCell(cs2Row, 1);
+    hc.value = '#' + (idx+1) + '  ·  SCORE ' + p.score + '  ·  ' + p.address.toUpperCase() + (p.city ? ', ' + p.city : '');
+    hc.font  = {name:'Calibri', size:11, bold:true, color:{argb:'FFFFFF'}};
+    hc.fill  = {type:'pattern', pattern:'solid', fgColor:{argb: p.score >= 8 ? '0D3B1A' : p.score >= 5 ? '1E3A1E' : CARD_HEAD}};
+    hc.alignment = {vertical:'middle', horizontal:'left', indent:2};
+    ws2.getRow(cs2Row).height = 22;
+    cs2Row++;
+
+    // Building specs row
+    csCell(cs2Row, 1, 'BUILDING SPECS', {bold:true, color:'FFFFFF', bg:CARD_LABEL, size:9});
+    ws2.mergeCells(cs2Row, 2, cs2Row, 2);
+    csCell(cs2Row, 2, (p.bldgClass ? 'Class ' + p.bldgClass + '  · ' : '') + (p.rba ? p.rba.toLocaleString() + ' SF' : '') + (p.yearBuilt && p.yearBuilt !== '—' ? '  ·  Built ' + p.yearBuilt : '') + (p.yearRenovated && p.yearRenovated !== '—' ? '  ·  Reno ' + p.yearRenovated : '') + (p.tenancy ? '  ·  ' + p.tenancy : ''), {bg:CARD_VAL, size:10});
+    csCell(cs2Row, 3, 'SUBMARKET', {bold:true, color:'FFFFFF', bg:CARD_LABEL, size:9});
+    csCell(cs2Row, 4, (p.submarket || p.city || '—'), {bg:CARD_VAL, size:10});
+    ws2.getRow(cs2Row).height = 18; cs2Row++;
+
+    // Functional specs
+    csCell(cs2Row, 1, 'CLEAR HT / DOCKS', {bold:true, color:'FFFFFF', bg:CARD_LABEL, size:9});
+    csCell(cs2Row, 2, (p.ceilHt !== '—' ? p.ceilHt + ' clear' : '—') + (p.docks !== '—' ? '  ·  ' + p.docks + ' dock(s)' : '') + (p.driveIns !== '—' ? '  ·  ' + p.driveIns + ' DI' : ''), {bg:CARD_VAL, size:10});
+    csCell(cs2Row, 3, 'POWER / RAIL', {bold:true, color:'FFFFFF', bg:CARD_LABEL, size:9});
+    csCell(cs2Row, 4, (p.power !== '—' ? p.power : 'Not specified') + (p.rail && p.rail !== '—' ? '  ·  Rail: ' + p.rail : ''), {bg:CARD_VAL, size:10});
+    ws2.getRow(cs2Row).height = 18; cs2Row++;
+
+    // Occupancy
+    csCell(cs2Row, 1, 'VACANCY / RENT', {bold:true, color:'FFFFFF', bg:CARD_LABEL, size:9});
+    csCell(cs2Row, 2, p.vacancy + ' vacant' + (p.rentSF !== '—' ? '  ·  Asking ' + p.rentSF : '') + (p.forSaleRaw ? '  ·  FOR SALE' + (p.forSalePrice !== '—' ? ' @ ' + p.forSalePrice : '') : ''), {bg:CARD_VAL, size:10, bold: p.forSaleRaw||false});
+    csCell(cs2Row, 3, 'TRUCK COURT', {bold:true, color:'FFFFFF', bg:CARD_LABEL, size:9});
+    csCell(cs2Row, 4, 'Verify via satellite →', {bg:CARD_VAL, size:10, italic:true, color:'64748B'});
+    ws2.getRow(cs2Row).height = 18; cs2Row++;
+
+    // Ownership
+    csCell(cs2Row, 1, 'OWNER', {bold:true, color:'FFFFFF', bg:CARD_LABEL, size:9});
+    csCell(cs2Row, 2, (p.owner || '—') + (p.ownerAddr ? '  ·  ' + p.ownerAddr : ''), {bg:CARD_VAL, size:10});
+    csCell(cs2Row, 3, 'PHONE', {bold:true, color:'FFFFFF', bg:CARD_LABEL, size:9});
+    csCell(cs2Row, 4, p.phone, {bg: p.phone.startsWith('Research') ? 'FEF2F2' : 'F0FDF4', size:10, bold:true, color: p.phone.startsWith('Research') ? 'DC2626' : '166534'});
+    ws2.getRow(cs2Row).height = 18; cs2Row++;
+
+    // Hold / sale history
+    csCell(cs2Row, 1, 'LAST SALE', {bold:true, color:'FFFFFF', bg:CARD_LABEL, size:9});
+    csCell(cs2Row, 2, (p.lastSale || '—') + (p.lastSaleAmt !== '—' ? ' @ ' + p.lastSaleAmt : '') + (p.yearsHeld ? '  ·  ' + p.yearsHeld + '-year hold' : ''), {bg:CARD_VAL, size:10});
+    csCell(cs2Row, 3, 'MAP', {bold:true, color:'FFFFFF', bg:CARD_LABEL, size:9});
+    var mapCell = ws2.getCell(cs2Row, 4);
+    mapCell.value = {text: '↗ Satellite View', hyperlink: p.mapLink};
+    mapCell.font  = {name:'Calibri', size:10, bold:true, color:{argb:'2563EB'}, underline:true};
+    mapCell.fill  = {type:'pattern', pattern:'solid', fgColor:{argb:CARD_VAL}};
+    ws2.getRow(cs2Row).height = 18; cs2Row++;
+
+    // Signal
+    csCell(cs2Row, 1, 'SIGNAL', {bold:true, color:'FFFFFF', bg:'1E3A5F', size:9});
+    ws2.mergeCells(cs2Row, 2, cs2Row, 4);
+    csCell(cs2Row, 2, p.signal + (p.reSignal ? '  ⚡ RE-SIGNAL' : ''), {bg:'DBEAFE', size:10, bold:true, color:'1E3A5F', wrap:false});
+    ws2.getRow(cs2Row).height = 18; cs2Row++;
+
+    // Outreach angle
+    csCell(cs2Row, 1, 'OUTREACH', {bold:true, color:'FFFFFF', bg:'1E3A5F', size:9});
+    ws2.mergeCells(cs2Row, 2, cs2Row, 4);
+    csCell(cs2Row, 2, p.outreachAngle, {bg:'EFF6FF', size:10, bold:true, color:'1E40AF', wrap:false});
+    ws2.getRow(cs2Row).height = 18; cs2Row++;
+
+    // Call script
+    csCell(cs2Row, 1, 'CALL SCRIPT', {bold:true, color:'FFFFFF', bg:'1E3A5F', size:9});
+    ws2.mergeCells(cs2Row, 2, cs2Row, 4);
+    csCell(cs2Row, 2, p.callScript, {bg:CARD_SCRIPT, size:10, italic:true, color:'1E3A5F', wrap:true});
+    ws2.getRow(cs2Row).height = 48; cs2Row++;
+
+    // Separator
+    ws2.mergeCells(cs2Row, 1, cs2Row, 4);
+    ws2.getCell(cs2Row, 1).fill = {type:'pattern', pattern:'solid', fgColor:{argb:'E2E8F0'}};
+    ws2.getRow(cs2Row).height = 6; cs2Row++;
   });
 
   // ── Download ───────────────────────────────────────────────
