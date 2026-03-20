@@ -197,6 +197,19 @@ footer{border-top:1px solid var(--border);padding:20px 24px;text-align:center;co
 .nl-value.amber{color:#f59e0b;}
 .nl-value.red{color:#f87171;}
 
+.ds-tracker{margin-top:16px;border:1px solid var(--border);border-radius:var(--r);overflow:hidden;}
+.ds-tracker-head{background:var(--surface2);padding:10px 14px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;user-select:none;}
+.ds-tracker-head-title{font-size:11px;font-weight:700;letter-spacing:1px;color:var(--text);text-transform:uppercase;}
+.ds-tracker-body{display:none;max-height:420px;overflow-y:auto;}
+.ds-tracker-body.open{display:block;}
+.ds-tracker-table{width:100%;border-collapse:collapse;font-size:11px;}
+.ds-tracker-table th{background:#0D1B2A;color:#fff;padding:6px 8px;text-align:left;font-weight:600;font-size:10px;position:sticky;top:0;z-index:1;}
+.ds-tracker-table td{padding:5px 8px;border-bottom:1px solid var(--border);vertical-align:middle;}
+.ds-tracker-table tr:nth-child(even) td{background:var(--surface2);}
+.ds-status-sel{font-size:11px;padding:2px 4px;border:1px solid var(--border);border-radius:3px;width:128px;font-weight:600;}
+.ds-note-inp{font-size:11px;padding:2px 6px;border:1px solid var(--border);border-radius:3px;width:100%;box-sizing:border-box;}
+.ds-date-inp{font-size:11px;padding:2px 4px;border:1px solid var(--border);border-radius:3px;width:100px;}
+
 /* MODAL (launch) */
 .modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:999;align-items:center;justify-content:center;}
 .modal-bg.show{display:flex;}
@@ -1157,6 +1170,17 @@ function renderTools() {
       if(el) el.addEventListener('input',updateNapkinLive);
     });
   });
+
+  // Render DS tracker on panel open
+  var dsPanel = document.getElementById('panel-daily-signal');
+  if(dsPanel){
+    var obs = new MutationObserver(function(muts){
+      muts.forEach(function(m){
+        if(m.attributeName==='class' && dsPanel.classList.contains('open')) renderDSTracker();
+      });
+    });
+    obs.observe(dsPanel, {attributes:true});
+  }
 }
 
 function buildPanelHTML(tool) {
@@ -1243,6 +1267,15 @@ function buildPanelHTML(tool) {
       <label class="fl" style="margin-bottom:6px">Paste the "SOURCED THIS RUN:" block from Claude's output — saved automatically</label>
       <textarea id="ds-log-input" placeholder="123 Industrial Blvd, Savannah&#10;456 Port Ave, Atlanta&#10;..." style="height:90px;width:100%;box-sizing:border-box"></textarea>
       <button class="btn btn-p" style="margin-top:6px;font-size:12px" onclick="saveDailySourced()">Save to Memory</button>
+    </div>
+    <div class="ds-tracker" id="ds-tracker">
+      <div class="ds-tracker-head" onclick="toggleDSTracker()">
+        <span class="ds-tracker-head-title">📞 Contact Tracker <span id="ds-tracker-count" style="color:var(--muted);font-weight:400;"></span></span>
+        <span id="ds-tracker-arrow" style="font-size:11px;color:var(--muted);">▶</span>
+      </div>
+      <div class="ds-tracker-body" id="ds-tracker-body">
+        <div id="ds-tracker-panel" style="padding:0;"></div>
+      </div>
     </div>` : ''}
     <div class="manual-toggle" onclick="toggleManual('${tool.id}')">
       <span id="marrow-${tool.id}">▶</span> Fields &amp; Parameters
@@ -1473,6 +1506,82 @@ function clearDailySourced() {
   }
 }
 
+var _dsTKKeys = [];
+
+function normDSAddr(a){ return (a||'').toLowerCase().trim().replace(/\s+/g,' '); }
+
+function getDSTracker(){
+  try{ return JSON.parse(localStorage.getItem('ridge_ds_tracker')||'{}'); }
+  catch(e){ return {}; }
+}
+
+function setDSTrackerEntry(idx, updates){
+  var addr = _dsTKKeys[idx];
+  if(!addr) return;
+  var t = getDSTracker();
+  t[addr] = Object.assign(t[addr]||{status:'',note:'',followUpDate:'',lastContact:'',score:0,addedDate:new Date().toISOString().slice(0,10)}, updates);
+  localStorage.setItem('ridge_ds_tracker', JSON.stringify(t));
+  renderDSTracker();
+}
+
+function deleteDSTrackerEntry(idx){
+  var addr = _dsTKKeys[idx];
+  if(!addr) return;
+  if(!confirm('Remove "'+addr+'" from tracker?')) return;
+  var t = getDSTracker();
+  delete t[addr];
+  localStorage.setItem('ridge_ds_tracker', JSON.stringify(t));
+  renderDSTracker();
+}
+
+function toggleDSTracker(){
+  var body = document.getElementById('ds-tracker-body');
+  var arrow = document.getElementById('ds-tracker-arrow');
+  if(!body) return;
+  var open = body.classList.toggle('open');
+  if(arrow) arrow.textContent = open ? '▼' : '▶';
+  if(open) renderDSTracker();
+}
+
+function renderDSTracker(){
+  var panel = document.getElementById('ds-tracker-panel');
+  var countEl = document.getElementById('ds-tracker-count');
+  if(!panel) return;
+  var t = getDSTracker();
+  var keys = Object.keys(t);
+  if(countEl) countEl.textContent = '— '+keys.length+' tracked';
+  if(!keys.length){
+    panel.innerHTML='<div style="color:var(--muted);font-size:11px;padding:12px 14px;">No properties tracked yet. Run a Daily Signal report to begin.</div>';
+    _dsTKKeys=[];
+    return;
+  }
+  // Sort: In Conversation → Follow Up → Left Message → No Answer → Not Called → Not Interested → Dead
+  var ORDER={'In Conversation':0,'Follow Up':1,'Left Message':2,'No Answer':3,'':4,'Not Called':4,'Not Interested':5,'Dead':6};
+  keys.sort(function(a,b){ return (ORDER[t[a].status||'']||4)-(ORDER[t[b].status||'']||4); });
+  _dsTKKeys = keys;
+  var STATUS_COLOR={'In Conversation':'#166534','Follow Up':'#1D4ED8','Left Message':'#92400E','No Answer':'#64748B','':'#94A3B8','Not Interested':'#6B7280','Dead':'#DC2626'};
+  var STATUS_BG={'In Conversation':'#D1FAE5','Follow Up':'#DBEAFE','Left Message':'#FEF3C7','No Answer':'#F1F5F9','':'#F8FAFC','Not Interested':'#F3F4F6','Dead':'#FEE2E2'};
+  var STATUSES=['','No Answer','Left Message','Not Interested','Follow Up','In Conversation','Dead'];
+  var html='<table class="ds-tracker-table"><thead><tr><th style="width:36%">Property</th><th style="width:16%">Score</th><th style="width:22%">Status</th><th style="width:14%">Follow Up</th><th>Notes</th><th style="width:28px"></th></tr></thead><tbody>';
+  keys.forEach(function(key,i){
+    var e=t[key];
+    var sc=e.score?'<span style="font-weight:700;color:'+(e.score>=8?'#059669':e.score>=5?'#D97706':'#94A3B8')+'">'+e.score+'</span>':'—';
+    var sbg=STATUS_BG[e.status||'']||'#F8FAFC';
+    var sc2=STATUS_COLOR[e.status||'']||'#94A3B8';
+    var opts=STATUSES.map(function(s){ return '<option value="'+s+'"'+(e.status===s?' selected':'')+'>'+(s||'Not Called')+'</option>'; }).join('');
+    html+='<tr>';
+    html+='<td style="max-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="'+key+'"><span style="font-weight:500;">'+key+'</span>'+(e.lastContact?'<br><span style="color:var(--muted);font-size:10px;">Last: '+e.lastContact+'</span>':'')+'</td>';
+    html+='<td style="text-align:center;">'+sc+'</td>';
+    html+='<td><select class="ds-status-sel" style="background:'+sbg+';color:'+sc2+';" onchange="setDSTrackerEntry('+i+',{status:this.value,lastContact:new Date().toISOString().slice(0,10)})">'+opts+'</select></td>';
+    html+='<td><input type="date" class="ds-date-inp" value="'+(e.followUpDate||'')+'" onchange="setDSTrackerEntry('+i+',{followUpDate:this.value})"></td>';
+    html+='<td><input type="text" class="ds-note-inp" value="'+(e.note||'').replace(/"/g,'&quot;').replace(/\'/g,'&#39;')+'" placeholder="Notes..." onchange="setDSTrackerEntry('+i+',{note:this.value})"></td>';
+    html+='<td style="text-align:center;"><button onclick="deleteDSTrackerEntry('+i+')" style="background:none;border:none;color:#EF4444;cursor:pointer;font-size:14px;line-height:1;padding:0;">×</button></td>';
+    html+='</tr>';
+  });
+  html+='</tbody></table>';
+  panel.innerHTML=html;
+}
+
 function getDSOutreachAngle(p) {
   var sub = p.submarket || p.city || 'your submarket';
   var addr = p.address;
@@ -1521,6 +1630,7 @@ async function exportDailySignalXLSX() {
   var dateStr = today.toLocaleDateString('en-US', { month:'long', day:'numeric', year:'numeric' });
   var fileDate = today.toISOString().slice(0,10);
   var sourced = (localStorage.getItem('ridge_daily_sourced') || '').split('\n').map(function(s){ return s.trim().toLowerCase(); }).filter(Boolean);
+  var tracker = getDSTracker();
 
   function col(r, keys) {
     var rk = Object.keys(r);
@@ -1657,7 +1767,8 @@ async function exportDailySignalXLSX() {
       mapLink,
       reSignal,
       forSaleRaw,
-      belowMarket
+      belowMarket,
+      trackerEntry: tracker[normDSAddr(address)] || null,
     });
   });
 
@@ -1740,8 +1851,8 @@ async function exportDailySignalXLSX() {
   }
 
   // ── Row 6: Column headers ──────────────────────────────────
-  var COLS = ['#','Score','Address','City','Submarket','Class','RBA (SF)','Vacancy','Last Sale','Yrs Held','Ceil Ht','Docks','D-I','Power','Rail','Owner','Phone','Signal','Outreach Angle'];
-  var COL_WIDTHS = [4, 6.5, 40, 16, 22, 8, 11, 9, 11, 8, 9, 6, 5, 14, 12, 28, 20, 46, 30];
+  var COLS = ['#','Score','Status','Address','City','Submarket','Class','RBA (SF)','Vacancy','Last Sale','Yrs Held','Ceil Ht','Docks','D-I','Power','Rail','Owner','Phone','Signal','Outreach Angle'];
+  var COL_WIDTHS = [4, 6.5, 16, 40, 16, 22, 8, 11, 9, 11, 8, 9, 6, 5, 14, 12, 28, 20, 46, 30];
   ws.columns = COL_WIDTHS.map(function(w){ return { width: w }; });
 
   var hdrRow = ws.getRow(6);
@@ -1765,8 +1876,9 @@ async function exportDailySignalXLSX() {
     var altFill = p.reSignal ? 'FFF3E0' : isHot ? 'ECFDF5' : isWarm ? 'FEFCE8' : LGRAY;
     var bg = idx % 2 === 0 ? rowFill : altFill;
 
+    var tStatus = p.trackerEntry ? (p.trackerEntry.status||'Not Called') : 'Not Called';
     var vals = [
-      idx+1, p.score, p.address, p.city, p.submarket, p.bldgClass,
+      idx+1, p.score, tStatus, p.address, p.city, p.submarket, p.bldgClass,
       p.rba || '—', p.vacancy, p.lastSale,
       p.yearsHeld ? p.yearsHeld + ' yrs' : '—',
       p.ceilHt, p.docks, p.driveIns, p.power, p.rail,
@@ -1778,7 +1890,7 @@ async function exportDailySignalXLSX() {
       c.value = v;
       c.fill  = fillSolid(bg);
       c.font  = { size:9, name:'Calibri', color:{ argb: TEXT } };
-      c.alignment = { vertical:'middle', wrapText: ci === 14 };
+      c.alignment = { vertical:'middle', wrapText: ci === 19 };
       c.border = { bottom: thin(BORDER) };
 
       // Special formatting
@@ -1788,8 +1900,15 @@ async function exportDailySignalXLSX() {
         c.font = { bold:true, size:10, name:'Calibri', color:{ argb: scoreColor } };
         c.alignment.horizontal = 'center';
       }
-      if (ci === 2) { c.font = { bold: idx < 3, size:9, name:'Calibri', color:{ argb: TEXT } }; }
-      if (ci === 13 && p.phone.startsWith('Research')) {
+      if (ci === 2) {
+        var stColors={'In Conversation':'059669','Follow Up':'1D4ED8','Left Message':'92400E','No Answer':'64748B','Not Called':'94A3B8','Not Interested':'6B7280','Dead':'DC2626'};
+        var stBGs={'In Conversation':'D1FAE5','Follow Up':'DBEAFE','Left Message':'FEF3C7','No Answer':'F1F5F9','Not Called':'F8FAFC','Not Interested':'F3F4F6','Dead':'FEE2E2'};
+        c.font={bold:true,size:9,name:'Calibri',color:{argb:stColors[tStatus]||'94A3B8'}};
+        c.fill=fillSolid(stBGs[tStatus]||'F8FAFC');
+        c.alignment={vertical:'middle',horizontal:'center'};
+      }
+      if (ci === 3) { c.font = { bold: idx < 3, size:9, name:'Calibri', color:{ argb: TEXT } }; }
+      if (ci === 14 && p.phone.startsWith('Research')) {
         c.font = { size:9, name:'Calibri', color:{ argb: 'EF4444' }, italic:true };
       }
     });
@@ -1928,6 +2047,20 @@ async function exportDailySignalXLSX() {
     csCell(cs2Row, 2, p.callScript, {bg:CARD_SCRIPT, size:10, italic:true, color:'1E3A5F', wrap:true});
     ws2.getRow(cs2Row).height = 48; cs2Row++;
 
+    // Tracker status row
+    var te = p.trackerEntry;
+    csCell(cs2Row, 1, 'TRACKER', {bold:true, color:'FFFFFF', bg:'1E3A5F', size:9});
+    ws2.mergeCells(cs2Row, 2, cs2Row, 4);
+    var tStat = te ? (te.status||'Not Called') : 'Not Called';
+    var tNote = te ? (te.note||'') : '';
+    var tFU   = te ? (te.followUpDate||'') : '';
+    var tLC   = te ? (te.lastContact||'') : '';
+    var tStr  = tStat + (tLC?' · Last contact: '+tLC:'') + (tFU?' · Follow up: '+tFU:'') + (tNote?' · '+tNote:'');
+    var tBGs2={'In Conversation':'D1FAE5','Follow Up':'DBEAFE','Left Message':'FEF3C7','No Answer':'F1F5F9','Not Called':'F8FAFC','Not Interested':'F3F4F6','Dead':'FEE2E2'};
+    var tCs2={'In Conversation':'166534','Follow Up':'1E40AF','Left Message':'92400E','No Answer':'475569','Not Called':'64748B','Not Interested':'6B7280','Dead':'DC2626'};
+    csCell(cs2Row, 2, tStr, {bg:tBGs2[tStat]||'F8FAFC', size:10, bold:true, color:tCs2[tStat]||'64748B', wrap:false});
+    ws2.getRow(cs2Row).height = 18; cs2Row++;
+
     // Separator
     ws2.mergeCells(cs2Row, 1, cs2Row, 4);
     ws2.getCell(cs2Row, 1).fill = {type:'pattern', pattern:'solid', fgColor:{argb:'E2E8F0'}};
@@ -1942,6 +2075,23 @@ async function exportDailySignalXLSX() {
   a.href = url; a.download = 'RIDGE_DailySignal_' + fileDate + '.xlsx';
   document.body.appendChild(a); a.click(); document.body.removeChild(a);
   URL.revokeObjectURL(url);
+
+  // Auto-register top 15 in tracker (preserves existing entries)
+  var tNow = getDSTracker();
+  top15.forEach(function(p){
+    var key = normDSAddr(p.address);
+    if(!tNow[key]){
+      tNow[key] = {status:'', note:'', followUpDate:'', lastContact:'', score:p.score, addedDate:new Date().toISOString().slice(0,10)};
+    } else {
+      tNow[key].score = p.score; // update score each run
+    }
+  });
+  localStorage.setItem('ridge_ds_tracker', JSON.stringify(tNow));
+  renderDSTracker();
+  // Open tracker panel after export
+  var tbody = document.getElementById('ds-tracker-body');
+  var tarrow = document.getElementById('ds-tracker-arrow');
+  if(tbody && !tbody.classList.contains('open')){ tbody.classList.add('open'); if(tarrow) tarrow.textContent='▼'; }
 
   // Auto-populate log
   var addrs = top15.map(function(p){ return p.address + (p.city ? ', ' + p.city : ''); }).join('\n');
