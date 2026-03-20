@@ -8,6 +8,7 @@
 <script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pptxgenjs/3.12.0/pptxgen.bundle.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.min.js"></script>
 <style>
 :root {
   --bg:#0d1117;--surface:#161b22;--surface2:#1c2128;--border:#30363d;
@@ -186,6 +187,15 @@ textarea{resize:vertical;min-height:72px;}
 footer{border-top:1px solid var(--border);padding:20px 24px;text-align:center;color:var(--faint);font-size:11px;letter-spacing:1px;margin-top:40px;}
 ::-webkit-scrollbar{width:5px;}
 ::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px;}
+
+.napkin-live{background:var(--surface2);border:1px solid var(--border);border-radius:var(--r);padding:14px 16px;margin:14px 0 0;display:none;}
+.napkin-live.show{display:block;}
+.nl-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px;margin-top:8px;}
+.nl-label{font-size:10px;color:var(--muted);letter-spacing:.5px;text-transform:uppercase;}
+.nl-value{font-size:16px;font-weight:700;font-family:var(--mono);color:var(--text);margin-top:2px;}
+.nl-value.green{color:#4ade80;}
+.nl-value.amber{color:#f59e0b;}
+.nl-value.red{color:#f87171;}
 
 /* MODAL (launch) */
 .modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:999;align-items:center;justify-content:center;}
@@ -950,14 +960,17 @@ var TOOLS = [
     badge:'Live Benchmarks',
     desc:'Submarket intelligence engine. Vacancy, Class A/B rents, absorption, supply pipeline, cap rates. Covers ATL, SAV, DFW, HOU, AUS.',
     shortDesc:'Submarket benchmarks. Vacancy, rents, absorption, cap rates.',
-    uploads:[{id:'data',label:'CoStar Data / Broker Report',hint:'Optional: CoStar export or broker submarket report PDF',icon:'📊',accept:'.xlsx,.csv,.pdf',type:'mixed'}],
+    uploads:[
+      {id:'data',label:'CoStar Data / Broker Report',hint:'Optional: CoStar export or broker submarket report PDF',icon:'📊',accept:'.xlsx,.csv,.pdf',type:'mixed'},
+      {id:'submarket',label:'CoStar Submarket Export',hint:'Optional: CoStar submarket XLSX/CSV for grounded benchmarks',icon:'📊',accept:'.xlsx,.csv',type:'xlsx'}
+    ],
     fields:[
       {row:[{id:'mkt',label:'Market',type:'select',opts:['Atlanta, GA','Savannah, GA','Dallas–Fort Worth, TX','Houston, TX','Austin, TX (Watch)','All Markets — Full Matrix']},{id:'sub',label:'Specific Submarket',ph:'e.g. Gwinnett/Buford, NE Atlanta (optional)'}]},
       {row:[{id:'mode',label:'Report Type',type:'select',opts:['Full Market Report','Quick Update','Submarket Matrix','Benchmark Update for Active Deal']},{id:'deal',label:'Active Deal Address',ph:'Leave blank for market-only report'}]},
     ],
     steps:['Pulling market data...','Benchmarking vacancy rates...','Analyzing absorption trends...','Reviewing supply pipeline...','Generating RIDGE implications...'],
     system:`You are MARKET PULSE, RIDGE's submarket intelligence engine. You pull and synthesize current industrial and flex market data for Atlanta, Savannah, DFW, Houston, and Austin. Always translate data into RIDGE underwriting implications. Flag estimates clearly with ★ ESTIMATE. Never cite LoopNet asking rents as market benchmarks.`,
-    prompt:(d)=>`Run Market Pulse: ${d.mkt||'Atlanta, GA'}${d.sub?', '+d.sub:''} | Mode: ${d.mode||'Full Market Report'}${d.deal?' | Active deal: '+d.deal:''}.\n${d.data_text?'CoStar/broker data provided:\n'+d.data_text+'\n\n':''}\nProduce in this format:\n## HEADLINE METRICS\nTable: Metric | Value | vs. 12 Mo Ago | Trend\nVacancy rate, Direct ask rent NNN (Class A & B), Net absorption TTM, New supply under construction, Market cap rate range, Rent growth 12mo\n\n## SUBMARKET BREAKDOWN\nTable: Submarket | Vacancy | Ask Rent | Trend | RIDGE Priority\n\n## SUPPLY PIPELINE\nDelivering <6mo, 6–12mo, under construction. Flag if spec >15% of inventory.\n\n## CAP RATE CONTEXT\nIndustrial stabilized, flex stabilized, value-add premium, RIDGE exit assumption check.\n\n## RIDGE UNDERWRITING IMPLICATIONS\nMarket rent benchmark to use, vacancy assumption, rent growth for 5-yr model, exit cap recommendation.\n\n**Verdict: FAVORABLE / NEUTRAL / CAUTIOUS** — one paragraph.`
+    prompt:(d)=>`Run Market Pulse: ${d.mkt||'Atlanta, GA'}${d.sub?', '+d.sub:''} | Mode: ${d.mode||'Full Market Report'}${d.deal?' | Active deal: '+d.deal:''}.\n${d.data_text?'CoStar/broker data provided:\n'+d.data_text+'\n\n':''}${d.submarket_text?'CoStar submarket export:\n'+d.submarket_text+'\n\n':''}\nProduce in this format:\n## HEADLINE METRICS\nTable: Metric | Value | vs. 12 Mo Ago | Trend\nVacancy rate, Direct ask rent NNN (Class A & B), Net absorption TTM, New supply under construction, Market cap rate range, Rent growth 12mo\n\n## SUBMARKET BREAKDOWN\nTable: Submarket | Vacancy | Ask Rent | Trend | RIDGE Priority\n\n## SUPPLY PIPELINE\nDelivering <6mo, 6–12mo, under construction. Flag if spec >15% of inventory.\n\n## CAP RATE CONTEXT\nIndustrial stabilized, flex stabilized, value-add premium, RIDGE exit assumption check.\n\n## RIDGE UNDERWRITING IMPLICATIONS\nMarket rent benchmark to use, vacancy assumption, rent growth for 5-yr model, exit cap recommendation.\n\n**Verdict: FAVORABLE / NEUTRAL / CAUTIOUS** — one paragraph.`
   },
   {
     id:'lease-comp', num:'04', icon:'🗺️', name:'LEASE COMP MAP',
@@ -1074,7 +1087,10 @@ var TOOLS = [
     badge:'Tenant Sourcing',
     desc:'Tenant sourcing engine. Fill mode: find tenants for a specific building. Hunt mode: scan for displaced businesses and feed them back as acquisition targets.',
     shortDesc:'Tenant sourcing. Fill a building or hunt acquisition targets.',
-    uploads:[{id:'data',label:'Property Info or Market Data',hint:'Optional: floor plan PDF, CoStar data, or OM',icon:'📄',accept:'.pdf,.xlsx',type:'mixed'}],
+    uploads:[
+      {id:'data',label:'Property Info or Market Data',hint:'Optional: floor plan PDF, CoStar data, or OM',icon:'📄',accept:'.pdf,.xlsx',type:'mixed'},
+      {id:'vacancy',label:'CoStar Vacancy Data',hint:'Hunt mode: CoStar vacancy export to ground tenant targeting',icon:'📊',accept:'.xlsx,.csv',type:'xlsx'}
+    ],
     fields:[
       {row:[{id:'mode',label:'Mode',type:'select',opts:['Fill — I have a building, find tenants','Hunt — find displaced businesses for acquisition targeting']},{id:'addr',label:'Property Address',ph:'e.g. 7100 Distribution Dr, Dallas, TX'}]},
       {row:[{id:'sf',label:'Available SF',ph:'e.g. 48,000'},{id:'dock',label:'Dock Doors / Clear Height',ph:'e.g. 4 dock-high, 24\' clear'}]},
@@ -1083,7 +1099,7 @@ var TOOLS = [
     ],
     steps:['Analyzing building specs...','Identifying demand signals...','Scanning target tenant types...','Building prospect list...','Generating outreach recommendations...'],
     system:`You are CANVAS, RIDGE's tenant sourcing engine. In Fill mode you find tenants for a specific building. In Hunt mode you find displaced or space-hungry businesses that could either lease RIDGE assets or signal acquisition targets. You know industrial and flex tenant profiles — 3PL, light manufacturing, e-commerce, tech, flex users. Be specific with company names and contact approaches.`,
-    prompt:(d)=>`Run CANVAS ${d.mode||'Fill'} for: ${d.addr||'Subject Property'} | ${d.sf||'?'} SF available | ${d.dock||''} | Target rent: ${d.rent||'market'} | Submarket: ${d.sub||'?'}.\n${d.notes?'Ideal profile: '+d.notes+'\n':''}\n${d.data_text?'Property data:\n'+d.data_text+'\n\n':''}\nProduce:\n## DEMAND ANALYSIS\nWhat tenant types are actively looking in this submarket? What size requirements are most active?\n\n## TENANT PROSPECT TABLE\nTable: Company | Type | Est. SF Need | Likelihood | Why This Building | Outreach Approach\nProvide 8–12 specific prospects.\n\n## TOP 3 TARGETS\nFor each: company overview, why they need space, what to lead with in outreach, who to contact.\n\n## OUTREACH STRATEGY\nHow to position this building. What to lead with. What brokers are active with these tenant types.`
+    prompt:(d)=>`Run CANVAS ${d.mode||'Fill'} for: ${d.addr||'Subject Property'} | ${d.sf||'?'} SF available | ${d.dock||''} | Target rent: ${d.rent||'market'} | Submarket: ${d.sub||'?'}.\n${d.notes?'Ideal profile: '+d.notes+'\n':''}\n${d.data_text?'Property data:\n'+d.data_text+'\n\n':''}${d.vacancy_text?'CoStar vacancy data:\n'+d.vacancy_text+'\n\n':''}\nProduce:\n## DEMAND ANALYSIS\nWhat tenant types are actively looking in this submarket? What size requirements are most active?\n\n## TENANT PROSPECT TABLE\nTable: Company | Type | Est. SF Need | Likelihood | Why This Building | Outreach Approach\nProvide 8–12 specific prospects.\n\n## TOP 3 TARGETS\nFor each: company overview, why they need space, what to lead with in outreach, who to contact.\n\n## OUTREACH STRATEGY\nHow to position this building. What to lead with. What brokers are active with these tenant types.`
   }
 ];
 
@@ -1133,6 +1149,12 @@ function renderTools() {
         else handleXLSX(tool.id, u.id, e.target);
       });
       else inp.addEventListener('change', e => handleFile(tool.id, u.id, e.target, u.type));
+    });
+
+    // Napkin live math
+    ['ask','sf','noi','mktrent'].forEach(function(fid){
+      var el=document.getElementById('f-napkin-'+fid);
+      if(el) el.addEventListener('input',updateNapkinLive);
     });
   });
 }
@@ -1229,10 +1251,12 @@ function buildPanelHTML(tool) {
     <div class="manual-body" id="mbody-${tool.id}">
       ${fieldsHTML}
     </div>
+    ${tool.id==='napkin'?'<div class="napkin-live" id="napkin-live"><div style="font-size:10px;font-weight:700;letter-spacing:1px;color:#4ade80;margin-bottom:6px;">LIVE MATH</div><div class="nl-grid" id="nl-grid"></div></div>':''}
     <div class="btn-row">
       <button class="btn btn-p" id="run-btn-${tool.id}" onclick="runTool('${tool.id}')">↗ Run in Claude</button>
       <button class="btn btn-o" onclick="clearTool('${tool.id}')">Clear</button>
       ${tool.id === 'daily-signal' ? exportSection : ''}
+      ${tool.id==='loi'?'<button class="btn btn-g" onclick="generateLOI()" style="margin-left:8px;">⬇ Generate LOI</button>':''}
     </div>
     ${tool.id !== 'daily-signal' ? exportSection : ''}
     <div class="loading" id="loading-${tool.id}">
@@ -2684,7 +2708,7 @@ async function exportToolReport(toolId) {
 
 // ── LENS — Deal Tear Sheet ─────────────────────────────────
 function _exportLens(wb, tid, dateStr, paste) {
-  var ws = wb.addWorksheet('Deal Tear Sheet', { views:[{state:'frozen',xSplit:0,ySplit:3}] });
+  var ws = wb.addWorksheet('Deal Inputs', { views:[{state:'frozen',xSplit:0,ySplit:3}] });
   rcColWidths(ws, [24,20,12,12,12,12,12,12,12,12]);
   var addr = rcGetField(tid,'addr');
   var r = rcTitle(ws, 'LENS — DEAL TEARDOWN', addr, dateStr);
@@ -2710,6 +2734,29 @@ function _exportLens(wb, tid, dateStr, paste) {
   ], r);
 
   r = rcAnalysis(ws, paste, r);
+
+  // Sheet 2 — Scenario Comparison
+  var lsScenarios=_parseLensScenarios(paste);
+  if(lsScenarios.length>0){
+    var ws2=wb.addWorksheet('Scenario Comparison');
+    ws2.columns=[{width:20},{width:16},{width:12},{width:12},{width:12},{width:40}];
+    var sh2=['Scenario','Entry Price','IRR','Equity Multiple','YOC','Key Assumption'];
+    var shr=ws2.addRow(sh2);
+    shr.eachCell(function(c){c.font={bold:true,color:{argb:'FFFFFFFF'},size:11};c.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FF0D1B2A'}};c.alignment={horizontal:'center'};});
+    ws2.getRow(1).height=22;
+    lsScenarios.forEach(function(s){
+      var row=ws2.addRow([s.scenario,s.price,s.irr,s.em,s.yoc,s.assumption]);
+      var sl=s.scenario.toLowerCase();
+      var bg=sl.includes('bear')?'FFFCE4E4':sl.includes('bull')?'FFE4F4E4':'FFFFF9D4';
+      row.eachCell(function(c,ci){
+        c.fill={type:'pattern',pattern:'solid',fgColor:{argb:bg}};
+        c.font={size:11,bold:ci===1};
+        c.alignment={horizontal:ci<=5?'center':'left',wrapText:true};
+        c.border={bottom:{style:'thin',color:{argb:'FFE0E0E0'}}};
+      });
+      row.height=18;
+    });
+  }
 }
 
 // ── THE NAPKIN — Quick Screen ──────────────────────────────
@@ -3048,6 +3095,43 @@ function _exportGavel(wb, tid, dateStr, paste) {
   ], r);
 
   r = rcAnalysis(ws, paste, r);
+
+  // Sheet 2 — Lease Timeline
+  var glLeases=_parseGavelLeases(paste);
+  if(glLeases.length>0){
+    var wsT=wb.addWorksheet('Lease Timeline');
+    var minYr=new Date().getFullYear();
+    var maxYr=minYr+7;
+    glLeases.forEach(function(l){if(l.startYear&&l.startYear<minYr)minYr=l.startYear;if(l.endYear&&l.endYear>maxYr)maxYr=l.endYear;});
+    maxYr=Math.min(maxYr,minYr+15);
+    var years=[];for(var y=minYr;y<=maxYr;y++)years.push(y);
+    var thRow=['Period','Dates','Annual Rent','PSF'].concat(years.map(String));
+    var thr2=wsT.addRow(thRow);
+    thr2.eachCell(function(c){c.font={bold:true,color:{argb:'FFFFFFFF'},size:10};c.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FF0D1B2A'}};c.alignment={horizontal:'center'};});
+    wsT.getRow(1).height=20;
+    wsT.columns=[{width:16},{width:22},{width:16},{width:10}].concat(years.map(function(){return {width:7};}));
+    glLeases.forEach(function(lease,i){
+      var rowData=[lease.period,lease.dates,lease.annualRent,lease.psf];
+      years.forEach(function(yr){
+        var inL=lease.startYear&&lease.endYear&&yr>=lease.startYear&&yr<=lease.endYear;
+        var exp2=lease.endYear&&yr===lease.endYear;
+        rowData.push(exp2?'EXP':inL?'●':'');
+      });
+      var row=wsT.addRow(rowData);
+      var bg2=i%2===1?'FFF8F8F8':'FFFFFFFF';
+      row.eachCell(function(c,ci){
+        if(ci<=4){c.fill={type:'pattern',pattern:'solid',fgColor:{argb:bg2}};c.font={size:10};return;}
+        var yr=years[ci-5];
+        var inL=lease.startYear&&lease.endYear&&yr>=lease.startYear&&yr<=lease.endYear;
+        var exp2=lease.endYear&&yr===lease.endYear;
+        if(exp2){c.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFFEE2E2'}};c.font={size:9,bold:true,color:{argb:'FFC0392B'}};}
+        else if(inL){c.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFD1FAE5'}};c.font={size:9,color:{argb:'FF166534'}};}
+        else{c.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFF0F0F0'}};}
+        c.alignment={horizontal:'center'};
+      });
+      row.height=18;
+    });
+  }
 }
 
 // ── LEGAL REVIEWER ────────────────────────────────────────
@@ -3103,6 +3187,154 @@ function _exportCanvas(wb, tid, dateStr, paste) {
 // ═══════════════════════════════════════════════════════════
 //  END EXPORT SYSTEM
 // ═══════════════════════════════════════════════════════════
+
+function updateNapkinLive(){
+  function fv(id){var el=document.getElementById(id);return el?(el.value||'').replace(/[^0-9.]/g,''):''}
+  var ask=parseFloat(fv('f-napkin-ask'))||0;
+  var sf=parseFloat(fv('f-napkin-sf'))||0;
+  var noi=parseFloat(fv('f-napkin-noi'))||0;
+  var mkt=parseFloat(fv('f-napkin-mktrent'))||0;
+  var live=document.getElementById('napkin-live');
+  if(!live) return;
+  if(!ask&&!sf&&!noi&&!mkt){live.classList.remove('show');return;}
+  var askPSF=ask&&sf?ask/sf:null;
+  var cap=ask&&noi?noi/ask*100:null;
+  var stabNOI=sf&&mkt?sf*mkt*0.90:null;
+  var hurdlePrice=stabNOI?stabNOI/0.0650:null;
+  function cls(v,good,warn){return v==null?'':v>=good?'green':v>=warn?'amber':'red';}
+  var items=[
+    {l:'Ask PSF',v:askPSF?'$'+askPSF.toFixed(0)+' PSF':'—',c:''},
+    {l:'In-Place Cap Rate',v:cap?cap.toFixed(2)+'%':'—',c:cls(cap,5.5,4.5)},
+    {l:'Stabilized NOI (est.)',v:stabNOI?'$'+Math.round(stabNOI).toLocaleString():'—',c:''},
+    {l:'Max Entry @ Hurdle',v:hurdlePrice?'$'+Math.round(hurdlePrice).toLocaleString():'—',c:hurdlePrice&&ask?cls(hurdlePrice/ask*100,100,90):''}
+  ];
+  document.getElementById('nl-grid').innerHTML=items.map(function(i){return '<div><div class="nl-label">'+i.l+'</div><div class="nl-value '+i.c+'">'+i.v+'</div></div>';}).join('');
+  live.classList.add('show');
+}
+
+function generateLOI(){
+  if(typeof docx==='undefined'){alert('docx library not loaded. Check your connection and refresh.');return;}
+  function fv(id){var el=document.getElementById(id);return el?(el.value||'').trim():'';}
+  var date=fv('f-loi-date')||'[DATE]';
+  var broker=fv('f-loi-broker')||'[BROKER NAME AND FIRM]';
+  var addr=fv('f-loi-addr')||'[PROPERTY ADDRESS]';
+  var city=fv('f-loi-city')||'[CITY, STATE]';
+  var sf=fv('f-loi-sf')||'[TOTAL SF]';
+  var price=fv('f-loi-price')||'[PURCHASE PRICE]';
+  var deposit=fv('f-loi-deposit')||'[DEPOSIT AMOUNT]';
+  var ext=fv('f-loi-ext')||'$100,000';
+  var exp=fv('f-loi-exp')||'[EXPIRATION DATE]';
+  var D=docx;
+  function p(text,opts){
+    opts=opts||{};
+    return new D.Paragraph({children:[new D.TextRun({text:text,bold:opts.bold||false,underline:opts.underline?{}:undefined,size:opts.size||22,font:'Arial'})],spacing:{after:opts.after!=null?opts.after:100}});
+  }
+  function hr(){
+    return new D.Paragraph({border:{bottom:{color:'AAAAAA',space:1,value:D.BorderStyle?D.BorderStyle.SINGLE:'single',size:4}},spacing:{after:160,before:160}});
+  }
+  function termRow(label,value,shade){
+    return new D.TableRow({children:[
+      new D.TableCell({width:{size:30,type:D.WidthType.PERCENTAGE},children:[new D.Paragraph({children:[new D.TextRun({text:label,bold:true,underline:{},size:20,font:'Arial'})],spacing:{after:60}})],shading:shade?{fill:'F5F5F5',type:D.ShadingType?D.ShadingType.SOLID:'solid'}:undefined,margins:{top:80,bottom:80,left:120,right:120}}),
+      new D.TableCell({width:{size:70,type:D.WidthType.PERCENTAGE},children:[new D.Paragraph({children:[new D.TextRun({text:value,size:20,font:'Arial'})],spacing:{after:60}})],margins:{top:80,bottom:80,left:120,right:120}})
+    ]});
+  }
+  var terms=[
+    ['Asset Description:','Industrial property located at '+addr+' in '+city+', totaling '+sf+' square feet. The Property will be delivered free and clear of any existing loans.',false],
+    ['Purchase Price:','The purchase price shall be a total of '+price+'.\n\nThis Offer is made in reliance upon Purchaser\'s assumption that the roofs, HVAC systems, and overall physical condition of the Property do not require material repair or replacement.',true],
+    ['Deposit:','Within Two (2) business days of execution of the purchase and sale agreement, Purchaser shall deposit '+deposit+' with an escrow/title company of Purchaser\'s choice.',false],
+    ['Leasing Costs:','Outstanding leasing commissions shall be paid directly by Seller to the appropriate leasing company and any outstanding tenant improvement allowances shall be credited to Purchaser at closing then paid by Purchaser as dictated by the lease.',true],
+    ['Due Diligence:','The Due Diligence period shall expire thirty (30) days after execution of a formal purchase and sale agreement and after Seller\'s delivery of the Due Diligence Items. Any interest earned on the Deposit will be credited to the Purchaser.',false],
+    ['Contingencies:','All physical, financial and Title review.',true],
+    ['Closing:','Closing shall occur no later than thirty (30) days from the end of the due diligence period. Purchaser shall have the right to extend the closing date for fifteen (15) days with an increased non-refundable deposit of an additional '+ext+' that will be applied toward the purchase price.',false],
+    ['Environmental:','Purchaser shall have the right to conduct environmental tests it deems necessary, including soil vapor testing.',true],
+    ['Due Diligence Period:','Purchaser and its agents shall be allowed reasonable access to the Property prior to closing for the purpose of making all inspections it requires, including access to all occupied suites.',false],
+    ['Title Insurance:','Seller agrees to pay for a base title insurance policy, subject to exceptions approved by Purchaser.',true],
+    ['Escrow Fees:','Purchaser and Seller to pay for escrow fees 50/50. All other fees to be split per local customs.',false],
+    ['Brokerage Representation:','Seller has engaged a broker to facilitate this transaction. Seller will pay all brokerage fees pursuant to their agreement with their broker.',true],
+    ['New Contracts:','Seller will not enter into any lease or contract during Purchaser\'s review period without first obtaining Purchaser\'s written approval. Any Tenant Improvement allowances and Leasing Commissions for existing tenants, or leases under negotiation will be paid by Seller.',false],
+    ['Deliveries:','At execution by Purchaser and Seller of the Purchase and Sale Agreement, Seller shall provide for Purchaser\'s review and approval copies of requested documents within Seller\'s possession regarding the Property.',true],
+  ];
+  var doc=new D.Document({sections:[{properties:{page:{margin:{top:720,right:720,bottom:720,left:720}}},children:[
+    p(date,{bold:false}),
+    p(''),
+    p('Attn: '+broker),
+    p(''),
+    p('RE: Letter of Intent to purchase '+addr,{bold:true}),
+    p(''),
+    p('This Letter summarizes the basic business terms and conditions upon which Entrada Partners Acquisitions, LLC or Assignee ("Purchaser") would purchase '+addr+' ("Property"), from the Owner ("Seller").'),
+    p(''),
+    p('Entrada Partners is a real estate investment firm led by Reuben Berman, Justin Schuman and Josh Bar-Yadin. Over the past 15 years, Entrada\'s principals have owned and/or managed all product types at a value of over $1.3 billion on behalf of institutional clients. Entrada\'s current portfolio consists of over $700 million of industrial, retail, office and multifamily located throughout Dallas-Fort Worth, San Antonio, Houston and Atlanta.'),
+    p(''),
+    p('Additional information about our portfolio and the company can be found at: www.entradapartners.com'),
+    hr(),
+    new D.Table({width:{size:100,type:D.WidthType.PERCENTAGE},rows:terms.map(function(t){return termRow(t[0],t[1],t[2]);}),borders:{top:{style:'none'},bottom:{style:'none'},left:{style:'none'},right:{style:'none'},insideH:{style:'single',color:'DDDDDD',size:1},insideV:{style:'none'}}}),
+    hr(),
+    p('Seller shall have until 5:00 p.m. PST, '+exp+', in which to agree to the basic business terms and conditions.'),
+    p(''),
+    p('Upon agreement by the Seller of the basic business terms and conditions, Purchaser and Seller agree to negotiate in good faith and execute formal documentation evidencing the terms and conditions contained herein.'),
+    p(''),
+    p('This document is not intended to constitute a binding and enforceable agreement. The statements made in this letter, in related documents, and in the negotiations in connection with the subject matter of this letter shall not constitute an offer, acceptance, or legally binding agreement enforceable against any party to this letter.'),
+    p(''),
+    p('Sincerely,'),
+    p(''),
+    p('Entrada Partners,'),
+    p(''),
+    p(''),
+    p('_______________________________          _______________________________          _______________________________',{size:18}),
+    p('Reuben Berman                            Justin Schuman                           Joshua Bar-Yadin',{size:18}),
+    p('Principal                                Principal                                Principal',{size:18}),
+    p(''),
+    p('AGREED AND ACCEPTED:',{bold:true}),
+    p(''),
+    p('By:    _______________________________'),
+    p('Title: _______________________________'),
+    p('Date:  _______________________________'),
+  ]}]});
+  D.Packer.toBlob(doc).then(function(blob){
+    var url=URL.createObjectURL(blob);
+    var a=document.createElement('a');
+    a.href=url;
+    a.download='Entrada_LOI_'+addr.replace(/[^a-zA-Z0-9]/g,'_').replace(/_+/g,'_')+'.docx';
+    a.click();
+    URL.revokeObjectURL(url);
+    showToast('LOI downloaded');
+  }).catch(function(e){alert('LOI generation error: '+e.message);});
+}
+
+function _parseLensScenarios(txt){
+  var scenarios=[];
+  var lines=(txt||'').split('\n');
+  var inSec=false;
+  for(var i=0;i<lines.length;i++){
+    var l=lines[i].trim();
+    if(/^##.*BEAR.*BULL|^##.*SCENARIO/i.test(l)){inSec=true;continue;}
+    if(inSec&&l.startsWith('##')) break;
+    if(inSec&&l.includes('|')){
+      var cols=l.split('|').map(function(c){return c.trim();}).filter(Boolean);
+      if(cols.length<4||/^[-:]+$/.test(cols[0])||cols[0].toLowerCase().includes('scenario')) continue;
+      scenarios.push({scenario:cols[0],price:cols[1]||'—',irr:cols[2]||'—',em:cols[3]||'—',yoc:cols[4]||'—',assumption:cols[5]||'—'});
+    }
+  }
+  return scenarios;
+}
+
+function _parseGavelLeases(txt){
+  var leases=[];
+  var lines=(txt||'').split('\n');
+  var inSec=false;
+  for(var i=0;i<lines.length;i++){
+    var l=lines[i].trim();
+    if(/^##.*RENT SCHEDULE/i.test(l)){inSec=true;continue;}
+    if(inSec&&l.startsWith('##')) break;
+    if(inSec&&l.includes('|')){
+      var cols=l.split('|').map(function(c){return c.trim();}).filter(Boolean);
+      if(cols.length<3||/^[-:]+$/.test(cols[0])||cols[0].toLowerCase().includes('period')) continue;
+      var yrs=(cols[1]||'').match(/\d{4}/g)||[];
+      leases.push({period:cols[0],dates:cols[1]||'—',startYear:yrs[0]?parseInt(yrs[0]):null,endYear:yrs.length>1?parseInt(yrs[yrs.length-1]):null,annualRent:cols[2]||'—',psf:cols[4]||'—'});
+    }
+  }
+  return leases;
+}
 </script>
 
 
