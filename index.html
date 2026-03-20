@@ -857,7 +857,7 @@ footer{border-top:1px solid var(--border);padding:20px 24px;text-align:center;co
         </div>
       </div>
       <div class="fr three">
-        <div class="fg"><label class="fl">Property Address</label><input type="text" id="pl-addr" placeholder="18 Patton Road, Savannah, GA"></div>
+        <div class="fg"><label class="fl">Property Address</label><input type="text" id="pl-addr" placeholder="e.g. 4200 Commerce Pkwy, Savannah, GA"></div>
         <div class="fg"><label class="fl">Stage</label>
           <select id="pl-stage">
             <option>Initial Screen</option><option>Napkin Run</option><option>Full Underwrite</option>
@@ -870,8 +870,8 @@ footer{border-top:1px solid var(--border);padding:20px 24px;text-align:center;co
         </div>
       </div>
       <div class="fr two">
-        <div class="fg"><label class="fl">Ask Price</label><input type="text" id="pl-price" placeholder="$12,500,000"></div>
-        <div class="fg"><label class="fl">Broker / Contact</label><input type="text" id="pl-broker" placeholder="JLL — Jane Smith"></div>
+        <div class="fg"><label class="fl">Ask Price</label><input type="text" id="pl-price" placeholder="e.g. $14,200,000"></div>
+        <div class="fg"><label class="fl">Broker / Contact</label><input type="text" id="pl-broker" placeholder="e.g. CBRE — Alex Carter"></div>
       </div>
       <div class="fr one">
         <div class="fg"><label class="fl">Deal Notes</label><textarea id="pl-notes" placeholder="Key facts, outstanding diligence items, next steps..."></textarea></div>
@@ -920,9 +920,9 @@ var TOOLS = [
     shortDesc:'Broker OM teardown. Bear / Base / Bull · max entry price.',
     uploads:[{id:'om',label:'Offering Memorandum *',hint:'PDF · Broker OM, BOV, or investment summary',icon:'📄',accept:'.pdf',type:'pdf'}],
     fields:[
-      {row:[{id:'addr',label:'Property Address',ph:'18 Patton Road, Savannah, GA'},{id:'type',label:'Asset Type',type:'select',opts:['Flex Industrial','Industrial / Warehouse','Single-Story Office Conversion','Multi-Tenant Industrial']}]},
-      {row:[{id:'ask',label:'Asking Price',ph:'$9,500,000'},{id:'sf',label:'Building SF',ph:'45,500'}]},
-      {row:[{id:'notes',label:'Additional Context',ph:'Off-market, owner motivated, CMBS maturity in 6 months...',type:'textarea'}]},
+      {row:[{id:'addr',label:'Property Address',ph:'e.g. 4200 Commerce Pkwy, Savannah, GA'},{id:'type',label:'Asset Type',type:'select',opts:['Flex Industrial','Industrial / Warehouse','Single-Story Office Conversion','Multi-Tenant Industrial']}]},
+      {row:[{id:'ask',label:'Asking Price',ph:'e.g. $11,200,000'},{id:'sf',label:'Building SF',ph:'e.g. 62,000'}]},
+      {row:[{id:'notes',label:'Additional Context',ph:'e.g. Off-market, owner motivated, debt maturing Q3...',type:'textarea'}]},
     ],
     steps:['Reading OM narrative...','Stripping broker assumptions...','Re-underwriting at RIDGE criteria...','Building Bear / Base / Bull scenarios...','Calculating max entry price...','Generating teardown report...'],
     system:`You are a senior acquisitions officer at Entrada Partners. Your job is to tear apart a broker OM and re-underwrite the deal at RIDGE criteria. RIDGE criteria: IRR ≥14.75%, EM 1.8x–2.2x, YOC 7.5–8.0% at Yr3/4, max LTV 65%, hold 5 years, deal size $10M–$70M, markets: ATL/SAV/DFW/HOU. Be brutally honest. Identify what the broker is obscuring. Lead with conviction.`,
@@ -935,11 +935,11 @@ var TOOLS = [
     shortDesc:'60-second screen. Ask price in, Go / No-Go out.',
     uploads:[{id:'data',label:'Any Supporting Data',hint:'Optional: rent roll, T12, or comp list',icon:'📄',accept:'.pdf,.xlsx,.csv',type:'mixed'}],
     fields:[
-      {row:[{id:'addr',label:'Property Address *',ph:'310 Regal Row, Dallas, TX'},{id:'type',label:'Asset Type',type:'select',opts:['Flex Industrial','Industrial / Warehouse','Single-Story Office Conversion','Multi-Tenant Industrial']}]},
-      {row:[{id:'ask',label:'Asking Price *',ph:'$14,500,000'},{id:'sf',label:'Building SF *',ph:'85,000'}]},
-      {row:[{id:'occ',label:'Current Occupancy',ph:'78%'},{id:'noi',label:'In-Place NOI (if known)',ph:'$720,000'}]},
-      {row:[{id:'mktrent',label:'Market Rent PSF',ph:'$14.50 NNN'},{id:'inplace',label:'In-Place Rent PSF',ph:'$11.00 NNN'}]},
-      {row:[{id:'notes',label:'Known Facts',ph:'Multi-tenant, 3 tenants, avg lease 2.5 yrs remaining, NNN...',type:'textarea'}]},
+      {row:[{id:'addr',label:'Property Address *',ph:'e.g. 7100 Distribution Dr, Dallas, TX'},{id:'type',label:'Asset Type',type:'select',opts:['Flex Industrial','Industrial / Warehouse','Single-Story Office Conversion','Multi-Tenant Industrial']}]},
+      {row:[{id:'ask',label:'Asking Price *',ph:'e.g. $16,800,000'},{id:'sf',label:'Building SF *',ph:'e.g. 94,000'}]},
+      {row:[{id:'occ',label:'Current Occupancy',ph:'e.g. 74%'},{id:'noi',label:'In-Place NOI (if known)',ph:'e.g. $810,000'}]},
+      {row:[{id:'mktrent',label:'Market Rent PSF',ph:'e.g. $13.75 NNN'},{id:'inplace',label:'In-Place Rent PSF',ph:'e.g. $10.50 NNN'}]},
+      {row:[{id:'notes',label:'Known Facts',ph:'e.g. 4 tenants, avg 18 mo remaining, NNN leases, 2 docks per bay...',type:'textarea'}]},
     ],
     steps:['Calculating in-place metrics...','Reverse-engineering stabilized NOI...','Running YOC at Year 3/4...','Checking RIDGE hurdles...','Generating verdict...'],
     system:`You are THE NAPKIN, RIDGE's 60-second deal screen. Your job is to quickly determine if a deal is worth pursuing before committing to full underwriting. RIDGE hurdles: IRR ≥14.75%, YOC 7.5–8.0% at Yr3/4, EM ≥1.8x, max LTV 65%. Be direct. Give a clear Go/No-Go. If No-Go, state exactly what price would make it work.`,
@@ -952,7 +952,7 @@ var TOOLS = [
     shortDesc:'Submarket benchmarks. Vacancy, rents, absorption, cap rates.',
     uploads:[{id:'data',label:'CoStar Data / Broker Report',hint:'Optional: CoStar export or broker submarket report PDF',icon:'📊',accept:'.xlsx,.csv,.pdf',type:'mixed'}],
     fields:[
-      {row:[{id:'mkt',label:'Market',type:'select',opts:['Atlanta, GA','Savannah, GA','Dallas–Fort Worth, TX','Houston, TX','Austin, TX (Watch)','All Markets — Full Matrix']},{id:'sub',label:'Specific Submarket',ph:'Gwinnett/Buford, NE Atlanta (optional)'}]},
+      {row:[{id:'mkt',label:'Market',type:'select',opts:['Atlanta, GA','Savannah, GA','Dallas–Fort Worth, TX','Houston, TX','Austin, TX (Watch)','All Markets — Full Matrix']},{id:'sub',label:'Specific Submarket',ph:'e.g. Gwinnett/Buford, NE Atlanta (optional)'}]},
       {row:[{id:'mode',label:'Report Type',type:'select',opts:['Full Market Report','Quick Update','Submarket Matrix','Benchmark Update for Active Deal']},{id:'deal',label:'Active Deal Address',ph:'Leave blank for market-only report'}]},
     ],
     steps:['Pulling market data...','Benchmarking vacancy rates...','Analyzing absorption trends...','Reviewing supply pipeline...','Generating RIDGE implications...'],
@@ -966,8 +966,8 @@ var TOOLS = [
     shortDesc:'Comp data in, interactive map + analysis out.',
     uploads:[{id:'comps',label:'Comp Data',hint:'Excel, CSV, or PDF with lease comp data',icon:'📊',accept:'.xlsx,.csv,.pdf',type:'mixed'},{id:'om',label:'Subject Property / OM',hint:'Optional: PDF of OM or deal summary for context',icon:'📄',accept:'.pdf',type:'pdf'}],
     fields:[
-      {row:[{id:'addr',label:'Subject Property Address *',ph:'18 Patton Road, Savannah, GA'},{id:'sub',label:'Submarket',ph:'Savannah Industrial'}]},
-      {row:[{id:'sf',label:'Building SF',ph:'45,500'},{id:'rent',label:'Current In-Place Rent PSF',ph:'$11.00'}]},
+      {row:[{id:'addr',label:'Subject Property Address *',ph:'e.g. 4200 Commerce Pkwy, Savannah, GA'},{id:'sub',label:'Submarket',ph:'e.g. Savannah Industrial'}]},
+      {row:[{id:'sf',label:'Building SF',ph:'e.g. 58,000'},{id:'rent',label:'Current In-Place Rent PSF',ph:'e.g. $10.25'}]},
     ],
     steps:['Reading comp data...','Geocoding locations...','Benchmarking in-place rents...','Analyzing lease structures...','Generating comp analysis...'],
     system:`You are LEASE COMP MAP, RIDGE's lease comp analysis engine. You analyze lease comparables against a subject property to benchmark rents, identify roll risk, and support underwriting assumptions. Be specific with numbers. Flag any comps that are outliers.`,
@@ -980,9 +980,9 @@ var TOOLS = [
     shortDesc:'Capital stack modeling. DSCR, debt yield, LTV across scenarios.',
     uploads:[{id:'model',label:'Acquisition Model',hint:'Optional: .xlsx model to extract NOI and returns',icon:'📊',accept:'.xlsx',type:'xlsx'}],
     fields:[
-      {row:[{id:'addr',label:'Property Address',ph:'18 Patton Road, Savannah, GA'},{id:'price',label:'Purchase Price',ph:'$7,962,500'}]},
-      {row:[{id:'noi',label:'Year 1 NOI',ph:'$408,360'},{id:'sf',label:'Building SF',ph:'45,500'}]},
-      {row:[{id:'ltv',label:'Target LTV',ph:'65%'},{id:'rate',label:'Interest Rate (if known)',ph:'6.5%'}]},
+      {row:[{id:'addr',label:'Property Address',ph:'e.g. 4200 Commerce Pkwy, Savannah, GA'},{id:'price',label:'Purchase Price',ph:'e.g. $9,400,000'}]},
+      {row:[{id:'noi',label:'Year 1 NOI',ph:'e.g. $480,000'},{id:'sf',label:'Building SF',ph:'e.g. 58,000'}]},
+      {row:[{id:'ltv',label:'Target LTV',ph:'e.g. 65%'},{id:'rate',label:'Interest Rate (if known)',ph:'e.g. 6.75%'}]},
       {row:[{id:'type',label:'Debt Scenario',type:'select',opts:['Compare All Types','Senior / Conventional','CMBS','Agency (Fannie/Freddie)','Bridge','Construction / Heavy Value-Add']},{id:'hold',label:'Hold Period',ph:'5 years'}]},
     ],
     steps:['Modeling debt scenarios...','Calculating DSCR...','Sizing maximum proceeds...','Running sensitivity...','Building comparison grid...'],
@@ -999,11 +999,11 @@ var TOOLS = [
       {id:'om',label:'Offering Memorandum',hint:'Optional PDF · Adds market context and property narrative',icon:'📄',accept:'.pdf',type:'pdf'}
     ],
     fields:[
-      {row:[{id:'addr',label:'Property Address',ph:'18 Patton Road, Savannah, GA'},{id:'type',label:'Asset Type',type:'select',opts:['Flex Industrial','Industrial / Warehouse','Single-Story Office Conversion','Multi-Tenant Industrial']}]},
-      {row:[{id:'sf',label:'Building SF',ph:'45,500'},{id:'price',label:'Purchase Price',ph:'$7,962,500'},{id:'psf',label:'Price PSF',ph:'$175'}]},
-      {row:[{id:'irr',label:'Levered IRR',ph:'15.2%'},{id:'em',label:'Equity Multiple',ph:'1.98x'},{id:'cap',label:'Going-In Cap',ph:'5.1%'}]},
-      {row:[{id:'yoc',label:'YOC (Yr 3/4)',ph:'8.2%'},{id:'ltv',label:'LTV',ph:'65%'},{id:'hold',label:'Hold Period',ph:'5 years'}]},
-      {row:[{id:'thesis',label:'Investment Thesis',ph:'Value-add flex play with near-term lease-up upside...',type:'textarea'}]},
+      {row:[{id:'addr',label:'Property Address',ph:'e.g. 7100 Distribution Dr, Dallas, TX'},{id:'type',label:'Asset Type',type:'select',opts:['Flex Industrial','Industrial / Warehouse','Single-Story Office Conversion','Multi-Tenant Industrial']}]},
+      {row:[{id:'sf',label:'Building SF',ph:'e.g. 94,000'},{id:'price',label:'Purchase Price',ph:'e.g. $15,500,000'},{id:'psf',label:'Price PSF',ph:'e.g. $165'}]},
+      {row:[{id:'irr',label:'Levered IRR',ph:'e.g. 15.8%'},{id:'em',label:'Equity Multiple',ph:'e.g. 2.04x'},{id:'cap',label:'Going-In Cap',ph:'e.g. 5.3%'}]},
+      {row:[{id:'yoc',label:'YOC (Yr 3/4)',ph:'e.g. 7.9%'},{id:'ltv',label:'LTV',ph:'e.g. 65%'},{id:'hold',label:'Hold Period',ph:'e.g. 5 years'}]},
+      {row:[{id:'thesis',label:'Investment Thesis',ph:'e.g. Value-add multi-tenant flex, below-market rents, lease-up to stabilized YOC...',type:'textarea'}]},
     ],
     isISR:true,
     steps:['Parsing acquisition model...','Extracting return metrics...','Analyzing cash flows...','Cross-referencing OM...','Building investment thesis...','Running risk assessment...','Drafting IC recommendation...','Assembling report...'],
@@ -1017,11 +1017,11 @@ var TOOLS = [
     shortDesc:'Draft-ready LOI. Entrada defaults locked in.',
     uploads:[{id:'model',label:'Acquisition Model or Deal Summary',hint:'Optional: .xlsx model or PDF deal summary to auto-fill terms',icon:'📊',accept:'.xlsx,.pdf',type:'mixed'}],
     fields:[
-      {row:[{id:'date',label:'LOI Date',ph:'March 16, 2026'},{id:'broker',label:'Broker Name & Firm',ph:'Maggie Dominguez, JLL'}]},
-      {row:[{id:'addr',label:'Property Address(es) *',ph:'3883 and 3950 Steve Reynolds Blvd.'},{id:'city',label:'City, State',ph:'Norcross, GA'}]},
-      {row:[{id:'sf',label:'Total SF *',ph:'220,073'},{id:'price',label:'Purchase Price *',ph:'$27,000,000'}]},
-      {row:[{id:'deposit',label:'Deposit Amount *',ph:'$300,000'},{id:'ext',label:'Extension Deposit',ph:'$100,000'}]},
-      {row:[{id:'exp',label:'LOI Expiration Date',ph:'March 28, 2026'}]},
+      {row:[{id:'date',label:'LOI Date',ph:'e.g. April 1, 2026'},{id:'broker',label:'Broker Name & Firm',ph:'e.g. Alex Carter, CBRE'}]},
+      {row:[{id:'addr',label:'Property Address(es) *',ph:'e.g. 500 and 520 Westport Blvd.'},{id:'city',label:'City, State',ph:'e.g. Conyers, GA'}]},
+      {row:[{id:'sf',label:'Total SF *',ph:'e.g. 185,000'},{id:'price',label:'Purchase Price *',ph:'e.g. $24,500,000'}]},
+      {row:[{id:'deposit',label:'Deposit Amount *',ph:'e.g. $250,000'},{id:'ext',label:'Extension Deposit',ph:'e.g. $100,000'}]},
+      {row:[{id:'exp',label:'LOI Expiration Date',ph:'e.g. April 15, 2026'}]},
     ],
     steps:['Loading Entrada template...','Populating deal terms...','Verifying boilerplate...','Drafting LOI...'],
     system:`You are the LOI GENERATOR for Entrada Partners. You draft letters of intent using Entrada's exact template format. Buyer entity is always "Entrada Partners Acquisitions, LLC or Assignee". DD period is always 30 days. Closing is always 30 days from DD. Extension right is 15 days with additional deposit. Never modify the fixed boilerplate.`,
@@ -1034,7 +1034,7 @@ var TOOLS = [
     shortDesc:'Upload a lease, get a structured abstract.',
     uploads:[{id:'lease',label:'Lease Agreement *',hint:'PDF or Word lease document',icon:'📄',accept:'.pdf,.docx',type:'pdf'},{id:'rentroll',label:'Rent Roll',hint:'Optional: Excel rent roll for additional context',icon:'📊',accept:'.xlsx,.csv',type:'xlsx'}],
     fields:[
-      {row:[{id:'addr',label:'Property Address',ph:'18 Patton Road, Savannah, GA'},{id:'tenant',label:'Tenant Name',ph:'TWC Services'}]},
+      {row:[{id:'addr',label:'Property Address',ph:'e.g. 4200 Commerce Pkwy, Savannah, GA'},{id:'tenant',label:'Tenant Name',ph:'e.g. Apex Logistics LLC'}]},
       {row:[{id:'notes',label:'Review Focus',ph:'Flag any unusual provisions, early termination rights, co-tenancy clauses...',type:'textarea'}]},
     ],
     steps:['Reading lease document...','Extracting key dates...','Mapping rent schedule...','Reviewing tenant obligations...','Flagging risk provisions...','Generating abstract...'],
@@ -1048,7 +1048,7 @@ var TOOLS = [
     shortDesc:'PSA, JV, loan docs, PMA. Flags risk, suggests redlines.',
     uploads:[{id:'doc1',label:'Primary Document *',hint:'PSA, JV agreement, loan docs, or PMA — PDF',icon:'📄',accept:'.pdf,.docx',type:'pdf'},{id:'doc2',label:'Secondary Document',hint:'Optional: second document for comparison or cross-reference',icon:'📄',accept:'.pdf,.docx',type:'pdf'}],
     fields:[
-      {row:[{id:'dtype',label:'Document Type',type:'select',opts:['Purchase & Sale Agreement (PSA)','JV / Operating Agreement','Loan Documents / Mortgage','Property Management Agreement (PMA)','Other']},{id:'addr',label:'Property / Deal',ph:'18 Patton Road, Savannah, GA'}]},
+      {row:[{id:'dtype',label:'Document Type',type:'select',opts:['Purchase & Sale Agreement (PSA)','JV / Operating Agreement','Loan Documents / Mortgage','Property Management Agreement (PMA)','Other']},{id:'addr',label:'Property / Deal',ph:'e.g. 4200 Commerce Pkwy, Savannah, GA'}]},
       {row:[{id:'focus',label:'Review Focus / Key Concerns',ph:'Flag any seller rep gaps, earnest money hard provisions, waterfall mechanics...',type:'textarea'}]},
     ],
     steps:['Reading document...','Mapping key provisions...','Flagging risk clauses...','Checking RIDGE-specific concerns...','Generating redline suggestions...','Assembling review report...'],
@@ -1062,7 +1062,7 @@ var TOOLS = [
     desc:'Upload CoStar exports → 15 ranked prospects with owner contacts.',
     uploads:[{id:'costar',label:'CoStar Reports Folder',hint:'Select your CoStar Reports folder — all XLSX files load automatically',icon:'📁',accept:'.xlsx',type:'xlsx',folder:true}],
     fields:[
-      {row:[{id:'date',label:'Report Date',ph:'March 16, 2026'},{id:'notes',label:'Focus / Notes',ph:'Prioritize Savannah and NE Atlanta this week...'}]},
+      {row:[{id:'date',label:'Report Date',ph:'e.g. April 1, 2026'},{id:'notes',label:'Focus / Notes',ph:'e.g. Prioritize Savannah and NE Atlanta this week...'}]},
     ],
     steps:['Parsing CoStar data...','Scoring vacancy signals...','Ranking prospects...','Identifying owner contacts...','Building report...'],
     system:`You are DAILY SIGNAL, RIDGE's daily acquisition lead generator for Entrada Partners. Score and rank properties from CoStar export data using RIDGE's signal scoring system. RIDGE criteria: industrial and flex, $10M–$70M, ATL/SAV/DFW/HOU, IRR ≥14.75%. Be direct. Rank ruthlessly. Surface the best 15 prospects with owner contact info.`,
@@ -1075,9 +1075,9 @@ var TOOLS = [
     shortDesc:'Tenant sourcing. Fill a building or hunt acquisition targets.',
     uploads:[{id:'data',label:'Property Info or Market Data',hint:'Optional: floor plan PDF, CoStar data, or OM',icon:'📄',accept:'.pdf,.xlsx',type:'mixed'}],
     fields:[
-      {row:[{id:'mode',label:'Mode',type:'select',opts:['Fill — I have a building, find tenants','Hunt — find displaced businesses for acquisition targeting']},{id:'addr',label:'Property Address',ph:'310 Regal Row, Dallas, TX'}]},
-      {row:[{id:'sf',label:'Available SF',ph:'45,000'},{id:'dock',label:'Dock Doors / Clear Height',ph:'4 dock-high, 22\' clear'}]},
-      {row:[{id:'rent',label:'Target Rent PSF',ph:'$14.00 NNN'},{id:'sub',label:'Submarket',ph:'Great Southwest / Arlington'}]},
+      {row:[{id:'mode',label:'Mode',type:'select',opts:['Fill — I have a building, find tenants','Hunt — find displaced businesses for acquisition targeting']},{id:'addr',label:'Property Address',ph:'e.g. 7100 Distribution Dr, Dallas, TX'}]},
+      {row:[{id:'sf',label:'Available SF',ph:'e.g. 48,000'},{id:'dock',label:'Dock Doors / Clear Height',ph:'e.g. 4 dock-high, 24\' clear'}]},
+      {row:[{id:'rent',label:'Target Rent PSF',ph:'e.g. $13.50 NNN'},{id:'sub',label:'Submarket',ph:'e.g. Great Southwest / Arlington'}]},
       {row:[{id:'notes',label:'Ideal Tenant Profile',ph:'3PL, light manufacturing, e-commerce fulfillment, max 3 tenants...',type:'textarea'}]},
     ],
     steps:['Analyzing building specs...','Identifying demand signals...','Scanning target tenant types...','Building prospect list...','Generating outreach recommendations...'],

@@ -1,16 +1,14 @@
 ---
 name: loi-generator
 description: >
-  LOI GENERATOR is RIDGE's dedicated letter of intent drafting engine for industrial and
-  flex CRE acquisitions. Use this skill ANY TIME the user needs to generate, draft, or
-  customize a purchase letter of intent — including initial LOIs after a deal clears the
-  screen, revised LOIs after negotiation, or term sheet summaries for IC review. Trigger on:
+  LOI GENERATOR produces institutional-quality letters of intent for industrial and flex
+  acquisitions on behalf of Entrada Partners. Use this skill whenever the user needs to
+  draft an LOI, letter of intent, or offer letter for a property acquisition. Collects
+  9 variable fields, populates Entrada's exact boilerplate template, and outputs a
+  formatted Word document (.docx). Never modifies fixed Entrada language. Trigger on:
   "draft an LOI", "generate an LOI", "write up the LOI", "put together an offer letter",
-  "LOI for [address]", "what should the LOI say", "build me an LOI", "draft the offer terms",
-  "we need to get an LOI out", "terms sheet", or any request to formalize offer terms into a
-  structured letter of intent for a commercial real estate acquisition. This skill knows
-  RIDGE's standard terms and produces a formatted, deal-specific LOI ready to send within
-  minutes of deal clearance. Always load this skill before drafting any LOI or offer letter.
+  "LOI for [address]", "we need to get an LOI out", "draft the offer terms", or any
+  request to formalize offer terms for a commercial real estate acquisition.
 ---
 
 # LOI GENERATOR — Letter of Intent Drafting Engine
@@ -29,247 +27,191 @@ team — because it did.
 
 ## Required Inputs
 
-Collect these before drafting. If missing critical fields, ask for them specifically.
+These are the only fields that change deal to deal. Everything else is fixed Entrada boilerplate.
 
-### Mandatory
+### Variable Fields (collect before drafting)
+
 | Field | Notes |
-|-------|-------|
-| Property address | Full address |
-| Seller name / entity | Legal name if known, or "Owner of Record" |
-| Purchase price | In dollars |
-| Earnest money deposit | Amount and when hard |
-| Due diligence period | Days from execution |
-| Closing timeline | Days from end of DD |
-| Buyer entity name | RIDGE acquisition entity (ask user) |
+|---|---|
+| Date | LOI date — default to today |
+| Broker name & firm | Attn: line at top (e.g., "Maggie Dominguez, JLL") |
+| Property address(es) | Full address(es) — RE: line and Asset Description table |
+| City, State | For Asset Description narrative |
+| Total SF | Square footage of property or portfolio |
+| Purchase price | Numerals + written out (e.g., "Twenty Seven Million Dollars ($27,000,000)") |
+| Deposit amount | Numerals + written out (e.g., "Three Hundred Thousand Dollars ($300,000)") |
+| Extension deposit | Additional deposit for 15-day closing extension (default $100,000) |
+| LOI expiration date | Deadline for seller to accept — default 10 business days from LOI date |
 
-### Preferred (will use defaults if not provided)
-| Field | Default |
-|-------|---------|
-| Financing contingency | Yes — 30-day financing contingency, waivable |
-| Title company preference | "Buyer's preferred title company" |
-| Property condition | Sold as-is with inspection rights |
-| Exclusivity period | Seller grants exclusivity during DD |
-| Confidentiality | Standard mutual NDA terms apply |
-| Assignment rights | Buyer may assign to affiliate or fund entity |
-| Broker acknowledgment | Ask user — who is the broker, if any? |
+### Fixed Entrada Boilerplate (never changes)
 
----
-
-## RIDGE Standard Term Architecture
-
-These terms are baked into every LOI unless user explicitly overrides.
-
-### Earnest Money Structure
-```
-Deposit 1: [X]% of purchase price at execution — fully refundable during DD
-Deposit 2: Goes hard at end of DD period
-Hard Amount: Negotiable — default position is 1%–2% of purchase price hard at end of DD
-```
-
-### Due Diligence Scope (always included)
-- Full physical inspection access (no limitation)
-- Review of all leases, rent rolls, service contracts, warranties
-- Environmental Phase I (Phase II at Buyer's discretion)
-- Title search and survey review
-- Financial records review (3 years operating history)
-- Zoning and entitlement review
-
-### Conditions to Close
-- Title clear of exceptions not approved by Buyer
-- No material adverse change to property condition or tenancy
-- Seller representation that all leases and operating agreements remain unchanged
-- Financing contingency (if applicable)
-
-### Buyer-Favorable Provisions (always include, frame diplomatically)
-- Seller to provide estoppel certificates from all tenants with minimum 5 business days prior to close
-- Any leases signed or modified after LOI execution require Buyer written approval
-- Seller cooperation with lender requirements (SNDA, subordination)
-- Assignment to affiliated entity permitted without Seller consent
+- Buyer entity: Entrada Partners Acquisitions, LLC or Assignee
+- Firm description paragraph (Berman/Schuman/Bar-Yadin, $1.3B, $700M portfolio)
+- DD period: 30 days from PSA execution
+- Closing: 30 days from end of DD
+- Extension right: 15 days with additional non-refundable deposit
+- Leasing costs, contingencies, environmental, access, title, escrow, brokerage, new contracts, deliveries sections — all fixed
+- Signature block: Reuben Berman, Justin Schuman, Joshua Bar-Yadin / Principal x3
 
 ---
 
 ## LOI Template
 
-```
-[FECHA]
+This is Entrada's exact LOI format. Variable fields are marked with ⟦BRACKETS⟧.
+Fixed language and firm boilerplate remain unchanged every deal.
 
-[SELLER NAME]
-[SELLER ADDRESS]
+---
 
-Re: Non-Binding Letter of Intent — [PROPERTY ADDRESS]
+[ENTRADA LOGO — top left]
 
-Dear [Seller Name or "Owner"],
+⟦DATE⟧
 
-[BUYER ENTITY] ("Buyer") is pleased to submit this non-binding letter of intent
-("LOI") to acquire the above-referenced property ("Property") on the following terms.
-This LOI is intended to set forth the principal deal points for a definitive Purchase
-and Sale Agreement ("PSA") to be negotiated in good faith by the parties.
+Attn: ⟦BROKER NAME AND FIRM⟧
 
-1. PURCHASE PRICE
+RE: Letter of Intent to purchase ⟦PROPERTY ADDRESS(ES)⟧
 
-   Buyer proposes to acquire the Property for a purchase price of [PURCHASE PRICE]
-   ([PURCHASE PRICE WRITTEN OUT]) (the "Purchase Price"), payable in cash at closing.
+This Letter summarizes the basic business terms and conditions upon which
+Entrada Partners Acquisitions, LLC or Assignee ("Purchaser") would purchase
+⟦PROPERTY ADDRESS(ES)⟧ ("Property"), from the Owner ("Seller").
 
-2. EARNEST MONEY DEPOSIT
+Entrada Partners is a real estate investment firm led by Reuben Berman,
+Justin Schuman and Josh Bar-Yadin. Over the past 15 years, Entrada's principals
+have owned and/or managed all product types at a value of over $1.3 billion on
+behalf of institutional clients. Entrada's current portfolio consists of over
+$700 million of industrial, retail, office and multifamily located throughout
+Dallas-Fort Worth, San Antonio, Houston and Atlanta.
 
-   Within [3] business days of PSA execution, Buyer shall deposit [DEPOSIT AMOUNT]
-   ([X]% of Purchase Price) in escrow with [TITLE COMPANY] ("Escrow Holder"). The
-   deposit shall be fully refundable until the expiration of the Due Diligence Period.
-   Upon expiration of the Due Diligence Period, [HARD AMOUNT] shall become non-refundable
-   except in the event of Seller default or failure of title.
+Additional information about our portfolio and the company can be found at:
+www.entradapartners.com
 
-3. DUE DILIGENCE PERIOD
+─────────────────────────────────────────────────────────────────────────
 
-   Buyer shall have [DD DAYS] days from full PSA execution (the "Due Diligence Period")
-   to conduct all physical, financial, environmental, legal, and title due diligence.
-   Seller shall provide Buyer with full, unrestricted access to the Property and all
-   Property records within [3] business days of PSA execution, including without
-   limitation: all leases and amendments, rent rolls, operating statements (3 years),
-   service and maintenance contracts, environmental reports, title commitments, and
-   any pending or threatened litigation.
+Asset Description:    Industrial properties located at
+                        • ⟦PROPERTY ADDRESS LINE 1⟧
+                        • ⟦PROPERTY ADDRESS LINE 2 (if multi-building)⟧
+                      in ⟦CITY, STATE⟧, totaling ⟦TOTAL SF⟧ square feet.
+                      The Property will be delivered free and clear of any
+                      existing loans.
 
-4. CLOSING
+Purchase Price:       The purchase price shall be a total of ⟦PURCHASE PRICE
+                      WRITTEN OUT ($NUMERALS)⟧.
 
-   Closing shall occur within [CLOSING DAYS] days following the expiration of the
-   Due Diligence Period, subject to satisfaction of all closing conditions. Time is
-   of the essence with respect to the Closing Date.
+                      This Offer is made in reliance upon Purchaser's assumption
+                      that the roofs, HVAC systems, and overall physical condition
+                      of the Property do not require material repair or replacement.
+                      This Offer is expressly contingent upon the results of
+                      Purchaser's due diligence investigation of the Property.
 
-5. TITLE AND SURVEY
+Deposit:              Within Two (2) business days of execution of the purchase
+                      and sale agreement, Purchaser shall deposit ⟦DEPOSIT AMOUNT
+                      WRITTEN OUT ($NUMERALS)⟧ with an escrow/title company of
+                      Purchaser's choice.
 
-   Seller shall deliver, at Seller's expense, a commitment for an ALTA owner's title
-   insurance policy. Buyer shall have the right to obtain an ALTA/NSPS survey at
-   Buyer's expense. Buyer shall have until [5] business days prior to closing to
-   notify Seller of any title or survey objections. Seller shall have [5] business
-   days to cure or commit to cure any material title exceptions.
+Leasing Costs:        Outstanding leasing commissions shall be paid directly by
+                      Seller to the appropriate leasing company and any outstanding
+                      tenant improvement allowances shall be credited to Purchaser
+                      at closing then paid by Purchaser as dictated by the lease.
 
-6. LEASES AND TENANT MATTERS
+Due Diligence:        Closing of this transaction shall be expressly contingent
+                      upon the Purchaser completing a due diligence investigation.
+                      The Due Diligence period shall expire thirty (30) days after
+                      execution of a formal purchase and sale agreement and after
+                      Seller's delivery of the Due Diligence Items ("Due Diligence
+                      Period"). Immediately upon mutual execution of this letter of
+                      intent, Purchaser shall instruct its attorneys to provide a
+                      draft purchase and sale agreement to the parties for their
+                      review. Any interest earned on the Deposit will be credited
+                      to the Purchaser.
 
-   From the date of PSA execution through Closing, Seller shall not, without Buyer's
-   prior written consent: (a) enter into, modify, or terminate any lease; (b) grant
-   any rent concessions or lease amendments; or (c) enter into any service contracts
-   extending beyond Closing. Not less than [5] business days prior to Closing, Seller
-   shall deliver tenant estoppel certificates from all tenants in form reasonably
-   acceptable to Buyer.
+Contingencies:        All physical, financial and Title review.
 
-7. CONDITION OF PROPERTY
+Closing:              Closing shall occur no later than thirty (30) days from the
+                      end of the due diligence period. Purchaser shall have the
+                      right to extend the closing date for fifteen (15) days with
+                      an increased non-refundable deposit of an additional
+                      ⟦EXTENSION DEPOSIT AMOUNT⟧ that will be applied toward the
+                      purchase price.
 
-   The Property shall be conveyed in its current "as-is, where-is" condition, subject
-   to Buyer's right to terminate during the Due Diligence Period for any reason or
-   no reason. Seller shall maintain the Property in its current condition through
-   Closing and shall promptly notify Buyer of any material damage or change in
-   occupancy.
+Environmental:        Purchaser shall have the right to conduct environmental tests
+                      it deems necessary, including soil vapor testing.
 
-8. REPRESENTATIONS
+Due Diligence         Purchaser and its agents shall be allowed reasonable access
+Period:               to the Property prior to closing for the purpose of making
+                      all inspections it requires, including access to all
+                      occupied suites.
 
-   The PSA shall include customary representations and warranties by Seller regarding:
-   title, authority, leases, environmental matters, litigation, compliance with law,
-   and the accuracy of all documents and information provided to Buyer.
+Title Insurance:      Seller agrees to pay for a base title insurance policy,
+                      subject to exceptions approved by Purchaser.
 
-[IF FINANCING CONTINGENCY:]
-9. FINANCING
+Escrow Fees:          Purchaser and Seller to pay for escrow fees 50/50. All other
+                      fees to be split per local customs.
 
-   This transaction is contingent upon Buyer securing satisfactory financing within
-   [30] days of PSA execution. Buyer agrees to use commercially reasonable efforts
-   to obtain financing and shall notify Seller promptly upon satisfaction or waiver
-   of this contingency.
+Brokerage             Seller has engaged a broker to facilitate this transaction.
+Representation:       Seller will pay all brokerage fees pursuant to their
+                      agreement with their broker.
 
-[10 or 9 if no financing.] EXCLUSIVITY
+New Contracts:        Seller will not enter into any lease or contract during
+                      Purchaser's review period without first obtaining Purchaser's
+                      written approval. Any Tenant Improvement allowances and
+                      Leasing Commissions for existing tenants, or leases under
+                      negotiation will be paid by Seller.
 
-   In consideration of Buyer's commitment of time and resources, Seller agrees, for
-   a period of [DD DAYS + 10] days following PSA execution (or until termination of
-   the LOI, whichever is earlier), not to solicit, negotiate, or accept any competing
-   offer for the Property.
+Deliveries:           At execution by Purchaser and Seller of the Purchase and
+                      Sale Agreement, Seller shall provide for Purchaser's review
+                      and approval copies of requested documents within Seller's
+                      possession regarding the Property.
 
-[NEXT.] ASSIGNMENT
+─────────────────────────────────────────────────────────────────────────
 
-   Buyer shall have the right to assign this LOI and the PSA to any affiliated entity
-   or investment fund without Seller consent, provided Buyer provides written notice
-   to Seller and the assignee assumes all obligations herein.
+This letter summarizes the basic terms and conditions on which Purchaser will
+enter into an agreement to purchase the Property. Seller shall have until
+5:00 p.m. PST, ⟦LOI EXPIRATION DATE⟧, in which to agree to the basic business
+terms and conditions.
 
-[NEXT.] BROKER
+Upon agreement by the Seller of the basic business terms and conditions,
+Purchaser and Seller agree to negotiate in good faith and execute formal
+documentation evidencing the terms and conditions contained herein.
 
-   [IF BROKER:] Seller acknowledges that [BROKER NAME] ("Broker") represents Seller
-   in this transaction. Buyer is unrepresented. Seller is solely responsible for any
-   commission owed to Broker.
-   
-   [IF NO BROKER:] Both parties represent that no broker or finder is involved in
-   this transaction and each party agrees to indemnify the other from any broker
-   claims arising through such party.
+This document is not intended to constitute a binding and enforceable agreement.
+The statements made in this letter, in related documents, and in the negotiations
+in connection with the subject matter of this letter shall not constitute an
+offer, acceptance, or legally binding agreement enforceable against any party
+to this letter.
 
-[NEXT.] NON-BINDING; EXCLUSIONS
+Sincerely,
 
-   This LOI is non-binding on both parties and does not constitute a contract. Neither
-   party shall have any legal obligation to the other until a definitive PSA has been
-   fully executed by both parties. The only binding provisions of this LOI are the
-   Exclusivity and Confidentiality obligations set forth herein.
+Entrada Partners,
 
-[NEXT.] CONFIDENTIALITY
+[SIGNATURE BLOCK — Reuben Berman, Justin Schuman, Joshua Bar-Yadin]
+Principal          Principal          Principal
 
-   The terms of this LOI and all related due diligence materials shall be kept strictly
-   confidential by both parties and shall not be disclosed to any third party without
-   the prior written consent of the other party, except to each party's respective
-   attorneys, accountants, lenders, and advisors with a need to know.
+AGREED AND ACCEPTED:
 
-[NEXT.] EXPIRATION
-
-   This LOI shall expire if not countersigned and returned to Buyer by [EXPIRATION DATE
-   — default: 5 business days from delivery].
-
-Buyer looks forward to working with you to bring this transaction to a successful close.
-Please do not hesitate to contact us with any questions.
-
-Respectfully submitted,
-
-[BUYER SIGNATORY NAME]
-[TITLE]
-[BUYER ENTITY]
-[PHONE]
-[EMAIL]
-
-ACKNOWLEDGED AND AGREED:
-
-_______________________________     Date: _______________
-[SELLER NAME / ENTITY]
-```
+By:    _______________________________
+Title: _______________________________
+Date:  _______________________________
 
 ---
 
 ## Output Instructions
 
-1. **Populate all placeholders** from inputs provided. If a field is missing and no
-   reasonable default exists, insert `[CONFIRM: field name]` in red flag brackets.
-
-2. **Number sections correctly.** Adjust section numbers based on which optional
-   sections apply (financing contingency, broker language).
-
-3. **Deliver two versions when deal is competitive or seller is sensitive:**
-   - Version A: Full RIDGE terms (maximum protection)
-   - Version B: Streamlined (fewer contingencies, faster close signal — use when
-     competing or when seller has indicated preference for clean offers)
-
-4. **Output as formatted text** suitable for copy-paste into Word or email. Also offer
-   to generate as .docx file via the docx skill if user needs a downloadable file.
-
-5. **After drafting**, update PIPELINE: move deal to LOI stage, log submission date.
+1. Collect the 9 variable fields. If any are missing, ask specifically. Do not draft with blanks.
+2. Populate all ⟦BRACKETS⟧ with deal-specific data. Every other word in the template is fixed Entrada language — do not alter it.
+3. **Purchase price formatting:** Always write out in full — "Twenty Seven Million Dollars ($27,000,000)." Confirm spelling of dollar amount.
+4. **Multi-building deals:** List each address as a bullet under Asset Description. Update RE: line to include all addresses.
+5. **LOI expiration default:** 10 business days from LOI date if not specified. Express as a specific calendar date (e.g., "March 31st, 2026").
+6. **Extension deposit default:** $100,000 unless user specifies otherwise.
+7. Output as **.docx file** using the docx skill — Entrada LOIs are sent as Word documents with the firm logo. Match the two-column table format of the original (left column = bold underlined label, right column = terms language).
+8. After drafting, offer to update PIPELINE: move deal to LOI stage, log submission date.
 
 ---
 
 ## Behavioral Rules
 
-1. **Speed is the product.** LOIs are time-sensitive. Draft first, refine after.
-
-2. **Never soften the buyer-protective provisions.** The estoppel requirement, lease
-   approval right, and assignment clause are non-negotiable defaults. Flag if user
-   wants to remove them.
-
-3. **When price is below asking**, frame the LOI professionally but do not apologize
-   for the number. "Buyer proposes to acquire the Property for..." — no preamble.
-
-4. **Expiration date discipline.** Default 5 business days from delivery. This creates
-   urgency without being aggressive.
-
-5. **Flag gaps.** If buyer entity name is unknown, note it. If earnest money structure
-   wasn't provided, use defaults and flag them for confirmation.
-
-6. **Connect to Napkin.** If the Napkin wasn't run on this deal first, ask: "Has this
-   deal been screened? Run the Napkin before finalizing offer terms."
+- **Speed is the product.** LOIs are time-sensitive. Collect the 9 fields, draft, done.
+- **Never modify the boilerplate.** The firm description, DD/closing periods, and all fixed sections are Entrada's standard language. Do not rewrite them, shorten them, or "improve" them.
+- **When price is below asking**, frame professionally — "The purchase price shall be a total of..." No explanation or apology in the LOI body.
+- **Expiration date discipline.** Default 10 business days. Express as a specific date. This creates urgency.
+- **Flag gaps.** If deposit amount wasn't provided, ask before drafting — it goes into the body and can't be left blank.
+- **Connect to Napkin.** If the deal hasn't been screened first, ask: "Has this cleared the Napkin? Run it before locking offer terms."
+- **Output is a .docx, not text.** Entrada LOIs go out as Word files. Always generate via the docx skill.
