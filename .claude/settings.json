@@ -3,7 +3,13 @@
     "allow": [
       "Bash(for file:*)",
       "Bash(do echo:*)",
-      "Bash(echo \"=== $file ===\")"
+      "Bash(echo \"=== $file ===\")",
+      "Bash(gh auth:*)",
+      "Bash(git --version)",
+      "Bash(git config:*)"
+    ],
+    "additionalDirectories": [
+      "c:\\Users\\RhettAnderson\\OneDrive - Entrada Management Services\\Desktop\\Claude"
     ]
   }
 }
