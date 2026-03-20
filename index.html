@@ -1008,7 +1008,7 @@ var TOOLS = [
     isISR:true,
     steps:['Parsing acquisition model...','Extracting return metrics...','Analyzing cash flows...','Cross-referencing OM...','Building investment thesis...','Running risk assessment...','Drafting IC recommendation...','Assembling report...'],
     system:`You are a senior acquisitions officer at Entrada Partners. RIDGE criteria: IRR ≥14.75%, EM 1.8x–2.2x, YOC 7.5–8.0% at Yr3/4, max LTV 65%, 5yr hold, $10M–$70M, markets ATL/SAV/DFW/HOU. Generate an institutional IC report.`,
-    prompt:(d)=>`Generate a complete IC Report for: ${d.addr||'Subject Property'} | ${d.type||'Flex Industrial'} | ${d.sf||'?'} SF\nPrice: ${d.price||'?'} (${d.psf||'?'} PSF) | IRR: ${d.irr||'?'} | EM: ${d.em||'?'} | Cap: ${d.cap||'?'} | YOC: ${d.yoc||'?'} | LTV: ${d.ltv||'?'} | Hold: ${d.hold||'5yr'}\n${d.thesis?'Thesis: '+d.thesis+'\n':''}\n${d.model_text?'=== ACQUISITION MODEL ===\n'+d.model_text+'\n\n':''}\nProduce:\n## DEAL SNAPSHOT\nTable: Metric | Value | RIDGE Hurdle | Status (✓/⚠/✗)\n\n## INVESTMENT THESIS\n3–4 bullet points. Specific to this deal. Lead with the conviction driver.\n\n## PROPERTY OVERVIEW\nAsset type, location, submarket, SF, occupancy, tenant summary, lease structure.\n\n## SOURCES & USES / CAPITAL STACK\nTable: Item | Amount | $ PSF | % Total\nOne paragraph capital stack narrative.\n\n## RETURN METRICS\nFull returns table. Every number from the model.\n\n## CASH FLOW SUMMARY\nYear-by-year table: Year | EGR | NOI | Leasing/CapEx | Oper CF | Levered CF | YOC\n\n## MARKET & SUBMARKET ANALYSIS\nSavannah/target market context. Vacancy, rents, absorption, port demand drivers.\n\n## SENSITIVITY ANALYSIS\nIRR table: exit cap (5.5–7.5%) × rent growth scenarios. EM table same axes. ★ = hits RIDGE hurdle.\n\n## RISK MATRIX\nTable: Risk Factor | Severity | Mitigant\n5–7 risks specific to this deal.\n\n## IC RECOMMENDATION\n**RECOMMEND FOR INVESTMENT / CONDITIONAL APPROVAL / PASS**\n2–3 sentence basis. If conditional, list 3–5 specific conditions. 3–5 next steps.`
+    prompt:(d)=>`Generate a complete IC Report for: ${d.addr||'Subject Property'} | ${d.type||'Flex Industrial'} | ${d.sf||'?'} SF\nPrice: ${d.price||'?'} (${d.psf||'?'} PSF) | IRR: ${d.irr||'?'} | EM: ${d.em||'?'} | Cap: ${d.cap||'?'} | YOC: ${d.yoc||'?'} | LTV: ${d.ltv||'?'} | Hold: ${d.hold||'5yr'}\n${d.thesis?'Thesis: '+d.thesis+'\n':''}\n${d.model_text?'=== ACQUISITION MODEL ===\n'+d.model_text+'\n\n':''}${d.om_text?'=== OFFERING MEMORANDUM ===\n'+d.om_text+'\n\n':''}\nProduce:\n## DEAL SNAPSHOT\nTable: Metric | Value | RIDGE Hurdle | Status (✓/⚠/✗)\n\n## INVESTMENT THESIS\n3–4 bullet points. Specific to this deal. Lead with the conviction driver.\n\n## PROPERTY OVERVIEW\nAsset type, location, submarket, SF, occupancy, tenant summary, lease structure.\n\n## LEASE COMP ANALYSIS\nScan the OM and any comp data provided for lease comparables. Produce:\nTable: Address | Tenant | SF | Date | Term | Rate PSF | Type\nInclude every comp you can extract. If no comps are in the OM, state "No comps found in OM — recommend running LEASE COMP MAP."\nThen: RENT BENCHMARK: Market range (low / mid / high PSF), Subject in-place PSF, gap to market, mark-to-market upside potential.\n\n## SOURCES & USES / CAPITAL STACK\nTable: Item | Amount | $ PSF | % Total\nOne paragraph capital stack narrative.\n\n## RETURN METRICS\nFull returns table. Every number from the model.\n\n## CASH FLOW SUMMARY\nYear-by-year table: Year | EGR | NOI | Leasing/CapEx | Oper CF | Levered CF | YOC\n\n## MARKET & SUBMARKET ANALYSIS\nTarget market context. Vacancy, rents, absorption, demand drivers.\n\n## SENSITIVITY ANALYSIS\nIRR table: exit cap (5.5–7.5%) × rent growth scenarios. EM table same axes. ★ = hits RIDGE hurdle.\n\n## RISK MATRIX\nTable: Risk Factor | Severity | Mitigant\n5–7 risks specific to this deal.\n\n## IC RECOMMENDATION\n**RECOMMEND FOR INVESTMENT / CONDITIONAL APPROVAL / PASS**\n2–3 sentence basis. If conditional, list 3–5 specific conditions. 3–5 next steps.`
   },
   {
     id:'loi', num:'07', icon:'📄', name:'LOI GENERATOR',
@@ -2275,7 +2275,43 @@ function buildPPTX() {
     s4.addText(ov||'See acquisition model.',{x:.3,y:.82,w:12.5,h:5.8,fontSize:12,color:GRAY,valign:'top',wrap:true});
     footer(s4,4);
 
-    // Slide 5 — Sources & Uses
+    // Slide 5 — Lease Comp Analysis
+    var sLC=pptx.addSlide(); sLC.background={color:WHITE}; title(sLC,'Lease Comp Analysis');
+    var lcLines=extractSec(text,'LEASE COMP ANALYSIS',30);
+    // Parse pipe-delimited comp rows from Claude output
+    var lcTableRows=[];
+    var lcHeader=[{text:'Address',options:{bold:true,color:WHITE,fill:{color:NAVY}}},{text:'Tenant',options:{bold:true,color:WHITE,fill:{color:NAVY}}},{text:'SF',options:{bold:true,color:WHITE,fill:{color:NAVY}}},{text:'Date',options:{bold:true,color:WHITE,fill:{color:NAVY}}},{text:'Term',options:{bold:true,color:WHITE,fill:{color:NAVY}}},{text:'Rate PSF',options:{bold:true,color:WHITE,fill:{color:NAVY}}},{text:'Type',options:{bold:true,color:WHITE,fill:{color:NAVY}}}];
+    lcTableRows.push(lcHeader);
+    var lcDataCount=0;
+    lcLines.forEach(function(line){
+      if(!line.includes('|')) return;
+      var cols=line.split('|').map(function(c){return c.trim();}).filter(Boolean);
+      if(cols.length<4) return;
+      if(cols[0].match(/^[-:\s]+$/)||cols[0].toLowerCase().includes('address')) return;
+      var bg=lcDataCount%2===1?{fill:{color:'F0F4FF'}}:{};
+      lcTableRows.push(cols.slice(0,7).map(function(c,i){return {text:c||'—',options:bg};}));
+      lcDataCount++;
+    });
+    // Extract rent benchmark paragraph
+    var lcBench='';
+    var inBench=false;
+    lcLines.forEach(function(line){
+      if(line.includes('RENT BENCHMARK')) inBench=true;
+      else if(inBench && line.trim()) { lcBench+=line+' '; }
+    });
+    if(lcTableRows.length>1){
+      sLC.addTable(lcTableRows,{x:.3,y:.82,w:12.5,border:{pt:.5,color:'E0E0E0'},fontSize:10,colW:[3.2,2,1,1.1,1,1.1,1.1]});
+    } else {
+      sLC.addText('No lease comps found in OM. Run LEASE COMP MAP for full comp analysis.',{x:.3,y:.82,w:12.5,h:1,fontSize:12,color:GRAY,italic:true});
+    }
+    if(lcBench){
+      sLC.addShape(pptx.ShapeType.rect,{x:.3,y:4.8,w:12.5,h:1.5,fill:{color:'F0F4FF'},line:{color:'E0E0E0',pt:.5}});
+      sLC.addText('RENT BENCHMARK  ',{x:.5,y:4.85,w:2.5,h:.3,fontSize:9,bold:true,color:NAVY,charSpacing:1});
+      sLC.addText(lcBench.trim(),{x:.5,y:5.15,w:12,h:.9,fontSize:11,color:GRAY,wrap:true});
+    }
+    footer(sLC,5);
+
+    // Slide 6 — Sources & Uses
     var s5=pptx.addSlide(); s5.background={color:WHITE}; title(s5,'Sources & Uses / Capital Stack');
     var price=Number(m.price)||0; var sf=Number(m.sf)||1;
     if(price){
@@ -2294,9 +2330,9 @@ function buildPPTX() {
     s5.addShape(pptx.ShapeType.rect,{x:8.8,y:1.2+4*ep,w:3,h:4*dp,fill:{color:NAVY}});
     s5.addText(`Equity\n${Math.round(ep*100)}%`,{x:8.8,y:1.2,w:3,h:4*ep,fontSize:13,bold:true,color:WHITE,align:'center',valign:'middle'});
     s5.addText(`Senior Debt\n${Math.round(dp*100)}%`,{x:8.8,y:1.2+4*ep,w:3,h:4*dp,fontSize:13,bold:true,color:WHITE,align:'center',valign:'middle'});
-    footer(s5,5);
+    footer(s5,6);
 
-    // Slide 6 — Return Metrics
+    // Slide 7 — Return Metrics
     var s6=pptx.addSlide(); s6.background={color:WHITE}; title(s6,'Return Metrics');
     s6.addShape(pptx.ShapeType.rect,{x:1,y:.82,w:5,h:1.75,fill:{color:NAVY}});
     s6.addText(kIRR,{x:1,y:.88,w:5,h:1,fontSize:50,bold:true,color:WHITE,align:'center'});
@@ -2313,9 +2349,9 @@ function buildPPTX() {
       [{text:'LTV'},{text:kLTV,options:{bold:true}},{text:'≤ 65%'},{text:parseFloat(kLTV)<=65?'✓':'⚠',options:{color:parseFloat(kLTV)<=65?'1B7A34':'D97706',bold:true}}],
     ];
     s6.addTable(retRows,{x:.3,y:2.72,w:12.5,border:{pt:.5,color:'E0E0E0'},fontSize:11});
-    footer(s6,6);
+    footer(s6,7);
 
-    // Slide 7 — Cash Flow
+    // Slide 8 — Cash Flow
     var s7=pptx.addSlide(); s7.background={color:WHITE}; title(s7,'Cash Flow Summary');
     // Parse cash flow from extracted model text
     var cfText = (STATE['isr'].files['model'] || '');
@@ -2356,15 +2392,15 @@ function buildPPTX() {
       }
     }
     s7.addTable(cfRows,{x:.2,y:.82,w:12.9,border:{pt:.5,color:'E0E0E0'},fontSize:11});
-    footer(s7,7);
+    footer(s7,8);
 
-    // Slide 8 — Market
+    // Slide 9 — Market
     var s8=pptx.addSlide(); s8.background={color:WHITE}; title(s8,'Market & Submarket Analysis');
     var mkt=extractSec(text,'MARKET',10).join('\n');
     s8.addText(mkt||'[Market data — update from MARKET PULSE]',{x:.3,y:.82,w:12.5,h:5.8,fontSize:12,color:GRAY,valign:'top',wrap:true});
-    footer(s8,8);
+    footer(s8,9);
 
-    // Slide 9 — Sensitivity
+    // Slide 10 — Sensitivity
     var s9=pptx.addSlide(); s9.background={color:WHITE}; title(s9,'Sensitivity Analysis');
     var baseIRR=m.irr?Number(m.irr):.152, baseEM=m.em?Number(m.em):1.98;
     var caps=['5.5%','6.0%','6.5%','7.0%','7.5%'], rgs=['+2%/yr','+3%/yr (Base)','+4%/yr','Flat'];
@@ -2389,7 +2425,7 @@ function buildPPTX() {
     s9.addTable(sensTable(baseIRR,iDelta,cDelta,fIRR),{x:.3,y:1.12,w:12.5,fontSize:10,border:{pt:.5,color:'E0E0E0'}});
     s9.addText('EQUITY MULTIPLE SENSITIVITY',{x:.3,y:3.6,w:12.5,h:.28,fontSize:10,bold:true,color:NAVY,charSpacing:1});
     s9.addTable(sensTable(baseEM,eMDelta,eCDelta,fEM),{x:.3,y:3.9,w:12.5,fontSize:10,border:{pt:.5,color:'E0E0E0'}});
-    footer(s9,9);
+    footer(s9,10);
 
     // Slide 10 — Risk Matrix
     var s10=pptx.addSlide(); s10.background={color:WHITE}; title(s10,'Risk Matrix');
@@ -2402,9 +2438,9 @@ function buildPPTX() {
       rRows.push([{text:r[0],options:fill},{text:r[1],options:{fill:{color:sc[r[1]]||'FFF3CD'},color:tc[r[1]]||'D97706',bold:true,align:'center'}},{text:r[2],options:fill}]);
     });
     s10.addTable(rRows,{x:.3,y:.82,w:12.5,border:{pt:.5,color:'E0E0E0'},fontSize:11});
-    footer(s10,10);
+    footer(s10,11);
 
-    // Slide 11 — Recommendation
+    // Slide 12 — Recommendation
     var s11=pptx.addSlide(); s11.background={color:NAVY};
     s11.addShape(pptx.ShapeType.rect,{x:0,y:0,w:.18,h:7.5,fill:{color:recColor}});
     s11.addText('IC RECOMMENDATION',{x:.4,y:.5,w:12,h:.38,fontSize:11,bold:true,color:BLUE,charSpacing:3});
