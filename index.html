@@ -176,6 +176,35 @@ textarea{resize:vertical;min-height:72px;}
 .pipeline-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:24px;cursor:pointer;transition:border-color .15s;}
 .pipeline-card:hover{border-color:var(--blue);}
 .pipeline-card.open{border-color:var(--blue);}
+/* Pipeline Board */
+.pl-summary{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;}
+.pl-stage-chip{background:var(--surface2);border:1px solid var(--border);border-radius:var(--r);padding:6px 12px;font-size:11px;font-weight:700;color:var(--muted);cursor:pointer;transition:all .15s;white-space:nowrap;}
+.pl-stage-chip.active,.pl-stage-chip:hover{border-color:var(--blue);color:var(--blue);}
+.pl-stage-chip .chip-count{display:inline-block;background:var(--border);border-radius:9px;padding:1px 6px;margin-left:4px;font-size:10px;}
+.pl-stage-chip.active .chip-count{background:var(--blue);color:#fff;}
+.pl-deal-card{background:var(--surface2);border:1px solid var(--border);border-radius:var(--r);margin-bottom:10px;border-left:4px solid var(--border);overflow:hidden;}
+.pl-deal-card.conv-high{border-left-color:#C9A84C;}
+.pl-deal-card.conv-needs{border-left-color:var(--blue);}
+.pl-deal-card.conv-watch{border-left-color:#6EE7B0;}
+.pl-deal-card.conv-dead{border-left-color:#4B5563;}
+.pl-deal-top{padding:12px 14px;cursor:pointer;}
+.pl-deal-addr{font-size:13px;font-weight:700;color:var(--text);margin-bottom:2px;}
+.pl-deal-meta{font-size:11px;color:var(--muted);margin-bottom:6px;}
+.pl-deal-badges{display:flex;gap:6px;flex-wrap:wrap;align-items:center;}
+.pl-badge{font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;letter-spacing:.5px;}
+.pl-badge.stage{background:rgba(59,130,246,.15);color:#93C5FD;border:1px solid rgba(59,130,246,.3);}
+.pl-badge.stage.loi{background:rgba(201,168,76,.15);color:#C9A84C;border:1px solid rgba(201,168,76,.3);}
+.pl-badge.stage.contract{background:rgba(16,163,74,.15);color:#4ADE80;border:1px solid rgba(16,163,74,.3);}
+.pl-badge.stage.dead{background:rgba(75,85,99,.2);color:#9CA3AF;border:1px solid rgba(75,85,99,.3);}
+.pl-badge.conv{background:rgba(201,168,76,.12);color:#C9A84C;}
+.pl-deal-notes{font-size:11px;color:var(--muted);margin-top:6px;line-height:1.5;}
+.pl-deal-nextstep{font-size:11px;color:#93C5FD;margin-top:4px;}
+.pl-deal-actions{padding:8px 14px;border-top:1px solid var(--border);display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
+.pl-deal-actions select{background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:4px 8px;color:var(--text);font-size:11px;cursor:pointer;}
+.pl-add-form{background:var(--surface2);border:1px solid var(--blue);border-radius:var(--r);padding:16px;margin-bottom:14px;}
+.pl-add-title{font-size:11px;font-weight:700;letter-spacing:1.5px;color:var(--blue);margin-bottom:12px;}
+.pl-empty{font-size:12px;color:var(--muted);padding:20px 0;text-align:center;}
+.pl-edit-overlay{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:14px;margin:0 14px 10px;}
 
 /* ROUTING TABLE */
 .rt-wrap{overflow-x:auto;margin-top:8px;}
@@ -873,41 +902,62 @@ footer{border-top:1px solid var(--border);padding:20px 24px;text-align:center;co
       <button class="panel-close" onclick="togglePanel(&#39;pipeline&#39;)">✕ Close</button>
     </div>
     <div class="panel-body">
-      <div class="upload-row one">
-        <div class="upload-group">
-          <label>Deal Context <span>— optional: paste rent roll, deal summary, or notes</span></label>
-          <textarea id="pipeline-context" placeholder="Paste deal notes, rent roll data, or any context about the deal you want to track..."></textarea>
+      <!-- Top bar -->
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+        <div style="font-size:11px;color:var(--muted);" id="pl-count-line"></div>
+        <div style="display:flex;gap:8px;">
+          <button class="btn btn-p" style="font-size:11px;padding:7px 14px;" onclick="plToggleAddForm()">＋ Add Deal</button>
+          <button class="btn btn-o" style="font-size:11px;padding:7px 14px;" onclick="plLaunchReport()">📋 Report</button>
         </div>
       </div>
-      <div class="fr three">
-        <div class="fg"><label class="fl">Property Address</label><input type="text" id="pl-addr" placeholder="e.g. 4200 Commerce Pkwy, Savannah, GA"></div>
-        <div class="fg"><label class="fl">Stage</label>
-          <select id="pl-stage">
-            <option>Initial Screen</option><option>Napkin Run</option><option>Full Underwrite</option>
-            <option>LOI Submitted</option><option>Under Contract</option><option>Due Diligence</option>
-            <option>Closing</option><option>Watch List</option><option>Dead</option>
-          </select>
+      <!-- Add form (hidden by default) -->
+      <div class="pl-add-form" id="pl-add-form" style="display:none;">
+        <div class="pl-add-title">NEW DEAL</div>
+        <div class="fr two" style="margin-bottom:8px;">
+          <div class="fg"><label class="fl">Address *</label><input type="text" id="pla-addr" placeholder="e.g. 4200 Commerce Pkwy, Savannah, GA" style="background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:8px 10px;color:var(--text);font-size:12px;width:100%;outline:none;"></div>
+          <div class="fg"><label class="fl">Asset Type</label>
+            <select id="pla-type" style="background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:8px 10px;color:var(--text);font-size:12px;width:100%;">
+              <option>Flex Industrial</option><option>Industrial / Warehouse</option><option>Multi-Tenant Industrial</option><option>Single-Story Office Conversion</option><option>Other</option>
+            </select>
+          </div>
         </div>
-        <div class="fg"><label class="fl">Conviction</label>
-          <select id="pl-conv"><option>High Conviction</option><option>Needs More Data</option><option>Watch List</option></select>
+        <div class="fr three" style="margin-bottom:8px;">
+          <div class="fg"><label class="fl">Ask Price</label><input type="text" id="pla-price" placeholder="e.g. $11,200,000" style="background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:8px 10px;color:var(--text);font-size:12px;width:100%;outline:none;"></div>
+          <div class="fg"><label class="fl">SF</label><input type="text" id="pla-sf" placeholder="e.g. 62,000" style="background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:8px 10px;color:var(--text);font-size:12px;width:100%;outline:none;"></div>
+          <div class="fg"><label class="fl">Market</label>
+            <select id="pla-mkt" style="background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:8px 10px;color:var(--text);font-size:12px;width:100%;">
+              <option>Atlanta, GA</option><option>Savannah, GA</option><option>Dallas–Fort Worth, TX</option><option>Houston, TX</option><option>Austin, TX</option><option>Other</option>
+            </select>
+          </div>
+        </div>
+        <div class="fr three" style="margin-bottom:8px;">
+          <div class="fg"><label class="fl">Stage</label>
+            <select id="pla-stage" style="background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:8px 10px;color:var(--text);font-size:12px;width:100%;">
+              <option>Initial Screen</option><option>Napkin Run</option><option>Full Underwrite</option><option>LOI Submitted</option><option>Under Contract</option><option>Due Diligence</option><option>Closing</option><option>Watch List</option><option>Dead</option>
+            </select>
+          </div>
+          <div class="fg"><label class="fl">Conviction</label>
+            <select id="pla-conv" style="background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:8px 10px;color:var(--text);font-size:12px;width:100%;">
+              <option>High Conviction</option><option>Needs More Data</option><option>Watch List</option>
+            </select>
+          </div>
+          <div class="fg"><label class="fl">Broker / Contact</label><input type="text" id="pla-broker" placeholder="e.g. CBRE — Alex Carter" style="background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:8px 10px;color:var(--text);font-size:12px;width:100%;outline:none;"></div>
+        </div>
+        <div style="margin-bottom:8px;"><label class="fl" style="font-size:11px;color:var(--muted);font-weight:600;display:block;margin-bottom:4px;">Deal Notes / Next Steps</label>
+          <textarea id="pla-notes" placeholder="Key facts, open items, next step..." style="background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:8px 10px;color:var(--text);font-size:12px;width:100%;min-height:70px;resize:vertical;outline:none;"></textarea>
+        </div>
+        <div style="margin-bottom:8px;"><label class="fl" style="font-size:11px;color:var(--muted);font-weight:600;display:block;margin-bottom:4px;">Next Step Due Date</label>
+          <input type="date" id="pla-date" style="background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:8px 10px;color:var(--text);font-size:12px;outline:none;">
+        </div>
+        <div style="display:flex;gap:8px;">
+          <button class="btn btn-p" style="font-size:12px;" onclick="plAddDeal()">💾 Save Deal</button>
+          <button class="btn btn-o" style="font-size:12px;" onclick="plToggleAddForm()">✕ Cancel</button>
         </div>
       </div>
-      <div class="fr two">
-        <div class="fg"><label class="fl">Ask Price</label><input type="text" id="pl-price" placeholder="e.g. $14,200,000"></div>
-        <div class="fg"><label class="fl">Broker / Contact</label><input type="text" id="pl-broker" placeholder="e.g. CBRE — Alex Carter"></div>
-      </div>
-      <div class="fr one">
-        <div class="fg"><label class="fl">Deal Notes</label><textarea id="pl-notes" placeholder="Key facts, outstanding diligence items, next steps..."></textarea></div>
-      </div>
-      <div class="btn-row">
-        <button class="btn btn-p" onclick="runTool('pipeline')">↗ Run in Claude</button>
-        <button class="btn btn-o" onclick="clearTool(&#39;pipeline&#39;)">Clear</button>
-      </div>
-      <div class="loading" id="loading-pipeline"><div class="loading-lbl">Working...</div><div class="pbar"><div class="pfill" id="pfill-pipeline"></div></div><div class="pstep" id="pstep-pipeline"></div></div>
-      <div class="results" id="results-pipeline">
-        <div class="res-head"><div class="res-title" id="rtitle-pipeline">Pipeline Update</div><div class="res-actions"><button class="btn btn-o" style="font-size:12px" onclick="copyResult(&#39;pipeline&#39;)">📋 Copy</button></div></div>
-        <div class="res-body" id="rout-pipeline"></div>
-      </div>
+      <!-- Stage filter -->
+      <div class="pl-summary" id="pl-filter-bar"></div>
+      <!-- Deal list -->
+      <div id="pl-deal-list"></div>
     </div>
   </div>
 </div>
@@ -1342,6 +1392,7 @@ function togglePanel(id) {
     if (card) card.classList.add('open');
     setTimeout(() => panel.scrollIntoView({ behavior:'smooth', block:'start' }), 50);
     if (id === 'daily-signal') updateDSMemCount();
+    if (id === 'pipeline') renderPipeline();
   }
 }
 
@@ -2448,18 +2499,247 @@ function buildTrigger(toolId, d) {
       return p;
 
     case 'pipeline':
-      var p = 'Update the RIDGE pipeline';
-      if (d.addr)   p += ' for ' + d.addr;
-      if (d.stage)  p += ' — ' + d.stage;
-      if (d.conv)   p += ' (' + d.conv + ')';
-      if (d.price)  p += '. Ask: ' + d.price;
-      if (d.broker) p += '. Broker: ' + d.broker;
-      if (d.notes)  p += '. Notes: ' + d.notes;
-      return p;
+      return '';
 
     default:
       return 'Run ' + toolId + ' — I am ready to begin.';
   }
+}
+
+/* ═══════════════════════════════════
+   PIPELINE — STANDALONE DEAL BOARD
+═══════════════════════════════════ */
+var _plFilter = 'All';
+var _plEditId = null;
+
+var PL_STAGES = ['Initial Screen','Napkin Run','Full Underwrite','LOI Submitted','Under Contract','Due Diligence','Closing','Watch List','Dead'];
+
+function getPipelineDeals() {
+  try { return JSON.parse(localStorage.getItem('ridge_pipeline') || '[]'); } catch(e) { return []; }
+}
+function savePipelineDeals(arr) {
+  localStorage.setItem('ridge_pipeline', JSON.stringify(arr));
+}
+function plUpdateDeal(id, updates) {
+  var deals = getPipelineDeals();
+  var idx = deals.findIndex(function(d) { return d.id === id; });
+  if (idx > -1) {
+    Object.assign(deals[idx], updates);
+    deals[idx].updatedAt = new Date().toISOString();
+    savePipelineDeals(deals);
+  }
+}
+function plDeleteDeal(id) {
+  if (!confirm('Remove this deal from the pipeline?')) return;
+  savePipelineDeals(getPipelineDeals().filter(function(d) { return d.id !== id; }));
+  renderPipeline();
+}
+function plToggleAddForm() {
+  var f = document.getElementById('pl-add-form');
+  if (!f) return;
+  var isOpen = f.style.display !== 'none';
+  f.style.display = isOpen ? 'none' : 'block';
+  if (!isOpen) document.getElementById('pla-addr') && document.getElementById('pla-addr').focus();
+}
+function plAddDeal() {
+  var addr = document.getElementById('pla-addr') ? document.getElementById('pla-addr').value.trim() : '';
+  if (!addr) { showToast('Enter a property address'); return; }
+  var deal = {
+    id: Date.now(),
+    addr: addr,
+    type: document.getElementById('pla-type').value,
+    price: document.getElementById('pla-price').value.trim(),
+    sf: document.getElementById('pla-sf').value.trim(),
+    mkt: document.getElementById('pla-mkt').value,
+    stage: document.getElementById('pla-stage').value,
+    conv: document.getElementById('pla-conv').value,
+    broker: document.getElementById('pla-broker').value.trim(),
+    notes: document.getElementById('pla-notes').value.trim(),
+    nextDate: document.getElementById('pla-date').value,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  };
+  var deals = getPipelineDeals();
+  deals.unshift(deal);
+  savePipelineDeals(deals);
+  // Clear form
+  ['pla-addr','pla-price','pla-sf','pla-broker','pla-notes','pla-date'].forEach(function(id) {
+    var el = document.getElementById(id); if (el) el.value = '';
+  });
+  plToggleAddForm();
+  _plFilter = 'All';
+  renderPipeline();
+  showToast(addr.split(',')[0] + ' added to pipeline');
+}
+function plSetFilter(stage) {
+  _plFilter = stage;
+  renderPipeline();
+}
+function plStageColor(stage) {
+  if (['LOI Submitted','Under Contract','Due Diligence','Closing'].includes(stage)) return 'loi';
+  if (stage === 'Dead') return 'dead';
+  if (['Full Underwrite','Napkin Run'].includes(stage)) return '';
+  return '';
+}
+function plConvClass(conv) {
+  if (conv === 'High Conviction') return 'conv-high';
+  if (conv === 'Needs More Data') return 'conv-needs';
+  if (conv === 'Watch List') return 'conv-watch';
+  return 'conv-dead';
+}
+function plDaysAgo(iso) {
+  if (!iso) return '';
+  var diff = Math.floor((Date.now() - new Date(iso).getTime()) / 86400000);
+  if (diff === 0) return 'today';
+  if (diff === 1) return '1 day ago';
+  return diff + ' days ago';
+}
+
+function renderPipeline() {
+  var deals = getPipelineDeals();
+  var countEl = document.getElementById('pl-count-line');
+  var filterBar = document.getElementById('pl-filter-bar');
+  var listEl = document.getElementById('pl-deal-list');
+  if (!listEl) return;
+
+  // Count by stage
+  var stageCounts = {};
+  var active = 0;
+  deals.forEach(function(d) {
+    stageCounts[d.stage] = (stageCounts[d.stage] || 0) + 1;
+    if (d.stage !== 'Dead') active++;
+  });
+
+  if (countEl) {
+    countEl.textContent = deals.length + ' deal' + (deals.length !== 1 ? 's' : '') + ' · ' + active + ' active';
+  }
+
+  // Filter bar
+  if (filterBar) {
+    var stages = ['All'].concat(PL_STAGES.filter(function(s) { return stageCounts[s]; }));
+    filterBar.innerHTML = stages.map(function(s) {
+      var cnt = s === 'All' ? deals.length : (stageCounts[s] || 0);
+      return '<div class="pl-stage-chip' + (_plFilter === s ? ' active' : '') + '" onclick="plSetFilter(\'' + s.replace(/'/g,"\\'") + '\')">' +
+        s + '<span class="chip-count">' + cnt + '</span></div>';
+    }).join('');
+  }
+
+  // Filtered deals
+  var filtered = _plFilter === 'All' ? deals : deals.filter(function(d) { return d.stage === _plFilter; });
+
+  if (!filtered.length) {
+    listEl.innerHTML = '<div class="pl-empty">' + (_plFilter === 'All' ? 'No deals yet. Click ＋ Add Deal to start.' : 'No deals in ' + _plFilter + '.') + '</div>';
+    return;
+  }
+
+  // Sort: active stages first, dead last, then by conviction
+  var convOrder = {'High Conviction':0,'Needs More Data':1,'Watch List':2};
+  filtered = filtered.slice().sort(function(a, b) {
+    var aD = a.stage === 'Dead' ? 1 : 0;
+    var bD = b.stage === 'Dead' ? 1 : 0;
+    if (aD !== bD) return aD - bD;
+    return (convOrder[a.conv] || 2) - (convOrder[b.conv] || 2);
+  });
+
+  listEl.innerHTML = filtered.map(function(d) {
+    var isEditing = _plEditId === d.id;
+    var stageClass = plStageColor(d.stage);
+    var convClass = plConvClass(d.conv);
+
+    var html = '<div class="pl-deal-card ' + convClass + '">';
+
+    if (isEditing) {
+      // Inline edit form
+      html += '<div class="pl-edit-overlay">';
+      html += '<div style="font-size:10px;font-weight:700;letter-spacing:1.5px;color:var(--blue);margin-bottom:10px;">EDIT DEAL</div>';
+      html += '<div class="fr two" style="margin-bottom:8px;"><div class="fg"><label class="fl">Address</label><input id="ple-addr" type="text" value="' + d.addr.replace(/"/g,'&quot;') + '" style="background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:7px 10px;color:var(--text);font-size:12px;width:100%;outline:none;"></div>';
+      html += '<div class="fg"><label class="fl">Ask Price</label><input id="ple-price" type="text" value="' + (d.price||'').replace(/"/g,'&quot;') + '" style="background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:7px 10px;color:var(--text);font-size:12px;width:100%;outline:none;"></div></div>';
+      html += '<div class="fr three" style="margin-bottom:8px;"><div class="fg"><label class="fl">Stage</label><select id="ple-stage" style="background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:7px 10px;color:var(--text);font-size:12px;width:100%;">' +
+        PL_STAGES.map(function(s){ return '<option value="'+s+'"'+(d.stage===s?' selected':'')+'>'+s+'</option>'; }).join('') + '</select></div>';
+      html += '<div class="fg"><label class="fl">Conviction</label><select id="ple-conv" style="background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:7px 10px;color:var(--text);font-size:12px;width:100%;"><option'+(d.conv==='High Conviction'?' selected':'')+'>High Conviction</option><option'+(d.conv==='Needs More Data'?' selected':'')+'>Needs More Data</option><option'+(d.conv==='Watch List'?' selected':'')+'>Watch List</option></select></div>';
+      html += '<div class="fg"><label class="fl">Broker</label><input id="ple-broker" type="text" value="' + (d.broker||'').replace(/"/g,'&quot;') + '" style="background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:7px 10px;color:var(--text);font-size:12px;width:100%;outline:none;"></div></div>';
+      html += '<div style="margin-bottom:8px;"><label class="fl" style="font-size:11px;color:var(--muted);font-weight:600;display:block;margin-bottom:4px;">Notes</label><textarea id="ple-notes" style="background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:8px 10px;color:var(--text);font-size:12px;width:100%;min-height:60px;resize:vertical;outline:none;">' + (d.notes||'') + '</textarea></div>';
+      html += '<div style="margin-bottom:10px;"><label class="fl" style="font-size:11px;color:var(--muted);font-weight:600;display:block;margin-bottom:4px;">Next Step Date</label><input id="ple-date" type="date" value="' + (d.nextDate||'') + '" style="background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:7px 10px;color:var(--text);font-size:12px;outline:none;"></div>';
+      html += '<div style="display:flex;gap:8px;"><button class="btn btn-p" style="font-size:11px;padding:6px 12px;" onclick="plSaveEdit(' + d.id + ')">💾 Save</button>';
+      html += '<button class="btn btn-o" style="font-size:11px;padding:6px 12px;" onclick="_plEditId=null;renderPipeline();">✕ Cancel</button></div>';
+      html += '</div>';
+    } else {
+      html += '<div class="pl-deal-top">';
+      html += '<div class="pl-deal-addr">' + d.addr + '</div>';
+      var metaParts = [];
+      if (d.type) metaParts.push(d.type);
+      if (d.mkt) metaParts.push(d.mkt);
+      if (d.sf) metaParts.push(d.sf + ' SF');
+      if (metaParts.length) html += '<div class="pl-deal-meta">' + metaParts.join(' · ') + '</div>';
+      html += '<div class="pl-deal-badges">';
+      if (d.price) html += '<span style="font-size:12px;font-weight:700;color:var(--text);">' + d.price + '</span>';
+      html += '<span class="pl-badge stage ' + stageClass + '">' + d.stage + '</span>';
+      if (d.conv !== 'Watch List') html += '<span class="pl-badge conv">' + d.conv + '</span>';
+      if (d.broker) html += '<span style="font-size:10px;color:var(--muted);">' + d.broker + '</span>';
+      html += '</div>';
+      if (d.notes) html += '<div class="pl-deal-notes">' + d.notes.slice(0, 120) + (d.notes.length > 120 ? '…' : '') + '</div>';
+      if (d.nextDate) {
+        var nd = new Date(d.nextDate);
+        var today = new Date(); today.setHours(0,0,0,0);
+        var overdue = nd < today;
+        html += '<div class="pl-deal-nextstep" style="' + (overdue ? 'color:#EF4444;' : '') + '">📅 ' + (overdue ? 'OVERDUE — ' : 'Due ') + nd.toLocaleDateString('en-US',{month:'short',day:'numeric'}) + '</div>';
+      }
+      html += '<div style="font-size:10px;color:var(--muted);margin-top:4px;">Updated ' + plDaysAgo(d.updatedAt) + '</div>';
+      html += '</div>';
+    }
+
+    // Actions row
+    html += '<div class="pl-deal-actions">';
+    if (!isEditing) {
+      html += '<select onchange="plUpdateDeal(' + d.id + ',{stage:this.value});renderPipeline();" style="background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:4px 8px;color:var(--text);font-size:11px;">' +
+        PL_STAGES.map(function(s){ return '<option'+(d.stage===s?' selected':'')+'>'+s+'</option>'; }).join('') + '</select>';
+      html += '<button class="btn btn-o" style="font-size:11px;padding:4px 10px;" onclick="_plEditId=' + d.id + ';renderPipeline();">✏ Edit</button>';
+      html += '<button class="btn btn-o" style="font-size:11px;padding:4px 10px;color:#EF4444;border-color:#EF4444;" onclick="plDeleteDeal(' + d.id + ')">🗑</button>';
+    }
+    html += '</div>';
+    html += '</div>';
+    return html;
+  }).join('');
+}
+
+function plSaveEdit(id) {
+  var updates = {
+    addr: document.getElementById('ple-addr') ? document.getElementById('ple-addr').value.trim() : '',
+    price: document.getElementById('ple-price') ? document.getElementById('ple-price').value.trim() : '',
+    stage: document.getElementById('ple-stage') ? document.getElementById('ple-stage').value : '',
+    conv: document.getElementById('ple-conv') ? document.getElementById('ple-conv').value : '',
+    broker: document.getElementById('ple-broker') ? document.getElementById('ple-broker').value.trim() : '',
+    notes: document.getElementById('ple-notes') ? document.getElementById('ple-notes').value.trim() : '',
+    nextDate: document.getElementById('ple-date') ? document.getElementById('ple-date').value : '',
+  };
+  plUpdateDeal(id, updates);
+  _plEditId = null;
+  renderPipeline();
+  showToast('Deal updated');
+}
+
+function plLaunchReport() {
+  var deals = getPipelineDeals().filter(function(d) { return d.stage !== 'Dead'; });
+  if (!deals.length) { showToast('No active deals to report on'); return; }
+  var lines = ['RIDGE DEAL PIPELINE REPORT — ' + new Date().toLocaleDateString(), ''];
+  var byStage = {};
+  deals.forEach(function(d) { if (!byStage[d.stage]) byStage[d.stage] = []; byStage[d.stage].push(d); });
+  PL_STAGES.forEach(function(s) {
+    if (byStage[s] && byStage[s].length) {
+      lines.push('── ' + s.toUpperCase() + ' ──');
+      byStage[s].forEach(function(d) {
+        lines.push('• ' + d.addr + (d.price ? ' | ' + d.price : '') + (d.sf ? ' | ' + d.sf + ' SF' : '') + (d.mkt ? ' | ' + d.mkt : ''));
+        if (d.conv) lines.push('  Conviction: ' + d.conv + (d.broker ? ' | Broker: ' + d.broker : ''));
+        if (d.notes) lines.push('  Notes: ' + d.notes);
+        if (d.nextDate) lines.push('  Next step due: ' + new Date(d.nextDate).toLocaleDateString());
+      });
+      lines.push('');
+    }
+  });
+  lines.push('---');
+  lines.push('Summarize this pipeline. Highlight: (1) deals closest to closing, (2) any overdue next steps, (3) total potential acquisition volume, (4) recommended focus for this week.');
+  var url = 'https://claude.ai/new?q=' + encodeURIComponent(lines.join('\n'));
+  window.open(url, '_blank');
 }
 
 function showToast(msg) {
