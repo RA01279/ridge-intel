@@ -257,6 +257,30 @@ footer{border-top:1px solid var(--border);padding:20px 24px;text-align:center;co
 .apikey-modal p{font-size:12px;color:var(--muted);line-height:1.6;margin-bottom:14px;}
 .apikey-note{font-size:11px;color:var(--faint);margin-top:8px;}
 
+/* HISTORY PANEL */
+.hist-panel-bg{display:none;position:fixed;inset:0;background:var(--bg);z-index:1050;flex-direction:column;}
+.hist-panel-bg.show{display:flex;}
+.hist-head{display:flex;align-items:center;gap:12px;padding:16px 24px;border-bottom:1px solid var(--border);background:var(--surface);flex-shrink:0;}
+.hist-head-title{font-family:var(--mono);font-size:14px;font-weight:700;letter-spacing:2px;color:var(--text);flex:1;}
+.hist-filters{display:flex;gap:10px;padding:14px 24px;border-bottom:1px solid var(--border);background:var(--surface);flex-shrink:0;flex-wrap:wrap;}
+.hist-filters select,.hist-filters input{background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:4px;padding:6px 10px;font-size:12px;font-family:var(--mono);}
+.hist-filters input{flex:1;min-width:160px;}
+.hist-body{flex:1;overflow-y:auto;padding:20px 24px;display:flex;flex-direction:column;gap:10px;}
+.hist-entry{background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:14px 16px;display:flex;gap:14px;align-items:flex-start;}
+.hist-entry:hover{border-color:var(--blue);}
+.hist-badge{font-family:var(--mono);font-size:10px;font-weight:700;padding:3px 8px;border-radius:3px;white-space:nowrap;letter-spacing:.5px;flex-shrink:0;margin-top:2px;}
+.hist-badge-napkin{background:#1a3a5c;color:#58a6ff;}
+.hist-badge-ridge{background:#1a2a1a;color:#3fb950;}
+.hist-badge-pipeline{background:#2a1a3a;color:#d2a8ff;}
+.hist-badge-default{background:#2a2a1a;color:#e3b341;}
+.hist-meta{flex:1;min-width:0;}
+.hist-addr{font-size:13px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.hist-time{font-size:11px;color:var(--muted);margin-top:2px;}
+.hist-preview{font-size:12px;color:var(--faint);margin-top:6px;line-height:1.5;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
+.hist-actions{display:flex;gap:6px;flex-shrink:0;align-items:flex-start;}
+.hist-empty{text-align:center;padding:60px 20px;color:var(--muted);font-size:13px;}
+.hist-spinner{text-align:center;padding:40px;color:var(--muted);font-size:13px;}
+
 /* RESPONSE PANEL */
 .ridge-panel-bg{display:none;position:fixed;inset:0;background:rgba(13,17,23,.96);z-index:1000;flex-direction:column;}
 .ridge-panel-bg.show{display:flex;}
@@ -350,6 +374,25 @@ footer{border-top:1px solid var(--border);padding:20px 24px;text-align:center;co
   </div>
 </div>
 
+<!-- HISTORY PANEL -->
+<div class="hist-panel-bg" id="hist-panel">
+  <div class="hist-head">
+    <span class="hist-head-title">🕐 SKILL OUTPUT HISTORY</span>
+    <button class="btn btn-o" onclick="closeHistoryPanel()" style="font-size:11px;padding:5px 12px;">✕ Close</button>
+  </div>
+  <div class="hist-filters">
+    <select id="hist-filter-skill" onchange="renderHistoryList()">
+      <option value="">All Skills</option>
+    </select>
+    <input type="text" id="hist-filter-search" placeholder="Search address or output…" oninput="renderHistoryList()" />
+    <input type="date" id="hist-filter-from" onchange="renderHistoryList()" title="From date" />
+    <input type="date" id="hist-filter-to" onchange="renderHistoryList()" title="To date" />
+  </div>
+  <div class="hist-body" id="hist-body">
+    <div class="hist-spinner">Loading…</div>
+  </div>
+</div>
+
 <!-- RESPONSE PANEL -->
 <div class="ridge-panel-bg" id="ridge-response-panel">
   <div class="ridge-panel-head">
@@ -383,6 +426,7 @@ footer{border-top:1px solid var(--border);padding:20px 24px;text-align:center;co
     <span class="hdr-sub">ACQUISITIONS INTELLIGENCE</span>
   </div>
   <div class="hdr-right">
+    <button class="btn btn-o" onclick="showHistoryPanel()" style="font-size:11px;padding:5px 12px;border-radius:4px;">🕐 History</button>
     <button class="btn btn-o" onclick="showApiKeyModal()" style="font-size:11px;padding:5px 12px;border-radius:4px;">API Key</button>
     <span id="sb-dot" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--faint);flex-shrink:0;" title="Supabase initializing…"></span>
     <span style="font-size:11px;color:var(--muted)">12 Skills Active · v5.2</span>
@@ -2444,6 +2488,7 @@ function runTool(toolId) {
 
   var prompt = buildTrigger(toolId, d);
   var skillName = tool ? tool.name : 'PIPELINE';
+  _lastRunInputs = d;
   runRidgeAPI(skillName, prompt);
 }
 
@@ -2628,6 +2673,7 @@ function buildTrigger(toolId, d) {
 // ── SUPABASE PERSISTENCE ─────────────────────────────────────
 var _sb = null;
 var _sbOk = false;
+var _lastRunInputs = null;
 
 function _sbSetIndicator(ok) {
   var el = document.getElementById('sb-dot');
@@ -4188,6 +4234,131 @@ function closeApiKeyModal() {
   document.getElementById('apikey-modal').classList.remove('show');
 }
 
+// ── HISTORY PANEL ─────────────────────────────────────────────
+var _historyRows = [];
+
+async function showHistoryPanel() {
+  document.getElementById('hist-panel').classList.add('show');
+  document.getElementById('hist-body').innerHTML = '<div class="hist-spinner">Loading…</div>';
+  _historyRows = [];
+  if (!_sbOk || !_sb) {
+    document.getElementById('hist-body').innerHTML = '<div class="hist-empty">Supabase not connected — history unavailable.</div>';
+    return;
+  }
+  try {
+    var res = await _sb.from('skill_outputs')
+      .select('id,skill_name,output,address,market,tags,created_at,inputs')
+      .order('created_at', { ascending: false })
+      .limit(50);
+    if (res.error) throw res.error;
+    _historyRows = res.data || [];
+    // Populate skill filter dropdown
+    var skills = [...new Set(_historyRows.map(r => r.skill_name).filter(Boolean))].sort();
+    var sel = document.getElementById('hist-filter-skill');
+    sel.innerHTML = '<option value="">All Skills</option>' + skills.map(s => '<option value="' + _hEsc(s) + '">' + _hEsc(s) + '</option>').join('');
+    renderHistoryList();
+  } catch(e) {
+    document.getElementById('hist-body').innerHTML = '<div class="hist-empty">Failed to load history: ' + _hEsc(e.message) + '</div>';
+  }
+}
+
+function closeHistoryPanel() {
+  document.getElementById('hist-panel').classList.remove('show');
+}
+
+function _hEsc(s) {
+  return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function _relTime(iso) {
+  var diff = Date.now() - new Date(iso).getTime();
+  var mins = Math.floor(diff / 60000);
+  if (mins < 2)   return 'just now';
+  if (mins < 60)  return mins + ' minutes ago';
+  var hrs = Math.floor(mins / 60);
+  if (hrs < 24)   return hrs + ' hour' + (hrs > 1 ? 's' : '') + ' ago';
+  var days = Math.floor(hrs / 24);
+  if (days === 1) return 'yesterday';
+  if (days < 7)   return days + ' days ago';
+  return new Date(iso).toLocaleDateString();
+}
+
+function _histBadgeClass(skill) {
+  var s = (skill || '').toLowerCase();
+  if (s.includes('napkin'))   return 'hist-badge-napkin';
+  if (s.includes('ridge') || s.includes('scout') || s.includes('signal')) return 'hist-badge-ridge';
+  if (s.includes('pipeline') || s.includes('canvas')) return 'hist-badge-pipeline';
+  return 'hist-badge-default';
+}
+
+function renderHistoryList() {
+  var skillFilter  = document.getElementById('hist-filter-skill').value;
+  var searchFilter = (document.getElementById('hist-filter-search').value || '').toLowerCase();
+  var fromFilter   = document.getElementById('hist-filter-from').value;
+  var toFilter     = document.getElementById('hist-filter-to').value;
+
+  var rows = _historyRows.filter(function(r) {
+    if (skillFilter && r.skill_name !== skillFilter) return false;
+    if (searchFilter) {
+      var hay = ((r.address || '') + ' ' + (r.output || '')).toLowerCase();
+      if (!hay.includes(searchFilter)) return false;
+    }
+    if (fromFilter && r.created_at < fromFilter) return false;
+    if (toFilter   && r.created_at.slice(0,10) > toFilter) return false;
+    return true;
+  });
+
+  var body = document.getElementById('hist-body');
+  if (!rows.length) {
+    body.innerHTML = '<div class="hist-empty">No saved outputs yet — run a skill to get started.</div>';
+    return;
+  }
+
+  body.innerHTML = rows.map(function(r) {
+    var preview = (r.output || '').replace(/\n/g,' ').slice(0, 200);
+    var label   = r.address || r.skill_name || '—';
+    return '<div class="hist-entry" id="hrow-' + r.id + '">' +
+      '<span class="hist-badge ' + _histBadgeClass(r.skill_name) + '">' + _hEsc(r.skill_name) + '</span>' +
+      '<div class="hist-meta">' +
+        '<div class="hist-addr">' + _hEsc(label) + '</div>' +
+        '<div class="hist-time">' + _relTime(r.created_at) + '</div>' +
+        '<div class="hist-preview">' + _hEsc(preview) + '…</div>' +
+      '</div>' +
+      '<div class="hist-actions">' +
+        '<button class="btn btn-p" style="font-size:11px;padding:5px 10px;" onclick="histView(\'' + r.id + '\')">View</button>' +
+        '<button class="btn btn-o" style="font-size:11px;padding:5px 10px;" onclick="histDelete(\'' + r.id + '\')">Delete</button>' +
+      '</div>' +
+    '</div>';
+  }).join('');
+}
+
+function histView(id) {
+  var row = _historyRows.find(function(r) { return r.id === id; });
+  if (!row) return;
+  closeHistoryPanel();
+  openRidgePanel(row.skill_name || 'HISTORY');
+  var spinnerEl = document.getElementById('ridge-spinner');
+  var contentEl = document.getElementById('ridge-panel-content');
+  spinnerEl.style.display = 'none';
+  contentEl.style.display = 'block';
+  contentEl.innerHTML = parseMarkdown(row.output || '');
+  document.getElementById('ridge-copy-btn').disabled = false;
+  document.getElementById('ridge-pdf-btn').disabled = false;
+  document.getElementById('ridge-ppt-btn').disabled = false;
+  document.getElementById('ridge-xls-btn').disabled = false;
+}
+
+async function histDelete(id) {
+  if (!_sbOk || !_sb) return;
+  try {
+    await _sb.from('skill_outputs').delete().eq('id', id);
+    _historyRows = _historyRows.filter(function(r) { return r.id !== id; });
+    var el = document.getElementById('hrow-' + id);
+    if (el) el.remove();
+    if (!_historyRows.length) renderHistoryList();
+  } catch(e) { console.warn('Delete failed:', e); }
+}
+
 function openRidgePanel(skillName) {
   document.getElementById('ridge-panel-skill-name').textContent = skillName;
   document.getElementById('ridge-spinner').style.display = 'flex';
@@ -4280,6 +4451,21 @@ async function runRidgeAPI(skillName, prompt) {
     document.getElementById('ridge-pdf-btn').disabled = false;
     document.getElementById('ridge-ppt-btn').disabled = false;
     document.getElementById('ridge-xls-btn').disabled = false;
+    // Auto-save to Supabase skill_outputs table
+    if (_sbOk && _sb) {
+      try {
+        var outputText = document.getElementById('ridge-panel-content').innerText;
+        var skillNameSaved = document.getElementById('ridge-panel-skill-name').textContent;
+        await _sb.from('skill_outputs').insert({
+          skill_name: skillNameSaved,
+          output: outputText,
+          inputs: _lastRunInputs || {},
+          address: (_lastRunInputs && _lastRunInputs.addr) ? _lastRunInputs.addr : null,
+          market: (_lastRunInputs && _lastRunInputs.mkt) ? _lastRunInputs.mkt : null,
+          tags: [skillNameSaved]
+        });
+      } catch(e) { console.warn('Supabase save failed:', e); }
+    }
   } catch(e) {
     spinnerEl.style.display = 'none';
     contentEl.style.display = 'block';
