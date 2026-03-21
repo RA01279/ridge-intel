@@ -4457,13 +4457,18 @@ async function runRidgeAPI(skillName, prompt) {
       try {
         var outputText = document.getElementById('ridge-panel-content').innerText;
         var skillNameSaved = document.getElementById('ridge-panel-skill-name').textContent;
+        var autoTags = [skillNameSaved];
+        if (skillNameSaved.toLowerCase().includes('loi')) {
+          autoTags.push('loi-generated');
+        }
         await _sb.from('skill_outputs').insert({
           skill_name: skillNameSaved,
           output: outputText,
           inputs: _lastRunInputs || {},
           address: (_lastRunInputs && _lastRunInputs.addr) ? _lastRunInputs.addr : null,
           market: (_lastRunInputs && _lastRunInputs.mkt) ? _lastRunInputs.mkt : null,
-          tags: [skillNameSaved]
+          tags: autoTags,
+          loi_generated: skillNameSaved.toLowerCase().includes('loi')
         });
       } catch(e) { console.warn('Supabase save failed:', e); }
     }
