@@ -9,6 +9,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pptxgenjs/3.12.0/pptxgen.bundle.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <style>
 :root {
   --bg:#0d1117;--surface:#161b22;--surface2:#1c2128;--border:#30363d;
@@ -274,6 +275,7 @@ footer{border-top:1px solid var(--border);padding:20px 24px;text-align:center;co
     <span class="hdr-sub">ACQUISITIONS INTELLIGENCE</span>
   </div>
   <div class="hdr-right">
+    <span id="sb-dot" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--faint);flex-shrink:0;" title="Supabase initializing…"></span>
     <span style="font-size:11px;color:var(--muted)">12 Skills Active · v5.2</span>
   </div>
 </header>
@@ -2506,6 +2508,85 @@ function buildTrigger(toolId, d) {
   }
 }
 
+// ── SUPABASE PERSISTENCE ─────────────────────────────────────
+var _sb = null;
+var _sbOk = false;
+
+function _sbSetIndicator(ok) {
+  var el = document.getElementById('sb-dot');
+  if (!el) return;
+  el.style.background = ok ? 'var(--green-bright)' : 'var(--faint)';
+  el.title = ok ? 'Supabase connected' : 'Offline — localStorage fallback active';
+}
+
+async function _sbInit() {
+  try {
+    if (!window.supabase) { _sbSetIndicator(false); return; }
+    _sb = window.supabase.createClient(
+      'https://ookdsectdhllnhbwrwil.supabase.co',
+      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9va2RzZWN0ZGhsbG5oYndyd2lsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQxMDgwNzIsImV4cCI6MjA4OTY4NDA3Mn0.NcvazMHBHocJrSdjMJViERttA3lijCXiA3x6x9p6vTM'
+    );
+    var { error } = await _sb.from('deals').select('id').limit(1);
+    _sbOk = !error;
+  } catch(e) { _sbOk = false; }
+  _sbSetIndicator(_sbOk);
+  if (_sbOk) await _sbLoadDeals();
+}
+
+async function _sbLoadDeals() {
+  try {
+    var { data, error } = await _sb.from('deals').select('*').order('created_at', { ascending: false });
+    if (error || !data || !data.length) return;
+    var deals = data.map(function(r) {
+      return {
+        id: r.id,
+        addr: r.addr || '',
+        type: r.type || '',
+        price: r.price || '',
+        sf: r.sf || '',
+        mkt: r.mkt || '',
+        stage: r.stage || 'Initial Screen',
+        conv: r.conv || '',
+        broker: r.broker || '',
+        notes: r.notes || '',
+        nextDate: r.next_date || '',
+        createdAt: r.created_at || new Date().toISOString(),
+        updatedAt: r.updated_at || new Date().toISOString()
+      };
+    });
+    localStorage.setItem('ridge_pipeline', JSON.stringify(deals));
+    renderPipeline();
+  } catch(e) {}
+}
+
+async function _sbUpsertDeal(deal) {
+  if (!_sbOk || !_sb) return;
+  try {
+    await _sb.from('deals').upsert({
+      id: deal.id,
+      addr: deal.addr,
+      type: deal.type,
+      price: deal.price,
+      sf: deal.sf,
+      mkt: deal.mkt,
+      stage: deal.stage,
+      conv: deal.conv,
+      broker: deal.broker,
+      notes: deal.notes,
+      next_date: deal.nextDate,
+      created_at: deal.createdAt,
+      updated_at: deal.updatedAt
+    }, { onConflict: 'id' });
+  } catch(e) {}
+}
+
+async function _sbDeleteDeal(id) {
+  if (!_sbOk || !_sb) return;
+  try {
+    await _sb.from('deals').delete().eq('id', id);
+  } catch(e) {}
+}
+
 /* ═══════════════════════════════════
    PIPELINE — STANDALONE DEAL BOARD
 ═══════════════════════════════════ */
@@ -2519,6 +2600,7 @@ function getPipelineDeals() {
 }
 function savePipelineDeals(arr) {
   localStorage.setItem('ridge_pipeline', JSON.stringify(arr));
+  if (_sbOk && _sb) arr.forEach(function(deal) { _sbUpsertDeal(deal); });
 }
 function plUpdateDeal(id, updates) {
   var deals = getPipelineDeals();
@@ -2531,7 +2613,9 @@ function plUpdateDeal(id, updates) {
 }
 function plDeleteDeal(id) {
   if (!confirm('Remove this deal from the pipeline?')) return;
-  savePipelineDeals(getPipelineDeals().filter(function(d) { return d.id !== id; }));
+  var remaining = getPipelineDeals().filter(function(d) { return d.id !== id; });
+  localStorage.setItem('ridge_pipeline', JSON.stringify(remaining));
+  _sbDeleteDeal(id);
   renderPipeline();
 }
 function plToggleAddForm() {
@@ -3951,6 +4035,8 @@ function _parseGavelLeases(txt){
   }
   return leases;
 }
+
+_sbInit();
 </script>
 
 
