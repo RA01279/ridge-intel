@@ -387,6 +387,18 @@ footer{border-top:1px solid var(--border);padding:20px 24px;text-align:center;co
     <input type="text" id="hist-filter-search" placeholder="Search address or output…" oninput="renderHistoryList()" />
     <input type="date" id="hist-filter-from" onchange="renderHistoryList()" title="From date" />
     <input type="date" id="hist-filter-to" onchange="renderHistoryList()" title="To date" />
+    <select id="hist-filter-loi" onchange="renderHistoryList()">
+      <option value="">All Deals</option>
+      <option value="loi">LOI Generated</option>
+      <option value="no-loi">No LOI</option>
+    </select>
+    <select id="hist-filter-market" onchange="renderHistoryList()">
+      <option value="">All Markets</option>
+      <option value="Atlanta">Atlanta</option>
+      <option value="Savannah">Savannah</option>
+      <option value="DFW">DFW</option>
+      <option value="Houston">Houston</option>
+    </select>
   </div>
   <div class="hist-body" id="hist-body">
     <div class="hist-spinner">Loading…</div>
@@ -4257,6 +4269,9 @@ async function showHistoryPanel() {
     var skills = [...new Set(_historyRows.map(r => r.skill_name).filter(Boolean))].sort();
     var sel = document.getElementById('hist-filter-skill');
     sel.innerHTML = '<option value="">All Skills</option>' + skills.map(s => '<option value="' + _hEsc(s) + '">' + _hEsc(s) + '</option>').join('');
+    document.querySelectorAll('[onclick*="showHistoryPanel"]').forEach(function(btn) {
+      btn.textContent = '🕐 History (' + _historyRows.length + ')';
+    });
     renderHistoryList();
   } catch(e) {
     document.getElementById('hist-body').innerHTML = '<div class="hist-empty">Failed to load history: ' + _hEsc(e.message) + '</div>';
@@ -4265,6 +4280,21 @@ async function showHistoryPanel() {
 
 function closeHistoryPanel() {
   document.getElementById('hist-panel').classList.remove('show');
+  document.querySelectorAll('[onclick*="showHistoryPanel"]').forEach(function(btn) {
+    btn.textContent = '🕐 History';
+  });
+}
+
+function _detectMarket(inputs) {
+  if (!inputs) return null;
+  if (inputs.mkt) return inputs.mkt;
+  var addr = (inputs.addr || inputs.address || '').toLowerCase();
+  if (!addr) return null;
+  if (/atlanta|smyrna|marietta|kennesaw|alpharetta|duluth|norcross|suwanee|roswell|sandy springs|decatur|acworth|woodstock|canton|cumming|johns creek/.test(addr)) return 'Atlanta';
+  if (/savannah|pooler|richmond hill|rincon|hinesville/.test(addr)) return 'Savannah';
+  if (/dallas|fort worth|irving|garland|grand prairie|arlington|mesquite|carrollton|richardson|plano|frisco|mckinney|denton|lewisville|bedford|euless|hurst/.test(addr)) return 'DFW';
+  if (/houston|katy|pasadena|sugar land|woodlands|conroe|pearland|league city|baytown|humble|spring/.test(addr)) return 'Houston';
+  return null;
 }
 
 function _hEsc(s) {
@@ -4298,6 +4328,9 @@ function renderHistoryList() {
   var fromFilter   = document.getElementById('hist-filter-from').value;
   var toFilter     = document.getElementById('hist-filter-to').value;
 
+  var loiFilter    = document.getElementById('hist-filter-loi').value;
+  var marketFilter = document.getElementById('hist-filter-market').value;
+
   var rows = _historyRows.filter(function(r) {
     if (skillFilter && r.skill_name !== skillFilter) return false;
     if (searchFilter) {
@@ -4306,6 +4339,9 @@ function renderHistoryList() {
     }
     if (fromFilter && r.created_at < fromFilter) return false;
     if (toFilter   && r.created_at.slice(0,10) > toFilter) return false;
+    if (loiFilter === 'loi' && !r.loi_generated) return false;
+    if (loiFilter === 'no-loi' && r.loi_generated) return false;
+    if (marketFilter && (r.market || '').toLowerCase() !== marketFilter.toLowerCase()) return false;
     return true;
   });
 
@@ -4323,6 +4359,7 @@ function renderHistoryList() {
       '<div class="hist-meta">' +
         '<div class="hist-addr">' + _hEsc(label) + '</div>' +
         '<div class="hist-time">' + _relTime(r.created_at) + '</div>' +
+        (r.loi_generated ? '<span style="font-size:10px;background:#1a3a1a;color:#3fb950;padding:2px 6px;border-radius:3px;margin-top:4px;display:inline-block;">✓ LOI</span>' : '') +
         '<div class="hist-preview">' + _hEsc(preview) + '…</div>' +
       '</div>' +
       '<div class="hist-actions">' +
@@ -4466,7 +4503,7 @@ async function runRidgeAPI(skillName, prompt) {
           output: outputText,
           inputs: _lastRunInputs || {},
           address: (_lastRunInputs && _lastRunInputs.addr) ? _lastRunInputs.addr : null,
-          market: (_lastRunInputs && _lastRunInputs.mkt) ? _lastRunInputs.mkt : null,
+          market: _detectMarket(_lastRunInputs),
           tags: autoTags,
           loi_generated: skillNameSaved.toLowerCase().includes('loi')
         });
