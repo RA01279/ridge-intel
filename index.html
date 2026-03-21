@@ -2483,17 +2483,41 @@ function buildTrigger(toolId, d) {
       return p;
 
     case 'napkin':
-      var p = 'Run The Napkin';
-      if (d.addr)    p += ' on ' + d.addr;
-      if (d.type)    p += ' — ' + d.type;
-      if (d.sf)      p += ', ' + d.sf + ' SF';
-      if (d.ask)     p += '. Ask: ' + d.ask;
-      if (d.occ)     p += '. Occupancy: ' + d.occ;
-      if (d.noi)     p += '. In-place NOI: ' + d.noi;
-      if (d.mktrent) p += '. Market rent: ' + d.mktrent + ' PSF';
-      if (d.inplace) p += '. In-place rent: ' + d.inplace + ' PSF';
-      if (d.notes)   p += '. Facts: ' + d.notes;
-      p += '. Go / No-Go.';
+      var p = 'You are RIDGE, a senior acquisitions officer at Entrada Partners. Apply the full RIDGE investment framework to this deal screen.\n\n';
+      p += 'ENTRADA INVESTMENT CRITERIA:\n';
+      p += '- Asset types: Industrial, Flex Industrial, Single-story Office (conversion only)\n';
+      p += '- Target markets: Atlanta (primary), Savannah (primary), DFW, Houston\n';
+      p += '- Deal size sweet spot: $25M\u2013$35M (full range $10M\u2013$70M)\n';
+      p += '- IRR hurdle: 14.75% levered minimum, target 17%+\n';
+      p += '- Year 3/4 YOC target: 7.5%\u20138.0% (primary underwriting anchor)\n';
+      p += '- Equity multiple: 1.8x\u20132.2x\n';
+      p += '- Max LTV: 65%\n';
+      p += '- Hold: 5 years standard\n';
+      p += '- Debt assumption: 60% LTV, 6.75% rate, 25yr amortization\n';
+      p += '- Exit cap: going-in cap + 25\u201350bps\n\n';
+      p += 'DEAL INPUTS:\n';
+      p += '- Address: ' + (d.addr || 'Not provided') + '\n';
+      p += '- Asset Type: ' + (d.type || 'Not provided') + '\n';
+      p += '- Size: ' + (d.sf || 'Not provided') + ' SF\n';
+      p += '- Asking Price: $' + (d.ask || 'Not provided') + '\n';
+      p += '- Price PSF: $' + (d.psf || 'Not provided') + '\n';
+      p += '- Occupancy: ' + (d.occ || 'Not provided') + '%\n';
+      p += '- In-Place NOI: $' + (d.noi || 'Not provided') + '\n';
+      p += '- Market Rent: $' + (d.mktrent || 'Not provided') + ' PSF\n';
+      p += '- In-Place Rent: $' + (d.inplace || 'Not provided') + ' PSF\n';
+      p += '- Additional Context: ' + (d.notes || 'None') + '\n\n';
+      p += 'Produce these sections:\n\n';
+      p += '## DEAL SNAPSHOT\nTwo sentences max. Asset quality, location, tenancy, why it crossed our desk.\n\n';
+      p += '## RETURN STACK\nShow all math. Display as a table:\n| Metric | Value | vs Entrada Hurdle |\n';
+      p += '- Going-in cap rate\n- Price PSF vs market basis range\n- Year 1 NOI (in-place)\n';
+      p += '- Stabilized NOI (market rents, 95% occupancy)\n- Year 3/4 NOI (2% annual escalations from stabilized)\n';
+      p += '- Year 3/4 YOC at ask price\n- Max loan at 60% LTV\n- Annual debt service\n';
+      p += '- Year 1 levered cash flow\n- Levered IRR (5yr hold, exit at going-in cap + 35bps)\n';
+      p += '- Equity multiple\n- DSCR Year 1\n\n';
+      p += '## PRICE TO MAKE IT WORK\nIf the deal doesn\'t clear 14.75% IRR at ask: calculate the exact price where it does. Show the math. State it as a dollar amount and PSF.\n\n';
+      p += '## RED FLAGS\nBullet list. Be direct. No hedging.\n\n';
+      p += '## CONVICTION\nState exactly one of: HIGH CONVICTION | CONDITIONAL | PASS\nThen one paragraph defending that verdict.\n\n';
+      p += '## NEXT STEPS\nThree specific actions if pursuing.';
       return p;
 
     case 'market-pulse':
@@ -4191,7 +4215,7 @@ async function runRidgeAPI(skillName, prompt) {
   var systemPrompts = {
     'RIDGE': 'You are RIDGE, a senior acquisitions officer at Entrada Partners. Target markets: Atlanta, Savannah, DFW, Houston. Deal criteria: $10M–$70M industrial and flex assets, 14.75%+ levered IRR, 7.5–8.0% YOC at Year 3/4, 95% off-market sourcing. Begin a live sourcing session. Ask which market to focus on, whether I have a CoStar export or want a cold sweep, then run SCOUT and deliver a ranked prospect list with owner intel, debt profile, and outreach angle.',
     'Pipeline Report': 'You are RIDGE. Analyze this pipeline data and deliver a concise report covering: deals closest to closing, overdue next steps, total potential acquisition volume, and recommended focus for this week. Be direct and actionable.',
-    'default': 'You are RIDGE, an institutional CRE acquisitions intelligence platform. You are running the ' + skillName + ' module. Execute the skill precisely as specified in the prompt. Be data-driven and format output in clean markdown.'
+    'default': 'You are RIDGE, a senior acquisitions officer at Entrada Partners, an institutional private equity firm. You specialize in industrial and flex CRE acquisitions in Atlanta, Savannah, DFW, and Houston. You are running the ' + skillName + ' module. Be precise, data-driven, and direct. Write like a senior professional presenting to an investment committee. Format all output in clean markdown with tables where data warrants it. Never hedge excessively — state your conviction and defend it.'
   };
   var systemPrompt = systemPrompts[skillName] || systemPrompts['default'];
   try {
