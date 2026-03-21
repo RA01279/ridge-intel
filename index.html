@@ -4382,8 +4382,359 @@ function parseMarkdown(text) {
 }
 
 // ── RESPONSE PANEL EXPORTS ───────────────────────────────────
+// ── DOM helper — sibling elements until next h2 ──────────────
+function _getSiblingNodes(h2) {
+  var nodes = [], node = h2.nextSibling;
+  while (node && node.nodeName !== 'H2') {
+    if (node.nodeType === 1) nodes.push(node);
+    node = node.nextSibling;
+  }
+  return nodes;
+}
+
+// ── PDF export (skill-aware) ──────────────────────────────────
 function ridgeExportPDF() {
+  var skillName = document.getElementById('ridge-panel-skill-name').textContent;
+  if (skillName === 'THE NAPKIN') { _napkinExportPDF(); return; }
   window.print();
+}
+
+function _napkinExportPDF() {
+  var el = document.getElementById('ridge-panel-content');
+  var fv = function(id){ var e=document.getElementById(id); return e?e.value.trim():''; };
+  var addr = fv('f-napkin-addr') || 'Subject Property';
+  var dateStr = new Date().toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'});
+  var h2s = el.querySelectorAll('h2');
+
+  var convColor = '#1E2761';
+  h2s.forEach(function(h2) {
+    if (h2.textContent.trim().toUpperCase().includes('CONVICTION')) {
+      _getSiblingNodes(h2).forEach(function(n) {
+        var t = n.textContent.toUpperCase();
+        if (t.includes('HIGH CONVICTION')) convColor = '#1b7a34';
+        else if (t.includes('PASS')) convColor = '#c0392b';
+        else if (t.includes('CONDITIONAL')) convColor = '#d97706';
+      });
+    }
+  });
+
+  var snap = [
+    ['Property Address', fv('f-napkin-addr')],['Asset Type', fv('f-napkin-type')],
+    ['Building SF', fv('f-napkin-sf')],['Asking Price', fv('f-napkin-ask')],
+    ['Current Occupancy', fv('f-napkin-occ')],['In-Place NOI', fv('f-napkin-noi')],
+    ['Market Rent PSF', fv('f-napkin-mktrent')],['In-Place Rent PSF', fv('f-napkin-inplace')],
+  ].filter(function(r){ return r[1]; });
+
+  var css = [
+    '@page{margin:0.75in}',
+    '*{box-sizing:border-box;margin:0;padding:0}',
+    'body{font-family:Calibri,Arial,sans-serif;font-size:11pt;color:#1a1a1a;background:#fff}',
+    '.hd{background:#1E2761;color:#fff;padding:20px 28px;margin-bottom:24px}',
+    '.hd-firm{font-size:11pt;font-weight:700;letter-spacing:2px;color:#cadcfc;text-transform:uppercase;margin-bottom:4px}',
+    '.hd-title{font-size:22pt;font-weight:800;color:#fff;letter-spacing:1px}',
+    '.hd-sub{font-size:10pt;color:#cadcfc;margin-top:4px}',
+    '.sec{margin-bottom:20px;page-break-inside:avoid}',
+    '.sh{background:#1E2761;color:#fff;font-size:11pt;font-weight:700;padding:7px 12px;letter-spacing:1px;text-transform:uppercase}',
+    'table.pt{width:100%;border-collapse:collapse}',
+    'table.pt td{padding:6px 12px;border-bottom:1px solid #e0e0e0;font-size:11pt}',
+    'table.pt td:first-child{font-weight:700;width:38%;color:#1E2761}',
+    'table.dt{width:100%;border-collapse:collapse;font-size:10.5pt}',
+    'table.dt th{background:#1E2761;color:#fff;padding:7px 10px;text-align:left;font-weight:700}',
+    'table.dt td{padding:6px 10px;border-bottom:1px solid #e8e8e8}',
+    'table.dt tr:nth-child(even) td{background:#f5f5f5}',
+    '.pass-c{background:#E8F5E9!important}.fail-c{background:#FFEBEE!important}',
+    '.cv-box{padding:14px 16px;font-size:14pt;font-weight:800;color:#fff;text-transform:uppercase;letter-spacing:1px;background:' + convColor + '}',
+    '.cv-txt{padding:10px 12px;font-size:11pt;background:#f9f9f9;border:1px solid #e0e0e0;border-top:none;line-height:1.6}',
+    'ul,ol{padding-left:20px;line-height:1.8;margin:8px 12px}',
+    'p{line-height:1.7;padding:8px 12px;background:#fafafa;border:1px solid #eee;margin-top:1px}',
+    'pre{font-family:Courier New,monospace;font-size:10pt;background:#f0f0f0;padding:10px;border:1px solid #ddd;white-space:pre-wrap}',
+    'h3,h4{padding:5px 12px;color:#1E2761}',
+    '@media print{button{display:none}}',
+  ].join('');
+
+  var html = '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Entrada — The Napkin — ' + addr + '</title><style>' + css + '</style></head><body>';
+  html += '<div class="hd"><div class="hd-firm">Entrada Partners</div><div class="hd-title">THE NAPKIN — 60-Second Deal Screen</div><div class="hd-sub">' + addr + ' &nbsp;·&nbsp; ' + dateStr + '</div></div>';
+
+  if (snap.length) {
+    html += '<div class="sec"><div class="sh">Property Inputs</div><table class="pt">';
+    snap.forEach(function(r){ html += '<tr><td>' + r[0] + '</td><td>' + r[1] + '</td></tr>'; });
+    html += '</table></div>';
+  }
+
+  h2s.forEach(function(h2) {
+    var title = h2.textContent.trim();
+    html += '<div class="sec"><div class="sh">' + title + '</div>';
+    var nodes = _getSiblingNodes(h2);
+    if (title.toUpperCase().includes('CONVICTION')) {
+      var verdict = '', restHtml = '';
+      nodes.forEach(function(n) {
+        if (!verdict && /HIGH CONVICTION|CONDITIONAL|PASS/i.test(n.textContent)) verdict = n.textContent.trim();
+        else restHtml += n.outerHTML;
+      });
+      if (verdict) html += '<div class="cv-box">' + verdict + '</div>';
+      if (restHtml) html += '<div class="cv-txt">' + restHtml + '</div>';
+    } else {
+      nodes.forEach(function(n) {
+        if (n.tagName === 'TABLE') {
+          html += '<table class="dt"><tbody>';
+          Array.from(n.querySelectorAll('tr')).forEach(function(tr, ri) {
+            var tag = ri === 0 ? 'th' : 'td';
+            html += '<tr>';
+            Array.from(tr.querySelectorAll('th,td')).forEach(function(cell) {
+              var txt = cell.textContent.trim();
+              var cls = (tag==='td' && txt.includes('✓')) ? ' class="pass-c"' : (tag==='td' && (txt.includes('❌')||txt.includes('✗'))) ? ' class="fail-c"' : '';
+              html += '<' + tag + cls + '>' + txt + '</' + tag + '>';
+            });
+            html += '</tr>';
+          });
+          html += '</tbody></table>';
+        } else { html += n.outerHTML; }
+      });
+    }
+    html += '</div>';
+  });
+
+  html += '</body></html>';
+  var w = window.open('', '_blank');
+  if (w) { w.document.write(html); w.document.close(); w.focus(); setTimeout(function(){ w.print(); }, 600); }
+}
+
+// ── XLS export (skill-aware) ──────────────────────────────────
+async function ridgeExportXLS() {
+  var skillName = document.getElementById('ridge-panel-skill-name').textContent;
+  if (skillName === 'THE NAPKIN') { await _napkinExportXLS(); return; }
+  // Generic fallback
+  var el = document.getElementById('ridge-panel-content');
+  var wb = new ExcelJS.Workbook(); wb.creator = 'RIDGE Intelligence'; wb.created = new Date();
+  var summaryWs = wb.addWorksheet('Summary');
+  summaryWs.columns = [{ header:'', key:'text', width:120 }];
+  var titleRow = summaryWs.addRow(['RIDGE ' + skillName + ' — ' + new Date().toLocaleDateString()]);
+  titleRow.font = { bold:true, size:14, color:{ argb:'FF2196F3' } };
+  summaryWs.addRow([]);
+  var tableIdx = 0;
+  Array.from(el.childNodes).forEach(function(node) {
+    if (!node.tagName) return;
+    if (node.tagName === 'TABLE') {
+      tableIdx++;
+      var prev = node.previousElementSibling;
+      var sheetName = (prev && prev.textContent) ? prev.textContent.trim().slice(0,28) : 'Table '+tableIdx;
+      sheetName = sheetName.replace(/[\\\/\?\*\[\]:]/g,'').trim() || ('Table '+tableIdx);
+      var ws = wb.addWorksheet(sheetName);
+      var rows = Array.from(node.querySelectorAll('tr'));
+      var colCount = rows.length ? rows[0].querySelectorAll('th,td').length : 1;
+      ws.columns = Array.from({length:colCount}, function(_,ci){ return {key:'c'+ci,width:22}; });
+      rows.forEach(function(tr,ri) {
+        var cells = Array.from(tr.querySelectorAll('th,td')).map(function(td){ return td.textContent.trim(); });
+        var row = ws.addRow(cells);
+        if (ri===0) { row.eachCell(function(cell){ cell.font={bold:true,color:{argb:'FFFFFFFF'}}; cell.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FF1E2761'}}; cell.alignment={horizontal:'center'}; }); ws.getRow(1).height=20; }
+        else if (ri%2===0) { row.eachCell(function(cell){ cell.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FF1C2128'}}; }); }
+      });
+    } else { var txt=(node.textContent||'').trim(); if(txt) summaryWs.addRow([txt]); }
+  });
+  var fname = 'RIDGE_' + skillName.replace(/[^a-zA-Z0-9]/g,'_') + '_' + new Date().toISOString().slice(0,10) + '.xlsx';
+  var buf = await wb.xlsx.writeBuffer();
+  var blob = new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+  var a = document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=fname; a.click(); URL.revokeObjectURL(a.href);
+}
+
+async function _napkinExportXLS() {
+  var el = document.getElementById('ridge-panel-content');
+  var fv = function(id){ var e=document.getElementById(id); return e?e.value.trim():''; };
+  var addr    = fv('f-napkin-addr') || 'Subject Property';
+  var askRaw  = fv('f-napkin-ask');
+  var sfRaw   = fv('f-napkin-sf');
+  var askNum  = parseFloat(askRaw.replace(/[^0-9.]/g,'')) || 0;
+  var sfNum   = parseFloat(sfRaw.replace(/[^0-9.]/g,'')) || 0;
+  var psf     = (askNum && sfNum) ? '$' + (askNum/sfNum).toFixed(2) : '—';
+  var dateStr = new Date().toLocaleDateString('en-US',{year:'numeric',month:'short',day:'numeric'});
+  var h2s     = el.querySelectorAll('h2');
+
+  var NAVY='FF1E2761', WHITE='FFFFFFFF', LT_GREEN='FFE8F5E9', LT_RED='FFFFEBEE', LT_GREY='FFF5F5F5';
+
+  var wb = new ExcelJS.Workbook(); wb.creator='Entrada Partners — RIDGE Intelligence'; wb.created=new Date();
+
+  // ─ Sheet 1: Deal Screen ────────────────────────────────────
+  var ws = wb.addWorksheet('Deal Screen');
+  ws.views = [{ state:'frozen', ySplit:1 }];
+  ws.columns = [{key:'a',width:35},{key:'b',width:20},{key:'c',width:25},{key:'d',width:15},{key:'e',width:15}];
+
+  function navyHdr(text) {
+    var r = ws.addRow([text]);
+    ws.mergeCells(r.number, 1, r.number, 5);
+    r.getCell(1).value = text;
+    r.getCell(1).font = { bold:true, size:14, color:{argb:WHITE}, name:'Calibri' };
+    r.getCell(1).fill = { type:'pattern', pattern:'solid', fgColor:{argb:NAVY} };
+    r.getCell(1).alignment = { vertical:'middle', horizontal:'left', indent:1 };
+    r.height = 22;
+  }
+
+  // Row 1 — title banner
+  var r1 = ws.addRow(['ENTRADA PARTNERS — THE NAPKIN']);
+  ws.mergeCells(1,1,1,5);
+  r1.getCell(1).value = 'ENTRADA PARTNERS — THE NAPKIN';
+  r1.getCell(1).font = { bold:true, size:18, color:{argb:WHITE}, name:'Calibri' };
+  r1.getCell(1).fill = { type:'pattern', pattern:'solid', fgColor:{argb:NAVY} };
+  r1.getCell(1).alignment = { vertical:'middle', horizontal:'center' };
+  r1.height = 36;
+
+  // Row 2 — address + date
+  var r2 = ws.addRow([addr + '   ·   ' + dateStr]);
+  ws.mergeCells(2,1,2,5);
+  r2.getCell(1).value = addr + '   ·   ' + dateStr;
+  r2.getCell(1).font = { size:11, color:{argb:'FF444444'}, name:'Calibri' };
+  r2.getCell(1).fill = { type:'pattern', pattern:'solid', fgColor:{argb:'FFE8EAF0'} };
+  r2.getCell(1).alignment = { vertical:'middle', horizontal:'left', indent:1 };
+  r2.height = 20;
+
+  // Row 3 — blank
+  ws.addRow([]).height = 8;
+
+  // Rows 4-8 — property snapshot
+  [['Property Address', fv('f-napkin-addr')||'—'],['Asset Type', fv('f-napkin-type')||'—'],
+   ['Size (SF)', sfRaw||'—'],['Asking Price', askRaw||'—'],['Price PSF', psf]
+  ].forEach(function(item) {
+    var r = ws.addRow(item);
+    r.getCell(1).font = { bold:true, size:11, color:{argb:NAVY}, name:'Calibri' };
+    r.getCell(2).font = { size:11, name:'Calibri' };
+    r.height = 18;
+  });
+
+  // Row 9 — blank
+  ws.addRow([]).height = 8;
+
+  // Return Stack
+  navyHdr('RETURN STACK');
+  var returnTable = null;
+  h2s.forEach(function(h2) {
+    if (h2.textContent.trim().toUpperCase().includes('RETURN STACK'))
+      _getSiblingNodes(h2).forEach(function(n){ if(n.tagName==='TABLE') returnTable=n; });
+  });
+  if (returnTable) {
+    Array.from(returnTable.querySelectorAll('tr')).forEach(function(tr, ri) {
+      var cells = Array.from(tr.querySelectorAll('th,td')).map(function(c){ return c.textContent.trim(); });
+      var r = ws.addRow(cells); r.height = 18;
+      if (ri === 0) {
+        r.eachCell(function(cell){ cell.font={bold:true,size:11,color:{argb:WHITE},name:'Calibri'}; cell.fill={type:'pattern',pattern:'solid',fgColor:{argb:NAVY}}; cell.alignment={horizontal:'center',vertical:'middle'}; });
+      } else {
+        var hurdle = cells[2] || '';
+        var fill = hurdle.includes('✓') ? LT_GREEN : (hurdle.includes('❌')||hurdle.includes('✗')) ? LT_RED : ri%2===0 ? LT_GREY : null;
+        r.getCell(1).font = {size:11,name:'Calibri'};
+        r.getCell(2).font = {size:11,name:'Calibri'}; r.getCell(2).alignment = {horizontal:'right'};
+        r.getCell(3).font = {size:11,name:'Calibri'}; r.getCell(3).alignment = {horizontal:'center'};
+        if (fill) r.eachCell(function(cell){ cell.fill={type:'pattern',pattern:'solid',fgColor:{argb:fill}}; });
+      }
+    });
+  }
+
+  // Conviction
+  ws.addRow([]).height = 8;
+  navyHdr('CONVICTION');
+  var verdict='', convExpl='';
+  h2s.forEach(function(h2) {
+    if (h2.textContent.trim().toUpperCase().includes('CONVICTION')) {
+      _getSiblingNodes(h2).forEach(function(n) {
+        var t = n.textContent.trim();
+        if (!verdict && /HIGH CONVICTION|CONDITIONAL|PASS/i.test(t)) verdict=t;
+        else convExpl += t + ' ';
+      });
+    }
+  });
+  if (verdict) {
+    var vr = ws.addRow([verdict]);
+    ws.mergeCells(vr.number,1,vr.number,5); vr.getCell(1).value=verdict;
+    var vFill = /HIGH CONVICTION/i.test(verdict)?'FF1b7a34':/PASS/i.test(verdict)?'FFc0392b':'FFd97706';
+    vr.getCell(1).font={bold:true,size:13,color:{argb:WHITE},name:'Calibri'};
+    vr.getCell(1).fill={type:'pattern',pattern:'solid',fgColor:{argb:vFill}};
+    vr.getCell(1).alignment={horizontal:'center',vertical:'middle'}; vr.height=24;
+  }
+  if (convExpl.trim()) {
+    var ce = ws.addRow([convExpl.trim()]);
+    ws.mergeCells(ce.number,1,ce.number,5); ce.getCell(1).value=convExpl.trim();
+    ce.getCell(1).font={size:11,name:'Calibri'};
+    ce.getCell(1).fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFF9F9F9'}};
+    ce.getCell(1).alignment={wrapText:true,vertical:'top'}; ce.height=48;
+  }
+
+  // Price to Make It Work
+  ws.addRow([]).height=8; navyHdr('PRICE TO MAKE IT WORK');
+  h2s.forEach(function(h2) {
+    if (h2.textContent.trim().toUpperCase().includes('PRICE TO MAKE')) {
+      _getSiblingNodes(h2).forEach(function(n) {
+        n.textContent.trim().split('\n').forEach(function(line) {
+          if (!line.trim()) return;
+          var r=ws.addRow([line.trim()]); ws.mergeCells(r.number,1,r.number,5);
+          r.getCell(1).value=line.trim(); r.getCell(1).font={size:11,name:'Calibri'}; r.getCell(1).alignment={wrapText:true}; r.height=18;
+        });
+      });
+    }
+  });
+
+  // Red Flags
+  ws.addRow([]).height=8; navyHdr('RED FLAGS');
+  h2s.forEach(function(h2) {
+    if (h2.textContent.trim().toUpperCase().includes('RED FLAGS')) {
+      _getSiblingNodes(h2).forEach(function(n) {
+        var items = (n.tagName==='UL'||n.tagName==='OL')
+          ? Array.from(n.querySelectorAll('li')).map(function(li){ return li.textContent.trim(); })
+          : n.textContent.trim().split('\n').filter(function(l){ return l.trim(); });
+        items.forEach(function(text) {
+          var r=ws.addRow(['⚠️  '+text]); ws.mergeCells(r.number,1,r.number,5);
+          r.getCell(1).value='⚠️  '+text; r.getCell(1).font={size:11,name:'Calibri'}; r.getCell(1).alignment={wrapText:true}; r.height=18;
+        });
+      });
+    }
+  });
+
+  // Next Steps
+  ws.addRow([]).height=8; navyHdr('NEXT STEPS');
+  h2s.forEach(function(h2) {
+    if (h2.textContent.trim().toUpperCase().includes('NEXT STEPS')) {
+      var n=1;
+      _getSiblingNodes(h2).forEach(function(node) {
+        var items = (node.tagName==='OL'||node.tagName==='UL')
+          ? Array.from(node.querySelectorAll('li')).map(function(li){ return li.textContent.trim(); })
+          : node.textContent.trim().split('\n').filter(function(l){ return l.trim(); });
+        items.forEach(function(text) {
+          var r=ws.addRow([n+'.  '+text]); ws.mergeCells(r.number,1,r.number,5);
+          r.getCell(1).value=n+'.  '+text; r.getCell(1).font={size:11,name:'Calibri'}; r.getCell(1).alignment={wrapText:true}; r.height=18; n++;
+        });
+      });
+    }
+  });
+
+  // ─ Sheet 2: Returns Chart Data ─────────────────────────────
+  var ws2 = wb.addWorksheet('Returns Chart Data');
+  ws2.columns=[{key:'a',width:28},{key:'b',width:18},{key:'c',width:22},{key:'d',width:12}];
+  var hdr2=ws2.addRow(['Metric','Actual','Entrada Benchmark','Status']);
+  hdr2.eachCell(function(cell){ cell.font={bold:true,size:11,color:{argb:WHITE},name:'Calibri'}; cell.fill={type:'pattern',pattern:'solid',fgColor:{argb:NAVY}}; cell.alignment={horizontal:'center',vertical:'middle'}; });
+  hdr2.height=22;
+  var benchmarks=[
+    {key:'IRR',            bench:'≥ 14.75% (target 17%+)'},
+    {key:'YOC',            bench:'7.5%–8.0% at Year 3/4'},
+    {key:'Equity Multiple',bench:'1.8x–2.2x'},
+    {key:'DSCR',           bench:'≥ 1.25x Year 1'},
+  ];
+  if (returnTable) {
+    var allTrs=Array.from(returnTable.querySelectorAll('tr'));
+    benchmarks.forEach(function(m) {
+      var tr=allTrs.find(function(tr){ return tr.cells[0]&&tr.cells[0].textContent.toLowerCase().includes(m.key.toLowerCase()); });
+      if (!tr) return;
+      var actual=tr.cells[1]?tr.cells[1].textContent.trim():'—';
+      var hurdle=tr.cells[2]?tr.cells[2].textContent.trim():'—';
+      var status=hurdle.includes('✓')?'✓ PASS':(hurdle.includes('❌')||hurdle.includes('✗'))?'❌ MISS':'—';
+      var dr=ws2.addRow([m.key,actual,m.bench,status]); dr.height=18;
+      dr.getCell(1).font={bold:true,size:11,name:'Calibri'};
+      dr.getCell(2).font={size:11,name:'Calibri'}; dr.getCell(2).alignment={horizontal:'center'};
+      dr.getCell(3).font={size:11,name:'Calibri',color:{argb:'FF555555'}}; dr.getCell(3).alignment={horizontal:'center'};
+      var statusColor=status.includes('PASS')?'FF1b7a34':status.includes('MISS')?'FFc0392b':'FF444444';
+      dr.getCell(4).font={bold:true,size:11,name:'Calibri',color:{argb:statusColor}}; dr.getCell(4).alignment={horizontal:'center'};
+    });
+  }
+
+  var fname='Entrada_Napkin_'+addr.replace(/[^a-zA-Z0-9]/g,'_').replace(/_+/g,'_').slice(0,40)+'_'+new Date().toISOString().slice(0,10)+'.xlsx';
+  var buf=await wb.xlsx.writeBuffer();
+  var blob=new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+  var a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=fname; a.click(); URL.revokeObjectURL(a.href);
 }
 
 async function ridgeExportPPT() {
