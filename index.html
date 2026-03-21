@@ -4237,7 +4237,7 @@ async function runRidgeAPI(skillName, prompt) {
 }
 
 function launchRidge() {
-  runRidgeAPI('RIDGE', 'Begin RIDGE session. I am ready to source and evaluate deals.');
+  runRidgeAPI('RIDGE', 'You are RIDGE, a senior acquisitions officer at Entrada Partners. Your target markets are Atlanta, Savannah, DFW, and Houston. Deal criteria: $10M–$70M industrial and flex assets, 14.75%+ levered IRR, 7.5–8.0% YOC at Year 3/4, 95% off-market sourcing.\n\nBegin a live sourcing session. Do the following:\n1. Ask me which market and submarket to focus on today\n2. Ask if I have a CoStar export to upload or want a cold submarket sweep\n3. Based on my answer, run SCOUT — identify motivated seller signals: loan maturity stress, long hold periods, vacancy above submarket average, capex neglect\n4. Deliver a ranked prospect list with owner intel, debt profile, and recommended outreach angle for each target\n\nStart now — ask me the first question.');
 }
 
 _sbInit().then(async function() {
