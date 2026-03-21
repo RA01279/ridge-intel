@@ -1117,7 +1117,7 @@ var TOOLS = [
     ],
     steps:['Calculating in-place metrics...','Reverse-engineering stabilized NOI...','Running YOC at Year 3/4...','Checking RIDGE hurdles...','Generating verdict...'],
     system:`You are THE NAPKIN, RIDGE's 60-second deal screen. Your job is to quickly determine if a deal is worth pursuing before committing to full underwriting. RIDGE hurdles: IRR ≥14.75%, YOC 7.5–8.0% at Yr3/4, EM ≥1.8x, max LTV 65%. Be direct. Give a clear Go/No-Go. If No-Go, state exactly what price would make it work.`,
-    prompt:(d)=>`Run The Napkin on: ${d.addr||'Subject Property'} | ${d.sf||'?'} SF | Asking: ${d.ask||'?'} | Occupancy: ${d.occ||'unknown'} | In-place NOI: ${d.noi||'unknown'} | Market Rent: ${d.mktrent||'unknown'} PSF | In-Place Rent: ${d.inplace||'unknown'} PSF.\n${d.notes?'Facts: '+d.notes+'\n':''}\n${d.data_text?'Supporting data:\n'+d.data_text+'\n':''}\nProduce:\n## QUICK MATH\nTable: Metric | Value | Notes\nInclude: Ask PSF, In-place cap rate, Market rent vs. in-place gap, Mark-to-market upside, Stabilized NOI estimate, YOC at Yr3 (est.), Implied IRR range, Price to hit 14.75% IRR\n\n## VERDICT\n**GO / NO-GO / CONDITIONAL** — one sentence.\n\n## THE NUMBER THAT MAKES IT WORK\nIf No-Go: the exact price where this clears RIDGE criteria. Show the math.\n\n## NEXT STEPS\nIf Go: 3 bullet points on what to confirm first.`
+    prompt: null
   },
   {
     id:'market-pulse', num:'03', icon:'📡', name:'MARKET PULSE',
@@ -2500,7 +2500,7 @@ function buildTrigger(toolId, d) {
       p += '- Asset Type: ' + (d.type || 'Not provided') + '\n';
       p += '- Size: ' + (d.sf || 'Not provided') + ' SF\n';
       p += '- Asking Price: $' + (d.ask || 'Not provided') + '\n';
-      p += '- Price PSF: $' + (d.psf || 'Not provided') + '\n';
+      p += '- Price PSF: $' + (d.ask && d.sf ? (parseFloat(d.ask.replace(/[^0-9.]/g,'')) / parseFloat(d.sf.replace(/[^0-9.]/g,''))).toFixed(2) : 'Not provided') + '\n';
       p += '- Occupancy: ' + (d.occ || 'Not provided') + '%\n';
       p += '- In-Place NOI: $' + (d.noi || 'Not provided') + '\n';
       p += '- Market Rent: $' + (d.mktrent || 'Not provided') + ' PSF\n';
