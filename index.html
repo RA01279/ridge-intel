@@ -4177,6 +4177,12 @@ async function runRidgeAPI(skillName, prompt) {
   var spinnerEl = document.getElementById('ridge-spinner');
   var copyBtn   = document.getElementById('ridge-copy-btn');
   var accumulated = '';
+  var systemPrompts = {
+    'RIDGE': 'You are RIDGE, a senior acquisitions officer at Entrada Partners. Target markets: Atlanta, Savannah, DFW, Houston. Deal criteria: $10M–$70M industrial and flex assets, 14.75%+ levered IRR, 7.5–8.0% YOC at Year 3/4, 95% off-market sourcing. Begin a live sourcing session. Ask which market to focus on, whether I have a CoStar export or want a cold sweep, then run SCOUT and deliver a ranked prospect list with owner intel, debt profile, and outreach angle.',
+    'Pipeline Report': 'You are RIDGE. Analyze this pipeline data and deliver a concise report covering: deals closest to closing, overdue next steps, total potential acquisition volume, and recommended focus for this week. Be direct and actionable.',
+    'default': 'You are RIDGE, an institutional CRE acquisitions intelligence platform. You are running the ' + skillName + ' module. Execute the skill precisely as specified in the prompt. Be data-driven and format output in clean markdown.'
+  };
+  var systemPrompt = systemPrompts[skillName] || systemPrompts['default'];
   try {
     var resp = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
@@ -4190,7 +4196,7 @@ async function runRidgeAPI(skillName, prompt) {
         model: 'claude-sonnet-4-20250514',
         max_tokens: 8000,
         stream: true,
-        system: 'You are RIDGE, an institutional CRE acquisitions intelligence platform. You are running the ' + skillName + ' module. Be precise, data-driven, and format output in clean markdown.',
+        system: systemPrompt,
         messages: [{ role: 'user', content: prompt }]
       })
     });
