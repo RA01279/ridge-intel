@@ -2785,6 +2785,14 @@ function plUpdateDeal(id, updates) {
     Object.assign(deals[idx], updates);
     deals[idx].updatedAt = new Date().toISOString();
     savePipelineDeals(deals);
+    if (_sbOk && _sb && updates.stage) {
+      _sb.from('activity_log').insert({
+        deal_id: id,
+        action: 'STAGE_CHANGE',
+        notes: 'Moved to ' + updates.stage,
+        user_name: 'Rhett'
+      }).catch(function(e) { console.warn('activity_log failed:', e); });
+    }
   }
 }
 function plDeleteDeal(id) {
@@ -2827,6 +2835,14 @@ function plAddDeal() {
     var el = document.getElementById(id); if (el) el.value = '';
   });
   plToggleAddForm();
+  if (_sbOk && _sb) {
+    _sb.from('activity_log').insert({
+      deal_id: deal.id,
+      action: 'DEAL_ADDED',
+      notes: 'Added to pipeline at ' + deal.stage,
+      user_name: 'Rhett'
+    }).catch(function(e) { console.warn('activity_log failed:', e); });
+  }
   _plFilter = 'All';
   renderPipeline();
   showToast(addr.split(',')[0] + ' added to pipeline');
@@ -4507,6 +4523,29 @@ async function runRidgeAPI(skillName, prompt) {
           tags: autoTags,
           loi_generated: skillNameSaved.toLowerCase().includes('loi')
         });
+        // Auto-save to contacts table from SCOUT runs
+        if (skillNameSaved.toLowerCase().includes('scout') && _lastRunInputs) {
+          var ownerMatch = outputText.match(/(?:owner|entity|owned by)[:\s]+([^\n]{3,60})/i);
+          if (ownerMatch) {
+            var ownerEntity = ownerMatch[1].trim();
+            _sb.from('contacts').upsert({
+              entity: ownerEntity,
+              market: _detectMarket(_lastRunInputs),
+              notes: 'Auto-extracted from SCOUT run on ' + (_lastRunInputs.addr || 'unknown address'),
+              properties: [_lastRunInputs.addr || '']
+            }, { onConflict: 'entity' }).catch(function(e) { console.warn('contacts save failed:', e); });
+          }
+        }
+        // Auto-save to signal_reports table from Daily Signal runs
+        if (skillNameSaved.toLowerCase().includes('signal')) {
+          _sb.from('signal_reports').insert({
+            market: _detectMarket(_lastRunInputs),
+            submarket: (_lastRunInputs && _lastRunInputs.notes) ? _lastRunInputs.notes.slice(0,100) : null,
+            report_date: new Date().toISOString().slice(0,10),
+            prospects: [],
+            raw_data: { output: outputText.slice(0, 5000), inputs: _lastRunInputs }
+          }).catch(function(e) { console.warn('signal_reports save failed:', e); });
+        }
       } catch(e) { console.warn('Supabase save failed:', e); }
     }
   } catch(e) {
