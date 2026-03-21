@@ -2570,7 +2570,13 @@ function buildTrigger(toolId, d) {
       p += '- In-Place NOI: $' + (d.noi || 'Not provided') + '\n';
       p += '- Market Rent: $' + (d.mktrent || 'Not provided') + ' PSF\n';
       p += '- In-Place Rent: $' + (d.inplace || 'Not provided') + ' PSF\n';
-      p += '- Additional Context: ' + (d.notes || 'None') + '\n\n';
+      p += '- Additional Context: ' + (d.notes || 'None') + '\n';
+      var detectedMarket = _detectMarket(d);
+      if (detectedMarket) {
+        p += '- Detected Market: ' + detectedMarket + ' (confirmed from address)\n\n';
+      } else {
+        p += '- Detected Market: Unknown — flag in red flags\n\n';
+      }
       p += 'Produce these sections:\n\n';
       p += '## DEAL SNAPSHOT\nTwo sentences max. Asset quality, location, tenancy, why it crossed our desk.\n\n';
       if (calc) {
@@ -2592,8 +2598,12 @@ function buildTrigger(toolId, d) {
         p += '| DSCR Year 1 | ' + calc.dscr + 'x | ' + (parseFloat(calc.dscr) >= 1.25 ? '✓ Acceptable' : '⚠️ Tight') + ' |\n';
         p += '| Exit Value | $' + calc.salePrice + ' | At ' + calc.exitCap + '% exit cap |\n\n';
         p += '## PRICE TO MAKE IT WORK\n';
-        p += 'Maximum price to achieve 14.75% IRR: $' + calc.maxPrice + ' ($' + calc.maxPricePSF + ' PSF)\n';
-        p += 'Required price reduction from ask: $' + calc.priceReduction + '\n';
+        var priceRed = parseFloat(calc.priceReduction.replace(/[^0-9.-]/g,''));
+        if (priceRed <= 0) {
+          p += 'Deal clears 14.75% IRR hurdle at ask price. Maximum supportable price is $' + calc.maxPrice + ' ($' + calc.maxPricePSF + ' PSF) — $' + Math.abs(priceRed).toLocaleString() + ' above ask.\n';
+        } else {
+          p += 'Deal does NOT clear 14.75% IRR at ask. Maximum price to hit hurdle: $' + calc.maxPrice + ' ($' + calc.maxPricePSF + ' PSF). Required reduction: $' + calc.priceReduction + '.\n';
+        }
         p += 'These numbers are pre-calculated by RIDGE. Do NOT recalculate or second-guess them. Use them as given.\n\n';
       } else {
         p += '## RETURN STACK\nInsufficient inputs for pre-calculation — estimate based on available data.\n\n';
