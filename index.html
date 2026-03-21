@@ -249,6 +249,36 @@ footer{border-top:1px solid var(--border);padding:20px 24px;text-align:center;co
 .modal-btns{display:flex;gap:8px;justify-content:flex-end;margin-top:14px;}
 .xbtn{position:absolute;top:12px;right:14px;background:none;border:none;color:var(--muted);font-size:18px;cursor:pointer;line-height:1;}
 
+/* API KEY MODAL */
+.apikey-modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:1100;align-items:center;justify-content:center;}
+.apikey-modal-bg.show{display:flex;}
+.apikey-modal{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:28px;width:100%;max-width:420px;position:relative;}
+.apikey-modal h3{font-size:15px;font-weight:700;margin-bottom:6px;color:var(--text);}
+.apikey-modal p{font-size:12px;color:var(--muted);line-height:1.6;margin-bottom:14px;}
+.apikey-note{font-size:11px;color:var(--faint);margin-top:8px;}
+
+/* RESPONSE PANEL */
+.ridge-panel-bg{display:none;position:fixed;inset:0;background:rgba(13,17,23,.96);z-index:1000;flex-direction:column;}
+.ridge-panel-bg.show{display:flex;}
+.ridge-panel-head{background:var(--navy);border-bottom:1px solid #2d3a7a;padding:16px 24px;display:flex;align-items:center;gap:12px;flex-shrink:0;}
+.ridge-panel-skill{font-family:var(--mono);font-size:13px;font-weight:700;color:#cadcfc;letter-spacing:1px;}
+.ridge-panel-brand{font-size:11px;color:#cadcfc;opacity:.65;}
+.ridge-panel-actions{margin-left:auto;display:flex;gap:8px;}
+.ridge-panel-body{flex:1;overflow-y:auto;padding:32px 24px;}
+.ridge-panel-inner{max-width:860px;margin:0 auto;}
+.ridge-panel-content{font-size:14px;line-height:1.85;color:var(--text);white-space:pre-wrap;}
+.ridge-panel-content h2{font-size:15px;font-weight:700;color:var(--blue);margin:20px 0 8px;border-bottom:1px solid var(--border);padding-bottom:5px;}
+.ridge-panel-content h3{font-size:14px;font-weight:700;color:var(--text);margin:14px 0 5px;}
+.ridge-panel-content table{width:100%;border-collapse:collapse;margin:12px 0;font-size:13px;}
+.ridge-panel-content th{background:var(--navy);color:#fff;padding:8px 12px;text-align:left;font-weight:600;}
+.ridge-panel-content td{padding:7px 12px;border-bottom:1px solid var(--border);}
+.ridge-panel-content tr:nth-child(even) td{background:var(--surface2);}
+.ridge-spinner{display:flex;align-items:center;gap:10px;color:var(--muted);font-size:13px;padding:48px 0;}
+.ridge-spinner-dot{width:8px;height:8px;border-radius:50%;background:var(--blue);animation:ridgePulse 1.2s ease-in-out infinite;}
+.ridge-spinner-dot:nth-child(2){animation-delay:.2s;}
+.ridge-spinner-dot:nth-child(3){animation-delay:.4s;}
+@keyframes ridgePulse{0%,80%,100%{opacity:.2;transform:scale(.8)}40%{opacity:1;transform:scale(1)}}
+
 @media (max-width:600px) {
   /* 1. RIDGE Launch panel — stack vertically */
   .ridge-launch{flex-direction:column;align-items:flex-start;padding:20px 18px;}
@@ -290,6 +320,44 @@ footer{border-top:1px solid var(--border);padding:20px 24px;text-align:center;co
   </div>
 </div>
 
+<!-- API KEY MODAL -->
+<div class="apikey-modal-bg" id="apikey-modal">
+  <div class="apikey-modal">
+    <button class="xbtn" onclick="closeApiKeyModal()">✕</button>
+    <h3>Anthropic API Key</h3>
+    <p>Enter your Anthropic API key to enable native response streaming inside RIDGE.</p>
+    <input type="password" id="apikey-input" placeholder="sk-ant-..." />
+    <div class="apikey-note">🔒 Stored in Supabase · Never logged · Never committed to GitHub</div>
+    <div class="modal-btns" style="margin-top:16px;">
+      <button class="btn btn-o" onclick="closeApiKeyModal()">Cancel</button>
+      <button class="btn btn-p" onclick="saveApiKey()">Save Key</button>
+    </div>
+  </div>
+</div>
+
+<!-- RESPONSE PANEL -->
+<div class="ridge-panel-bg" id="ridge-response-panel">
+  <div class="ridge-panel-head">
+    <span class="ridge-panel-skill" id="ridge-panel-skill-name">RIDGE</span>
+    <span class="ridge-panel-brand">· RIDGE Intelligence</span>
+    <div class="ridge-panel-actions">
+      <button class="btn btn-o" id="ridge-copy-btn" onclick="ridgeCopyResponse()" style="font-size:12px;padding:6px 14px;" disabled>Copy</button>
+      <button class="btn btn-o" onclick="closeRidgePanel()" style="font-size:12px;padding:6px 14px;">✕ Close</button>
+    </div>
+  </div>
+  <div class="ridge-panel-body">
+    <div class="ridge-panel-inner">
+      <div id="ridge-spinner" class="ridge-spinner">
+        <div class="ridge-spinner-dot"></div>
+        <div class="ridge-spinner-dot"></div>
+        <div class="ridge-spinner-dot"></div>
+        <span>Waiting for RIDGE…</span>
+      </div>
+      <div class="ridge-panel-content" id="ridge-panel-content" style="display:none;"></div>
+    </div>
+  </div>
+</div>
+
 <!-- HEADER -->
 <header>
   <div class="hdr-left">
@@ -297,6 +365,7 @@ footer{border-top:1px solid var(--border);padding:20px 24px;text-align:center;co
     <span class="hdr-sub">ACQUISITIONS INTELLIGENCE</span>
   </div>
   <div class="hdr-right">
+    <button class="btn btn-o" onclick="showApiKeyModal()" style="font-size:11px;padding:5px 12px;border-radius:4px;">API Key</button>
     <span id="sb-dot" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--faint);flex-shrink:0;" title="Supabase initializing…"></span>
     <span style="font-size:11px;color:var(--muted)">12 Skills Active · v5.2</span>
   </div>
@@ -324,7 +393,7 @@ footer{border-top:1px solid var(--border);padding:20px 24px;text-align:center;co
     <div class="rl-name">RIDGE</div>
     <div class="rl-desc">Senior acquisitions partner. Sourcing, underwriting, conviction, and deal management — all in one session.</div>
   </div>
-  <a class="rl-btn" href="https://claude.ai/new?q=Begin+RIDGE+session.+I+am+ready+to+source+and+evaluate+deals." target="_blank" rel="noopener">↗ Launch RIDGE</a>
+  <button class="rl-btn" onclick="launchRidge()">↗ Launch RIDGE</button>
 </div>
 
 <!-- ═══ SUPPORT SKILLS ═══ -->
@@ -2363,21 +2432,8 @@ function runTool(toolId) {
   }
 
   var prompt = buildTrigger(toolId, d);
-  var encoded = encodeURIComponent(prompt);
-
-  // Use ?q= — opens Claude with prompt pre-filled, no popup blocker issues
-  // Show launch link in modal so user clicks it directly (never blocked)
-  var url = 'https://claude.ai/new?q=' + encoded;
-
-  document.getElementById('launch-title').textContent = (tool ? tool.name : 'PIPELINE') + ' — Ready';
-  document.getElementById('launch-prompt').value = prompt;
-  document.getElementById('launch-note').textContent = '';
-
-  var goBtn = document.getElementById('launch-go-btn');
-  goBtn.onclick = null;
-  goBtn.outerHTML = '<a id="launch-go-btn" class="btn btn-p" href="' + url + '" target="_blank" rel="noopener" onclick="closeLaunch()" style="text-decoration:none;">↗ Open in Claude</a>';
-
-  document.getElementById('launch-modal').classList.add('show');
+  var skillName = tool ? tool.name : 'PIPELINE';
+  runRidgeAPI(skillName, prompt);
 }
 
 function closeLaunch() {
@@ -2844,8 +2900,7 @@ function plLaunchReport() {
   });
   lines.push('---');
   lines.push('Summarize this pipeline. Highlight: (1) deals closest to closing, (2) any overdue next steps, (3) total potential acquisition volume, (4) recommended focus for this week.');
-  var url = 'https://claude.ai/new?q=' + encodeURIComponent(lines.join('\n'));
-  window.open(url, '_blank');
+  runRidgeAPI('Pipeline Report', lines.join('\n'));
 }
 
 function showToast(msg) {
@@ -4058,7 +4113,136 @@ function _parseGavelLeases(txt){
   return leases;
 }
 
-_sbInit();
+// ── ANTHROPIC API INTEGRATION ────────────────────────────────
+var _apiKey = null;
+
+async function loadApiKey() {
+  if (!_sbOk || !_sb) return;
+  try {
+    var { data, error } = await _sb.from('session_state').select('data').eq('id', 'api_config').single();
+    if (!error && data && data.data && data.data.apiKey) {
+      _apiKey = data.data.apiKey;
+    }
+  } catch(e) {}
+}
+
+async function saveApiKey() {
+  var val = (document.getElementById('apikey-input').value || '').trim();
+  if (!val) { showToast('Enter an API key first'); return; }
+  _apiKey = val;
+  if (_sbOk && _sb) {
+    try {
+      await _sb.from('session_state').upsert({ id: 'api_config', data: { apiKey: val } }, { onConflict: 'id' });
+    } catch(e) {}
+  }
+  closeApiKeyModal();
+  showToast('API key saved');
+}
+
+function showApiKeyModal() {
+  document.getElementById('apikey-input').value = '';
+  document.getElementById('apikey-modal').classList.add('show');
+  setTimeout(function() { document.getElementById('apikey-input').focus(); }, 100);
+}
+
+function closeApiKeyModal() {
+  document.getElementById('apikey-modal').classList.remove('show');
+}
+
+function openRidgePanel(skillName) {
+  document.getElementById('ridge-panel-skill-name').textContent = skillName;
+  document.getElementById('ridge-spinner').style.display = 'flex';
+  document.getElementById('ridge-panel-content').style.display = 'none';
+  document.getElementById('ridge-panel-content').textContent = '';
+  document.getElementById('ridge-copy-btn').disabled = true;
+  document.getElementById('ridge-response-panel').classList.add('show');
+}
+
+function closeRidgePanel() {
+  document.getElementById('ridge-response-panel').classList.remove('show');
+}
+
+function ridgeCopyResponse() {
+  var text = document.getElementById('ridge-panel-content').textContent;
+  navigator.clipboard.writeText(text).then(function() { showToast('Copied to clipboard'); });
+}
+
+async function runRidgeAPI(skillName, prompt) {
+  if (!_apiKey) {
+    showApiKeyModal();
+    return;
+  }
+  openRidgePanel(skillName);
+  var contentEl = document.getElementById('ridge-panel-content');
+  var spinnerEl = document.getElementById('ridge-spinner');
+  var copyBtn   = document.getElementById('ridge-copy-btn');
+  var accumulated = '';
+  try {
+    var resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'anthropic-version': '2023-06-01',
+        'x-api-key': _apiKey
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 8000,
+        stream: true,
+        system: 'You are RIDGE, an institutional CRE acquisitions intelligence platform. You are running the ' + skillName + ' module. Be precise, data-driven, and format output in clean markdown.',
+        messages: [{ role: 'user', content: prompt }]
+      })
+    });
+    if (!resp.ok) {
+      var errText = await resp.text();
+      spinnerEl.style.display = 'none';
+      contentEl.style.display = 'block';
+      contentEl.textContent = 'API error ' + resp.status + ': ' + errText;
+      return;
+    }
+    spinnerEl.style.display = 'none';
+    contentEl.style.display = 'block';
+    var reader = resp.body.getReader();
+    var decoder = new TextDecoder();
+    var buf = '';
+    while (true) {
+      var { done, value } = await reader.read();
+      if (done) break;
+      buf += decoder.decode(value, { stream: true });
+      var lines = buf.split('\n');
+      buf = lines.pop();
+      for (var i = 0; i < lines.length; i++) {
+        var line = lines[i].trim();
+        if (!line.startsWith('data:')) continue;
+        var jsonStr = line.slice(5).trim();
+        if (jsonStr === '[DONE]') continue;
+        try {
+          var evt = JSON.parse(jsonStr);
+          if (evt.type === 'content_block_delta' && evt.delta && evt.delta.type === 'text_delta') {
+            accumulated += evt.delta.text;
+            contentEl.textContent = accumulated;
+            var panelBody = document.getElementById('ridge-response-panel').querySelector('.ridge-panel-body');
+            panelBody.scrollTop = panelBody.scrollHeight;
+          }
+        } catch(e) {}
+      }
+    }
+    copyBtn.disabled = false;
+  } catch(e) {
+    spinnerEl.style.display = 'none';
+    contentEl.style.display = 'block';
+    contentEl.textContent = 'Request failed: ' + e.message + '\n\nNote: direct browser requests to the Anthropic API may be blocked by CORS. A server-side proxy may be required.';
+  }
+}
+
+function launchRidge() {
+  runRidgeAPI('RIDGE', 'Begin RIDGE session. I am ready to source and evaluate deals.');
+}
+
+_sbInit().then(async function() {
+  await loadApiKey();
+  if (!_apiKey) showApiKeyModal();
+});
 </script>
 
 
