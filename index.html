@@ -1114,6 +1114,9 @@ var TOOLS = [
       {row:[{id:'occ',label:'Current Occupancy',ph:'e.g. 74%'},{id:'noi',label:'In-Place NOI (if known)',ph:'e.g. $810,000'}]},
       {row:[{id:'mktrent',label:'Market Rent PSF',ph:'e.g. $13.75 NNN'},{id:'inplace',label:'In-Place Rent PSF',ph:'e.g. $10.50 NNN'}]},
       {row:[{id:'notes',label:'Known Facts',ph:'e.g. 4 tenants, avg 18 mo remaining, NNN leases, 2 docks per bay...',type:'textarea'}]},
+      {row:[{id:'ltv',label:'Target LTV (%)',ph:'60'},{id:'rate',label:'Interest Rate (%)',ph:'6.75'}]},
+      {row:[{id:'amort',label:'Amortization (yrs)',ph:'25'},{id:'io',label:'IO Period (yrs)',ph:'0'}]},
+      {row:[{id:'exitcap',label:'Exit Cap Rate (%)',ph:'Leave blank to use going-in + 35bps'}]},
     ],
     steps:['Calculating in-place metrics...','Reverse-engineering stabilized NOI...','Running YOC at Year 3/4...','Checking RIDGE hurdles...','Generating verdict...'],
     system:`You are THE NAPKIN, RIDGE's 60-second deal screen. Your job is to quickly determine if a deal is worth pursuing before committing to full underwriting. RIDGE hurdles: IRR ≥14.75%, YOC 7.5–8.0% at Yr3/4, EM ≥1.8x, max LTV 65%. Be direct. Give a clear Go/No-Go. If No-Go, state exactly what price would make it work.`,
@@ -2493,8 +2496,11 @@ function buildTrigger(toolId, d) {
       p += '- Equity multiple: 1.8x\u20132.2x\n';
       p += '- Max LTV: 65%\n';
       p += '- Hold: 5 years standard\n';
-      p += '- Debt assumption: 60% LTV, 6.75% rate, 25yr amortization\n';
-      p += '- Exit cap: going-in cap + 25\u201350bps\n\n';
+      p += '- Target LTV: ' + (d.ltv || '60') + '%\n';
+      p += '- Interest Rate: ' + (d.rate || '6.75') + '%\n';
+      p += '- Amortization: ' + (d.amort || '25') + ' years\n';
+      p += '- IO Period: ' + (d.io || '0') + ' years (if IO > 0, calculate IO cash flows for that period then switch to amortizing)\n';
+      p += '- Exit Cap: ' + (d.exitcap ? d.exitcap + '%' : 'going-in cap + 35bps') + '\n\n';
       p += 'DEAL INPUTS:\n';
       p += '- Address: ' + (d.addr || 'Not provided') + '\n';
       p += '- Asset Type: ' + (d.type || 'Not provided') + '\n';
@@ -2511,8 +2517,9 @@ function buildTrigger(toolId, d) {
       p += '## RETURN STACK\nShow all math. Display as a table:\n| Metric | Value | vs Entrada Hurdle |\n';
       p += '- Going-in cap rate\n- Price PSF vs market basis range\n- Year 1 NOI (in-place)\n';
       p += '- Stabilized NOI (market rents, 95% occupancy)\n- Year 3/4 NOI (2% annual escalations from stabilized)\n';
-      p += '- Year 3/4 YOC at ask price\n- Max loan at 60% LTV\n- Annual debt service\n';
-      p += '- Year 1 levered cash flow\n- Levered IRR (5yr hold, exit at going-in cap + 35bps)\n';
+      p += '- Year 3/4 YOC at ask price\n- Loan amount at target LTV\n- Annual debt service\n';
+      p += '- IO period annual cash flows (if IO > 0, show separately for each IO year)\n';
+      p += '- Year 1 levered cash flow (amortizing)\n- Levered IRR (5yr hold, exit at specified exit cap — calculated correctly accounting for IO period cash flows)\n';
       p += '- Equity multiple\n- DSCR Year 1\n\n';
       p += '## PRICE TO MAKE IT WORK\nIf the deal doesn\'t clear 14.75% IRR at ask: calculate the exact price where it does. Show the math. State it as a dollar amount and PSF.\n\n';
       p += '## RED FLAGS\nBullet list. Be direct. No hedging.\n\n';
