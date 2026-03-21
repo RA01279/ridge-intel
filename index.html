@@ -2544,6 +2544,7 @@ function buildTrigger(toolId, d) {
       return p;
 
     case 'napkin':
+      var calc = _napkinCalc(d);
       var p = 'You are RIDGE, a senior acquisitions officer at Entrada Partners. Apply the full RIDGE investment framework to this deal screen.\n\n';
       p += 'ENTRADA INVESTMENT CRITERIA:\n';
       p += '- Asset types: Industrial, Flex Industrial, Single-story Office (conversion only)\n';
@@ -2572,14 +2573,31 @@ function buildTrigger(toolId, d) {
       p += '- Additional Context: ' + (d.notes || 'None') + '\n\n';
       p += 'Produce these sections:\n\n';
       p += '## DEAL SNAPSHOT\nTwo sentences max. Asset quality, location, tenancy, why it crossed our desk.\n\n';
-      p += '## RETURN STACK\nShow all math. Display as a table:\n| Metric | Value | vs Entrada Hurdle |\n';
-      p += '- Going-in cap rate\n- Price PSF vs market basis range\n- Year 1 NOI (in-place)\n';
-      p += '- Stabilized NOI (market rents, 95% occupancy)\n- Year 3/4 NOI (2% annual escalations from stabilized)\n';
-      p += '- Year 3/4 YOC at ask price\n- Loan amount at target LTV\n- Annual debt service\n';
-      p += '- IO period annual cash flows (if IO > 0, show separately for each IO year)\n';
-      p += '- Year 1 levered cash flow (amortizing)\n- Levered IRR (5yr hold, exit at specified exit cap — calculated correctly accounting for IO period cash flows)\n';
-      p += '- Equity multiple\n- DSCR Year 1\n\n';
-      p += '## PRICE TO MAKE IT WORK\nIf the deal doesn\'t clear 14.75% IRR at ask: calculate the exact price where it does. Show the math. State it as a dollar amount and PSF.\n\n';
+      if (calc) {
+        p += '## RETURN STACK (PRE-CALCULATED — USE THESE EXACT NUMBERS, DO NOT RECALCULATE)\n';
+        p += '| Metric | Value | vs Entrada Hurdle |\n';
+        p += '|---|---|---|\n';
+        p += '| Going-in Cap Rate | ' + calc.goingInCap + '% | ' + (parseFloat(calc.goingInCap) >= 6.5 ? '✓ Acceptable' : '⚠️ Compressed') + ' |\n';
+        p += '| Price PSF | $' + calc.psf + ' | Market context needed |\n';
+        p += '| Year 1 NOI (in-place) | $' + calc.noi1 + ' | Baseline |\n';
+        p += '| Stabilized NOI | $' + calc.noiStab + ' | Market rents, 95% occ |\n';
+        p += '| Year 4 NOI | $' + calc.noi4 + ' | 2% annual escalation |\n';
+        p += '| Year 3/4 YOC | ' + calc.yoc34 + '% | ' + (calc.meetsYOC ? '✓ Meets 7.5% floor' : '❌ Below 7.5% floor') + ' |\n';
+        p += '| Loan Amount (' + (d.ltv||'60') + '% LTV) | $' + calc.loanAmt + ' | |\n';
+        p += '| Equity Required | $' + calc.equity + ' | |\n';
+        p += '| Annual Debt Service | $' + calc.annualDS + ' | ' + (calc.ioYrs > 0 ? 'IO Yrs 1-' + calc.ioYrs : 'Fully amortizing') + ' |\n';
+        p += '| Year 1 Levered Cash Flow | $' + calc.yr1LevCF + ' | |\n';
+        p += '| Levered IRR | ' + calc.irr + '% | ' + (calc.meetsIRR ? '✓ Clears 14.75% hurdle' : '❌ Below 14.75% hurdle') + ' |\n';
+        p += '| Equity Multiple | ' + calc.em + 'x | ' + (calc.meetsEM ? '✓ Meets 1.75x minimum' : '❌ Below 1.75x minimum') + ' |\n';
+        p += '| DSCR Year 1 | ' + calc.dscr + 'x | ' + (parseFloat(calc.dscr) >= 1.25 ? '✓ Acceptable' : '⚠️ Tight') + ' |\n';
+        p += '| Exit Value | $' + calc.salePrice + ' | At ' + calc.exitCap + '% exit cap |\n\n';
+        p += '## PRICE TO MAKE IT WORK\n';
+        p += 'Maximum price to achieve 14.75% IRR: $' + calc.maxPrice + ' ($' + calc.maxPricePSF + ' PSF)\n';
+        p += 'Required price reduction from ask: $' + calc.priceReduction + '\n';
+        p += 'These numbers are pre-calculated by RIDGE. Do NOT recalculate or second-guess them. Use them as given.\n\n';
+      } else {
+        p += '## RETURN STACK\nInsufficient inputs for pre-calculation — estimate based on available data.\n\n';
+      }
       p += '## RED FLAGS\nBullet list. Be direct. No hedging.\n\n';
       p += '## CONVICTION\nState exactly one of: HIGH CONVICTION | CONDITIONAL | PASS\nThen one paragraph defending that verdict.\n\n';
       p += '## NEXT STEPS\nThree specific actions if pursuing.';
@@ -4657,6 +4675,123 @@ function parseMarkdown(text) {
 }
 
 // ── RESPONSE PANEL EXPORTS ───────────────────────────────────
+// ── NAPKIN PRE-CALCULATOR ─────────────────────────────────────
+function _napkinCalc(d) {
+  var ask = parseFloat((d.ask||'0').toString().replace(/[^0-9.]/g,''));
+  var sf = parseFloat((d.sf||'0').toString().replace(/[^0-9.]/g,''));
+  var noi1 = parseFloat((d.noi||'0').toString().replace(/[^0-9.]/g,''));
+  var mktRent = parseFloat((d.mktrent||'0').toString().replace(/[^0-9.]/g,''));
+  var occ = parseFloat((d.occ||'95').toString().replace(/[^0-9.]/g,''))/100;
+  var ltv = parseFloat((d.ltv||'60').toString().replace(/[^0-9.]/g,''))/100;
+  var rate = parseFloat((d.rate||'6.75').toString().replace(/[^0-9.]/g,''))/100;
+  var amortYrs = parseFloat((d.amort||'25').toString().replace(/[^0-9.]/g,''));
+  var ioYrs = parseFloat((d.io||'0').toString().replace(/[^0-9.]/g,''));
+  var exitCapInput = parseFloat((d.exitcap||'0').toString().replace(/[^0-9.]/g,''));
+  var holdYrs = 5;
+
+  if (!ask || !sf || !noi1) return null;
+
+  var psf = ask / sf;
+  var goingInCap = noi1 / ask;
+  var exitCap = exitCapInput ? exitCapInput/100 : goingInCap + 0.0035;
+  var noiStab = mktRent && sf ? mktRent * sf * 0.95 : noi1 * 1.05;
+  var noi4 = noiStab * Math.pow(1.02, 4);
+  var yoc34 = noi4 / ask;
+
+  var loanAmt = ask * ltv;
+  var equity = ask - loanAmt;
+  var monthlyRate = rate / 12;
+  var amortMonths = amortYrs * 12;
+  var monthlyPmt = loanAmt * (monthlyRate * Math.pow(1+monthlyRate,amortMonths)) / (Math.pow(1+monthlyRate,amortMonths)-1);
+  var annualDS = monthlyPmt * 12;
+  var annualIO = loanAmt * rate;
+
+  function _balance(loan, mRate, mPmt, months) {
+    return loan * Math.pow(1+mRate,months) - mPmt * (Math.pow(1+mRate,months)-1) / mRate;
+  }
+
+  function _buildCFs(askPrice) {
+    var ln = askPrice * ltv;
+    var eq = askPrice * (1-ltv);
+    var mPmt = ln * (monthlyRate * Math.pow(1+monthlyRate,amortMonths)) / (Math.pow(1+monthlyRate,amortMonths)-1);
+    var ds = mPmt * 12;
+    var io = ln * rate;
+    var cfs = [-eq];
+    for (var yr=1; yr<=holdYrs; yr++) {
+      var noiYr = noi1 * Math.pow(1.02, yr-1);
+      var pmtYr = yr <= ioYrs ? io : ds;
+      var cf = noiYr - pmtYr;
+      if (yr === holdYrs) {
+        var exitNOI = noiYr * 1.02;
+        var sale = exitNOI / exitCap;
+        var amMonths = Math.max(0, (holdYrs - ioYrs)) * 12;
+        var bal = ioYrs >= holdYrs ? ln : _balance(ln, monthlyRate, mPmt, amMonths);
+        cfs.push(cf + sale - bal);
+      } else {
+        cfs.push(cf);
+      }
+    }
+    return cfs;
+  }
+
+  function calcIRR(cfs) {
+    var r = 0.15;
+    for (var i=0; i<200; i++) {
+      var npv=0, dnpv=0;
+      for (var t=0; t<cfs.length; t++) {
+        npv  += cfs[t] / Math.pow(1+r,t);
+        dnpv -= t * cfs[t] / Math.pow(1+r,t+1);
+      }
+      if (Math.abs(dnpv) < 1e-10) break;
+      var nr = r - npv/dnpv;
+      if (Math.abs(nr-r) < 0.000001) { r=nr; break; }
+      r = Math.min(Math.max(nr, -0.5), 5);
+    }
+    return r;
+  }
+
+  var cfs = _buildCFs(ask);
+  var irr = calcIRR(cfs);
+  var totalDist = cfs.slice(1).reduce(function(a,b){return a+b;},0);
+  var em = (totalDist + equity) / equity;
+  var dscr = noi1 / annualDS;
+  var exitNOI = noi1 * Math.pow(1.02, holdYrs) * 1.02;
+  var salePrice = exitNOI / exitCap;
+
+  var lo = ask*0.3, hi = ask*1.1;
+  for (var iter=0; iter<80; iter++) {
+    var mid = (lo+hi)/2;
+    if (calcIRR(_buildCFs(mid)) < 0.1475) hi=mid; else lo=mid;
+  }
+  var maxPrice = (lo+hi)/2;
+
+  return {
+    ask: ask,
+    psf: psf.toFixed(2),
+    goingInCap: (goingInCap*100).toFixed(2),
+    exitCap: (exitCap*100).toFixed(2),
+    noi1: Math.round(noi1).toLocaleString(),
+    noiStab: Math.round(noiStab).toLocaleString(),
+    noi4: Math.round(noi4).toLocaleString(),
+    yoc34: (yoc34*100).toFixed(2),
+    loanAmt: Math.round(loanAmt).toLocaleString(),
+    equity: Math.round(equity).toLocaleString(),
+    annualDS: Math.round(ioYrs>0 ? annualIO : annualDS).toLocaleString(),
+    yr1LevCF: Math.round(cfs[1]).toLocaleString(),
+    irr: (irr*100).toFixed(2),
+    em: em.toFixed(2),
+    dscr: dscr.toFixed(2),
+    salePrice: Math.round(salePrice).toLocaleString(),
+    maxPrice: Math.round(maxPrice).toLocaleString(),
+    maxPricePSF: (maxPrice/sf).toFixed(2),
+    priceReduction: Math.round(ask-maxPrice).toLocaleString(),
+    meetsIRR: irr >= 0.1475,
+    meetsYOC: yoc34 >= 0.075,
+    meetsEM: em >= 1.75,
+    ioYrs: ioYrs
+  };
+}
+
 // ── DOM helper — sibling elements until next h2 ──────────────
 function _getSiblingNodes(h2) {
   var nodes = [], node = h2.nextSibling;
