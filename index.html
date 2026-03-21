@@ -279,6 +279,21 @@ footer{border-top:1px solid var(--border);padding:20px 24px;text-align:center;co
 .ridge-spinner-dot:nth-child(3){animation-delay:.4s;}
 @keyframes ridgePulse{0%,80%,100%{opacity:.2;transform:scale(.8)}40%{opacity:1;transform:scale(1)}}
 
+@media print {
+  body > *:not(#ridge-response-panel){display:none!important;}
+  #ridge-response-panel{display:block!important;position:static!important;background:#fff!important;}
+  .ridge-panel-head{display:none!important;}
+  .ridge-panel-body{overflow:visible!important;padding:0!important;}
+  .ridge-panel-inner{max-width:100%!important;}
+  .ridge-panel-content{color:#000!important;font-size:11pt;white-space:normal;}
+  .ridge-panel-content h2{color:#000!important;border-color:#ccc!important;}
+  .ridge-panel-content h3,.ridge-panel-content h4{color:#000!important;}
+  .ridge-panel-content table{width:100%;border-collapse:collapse;}
+  .ridge-panel-content th{background:#333!important;color:#fff!important;padding:6px 10px;}
+  .ridge-panel-content td{border:1px solid #ccc;padding:5px 10px;}
+  .ridge-panel-content tr:nth-child(even) td{background:#f5f5f5!important;}
+}
+
 @media (max-width:600px) {
   /* 1. RIDGE Launch panel — stack vertically */
   .ridge-launch{flex-direction:column;align-items:flex-start;padding:20px 18px;}
@@ -342,6 +357,9 @@ footer{border-top:1px solid var(--border);padding:20px 24px;text-align:center;co
     <span class="ridge-panel-brand">· RIDGE Intelligence</span>
     <div class="ridge-panel-actions">
       <button class="btn btn-o" id="ridge-copy-btn" onclick="ridgeCopyResponse()" style="font-size:12px;padding:6px 14px;" disabled>Copy</button>
+      <button class="btn btn-o" id="ridge-pdf-btn" onclick="ridgeExportPDF()" style="font-size:12px;padding:6px 14px;" disabled>↓ PDF</button>
+      <button class="btn btn-o" id="ridge-ppt-btn" onclick="ridgeExportPPT()" style="font-size:12px;padding:6px 14px;" disabled>↓ PPT</button>
+      <button class="btn btn-o" id="ridge-xls-btn" onclick="ridgeExportXLS()" style="font-size:12px;padding:6px 14px;" disabled>↓ Excel</button>
       <button class="btn btn-o" onclick="closeRidgePanel()" style="font-size:12px;padding:6px 14px;">✕ Close</button>
     </div>
   </div>
@@ -4143,8 +4161,11 @@ function openRidgePanel(skillName) {
   document.getElementById('ridge-panel-skill-name').textContent = skillName;
   document.getElementById('ridge-spinner').style.display = 'flex';
   document.getElementById('ridge-panel-content').style.display = 'none';
-  document.getElementById('ridge-panel-content').textContent = '';
+  document.getElementById('ridge-panel-content').innerHTML = '';
   document.getElementById('ridge-copy-btn').disabled = true;
+  document.getElementById('ridge-pdf-btn').disabled = true;
+  document.getElementById('ridge-ppt-btn').disabled = true;
+  document.getElementById('ridge-xls-btn').disabled = true;
   document.getElementById('ridge-response-panel').classList.add('show');
 }
 
@@ -4217,7 +4238,7 @@ async function runRidgeAPI(skillName, prompt) {
           var evt = JSON.parse(jsonStr);
           if (evt.type === 'content_block_delta' && evt.delta && evt.delta.type === 'text_delta') {
             accumulated += evt.delta.text;
-            contentEl.textContent = accumulated;
+            contentEl.innerHTML = parseMarkdown(accumulated);
             var panelBody = document.getElementById('ridge-response-panel').querySelector('.ridge-panel-body');
             panelBody.scrollTop = panelBody.scrollHeight;
           }
@@ -4225,6 +4246,9 @@ async function runRidgeAPI(skillName, prompt) {
       }
     }
     copyBtn.disabled = false;
+    document.getElementById('ridge-pdf-btn').disabled = false;
+    document.getElementById('ridge-ppt-btn').disabled = false;
+    document.getElementById('ridge-xls-btn').disabled = false;
   } catch(e) {
     spinnerEl.style.display = 'none';
     contentEl.style.display = 'block';
@@ -4232,6 +4256,217 @@ async function runRidgeAPI(skillName, prompt) {
   }
 }
 
+
+// ── MARKDOWN RENDERER ────────────────────────────────────────
+function parseMarkdown(text) {
+  var lines = text.split('\n');
+  var html = '';
+  var i = 0;
+
+  function esc(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+  function inline(s) {
+    s = s.replace(/`([^`]+)`/g, '<code>$1</code>');
+    s = s.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+    s = s.replace(/\*([^*\n]+)\*/g, '<em>$1</em>');
+    return s;
+  }
+  function isSep(row) {
+    return row.replace(/[\|\s\-:]/g,'') === '';
+  }
+  function parseCells(row) {
+    return row.trim().split('|').slice(1,-1).map(function(c){ return c.trim(); });
+  }
+
+  while (i < lines.length) {
+    var line = lines[i];
+
+    // fenced code block
+    if (line.trim().startsWith('```')) {
+      var code = '';
+      i++;
+      while (i < lines.length && !lines[i].trim().startsWith('```')) {
+        code += esc(lines[i]) + '\n';
+        i++;
+      }
+      html += '<pre><code>' + code + '</code></pre>';
+      i++;
+      continue;
+    }
+
+    // headings
+    if (/^#### /.test(line)) { html += '<h4>' + inline(line.slice(5)) + '</h4>'; i++; continue; }
+    if (/^### /.test(line))  { html += '<h3>' + inline(line.slice(4)) + '</h3>'; i++; continue; }
+    if (/^## /.test(line))   { html += '<h2>' + inline(line.slice(3)) + '</h2>'; i++; continue; }
+    if (/^# /.test(line))    { html += '<h2>' + inline(line.slice(2)) + '</h2>'; i++; continue; }
+
+    // hr
+    if (/^---+$/.test(line.trim())) { html += '<hr>'; i++; continue; }
+
+    // table — collect run of | lines
+    if (/^\|/.test(line.trim())) {
+      var tableLines = [];
+      while (i < lines.length && /^\|/.test(lines[i].trim())) {
+        tableLines.push(lines[i].trim());
+        i++;
+      }
+      html += '<table>';
+      if (tableLines.length >= 2 && isSep(tableLines[1])) {
+        html += '<thead><tr>' + parseCells(tableLines[0]).map(function(c){ return '<th>' + inline(c) + '</th>'; }).join('') + '</tr></thead><tbody>';
+        tableLines.slice(2).forEach(function(tl) {
+          html += '<tr>' + parseCells(tl).map(function(c){ return '<td>' + inline(c) + '</td>'; }).join('') + '</tr>';
+        });
+      } else {
+        html += '<tbody>';
+        tableLines.forEach(function(tl) {
+          html += '<tr>' + parseCells(tl).map(function(c){ return '<td>' + inline(c) + '</td>'; }).join('') + '</tr>';
+        });
+      }
+      html += '</tbody></table>';
+      continue;
+    }
+
+    // unordered list
+    if (/^[\*\-] /.test(line.trim())) {
+      html += '<ul>';
+      while (i < lines.length && /^[\*\-] /.test(lines[i].trim())) {
+        html += '<li>' + inline(lines[i].trim().slice(2)) + '</li>';
+        i++;
+      }
+      html += '</ul>';
+      continue;
+    }
+
+    // ordered list
+    if (/^\d+\. /.test(line.trim())) {
+      html += '<ol>';
+      while (i < lines.length && /^\d+\. /.test(lines[i].trim())) {
+        html += '<li>' + inline(lines[i].trim().replace(/^\d+\. /, '')) + '</li>';
+        i++;
+      }
+      html += '</ol>';
+      continue;
+    }
+
+    // empty line
+    if (line.trim() === '') { i++; continue; }
+
+    // paragraph
+    html += '<p>' + inline(line) + '</p>';
+    i++;
+  }
+  return html;
+}
+
+// ── RESPONSE PANEL EXPORTS ───────────────────────────────────
+function ridgeExportPDF() {
+  window.print();
+}
+
+async function ridgeExportPPT() {
+  var el = document.getElementById('ridge-panel-content');
+  var skillName = document.getElementById('ridge-panel-skill-name').textContent;
+  var dateStr = new Date().toLocaleDateString('en-US', {year:'numeric',month:'short',day:'numeric'});
+  var pptx = new PptxGenJS();
+
+  // Title slide
+  var s0 = pptx.addSlide();
+  s0.background = { color: '0D1117' };
+  s0.addText(skillName, { x:0.5, y:2.2, w:12.3, h:1.4, fontSize:44, bold:true, color:'2196F3', fontFace:'Courier New', align:'center' });
+  s0.addText('RIDGE Intelligence  ·  ' + dateStr, { x:0.5, y:3.8, w:12.3, h:0.6, fontSize:16, color:'8B949E', align:'center' });
+
+  // One slide per h2 section
+  var h2s = el.querySelectorAll('h2');
+  if (h2s.length === 0) {
+    // No h2s — single content slide
+    var s1 = pptx.addSlide();
+    s1.background = { color: '0D1117' };
+    s1.addText(el.innerText.slice(0, 2000), { x:0.5, y:0.5, w:12.3, h:6.5, fontSize:13, color:'E6EDF3', valign:'top', wrap:true });
+  } else {
+    h2s.forEach(function(h2) {
+      var sl = pptx.addSlide();
+      sl.background = { color: '0D1117' };
+      sl.addText(h2.textContent, { x:0.5, y:0.3, w:12.3, h:0.9, fontSize:26, bold:true, color:'2196F3', fontFace:'Courier New' });
+      // Gather text from siblings until next h2
+      var bullets = [];
+      var node = h2.nextSibling;
+      while (node && node.nodeName !== 'H2') {
+        var txt = (node.textContent || '').trim();
+        if (txt) {
+          txt.split('\n').forEach(function(ln) {
+            if (ln.trim()) bullets.push({ text: ln.trim(), options: { bullet: { type:'bullet' }, fontSize:13, color:'E6EDF3', breakLine:true } });
+          });
+        }
+        node = node.nextSibling;
+      }
+      if (bullets.length) {
+        sl.addText(bullets, { x:0.5, y:1.4, w:12.3, h:5.8, valign:'top', wrap:true });
+      }
+    });
+  }
+
+  var fname = 'RIDGE_' + skillName.replace(/[^a-zA-Z0-9]/g,'_') + '_' + new Date().toISOString().slice(0,10) + '.pptx';
+  await pptx.writeFile({ fileName: fname });
+}
+
+async function ridgeExportXLS() {
+  var el = document.getElementById('ridge-panel-content');
+  var skillName = document.getElementById('ridge-panel-skill-name').textContent;
+  var wb = new ExcelJS.Workbook();
+  wb.creator = 'RIDGE Intelligence';
+  wb.created = new Date();
+
+  // Summary sheet — all non-table text
+  var summaryWs = wb.addWorksheet('Summary');
+  summaryWs.columns = [{ header: '', key: 'text', width: 120 }];
+  var titleRow = summaryWs.addRow(['RIDGE ' + skillName + ' — ' + new Date().toLocaleDateString()]);
+  titleRow.font = { bold: true, size: 14, color: { argb: 'FF2196F3' } };
+  summaryWs.addRow([]);
+
+  var tableIdx = 0;
+  Array.from(el.childNodes).forEach(function(node) {
+    if (!node.tagName) return;
+    if (node.tagName === 'TABLE') {
+      tableIdx++;
+      // Name sheet after preceding heading
+      var prev = node.previousElementSibling;
+      var sheetName = (prev && prev.textContent) ? prev.textContent.trim().slice(0, 28) : 'Table ' + tableIdx;
+      // Strip chars invalid in sheet names
+      sheetName = sheetName.replace(/[\\\/\?\*\[\]:]/g, '').trim() || ('Table ' + tableIdx);
+      var ws = wb.addWorksheet(sheetName);
+      var rows = Array.from(node.querySelectorAll('tr'));
+      var colCount = rows.length ? rows[0].querySelectorAll('th,td').length : 1;
+      ws.columns = Array.from({length: colCount}, function(_, ci) { return { key: 'c'+ci, width: 22 }; });
+      rows.forEach(function(tr, ri) {
+        var cells = Array.from(tr.querySelectorAll('th,td')).map(function(td) { return td.textContent.trim(); });
+        var row = ws.addRow(cells);
+        if (ri === 0) {
+          row.eachCell(function(cell) {
+            cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+            cell.fill = { type:'pattern', pattern:'solid', fgColor:{ argb:'FF1E2761' } };
+            cell.alignment = { horizontal: 'center' };
+          });
+          ws.getRow(1).height = 20;
+        } else if (ri % 2 === 0) {
+          row.eachCell(function(cell) {
+            cell.fill = { type:'pattern', pattern:'solid', fgColor:{ argb:'FF1C2128' } };
+          });
+        }
+      });
+    } else {
+      var txt = (node.textContent || '').trim();
+      if (txt) summaryWs.addRow([txt]);
+    }
+  });
+
+  var fname = 'RIDGE_' + skillName.replace(/[^a-zA-Z0-9]/g,'_') + '_' + new Date().toISOString().slice(0,10) + '.xlsx';
+  var buf = await wb.xlsx.writeBuffer();
+  var blob = new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = fname;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
 
 _sbInit().then(async function() {
   await loadApiKey();
