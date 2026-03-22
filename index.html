@@ -1191,6 +1191,7 @@ var TOOLS = [
       {row:[{id:'equity',label:'Total Equity ($)',ph:'e.g. 9275000'},{id:'gp_split',label:'GP Equity (%)',ph:'10'}]},
       {row:[{id:'pref',label:'Preferred Return (%)',ph:'10'},{id:'pref_type',label:'Pref Type',type:'select',opts:['Compounded','Simple']}]},
       {row:[{id:'catchup',label:'GP Catch-Up',type:'select',opts:['Yes','No']},{id:'catchup_pct',label:'Catch-Up % (of profits)',ph:'100'}]},
+      {row:[{id:'num_tiers',label:'Number of Tiers',type:'select',opts:['1','2','3']}]},
       {row:[{id:'t1_irr',label:'Tier 1 IRR Hurdle (%)',ph:'10'},{id:'t1_gp',label:'Tier 1 GP Split (%)',ph:'30'}]},
       {row:[{id:'t2_irr',label:'Tier 2 IRR Hurdle (%)',ph:'15'},{id:'t2_gp',label:'Tier 2 GP Split (%)',ph:'35'}]},
       {row:[{id:'t3_irr',label:'Tier 3 IRR Hurdle (%)',ph:'20'},{id:'t3_gp',label:'Tier 3 GP Split (%)',ph:'40'}]},
@@ -1402,6 +1403,26 @@ function renderTools() {
       var el=document.getElementById('f-napkin-'+fid);
       if(el) el.addEventListener('input',updateNapkinLive);
     });
+
+    // Waterfall tier visibility
+    if (tool.id === 'waterfall') {
+      function _wfTierRows() {
+        var t2irr = document.getElementById('f-waterfall-t2_irr');
+        var t3irr = document.getElementById('f-waterfall-t3_irr');
+        if (!t2irr || !t3irr) return;
+        var t2row = t2irr.closest('.fr');
+        var t3row = t3irr.closest('.fr');
+        var sel = document.getElementById('f-waterfall-num_tiers');
+        var n = sel ? parseInt(sel.value) : 1;
+        if (t2row) t2row.style.display = n >= 2 ? '' : 'none';
+        if (t3row) t3row.style.display = n >= 3 ? '' : 'none';
+      }
+      var numTiersSel = document.getElementById('f-waterfall-num_tiers');
+      if (numTiersSel) {
+        numTiersSel.addEventListener('change', _wfTierRows);
+        _wfTierRows(); // set initial state: hide t2/t3
+      }
+    }
   });
 
   // Render DS tracker on panel open
