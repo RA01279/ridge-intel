@@ -4498,8 +4498,11 @@ async function runRidgeAPI(skillName, prompt) {
     return;
   }
   openRidgePanel(skillName);
+  console.log('_lastRunInputs at map call:', JSON.stringify(_lastRunInputs));
   if (_lastRunInputs && _lastRunInputs.addr) {
     showPropertyMap(_lastRunInputs.addr);
+  } else {
+    console.log('No addr found — map skipped');
   }
   var contentEl = document.getElementById('ridge-panel-content');
   var spinnerEl = document.getElementById('ridge-spinner');
