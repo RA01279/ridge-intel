@@ -43,6 +43,7 @@ Active skills and their roles:
 | Lens | `lens.skill` | Market analysis |
 | LOI Generator | `loi-generator/` | Letter of intent automation |
 | Debt Tool | `debt-tool/` | Loan analysis |
+| Waterfall | `waterfall/SKILL.md` | GP/LP distribution waterfall, IRR tiers, LP assessment |
 
 ### Data Persistence
 localStorage is the current persistence layer (migration to Supabase Postgres underway). Target state: all deal pipeline, session state, and user data persisted to Supabase with real-time sync across devices.
@@ -75,6 +76,7 @@ These thresholds are referenced throughout the skills and should not be changed 
 - `Canvas_SKILL.md` — tenant intelligence system (Fill mode vs. Hunt mode, scoring tiers)
 - `pipeline/SKILL.md` — pipeline stage definitions, deal record schema, command parsing
 - `daily-signal/SKILL.md` — CoStar scoring rules, re-signal logic
+- `waterfall/SKILL.md` — GP/LP waterfall structure, tier calculations, LP/GP assessment framework
 - `.claude/settings.json` — project-level Claude Code permissions
 
 ## Pipeline Stage Sequence
