@@ -5771,6 +5771,7 @@ async function _napkinExportXLS() {
 }
 
 async function ridgeExportPPT() {
+  console.log('ridgeExportPPT fired — skillName:', document.getElementById('ridge-panel-skill-name').textContent, '| _lastRunInputs:', _lastRunInputs ? 'present' : 'null', '| PptxGenJS:', typeof PptxGenJS);
   var el = document.getElementById('ridge-panel-content');
   var skillName = document.getElementById('ridge-panel-skill-name').textContent;
   var dateStr = new Date().toLocaleDateString('en-US',{year:'numeric',month:'short',day:'numeric'});
