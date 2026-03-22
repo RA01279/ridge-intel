@@ -6,7 +6,7 @@
 <title>RIDGE — Real Intelligence for Deal Generation & Evaluation</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.bundle.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/pptxgenjs@3.11.0/dist/pptxgen.bundle.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
@@ -5772,6 +5772,10 @@ async function _napkinExportXLS() {
 
 async function ridgeExportPPT() {
   console.log('ridgeExportPPT fired — skillName:', document.getElementById('ridge-panel-skill-name').textContent, '| _lastRunInputs:', _lastRunInputs ? 'present' : 'null', '| PptxGenJS:', typeof PptxGenJS);
+  if (typeof PptxGenJS === 'undefined') {
+    alert('PptxGenJS library not loaded — please refresh the page and try again.');
+    return;
+  }
   var el = document.getElementById('ridge-panel-content');
   var skillName = document.getElementById('ridge-panel-skill-name').textContent;
   var dateStr = new Date().toLocaleDateString('en-US',{year:'numeric',month:'short',day:'numeric'});
