@@ -1181,7 +1181,28 @@ var TOOLS = [
     prompt: null
   },
   {
-    id:'market-pulse', num:'03', icon:'📡', name:'MARKET PULSE',
+    id:'waterfall', num:'03', icon:'💧', name:'WATERFALL',
+    badge:'GP/LP Distribution',
+    desc:'GP/LP distribution waterfall. American structure, up to 3 IRR hurdle tiers.',
+    shortDesc:'GP/LP distribution waterfall. American structure, up to 3 IRR hurdle tiers.',
+    uploads:[],
+    fields:[
+      {row:[{id:'addr',label:'Property Address',ph:'e.g. 5000 Highlands Pkwy, Smyrna GA'}]},
+      {row:[{id:'equity',label:'Total Equity ($)',ph:'e.g. 9275000'},{id:'gp_split',label:'GP Equity (%)',ph:'10'}]},
+      {row:[{id:'pref',label:'Preferred Return (%)',ph:'10'},{id:'pref_type',label:'Pref Type',type:'select',opts:['Compounded','Simple']}]},
+      {row:[{id:'catchup',label:'GP Catch-Up',type:'select',opts:['Yes','No']},{id:'catchup_pct',label:'Catch-Up % (of profits)',ph:'100'}]},
+      {row:[{id:'t1_irr',label:'Tier 1 IRR Hurdle (%)',ph:'10'},{id:'t1_gp',label:'Tier 1 GP Split (%)',ph:'30'}]},
+      {row:[{id:'t2_irr',label:'Tier 2 IRR Hurdle (%)',ph:'15'},{id:'t2_gp',label:'Tier 2 GP Split (%)',ph:'35'}]},
+      {row:[{id:'t3_irr',label:'Tier 3 IRR Hurdle (%)',ph:'20'},{id:'t3_gp',label:'Tier 3 GP Split (%)',ph:'40'}]},
+      {row:[{id:'total_dist',label:'Total Distributions ($)',ph:'e.g. 14500000'},{id:'hold',label:'Hold Period (yrs)',ph:'5'}]},
+      {row:[{id:'notes',label:'Notes',type:'textarea',ph:'Deal context, LP name, fund...'}]}
+    ],
+    steps:['Returning capital...','Calculating pref...','Running catch-up...','Splitting tiers...','Finalizing waterfall...'],
+    system:`You are RIDGE, a senior acquisitions officer at Entrada Partners. Analyze GP/LP waterfall distributions with institutional precision. Comment on LP-friendliness, GP carry, and market norms for industrial CRE. Be direct.`,
+    prompt: null
+  },
+  {
+    id:'market-pulse', num:'04', icon:'📡', name:'MARKET PULSE',
     badge:'Live Benchmarks',
     desc:'Submarket intelligence engine. Vacancy, Class A/B rents, absorption, supply pipeline, cap rates. Covers ATL, SAV, DFW, HOU, AUS.',
     shortDesc:'Submarket benchmarks. Vacancy, rents, absorption, cap rates.',
@@ -1198,7 +1219,7 @@ var TOOLS = [
     prompt:(d)=>`Run Market Pulse: ${d.mkt||'Atlanta, GA'}${d.sub?', '+d.sub:''} | Mode: ${d.mode||'Full Market Report'}${d.deal?' | Active deal: '+d.deal:''}.\n${d.data_text?'CoStar/broker data provided:\n'+d.data_text+'\n\n':''}${d.submarket_text?'CoStar submarket export:\n'+d.submarket_text+'\n\n':''}\nProduce in this format:\n## HEADLINE METRICS\nTable: Metric | Value | vs. 12 Mo Ago | Trend\nVacancy rate, Direct ask rent NNN (Class A & B), Net absorption TTM, New supply under construction, Market cap rate range, Rent growth 12mo\n\n## SUBMARKET BREAKDOWN\nTable: Submarket | Vacancy | Ask Rent | Trend | RIDGE Priority\n\n## SUPPLY PIPELINE\nDelivering <6mo, 6–12mo, under construction. Flag if spec >15% of inventory.\n\n## CAP RATE CONTEXT\nIndustrial stabilized, flex stabilized, value-add premium, RIDGE exit assumption check.\n\n## RIDGE UNDERWRITING IMPLICATIONS\nMarket rent benchmark to use, vacancy assumption, rent growth for 5-yr model, exit cap recommendation.\n\n**Verdict: FAVORABLE / NEUTRAL / CAUTIOUS** — one paragraph.`
   },
   {
-    id:'lease-comp', num:'04', icon:'🗺️', name:'LEASE COMP MAP',
+    id:'lease-comp', num:'05', icon:'🗺️', name:'LEASE COMP MAP',
     badge:'Comp Analysis',
     desc:'Comp data in any format — Excel, CSV, pasted text. Analyzes lease comps, benchmarks in-place rents, and flags roll risk vs. market.',
     shortDesc:'Comp data in, interactive map + analysis out.',
@@ -1212,7 +1233,7 @@ var TOOLS = [
     prompt:(d)=>`Analyze lease comps for: ${d.addr||'Subject Property'} | ${d.sf||'?'} SF | Submarket: ${d.sub||'?'} | Current in-place rent: ${d.rent||'unknown'} PSF.\n${d.comps_text?'Dedicated comp data:\n'+d.comps_text+'\n\n':''}\n${d.om_text?'OM (scan the ENTIRE document for comp data — it may appear under any heading including "Market Summary", "Distribution Lease Comps", "Recent Transactions", "Comparable Leases", "Market Comparables", "Submarket Activity", or any table showing address/tenant/SF/rate/date):\n'+d.om_text+'\n\n':''}\nExtract EVERY comp you can find across all sources. Do not skip comps because of how the section is labeled.\n\nProduce:\n## COMP SUMMARY TABLE\nTable: Address | Tenant | SF | Date | Term | Eff. Rate PSF | Free Rent | NNN/Gross | Source\n(Source = "CoStar Upload", "OM — Market Summary", "OM — Comp Grid", etc.)\n\n## MARKET RENT BENCHMARK\nClass A NNN: $X–$X PSF\nClass B NNN: $X–$X PSF\nFlex/Multi-tenant: $X–$X PSF\nSubject property in-place vs. market: gap analysis\n\n## ROLL RISK ANALYSIS\nWhere do in-place rents sit vs. market? Which tenants are most at risk? What's the mark-to-market opportunity?\n\n## UNDERWRITING RECOMMENDATION\nWhat rent PSF to use in the RIDGE model. Renewal probability assumption. Free rent on new leases.`
   },
   {
-    id:'debt', num:'05', icon:'🏦', name:'DEBT TOOL',
+    id:'debt', num:'06', icon:'🏦', name:'DEBT TOOL',
     badge:'Capital Stack',
     desc:'Capital stack modeling across multiple scenarios — senior, bridge, CMBS, agency. Outputs DSCR, debt yield, LTV, and return sensitivity.',
     shortDesc:'Capital stack modeling. DSCR, debt yield, LTV across scenarios.',
@@ -1228,7 +1249,7 @@ var TOOLS = [
     prompt:(d)=>`Model debt for: ${d.addr||'Subject Property'} | Price: ${d.price||'?'} | Yr1 NOI: ${d.noi||'?'} | SF: ${d.sf||'?'} | Target LTV: ${d.ltv||'65%'} | Hold: ${d.hold||'5 years'}.\n${d.model_text?'Model data:\n'+d.model_text+'\n\n':''}Debt type: ${d.type||'Compare All Types'}. Rate (if provided): ${d.rate||'use current market'}.\n\nProduce:\n## DEBT SCENARIO COMPARISON\nTable: Type | Loan Amount | LTV | Rate | Term | IO Period | DSCR Yr1 | Debt Yield | Max Proceeds | Notes\nInclude: Conventional, CMBS, Bridge (if value-add), Agency (if stabilized)\n\n## RECOMMENDED STRUCTURE\nBest fit for this deal and why. What lender type, sizing, and terms.\n\n## DSCR & COVERAGE ANALYSIS\nYear-by-year DSCR for hold period. Flag any year below 1.20x.\n\n## EQUITY REQUIRED\nFor each scenario: equity in, total capitalization, LTC.\n\n## RISK FLAGS\nAnything that could prevent financing or require equity cure.`
   },
   {
-    id:'isr', num:'06', icon:'📊', name:'ACQUISITION INVESTMENT REPORT',
+    id:'isr', num:'07', icon:'📊', name:'ACQUISITION INVESTMENT REPORT',
     badge:'IC Deck · Triple Upload', badgeBlue:true,
     desc:'Upload your Excel model + broker OM + lease comps. Get a full IC analysis and 12-slide PowerPoint deck. IRR ≥14.75% = RECOMMEND · 11–14% = CONDITIONAL · <11% = PASS.',
     shortDesc:'Upload model → IC analysis + 12-slide deck.',
@@ -1250,7 +1271,7 @@ var TOOLS = [
     prompt:(d)=>`Generate a complete IC Report for: ${d.addr||'Subject Property'} | ${d.type||'Flex Industrial'} | ${d.sf||'?'} SF\nPrice: ${d.price||'?'} (${d.psf||'?'} PSF) | IRR: ${d.irr||'?'} | EM: ${d.em||'?'} | Cap: ${d.cap||'?'} | YOC: ${d.yoc||'?'} | LTV: ${d.ltv||'?'} | Hold: ${d.hold||'5yr'}\n${d.thesis?'Thesis: '+d.thesis+'\n':''}\n${d.model_text?'=== ACQUISITION MODEL ===\n'+d.model_text+'\n\n':''}${d.om_text?'=== OFFERING MEMORANDUM ===\n'+d.om_text+'\n\n':''}${d.comps_text?'=== LEASE COMP DATA ===\n'+d.comps_text+'\n\n':''}\nProduce:\n## DEAL SNAPSHOT\nTable: Metric | Value | RIDGE Hurdle | Status (✓/⚠/✗)\n\n## INVESTMENT THESIS\n3–4 bullet points. Specific to this deal. Lead with the conviction driver.\n\n## PROPERTY OVERVIEW\nAsset type, location, submarket, SF, occupancy, tenant summary, lease structure.\n\n## LEASE COMP ANALYSIS\nScan ALL uploaded documents for lease comp data. Comps may appear under any heading — "Market Summary", "Distribution Lease Comps", "Comparable Leases", "Recent Transactions", "Submarket Activity", "Comp Grid", or any table with address/tenant/SF/rate/date columns. Do not skip comps because of how a section is labeled. Extract every comp you can find across the OM and any dedicated comp file.\nProduce:\nTable: Address | Tenant | SF | Date | Term | Rate PSF | Type | Source\nIf truly no comp data exists anywhere, state "No comps found — recommend running LEASE COMP MAP."\nThen: RENT BENCHMARK: Market range (low / mid / high PSF), Subject in-place PSF, gap to market, mark-to-market upside potential.\n\n## SOURCES & USES / CAPITAL STACK\nTable: Item | Amount | $ PSF | % Total\nOne paragraph capital stack narrative.\n\n## RETURN METRICS\nFull returns table. Every number from the model.\n\n## CASH FLOW SUMMARY\nYear-by-year table: Year | EGR | NOI | Leasing/CapEx | Oper CF | Levered CF | YOC\n\n## MARKET & SUBMARKET ANALYSIS\nTarget market context. Vacancy, rents, absorption, demand drivers.\n\n## SENSITIVITY ANALYSIS\nIRR table: exit cap (5.5–7.5%) × rent growth scenarios. EM table same axes. ★ = hits RIDGE hurdle.\n\n## RISK MATRIX\nTable: Risk Factor | Severity | Mitigant\n5–7 risks specific to this deal.\n\n## IC RECOMMENDATION\n**RECOMMEND FOR INVESTMENT / CONDITIONAL APPROVAL / PASS**\n2–3 sentence basis. If conditional, list 3–5 specific conditions. 3–5 next steps.`
   },
   {
-    id:'loi', num:'07', icon:'📄', name:'LOI GENERATOR',
+    id:'loi', num:'08', icon:'📄', name:'LOI GENERATOR',
     badge:'Entrada Template',
     desc:'Draft-ready LOI using Entrada\'s exact template. Nine variable fields — everything else is locked firm boilerplate.',
     shortDesc:'Draft-ready LOI. Entrada defaults locked in.',
@@ -1267,7 +1288,7 @@ var TOOLS = [
     prompt:(d)=>`Draft an LOI for:\nDate: ${d.date||'[DATE]'}\nBroker: ${d.broker||'[BROKER]'}\nProperty: ${d.addr||'[ADDRESS]'}, ${d.city||''}\nTotal SF: ${d.sf||'[SF]'}\nPurchase Price: ${d.price||'[PRICE]'}\nDeposit: ${d.deposit||'[DEPOSIT]'}\nExtension Deposit: ${d.ext||'$100,000'}\nExpiration: ${d.exp||'10 business days from date'}\n${d.model_text?'Deal data:\n'+d.model_text+'\n\n':''}\nProduce the complete LOI in Entrada's exact format:\n- Header with date and broker attn line\n- RE: line with property address\n- Entrada firm description paragraph (standard text)\n- Two-column table format with all terms: Asset Description, Purchase Price (written out in full), Deposit, Leasing Costs, Due Diligence, Contingencies, Closing, Environmental, DD Period Access, Title Insurance, Escrow Fees, Brokerage Representation, New Contracts, Deliveries\n- Closing paragraph with expiration deadline\n- Non-binding disclaimer paragraph\n- Signature block: Reuben Berman, Justin Schuman, Joshua Bar-Yadin / Principal x3\n- Agreed and Accepted signature line`
   },
   {
-    id:'gavel', num:'08', icon:'⚖️', name:'THE GAVEL — LEASE ADMIN',
+    id:'gavel', num:'09', icon:'⚖️', name:'THE GAVEL — LEASE ADMIN',
     badge:'Lease Abstract',
     desc:'Upload a lease, get a structured abstract. Key dates, rent schedule, tenant obligations, landlord obligations, risk flags, and renewal options.',
     shortDesc:'Upload a lease, get a structured abstract.',
@@ -1281,7 +1302,7 @@ var TOOLS = [
     prompt:(d)=>`Abstract this lease for: ${d.tenant||'Tenant'} at ${d.addr||'Subject Property'}.\n${d.notes?'Review focus: '+d.notes+'\n':''}\n${d.lease_text||'[Lease document uploaded — extract all key terms]'}\n${d.rentroll_text?'Rent roll context:\n'+d.rentroll_text+'\n':''}\nProduce:\n## LEASE ABSTRACT — KEY TERMS\nTable: Term | Detail\nInclude: Tenant legal name, Guarantor, Lease type (NNN/Gross/Modified), Commencement, Expiration, Base rent (current), Rent escalations, CAM structure, Security deposit, Renewal options, Expansion rights, ROFO/ROFR, Permitted use, Assignment/subletting\n\n## RENT SCHEDULE\nTable: Period | Dates | Annual Rent | Monthly Rent | PSF\n\n## LANDLORD OBLIGATIONS\nCapital responsibilities, maintenance, insurance, TI obligations.\n\n## TENANT OBLIGATIONS\nMaintenance, insurance minimums, reporting, operating covenants.\n\n## RISK FLAGS\nFor each flag: clause reference, risk description, severity (High/Med/Low), suggested mitigation.\n\n## UNDERWRITING NOTES\nWhat this lease means for RIDGE's model. Renewal probability. Roll risk. Any credit concern.`
   },
   {
-    id:'legal', num:'09', icon:'📋', name:'CRE LEGAL REVIEWER',
+    id:'legal', num:'10', icon:'📋', name:'CRE LEGAL REVIEWER',
     badge:'PSA · JV · Loan · PMA',
     desc:'PSAs, JV / Operating Agreements, loan documents, and PMAs. Flags seller rep gaps, waterfall mechanics, DSCR covenants, and prepayment exposure.',
     shortDesc:'PSA, JV, loan docs, PMA. Flags risk, suggests redlines.',
@@ -1295,7 +1316,7 @@ var TOOLS = [
     prompt:(d)=>`Review this ${d.dtype||'CRE legal document'} for ${d.addr||'the subject deal'}.\n${d.focus?'Focus areas: '+d.focus+'\n':''}\n${d.doc1_text||'[Document uploaded]'}\n${d.doc2_text?'Secondary document:\n'+d.doc2_text+'\n':''}\nProduce:\n## DOCUMENT SUMMARY\nParties, purpose, key dates, transaction structure in 3–5 sentences.\n\n## KEY PROVISIONS TABLE\nTable: Section | Provision | Summary | Risk Level\n\n## RED FLAGS\nFor each flag: Section reference, what it says, why it's a problem, suggested fix or redline language.\n\n## RIDGE-SPECIFIC CONCERNS\nAnything that affects: earnest money refundability, financing contingency, assignment rights, seller reps on leases, waterfall/preferred return (if JV), prepayment/defeasance (if loan docs), termination rights (if PMA).\n\n## MISSING PROVISIONS\nAnything RIDGE typically requires that is absent from this document.\n\n## RECOMMENDED REDLINES\n3–5 specific changes with proposed language.`
   },
   {
-    id:'daily-signal', num:'10', icon:'📊', name:'DAILY SIGNAL',
+    id:'daily-signal', num:'11', icon:'📊', name:'DAILY SIGNAL',
     badge:'Daily Prospects',
     shortDesc:'Upload CoStar exports → 15 ranked prospects with owner contacts.',
     desc:'Upload CoStar exports → 15 ranked prospects with owner contacts.',
@@ -1308,7 +1329,7 @@ var TOOLS = [
     prompt:(d)=>`Run Daily Signal report for ${d.date||'today'}.\n${d.notes?'Focus: '+d.notes+'\n':''}\n${d.sourced?'PREVIOUSLY SOURCED — exclude these unless new signal:\n'+d.sourced+'\n\n':''}\n${d.costar_text?'CoStar data:\n'+d.costar_text:''}`
   },
   {
-    id:'canvas', num:'11', icon:'🏗️', name:'CANVAS',
+    id:'canvas', num:'12', icon:'🏗️', name:'CANVAS',
     badge:'Tenant Sourcing',
     desc:'Tenant sourcing engine. Fill mode: find tenants for a specific building. Hunt mode: scan for displaced businesses and feed them back as acquisition targets.',
     shortDesc:'Tenant sourcing. Fill a building or hunt acquisition targets.',
@@ -2612,6 +2633,30 @@ function buildTrigger(toolId, d) {
       p += '## RED FLAGS\nBullet list. Be direct. No hedging.\n\n';
       p += '## CONVICTION\nState exactly one of: HIGH CONVICTION | CONDITIONAL | PASS\nThen one paragraph defending that verdict.\n\n';
       p += '## NEXT STEPS\nThree specific actions if pursuing.';
+      return p;
+
+    case 'waterfall':
+      var calc = _waterfallCalc(d);
+      var p = 'You are RIDGE, a senior acquisitions officer at Entrada Partners. Analyze this GP/LP waterfall distribution and provide institutional commentary.\n\n';
+      if (calc) {
+        p += 'WATERFALL RESULTS (PRE-CALCULATED — DO NOT RECALCULATE):\n\n';
+        p += 'EQUITY STRUCTURE:\n';
+        p += '- Total Equity: $' + (d.equity||'') + '\n';
+        p += '- GP Equity (' + (d.gp_split||'10') + '%): $' + calc.gpEquity + '\n';
+        p += '- LP Equity (' + (100-parseFloat(d.gp_split||'10')) + '%): $' + calc.lpEquity + '\n\n';
+        p += 'DISTRIBUTION TIERS:\n';
+        calc.tiers.forEach(function(t,i) {
+          p += (i+1) + '. ' + t.name + ': GP $' + Math.round(t.gp).toLocaleString() + ' | LP $' + Math.round(t.lp).toLocaleString() + ' | ' + t.note + '\n';
+        });
+        p += '\nSUMMARY:\n';
+        p += '- Total to GP: $' + calc.gpTotal + ' (' + calc.gpEM + 'x EM)\n';
+        p += '- Total to LP: $' + calc.lpTotal + ' (' + calc.lpEM + 'x EM)\n';
+        p += '- LP IRR: ' + calc.lpIRR + '%\n';
+        p += '- GP Carried Interest: $' + calc.gpCarry + '\n\n';
+        p += 'Provide:\n## WATERFALL SUMMARY\nOne paragraph on the structure and outcomes.\n\n## LP ASSESSMENT\nIs this structure LP-friendly? How does the ' + calc.lpIRR + '% LP IRR and ' + calc.lpEM + 'x EM compare to market norms for industrial CRE? Would a sophisticated LP accept these terms?\n\n## GP ECONOMICS\nAssess the GP carry and return. Is this structure competitive for attracting LP capital?\n\n## STRUCTURE FLAGS\nAny concerns with the waterfall design — fairness, market norms, LP protections missing.\n\n## VERDICT\nOne sentence: is this a market-standard structure that will attract quality LP capital?';
+      } else {
+        p += 'Insufficient inputs provided. Ask the user for total equity, total distributions, and hold period to run the waterfall.';
+      }
       return p;
 
     case 'market-pulse':
@@ -4564,6 +4609,31 @@ async function runRidgeAPI(skillName, prompt) {
     document.getElementById('ridge-pdf-btn').disabled = false;
     document.getElementById('ridge-ppt-btn').disabled = false;
     document.getElementById('ridge-xls-btn').disabled = false;
+    // Waterfall shortcut after Napkin run
+    if (document.getElementById('ridge-panel-skill-name').textContent === 'THE NAPKIN' && _lastRunInputs) {
+      var napkinCalcResult = _napkinCalc(_lastRunInputs);
+      if (napkinCalcResult && napkinCalcResult.meetsIRR) {
+        var wfBtn = document.createElement('button');
+        wfBtn.className = 'btn btn-p';
+        wfBtn.style.cssText = 'margin-top:16px;font-size:12px;padding:8px 16px;display:block;';
+        wfBtn.textContent = '\ud83d\udca7 Run Waterfall on this deal';
+        wfBtn.onclick = function() {
+          closeRidgePanel();
+          togglePanel('waterfall');
+          setTimeout(function() {
+            var ae = document.getElementById('f-waterfall-addr');
+            var ee = document.getElementById('f-waterfall-equity');
+            var he = document.getElementById('f-waterfall-hold');
+            if (ae) ae.value = _lastRunInputs.addr || '';
+            if (ee) ee.value = napkinCalcResult.equity.replace(/,/g,'');
+            if (he) he.value = '5';
+            var panel = document.getElementById('panel-waterfall');
+            if (panel) panel.scrollIntoView({behavior:'smooth'});
+          }, 100);
+        };
+        document.getElementById('ridge-panel-content').appendChild(wfBtn);
+      }
+    }
     // Auto-save to Supabase skill_outputs table
     if (_sbOk && _sb) {
       try {
@@ -4830,6 +4900,126 @@ function _napkinCalc(d) {
     meetsYOC: yoc34 >= 0.075,
     meetsEM: em >= 1.75,
     ioYrs: ioYrs
+  };
+}
+
+function _waterfallCalc(d) {
+  var totalEquity = parseFloat((d.equity||'0').replace(/[^0-9.]/g,''));
+  var gpPct = parseFloat((d.gp_split||'10').replace(/[^0-9.]/g,'')) / 100;
+  var lpPct = 1 - gpPct;
+  var totalDist = parseFloat((d.total_dist||'0').replace(/[^0-9.]/g,''));
+  var pref = parseFloat((d.pref||'10').replace(/[^0-9.]/g,'')) / 100;
+  var hold = parseFloat((d.hold||'5').replace(/[^0-9.]/g,''));
+  var prefType = d.pref_type || 'Compounded';
+  var catchup = (d.catchup || 'Yes') === 'Yes';
+  var catchupPct = parseFloat((d.catchup_pct||'100').replace(/[^0-9.]/g,'')) / 100;
+  var t1IRR = parseFloat((d.t1_irr||'10').replace(/[^0-9.]/g,'')) / 100;
+  var t1GP = parseFloat((d.t1_gp||'30').replace(/[^0-9.]/g,'')) / 100;
+  var t2IRR = d.t2_irr ? parseFloat(d.t2_irr.replace(/[^0-9.]/g,'')) / 100 : null;
+  var t2GP = d.t2_gp ? parseFloat(d.t2_gp.replace(/[^0-9.]/g,'')) / 100 : null;
+  var t3IRR = d.t3_irr ? parseFloat(d.t3_irr.replace(/[^0-9.]/g,'')) / 100 : null;
+  var t3GP = d.t3_gp ? parseFloat(d.t3_gp.replace(/[^0-9.]/g,'')) / 100 : null;
+
+  if (!totalEquity || !totalDist) return null;
+
+  var gpEquity = totalEquity * gpPct;
+  var lpEquity = totalEquity * lpPct;
+  var remaining = totalDist;
+  var gpTotal = 0;
+  var lpTotal = 0;
+  var tiers = [];
+
+  // Step 1 — Return of capital (pro-rata GP/LP)
+  var rocLP = Math.min(lpEquity, remaining * lpPct);
+  var rocGP = Math.min(gpEquity, remaining * gpPct);
+  var roc = rocLP + rocGP;
+  remaining -= roc;
+  gpTotal += rocGP;
+  lpTotal += rocLP;
+  tiers.push({ name: 'Return of Capital', gp: rocGP, lp: rocLP, total: roc, note: 'Pro-rata ' + Math.round(gpPct*100) + '/' + Math.round(lpPct*100) });
+
+  // Step 2 — Preferred return to LP
+  var prefAmt;
+  if (prefType === 'Compounded') {
+    prefAmt = lpEquity * (Math.pow(1 + pref, hold) - 1);
+  } else {
+    prefAmt = lpEquity * pref * hold;
+  }
+  var prefPaid = Math.min(prefAmt, remaining);
+  remaining -= prefPaid;
+  lpTotal += prefPaid;
+  tiers.push({ name: 'LP Preferred Return (' + (pref*100).toFixed(0) + '% ' + prefType + ')', gp: 0, lp: prefPaid, total: prefPaid, note: prefPaid < prefAmt ? '\u26a0 Partial \u2014 insufficient distributions' : '\u2713 Fully funded' });
+
+  // Step 3 — GP catch-up
+  if (catchup && remaining > 0) {
+    var targetGPShare = (gpTotal + lpTotal + remaining) * t1GP;
+    var catchupNeeded = Math.max(0, targetGPShare - gpTotal);
+    var catchupPaid = Math.min(catchupNeeded * catchupPct, remaining);
+    remaining -= catchupPaid;
+    gpTotal += catchupPaid;
+    tiers.push({ name: 'GP Catch-Up', gp: catchupPaid, lp: 0, total: catchupPaid, note: (catchupPct*100).toFixed(0) + '% catch-up to ' + (t1GP*100).toFixed(0) + '% GP share' });
+  }
+
+  // Step 4 — Tier splits
+  var tierDefs = [
+    { irr: t1IRR, gpSplit: t1GP, label: 'Tier 1 (up to ' + (t1IRR*100).toFixed(0) + '% IRR)' },
+  ];
+  if (t2IRR && t2GP) tierDefs.push({ irr: t2IRR, gpSplit: t2GP, label: 'Tier 2 (up to ' + (t2IRR*100).toFixed(0) + '% IRR)' });
+  if (t3IRR && t3GP) tierDefs.push({ irr: t3IRR, gpSplit: t3GP, label: 'Tier 3 (' + (t3IRR*100).toFixed(0) + '%+ IRR)' });
+  tierDefs.push({ irr: Infinity, gpSplit: (t3GP || t2GP || t1GP), label: 'Above Top Tier' });
+
+  tierDefs.forEach(function(tier, idx) {
+    if (remaining <= 0) return;
+    var tierDist;
+    if (tier.irr === Infinity || idx === tierDefs.length - 1) {
+      tierDist = remaining;
+    } else {
+      var irrBasedAmt = lpEquity * (Math.pow(1 + tier.irr, hold) - Math.pow(1 + (tierDefs[idx-1] ? tierDefs[idx-1].irr : pref), hold));
+      tierDist = Math.min(Math.max(0, irrBasedAmt), remaining);
+    }
+    var gpDist = tierDist * tier.gpSplit;
+    var lpDist = tierDist * (1 - tier.gpSplit);
+    remaining -= tierDist;
+    gpTotal += gpDist;
+    lpTotal += lpDist;
+    tiers.push({ name: tier.label, gp: gpDist, lp: lpDist, total: tierDist, note: Math.round((1-tier.gpSplit)*100) + '/' + Math.round(tier.gpSplit*100) + ' LP/GP split' });
+  });
+
+  var lpEM = lpTotal / lpEquity;
+  var gpEM = gpTotal / gpEquity;
+  var gpCarry = gpTotal - gpEquity;
+
+  function calcLPIRR() {
+    var cfs = [-lpEquity];
+    for (var i = 1; i < hold; i++) cfs.push(0);
+    cfs.push(lpTotal);
+    var r = 0.10;
+    for (var iter = 0; iter < 200; iter++) {
+      var npv = 0, dnpv = 0;
+      for (var t = 0; t < cfs.length; t++) {
+        npv += cfs[t] / Math.pow(1+r,t);
+        dnpv -= t * cfs[t] / Math.pow(1+r,t+1);
+      }
+      if (Math.abs(dnpv) < 1e-10) break;
+      var nr = r - npv/dnpv;
+      if (Math.abs(nr-r) < 0.000001) { r=nr; break; }
+      r = Math.min(Math.max(nr,-0.5),5);
+    }
+    return r;
+  }
+
+  return {
+    gpEquity: Math.round(gpEquity).toLocaleString(),
+    lpEquity: Math.round(lpEquity).toLocaleString(),
+    totalDist: Math.round(totalDist).toLocaleString(),
+    gpTotal: Math.round(gpTotal).toLocaleString(),
+    lpTotal: Math.round(lpTotal).toLocaleString(),
+    gpEM: gpEM.toFixed(2),
+    lpEM: lpEM.toFixed(2),
+    lpIRR: (calcLPIRR()*100).toFixed(2),
+    gpCarry: Math.round(gpCarry).toLocaleString(),
+    tiers: tiers,
+    prefFunded: tiers[1] && tiers[1].lp >= prefAmt * 0.999
   };
 }
 
