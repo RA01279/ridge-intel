@@ -4852,15 +4852,142 @@ function ridgeExportPDF() {
     var d = _lastRunInputs;
     if (!calc) { window.print(); return; }
 
-    var convColor = calc.meetsIRR ? '#1B5E20' : '#7B0000';
-    var convBg = calc.meetsIRR ? '#E8F5E9' : '#FFEBEE';
-    var convText = calc.meetsIRR ? (parseFloat(calc.irr) >= 17 ? 'HIGH CONVICTION' : 'CONDITIONAL') : 'PASS';
+    // Extract red flags / next steps / conviction from the panel BEFORE opening window
+    var panelText = document.getElementById('ridge-panel-content').innerText || '';
+    var flagsHTML = '<div class="flag-item">\u26a0 See analysis panel for red flags</div>';
+    var stepsHTML = '<div class="flag-item">See analysis panel for next steps</div>';
+    var convPara  = 'See analysis panel for full rationale.';
+    try {
+      var flagsMatch = panelText.match(/RED FLAGS[\s\S]*?(?=##\s*CONVICTION|$)/i);
+      var stepsMatch = panelText.match(/NEXT STEPS[\s\S]*$/i);
+      var convMatch  = panelText.match(/CONVICTION[\s\S]*?(?=##\s*NEXT STEPS|$)/i);
+      if (flagsMatch) {
+        var fLines = flagsMatch[0].replace(/RED FLAGS/i,'').trim().split('\n').filter(function(l){return l.trim();});
+        if (fLines.length) flagsHTML = fLines.map(function(f){return '<div class="flag-item">'+f+'</div>';}).join('');
+      }
+      if (stepsMatch) {
+        var sLines = stepsMatch[0].replace(/NEXT STEPS/i,'').trim().split('\n').filter(function(l){return l.trim();});
+        if (sLines.length) stepsHTML = sLines.map(function(s){return '<div class="flag-item">'+s+'</div>';}).join('');
+      }
+      if (convMatch) {
+        var cLines = convMatch[0].replace(/CONVICTION/i,'').trim().split('\n').filter(function(l){
+          var t=l.trim(); return t && t!=='HIGH CONVICTION' && t!=='CONDITIONAL' && t!=='PASS';
+        });
+        if (cLines.length) convPara = cLines[0];
+      }
+    } catch(e) {}
 
-    var html = '<!DOCTYPE html>\n<html>\n<head>\n<meta charset="utf-8">\n<title>RIDGE Napkin \u2014 ' + (d.addr || 'Subject Property') + '</title>\n<style>\n  * { margin:0; padding:0; box-sizing:border-box; }\n  body { font-family: Calibri, Arial, sans-serif; font-size: 11pt; color: #1a1a1a; background: #fff; }\n  .page { width: 100%; max-width: 900px; margin: 0 auto; padding: 32px 40px; }\n  .header { background: #1E2761; color: #fff; padding: 20px 24px; margin-bottom: 24px; display: flex; justify-content: space-between; align-items: center; }\n  .header-left h1 { font-size: 22pt; font-weight: 700; letter-spacing: 3px; color: #2196F3; }\n  .header-left p { font-size: 9pt; color: #8B949E; letter-spacing: 1px; margin-top: 2px; }\n  .header-right { text-align: right; font-size: 9pt; color: #8B949E; }\n  .address { font-size: 16pt; font-weight: 700; color: #1E2761; border-bottom: 2px solid #2196F3; padding-bottom: 8px; margin-bottom: 16px; }\n  .meta-row { display: flex; gap: 24px; margin-bottom: 20px; flex-wrap: wrap; }\n  .meta-label { font-size: 8pt; color: #666; text-transform: uppercase; letter-spacing: 1px; }\n  .meta-value { font-size: 12pt; font-weight: 700; color: #1E2761; }\n  .section-title { background: #1E2761; color: #fff; font-size: 10pt; font-weight: 700; letter-spacing: 2px; padding: 6px 12px; margin: 16px 0 8px; text-transform: uppercase; }\n  table { width: 100%; border-collapse: collapse; margin-bottom: 16px; font-size: 10pt; }\n  th { background: #1E2761; color: #fff; padding: 7px 12px; text-align: left; font-weight: 600; }\n  td { padding: 6px 12px; border-bottom: 1px solid #e0e0e0; }\n  tr:nth-child(even) td { background: #f5f5f5; }\n  .pass { background: #E8F5E9 !important; color: #1B5E20; font-weight: 600; }\n  .fail { background: #FFEBEE !important; color: #7B0000; font-weight: 600; }\n  .warn { background: #FFF9C4 !important; color: #5D4037; }\n  .conviction-box { background: ' + convBg + '; border: 2px solid ' + convColor + '; border-radius: 4px; padding: 14px 18px; margin: 16px 0; }\n  .conviction-label { font-size: 8pt; color: ' + convColor + '; text-transform: uppercase; letter-spacing: 2px; font-weight: 700; }\n  .conviction-verdict { font-size: 18pt; font-weight: 700; color: ' + convColor + '; margin: 4px 0; }\n  .conviction-text { font-size: 10pt; color: #333; margin-top: 8px; line-height: 1.5; }\n  .max-price-box { background: #E3F2FD; border-left: 4px solid #2196F3; padding: 12px 16px; margin: 12px 0; }\n  .max-price-label { font-size: 8pt; color: #1565C0; text-transform: uppercase; letter-spacing: 1px; font-weight: 700; }\n  .max-price-value { font-size: 16pt; font-weight: 700; color: #1565C0; }\n  .flags { margin: 8px 0; }\n  .flag-item { padding: 4px 0; border-bottom: 1px solid #f0f0f0; font-size: 10pt; color: #333; }\n  .footer { margin-top: 24px; padding-top: 12px; border-top: 1px solid #e0e0e0; font-size: 8pt; color: #999; display: flex; justify-content: space-between; }\n  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }\n  @media print { body { print-color-adjust: exact; -webkit-print-color-adjust: exact; } .page { padding: 20px; } }\n</style>\n</head>\n<body>\n<div class="page">\n  <div class="header">\n    <div class="header-left">\n      <h1>RIDGE</h1>\n      <p>REAL INTELLIGENCE FOR DEAL GENERATION &amp; EVALUATION</p>\n    </div>\n    <div class="header-right">\n      <div style="font-size:11pt;font-weight:700;color:#fff;">THE NAPKIN</div>\n      <div>Entrada Partners \u2014 Confidential</div>\n      <div>' + new Date().toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'}) + '</div>\n    </div>\n  </div>\n\n  <div class="address">' + (d.addr || 'Subject Property') + '</div>\n\n  <div class="meta-row">\n    <div class="meta-item"><div class="meta-label">Asset Type</div><div class="meta-value">' + (d.type || '\u2014') + '</div></div>\n    <div class="meta-item"><div class="meta-label">Building SF</div><div class="meta-value">' + (d.sf ? parseInt(d.sf.toString().replace(/[^0-9]/g,\'\')).toLocaleString() : '\u2014') + '</div></div>\n    <div class="meta-item"><div class="meta-label">Asking Price</div><div class="meta-value">' + (d.ask ? \'$\'+parseInt(d.ask.toString().replace(/[^0-9]/g,\'\')).toLocaleString() : '\u2014') + '</div></div>\n    <div class="meta-item"><div class="meta-label">Price PSF</div><div class="meta-value">$' + calc.psf + '</div></div>\n    <div class="meta-item"><div class="meta-label">Occupancy</div><div class="meta-value">' + (d.occ || '\u2014') + '%</div></div>\n    <div class="meta-item"><div class="meta-label">Going-in Cap</div><div class="meta-value">' + calc.goingInCap + '%</div></div>\n  </div>\n\n  <div class="two-col">\n    <div>\n      <div class="section-title">Return Stack</div>\n      <table>\n        <tr><th>Metric</th><th>Value</th><th>Hurdle</th></tr>\n        <tr class="' + (parseFloat(calc.goingInCap)>=6.5?'pass':'warn') + '"><td>Going-in Cap</td><td>' + calc.goingInCap + '%</td><td>' + (parseFloat(calc.goingInCap)>=6.5?'\u2713':'\u26a0') + '</td></tr>\n        <tr><td>Year 1 NOI</td><td>$' + calc.noi1 + '</td><td>\u2014</td></tr>\n        <tr><td>Stabilized NOI</td><td>$' + calc.noiStab + '</td><td>\u2014</td></tr>\n        <tr><td>Year 4 NOI</td><td>$' + calc.noi4 + '</td><td>\u2014</td></tr>\n        <tr class="' + (calc.meetsYOC?'pass':'fail') + '"><td>YOC Yr 3/4</td><td>' + calc.yoc34 + '%</td><td>7.5\u20138.0%</td></tr>\n        <tr class="' + (calc.meetsIRR?'pass':'fail') + '"><td><strong>Levered IRR</strong></td><td><strong>' + calc.irr + '%</strong></td><td>14.75%</td></tr>\n        <tr class="' + (calc.meetsEM?'pass':'fail') + '"><td>Equity Multiple</td><td>' + calc.em + 'x</td><td>1.75x</td></tr>\n        <tr class="' + (parseFloat(calc.dscr)>=1.25?'pass':'warn') + '"><td>DSCR Yr 1</td><td>' + calc.dscr + 'x</td><td>1.25x</td></tr>\n        <tr><td>Exit Value</td><td>$' + calc.salePrice + '</td><td>' + calc.exitCap + '% cap</td></tr>\n      </table>\n\n      <div class="section-title">Debt Structure</div>\n      <table>\n        <tr><td>Loan Amount</td><td>$' + calc.loanAmt + ' (' + (d.ltv||\'60\') + '% LTV)</td></tr>\n        <tr><td>Equity Required</td><td>$' + calc.equity + '</td></tr>\n        <tr><td>Annual Debt Service</td><td>$' + calc.annualDS + '</td></tr>\n        <tr><td>IO Period</td><td>' + (calc.ioYrs > 0 ? calc.ioYrs+\' years\' : \'None\') + '</td></tr>\n        <tr><td>Rate / Amort</td><td>' + (d.rate||\'6.75\') + '% / ' + (d.amort||\'25\') + 'yr</td></tr>\n      </table>\n    </div>\n\n    <div>\n      <div class="conviction-box">\n        <div class="conviction-label">Conviction Assessment</div>\n        <div class="conviction-verdict">' + convText + '</div>\n        <div class="conviction-text" id="conv-text-placeholder">See analysis panel for full rationale.</div>\n      </div>\n\n      <div class="max-price-box">\n        <div class="max-price-label">Max Price @ 14.75% IRR</div>\n        <div class="max-price-value">$' + calc.maxPrice + '</div>\n        <div style="font-size:9pt;color:#1565C0;margin-top:4px;">$' + calc.maxPricePSF + ' PSF \u00b7 ' + (parseFloat(calc.priceReduction.replace(/[^0-9.-]/g,\'\'))<=0 ? \'Deal works at ask \u2014 $\'+Math.abs(parseFloat(calc.priceReduction.replace(/[^0-9.-]/g,\'\'))).toLocaleString()+\' of cushion\' : \'$\'+calc.priceReduction+\' reduction required\') + '</div>\n      </div>\n\n      <div class="section-title">Red Flags</div>\n      <div class="flags" id="flags-placeholder">\n        <div class="flag-item">\u26a0 See analysis panel for red flags</div>\n      </div>\n\n      <div class="section-title">Next Steps</div>\n      <div class="flags" id="steps-placeholder">\n        <div class="flag-item">See analysis panel for next steps</div>\n      </div>\n    </div>\n  </div>\n\n  <div class="footer">\n    <span>RIDGE Intelligence \u2014 Entrada Partners \u2014 Confidential \u2014 Internal Use Only</span>\n    <span>Generated ' + new Date().toLocaleString() + '</span>\n  </div>\n</div>\n<script>\n  try {\n    var panelText = window.opener ? window.opener.document.getElementById(\'ridge-panel-content\').innerText : \'\';\n    var flagsMatch = panelText.match(/RED FLAGS[\\s\\S]*?(?=CONVICTION|$)/i);\n    var stepsMatch = panelText.match(/NEXT STEPS[\\s\\S]*$/i);\n    var convMatch = panelText.match(/CONVICTION[\\s\\S]*?(?=NEXT STEPS|$)/i);\n    if (flagsMatch) {\n      var flags = flagsMatch[0].replace(/RED FLAGS/i,\'\').trim().split(\'\\n\').filter(function(l){return l.trim();});\n      document.getElementById(\'flags-placeholder\').innerHTML = flags.map(function(f){return \'<div class="flag-item">\'+f+\'</div>\';}).join(\'\');\n    }\n    if (stepsMatch) {\n      var steps = stepsMatch[0].replace(/NEXT STEPS/i,\'\').trim().split(\'\\n\').filter(function(l){return l.trim();});\n      document.getElementById(\'steps-placeholder\').innerHTML = steps.map(function(s){return \'<div class="flag-item">\'+s+\'</div>\';}).join(\'\');\n    }\n    if (convMatch) {\n      var conv = convMatch[0].replace(/CONVICTION/i,\'\').trim().split(\'\\n\').filter(function(l){return l.trim() && ![\'HIGH CONVICTION\',\'CONDITIONAL\',\'PASS\'].includes(l.trim());});\n      if (conv.length) document.getElementById(\'conv-text-placeholder\').innerText = conv[0];\n    }\n  } catch(e) {}\n  setTimeout(function(){ window.print(); }, 800);\n<\/script>\n</body>\n</html>';
+    var convColor = calc.meetsIRR ? '#1B5E20' : '#7B0000';
+    var convBg    = calc.meetsIRR ? '#E8F5E9' : '#FFEBEE';
+    var convText  = calc.meetsIRR ? (parseFloat(calc.irr) >= 17 ? 'HIGH CONVICTION' : 'CONDITIONAL') : 'PASS';
+    var sfFmt     = d.sf ? parseInt(d.sf.toString().replace(/[^0-9]/g,''),10).toLocaleString() : '\u2014';
+    var askFmt    = d.ask ? '$'+parseInt(d.ask.toString().replace(/[^0-9]/g,''),10).toLocaleString() : '\u2014';
+    var priceRedNum = parseFloat(calc.priceReduction.replace(/[^0-9.-]/g,''));
+    var maxPriceNote = priceRedNum <= 0
+      ? 'Deal works at ask \u2014 $'+Math.abs(priceRedNum).toLocaleString()+' of cushion'
+      : '$'+calc.priceReduction+' reduction required';
+    var dateStr = new Date().toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'});
+    var genStr  = new Date().toLocaleString();
+
+    var css = [
+      '* { margin:0; padding:0; box-sizing:border-box; }',
+      'body { font-family: Calibri, Arial, sans-serif; font-size: 11pt; color: #1a1a1a; background: #fff; }',
+      '.page { width: 100%; max-width: 900px; margin: 0 auto; padding: 32px 40px; }',
+      '.header { background: #1E2761; color: #fff; padding: 20px 24px; margin-bottom: 24px; display: flex; justify-content: space-between; align-items: center; }',
+      '.header-left h1 { font-size: 22pt; font-weight: 700; letter-spacing: 3px; color: #2196F3; }',
+      '.header-left p { font-size: 9pt; color: #8B949E; letter-spacing: 1px; margin-top: 2px; }',
+      '.header-right { text-align: right; font-size: 9pt; color: #8B949E; }',
+      '.address { font-size: 16pt; font-weight: 700; color: #1E2761; border-bottom: 2px solid #2196F3; padding-bottom: 8px; margin-bottom: 16px; }',
+      '.meta-row { display: flex; gap: 24px; margin-bottom: 20px; flex-wrap: wrap; }',
+      '.meta-label { font-size: 8pt; color: #666; text-transform: uppercase; letter-spacing: 1px; }',
+      '.meta-value { font-size: 12pt; font-weight: 700; color: #1E2761; }',
+      '.section-title { background: #1E2761; color: #fff; font-size: 10pt; font-weight: 700; letter-spacing: 2px; padding: 6px 12px; margin: 16px 0 8px; text-transform: uppercase; }',
+      'table { width: 100%; border-collapse: collapse; margin-bottom: 16px; font-size: 10pt; }',
+      'th { background: #1E2761; color: #fff; padding: 7px 12px; text-align: left; font-weight: 600; }',
+      'td { padding: 6px 12px; border-bottom: 1px solid #e0e0e0; }',
+      'tr:nth-child(even) td { background: #f5f5f5; }',
+      '.pass { background: #E8F5E9 !important; color: #1B5E20; font-weight: 600; }',
+      '.fail { background: #FFEBEE !important; color: #7B0000; font-weight: 600; }',
+      '.warn { background: #FFF9C4 !important; color: #5D4037; }',
+      '.conviction-box { background: '+convBg+'; border: 2px solid '+convColor+'; border-radius: 4px; padding: 14px 18px; margin: 16px 0; }',
+      '.conviction-label { font-size: 8pt; color: '+convColor+'; text-transform: uppercase; letter-spacing: 2px; font-weight: 700; }',
+      '.conviction-verdict { font-size: 18pt; font-weight: 700; color: '+convColor+'; margin: 4px 0; }',
+      '.conviction-text { font-size: 10pt; color: #333; margin-top: 8px; line-height: 1.5; }',
+      '.max-price-box { background: #E3F2FD; border-left: 4px solid #2196F3; padding: 12px 16px; margin: 12px 0; }',
+      '.max-price-label { font-size: 8pt; color: #1565C0; text-transform: uppercase; letter-spacing: 1px; font-weight: 700; }',
+      '.max-price-value { font-size: 16pt; font-weight: 700; color: #1565C0; }',
+      '.flags { margin: 8px 0; }',
+      '.flag-item { padding: 4px 0; border-bottom: 1px solid #f0f0f0; font-size: 10pt; color: #333; }',
+      '.footer { margin-top: 24px; padding-top: 12px; border-top: 1px solid #e0e0e0; font-size: 8pt; color: #999; display: flex; justify-content: space-between; }',
+      '.two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }',
+      '@media print { body { print-color-adjust: exact; -webkit-print-color-adjust: exact; } .page { padding: 20px; } }'
+    ].join('\n');
+
+    var body = [
+      '<div class="page">',
+      '<div class="header">',
+        '<div class="header-left"><h1>RIDGE</h1><p>REAL INTELLIGENCE FOR DEAL GENERATION &amp; EVALUATION</p></div>',
+        '<div class="header-right">',
+          '<div style="font-size:11pt;font-weight:700;color:#fff;">THE NAPKIN</div>',
+          '<div>Entrada Partners \u2014 Confidential</div>',
+          '<div>'+dateStr+'</div>',
+        '</div>',
+      '</div>',
+      '<div class="address">'+(d.addr||'Subject Property')+'</div>',
+      '<div class="meta-row">',
+        '<div class="meta-item"><div class="meta-label">Asset Type</div><div class="meta-value">'+(d.type||'\u2014')+'</div></div>',
+        '<div class="meta-item"><div class="meta-label">Building SF</div><div class="meta-value">'+sfFmt+'</div></div>',
+        '<div class="meta-item"><div class="meta-label">Asking Price</div><div class="meta-value">'+askFmt+'</div></div>',
+        '<div class="meta-item"><div class="meta-label">Price PSF</div><div class="meta-value">$'+calc.psf+'</div></div>',
+        '<div class="meta-item"><div class="meta-label">Occupancy</div><div class="meta-value">'+(d.occ||'\u2014')+'%</div></div>',
+        '<div class="meta-item"><div class="meta-label">Going-in Cap</div><div class="meta-value">'+calc.goingInCap+'%</div></div>',
+      '</div>',
+      '<div class="two-col"><div>',
+        '<div class="section-title">Return Stack</div>',
+        '<table><tr><th>Metric</th><th>Value</th><th>Hurdle</th></tr>',
+          '<tr class="'+(parseFloat(calc.goingInCap)>=6.5?'pass':'warn')+'"><td>Going-in Cap</td><td>'+calc.goingInCap+'%</td><td>'+(parseFloat(calc.goingInCap)>=6.5?'\u2713':'\u26a0')+'</td></tr>',
+          '<tr><td>Year 1 NOI</td><td>$'+calc.noi1+'</td><td>\u2014</td></tr>',
+          '<tr><td>Stabilized NOI</td><td>$'+calc.noiStab+'</td><td>\u2014</td></tr>',
+          '<tr><td>Year 4 NOI</td><td>$'+calc.noi4+'</td><td>\u2014</td></tr>',
+          '<tr class="'+(calc.meetsYOC?'pass':'fail')+'"><td>YOC Yr 3/4</td><td>'+calc.yoc34+'%</td><td>7.5\u20138.0%</td></tr>',
+          '<tr class="'+(calc.meetsIRR?'pass':'fail')+'"><td><strong>Levered IRR</strong></td><td><strong>'+calc.irr+'%</strong></td><td>14.75%</td></tr>',
+          '<tr class="'+(calc.meetsEM?'pass':'fail')+'"><td>Equity Multiple</td><td>'+calc.em+'x</td><td>1.75x</td></tr>',
+          '<tr class="'+(parseFloat(calc.dscr)>=1.25?'pass':'warn')+'"><td>DSCR Yr 1</td><td>'+calc.dscr+'x</td><td>1.25x</td></tr>',
+          '<tr><td>Exit Value</td><td>$'+calc.salePrice+'</td><td>'+calc.exitCap+'% cap</td></tr>',
+        '</table>',
+        '<div class="section-title">Debt Structure</div>',
+        '<table>',
+          '<tr><td>Loan Amount</td><td>$'+calc.loanAmt+' ('+(d.ltv||'60')+'% LTV)</td></tr>',
+          '<tr><td>Equity Required</td><td>$'+calc.equity+'</td></tr>',
+          '<tr><td>Annual Debt Service</td><td>$'+calc.annualDS+'</td></tr>',
+          '<tr><td>IO Period</td><td>'+(calc.ioYrs>0?calc.ioYrs+' years':'None')+'</td></tr>',
+          '<tr><td>Rate / Amort</td><td>'+(d.rate||'6.75')+'% / '+(d.amort||'25')+'yr</td></tr>',
+        '</table>',
+      '</div><div>',
+        '<div class="conviction-box">',
+          '<div class="conviction-label">Conviction Assessment</div>',
+          '<div class="conviction-verdict">'+convText+'</div>',
+          '<div class="conviction-text">'+convPara+'</div>',
+        '</div>',
+        '<div class="max-price-box">',
+          '<div class="max-price-label">Max Price @ 14.75% IRR</div>',
+          '<div class="max-price-value">$'+calc.maxPrice+'</div>',
+          '<div style="font-size:9pt;color:#1565C0;margin-top:4px;">$'+calc.maxPricePSF+' PSF \u00b7 '+maxPriceNote+'</div>',
+        '</div>',
+        '<div class="section-title">Red Flags</div><div class="flags">'+flagsHTML+'</div>',
+        '<div class="section-title">Next Steps</div><div class="flags">'+stepsHTML+'</div>',
+      '</div></div>',
+      '<div class="footer">',
+        '<span>RIDGE Intelligence \u2014 Entrada Partners \u2014 Confidential \u2014 Internal Use Only</span>',
+        '<span>Generated '+genStr+'</span>',
+      '</div></div>'
+    ].join('');
 
     var w = window.open('', '_blank', 'width=960,height=800');
-    w.document.write(html);
+    w.document.open();
+    w.document.write('<!DOCTYPE html><html><head><meta charset="utf-8"><title>RIDGE Napkin</title><style>'+css+'</style></head><body>'+body+'</body></html>');
     w.document.close();
+    setTimeout(function(){ w.print(); }, 400);
     return;
   }
   window.print();
