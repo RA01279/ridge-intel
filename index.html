@@ -4631,7 +4631,7 @@ async function runRidgeAPI(skillName, prompt) {
     document.getElementById('ridge-ppt-btn').disabled = false;
     document.getElementById('ridge-xls-btn').disabled = false;
     // Waterfall shortcut after Napkin run
-    if (document.getElementById('ridge-panel-skill-name').textContent === 'THE NAPKIN' && _lastRunInputs) {
+    if (document.getElementById('ridge-panel-skill-name').textContent.toLowerCase().includes('napkin') && _lastRunInputs) {
       var napkinCalcResult = _napkinCalc(_lastRunInputs);
       if (napkinCalcResult && napkinCalcResult.meetsIRR) {
         var wfBtn = document.createElement('button');
@@ -5058,7 +5058,7 @@ function _getSiblingNodes(h2) {
 function ridgeExportPDF() {
   var skillName = document.getElementById('ridge-panel-skill-name').textContent;
 
-  if (skillName === 'The Napkin' && _lastRunInputs && _napkinCalc) {
+  if (skillName.toLowerCase().includes('napkin') && _lastRunInputs && _napkinCalc) {
     var calc = _napkinCalc(_lastRunInputs);
     var d = _lastRunInputs;
     if (!calc) { window.print(); return; }
@@ -5352,7 +5352,7 @@ async function ridgeExportXLS() {
     ws.getRow(rowNum + 2).getCell(1).font = { size: 9, color: { argb: 'FF999999' }, italic: true, name: 'Calibri' };
   }
 
-  if (skillName === 'The Napkin' && _lastRunInputs) {
+  if (skillName.toLowerCase().includes('napkin') && _lastRunInputs) {
     var calc = _napkinCalc(_lastRunInputs);
     var d = _lastRunInputs;
 
