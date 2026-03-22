@@ -5773,47 +5773,306 @@ async function _napkinExportXLS() {
 async function ridgeExportPPT() {
   var el = document.getElementById('ridge-panel-content');
   var skillName = document.getElementById('ridge-panel-skill-name').textContent;
-  var dateStr = new Date().toLocaleDateString('en-US', {year:'numeric',month:'short',day:'numeric'});
-  var pptx = new PptxGenJS();
+  var dateStr = new Date().toLocaleDateString('en-US',{year:'numeric',month:'short',day:'numeric'});
 
-  // Title slide
-  var s0 = pptx.addSlide();
-  s0.background = { color: '0D1117' };
-  s0.addText(skillName, { x:0.5, y:2.2, w:12.3, h:1.4, fontSize:44, bold:true, color:'2196F3', fontFace:'Courier New', align:'center' });
-  s0.addText('RIDGE Intelligence  ·  ' + dateStr, { x:0.5, y:3.8, w:12.3, h:0.6, fontSize:16, color:'8B949E', align:'center' });
+  if (skillName.toLowerCase().includes('napkin') && _lastRunInputs) {
+    var d = _lastRunInputs;
+    var calc = _napkinCalc(d);
+    if (calc) {
+      var pptx = new PptxGenJS();
+      pptx.layout = 'LAYOUT_WIDE';
 
-  // One slide per h2 section
-  var h2s = el.querySelectorAll('h2');
-  if (h2s.length === 0) {
-    // No h2s — single content slide
-    var s1 = pptx.addSlide();
-    s1.background = { color: '0D1117' };
-    s1.addText(el.innerText.slice(0, 2000), { x:0.5, y:0.5, w:12.3, h:6.5, fontSize:13, color:'E6EDF3', valign:'top', wrap:true });
-  } else {
-    h2s.forEach(function(h2) {
-      var sl = pptx.addSlide();
-      sl.background = { color: '0D1117' };
-      sl.addText(h2.textContent, { x:0.5, y:0.3, w:12.3, h:0.9, fontSize:26, bold:true, color:'2196F3', fontFace:'Courier New' });
-      // Gather text from siblings until next h2
-      var bullets = [];
-      var node = h2.nextSibling;
-      while (node && node.nodeName !== 'H2') {
-        var txt = (node.textContent || '').trim();
-        if (txt) {
-          txt.split('\n').forEach(function(ln) {
-            if (ln.trim()) bullets.push({ text: ln.trim(), options: { bullet: { type:'bullet' }, fontSize:13, color:'E6EDF3', breakLine:true } });
-          });
+      // ── derived inputs ──
+      var sfNum    = parseFloat((d.sf||'0').toString().replace(/[^0-9.]/g,''));
+      var noi1raw  = parseFloat((d.noi||'0').toString().replace(/[^0-9.]/g,''));
+      var ltvPct   = parseFloat((d.ltv||'60').toString().replace(/[^0-9.]/g,''))/100;
+      var rateRaw  = parseFloat((d.rate||'6.75').toString().replace(/[^0-9.]/g,''))/100;
+      var amortYrs = parseFloat((d.amort||'25').toString().replace(/[^0-9.]/g,''));
+      var ioYrs    = parseFloat((d.io||'0').toString().replace(/[^0-9.]/g,''));
+      var exitCapBase = parseFloat((d.exitcap||'0').toString().replace(/[^0-9.]/g,''));
+      var exitCapDefault = exitCapBase ? exitCapBase/100 : (noi1raw/calc.ask)+0.0035;
+
+      // ── inline IRR solver for sensitivity tables ──
+      function _sensIRR(askPrice, holdYrsS, capRate) {
+        var ln=askPrice*ltvPct, eq=askPrice*(1-ltvPct);
+        var mRate=rateRaw/12, amMo=amortYrs*12;
+        var mPmt=ln*(mRate*Math.pow(1+mRate,amMo))/(Math.pow(1+mRate,amMo)-1);
+        var ds=mPmt*12, io=ln*rateRaw;
+        var cfsS=[-eq];
+        for (var yr=1;yr<=holdYrsS;yr++) {
+          var noiYr=noi1raw*Math.pow(1.02,yr-1);
+          var pmtYr=yr<=ioYrs?io:ds;
+          var cf=noiYr-pmtYr;
+          if (yr===holdYrsS) {
+            var exitNOI=noiYr*1.02, sale=exitNOI/capRate;
+            var amMos=Math.max(0,(holdYrsS-ioYrs))*12;
+            var bal=ioYrs>=holdYrsS?ln:ln*Math.pow(1+mRate,amMos)-mPmt*(Math.pow(1+mRate,amMos)-1)/mRate;
+            cfsS.push(cf+sale-bal);
+          } else { cfsS.push(cf); }
         }
-        node = node.nextSibling;
+        var r=0.15;
+        for (var i=0;i<200;i++) {
+          var npv=0,dn=0;
+          for (var t=0;t<cfsS.length;t++){npv+=cfsS[t]/Math.pow(1+r,t);dn-=t*cfsS[t]/Math.pow(1+r,t+1);}
+          if (Math.abs(dn)<1e-10) break;
+          var nr=r-npv/dn;
+          if (Math.abs(nr-r)<0.000001){r=nr;break;}
+          r=Math.min(Math.max(nr,-0.5),5);
+        }
+        return r*100;
       }
-      if (bullets.length) {
-        sl.addText(bullets, { x:0.5, y:1.4, w:12.3, h:5.8, valign:'top', wrap:true });
+
+      // ── palette ──
+      var GREEN='1A7A4A',RED='C0392B',BLUE='2196F3',DARK='0D1117';
+      var NAVY='0F1B2D',CARD='161B22',MID='21262D';
+      var TEXT='E6EDF3',MUTED='8B949E',YELLOW='C9A227';
+
+      var addr=(d.addr||'Undisclosed Address').trim();
+      var safeAddr=addr.replace(/[^a-zA-Z0-9 ,]/g,'').replace(/\s+/g,'_').slice(0,40);
+
+      // ════════════════════════════════════
+      // SLIDE 1 — Cover
+      // ════════════════════════════════════
+      var s1=pptx.addSlide();
+      s1.background={color:DARK};
+      s1.addShape(pptx.ShapeType.rect,{x:0,y:0,w:13.33,h:0.08,fill:{color:BLUE}});
+      s1.addText('INVESTMENT COMMITTEE PRESENTATION',{x:0.7,y:0.5,w:12,h:0.5,fontSize:11,bold:true,color:MUTED,fontFace:'Courier New',align:'center',charSpacing:3});
+      s1.addText(addr,{x:0.5,y:1.4,w:12.33,h:1.2,fontSize:34,bold:true,color:TEXT,fontFace:'Courier New',align:'center',wrap:true});
+      var addrParts=addr.split(',');
+      var cityStr=addrParts.length>=2?addrParts.slice(-2).join(',').trim():addr;
+      s1.addText(cityStr,{x:0.5,y:2.7,w:12.33,h:0.5,fontSize:18,color:BLUE,fontFace:'Courier New',align:'center'});
+      s1.addShape(pptx.ShapeType.rect,{x:2.5,y:3.35,w:8.33,h:0.04,fill:{color:'30363D'}});
+      [{label:'ASK PRICE',value:'$'+Math.round(calc.ask/1e6*100)/100+'M'},
+       {label:'BUILDING SF',value:sfNum?sfNum.toLocaleString()+' SF':((d.sf||'—')+' SF')},
+       {label:'GOING-IN CAP',value:calc.goingInCap+'%'}].forEach(function(sb,i){
+        var bx=1.2+i*3.8;
+        s1.addShape(pptx.ShapeType.rect,{x:bx,y:3.6,w:3.2,h:1.4,fill:{color:CARD},line:{color:'30363D',pt:1}});
+        s1.addText(sb.value,{x:bx,y:3.75,w:3.2,h:0.7,fontSize:24,bold:true,color:BLUE,fontFace:'Courier New',align:'center'});
+        s1.addText(sb.label,{x:bx,y:4.45,w:3.2,h:0.35,fontSize:9,color:MUTED,fontFace:'Courier New',align:'center',charSpacing:2});
+      });
+      s1.addShape(pptx.ShapeType.rect,{x:0,y:6.9,w:13.33,h:0.6,fill:{color:NAVY}});
+      s1.addText('RIDGE Intelligence  ·  Entrada Partners  ·  CONFIDENTIAL',{x:0.5,y:6.95,w:9,h:0.45,fontSize:10,color:MUTED,fontFace:'Courier New'});
+      s1.addText(dateStr,{x:9.5,y:6.95,w:3.3,h:0.45,fontSize:10,color:MUTED,fontFace:'Courier New',align:'right'});
+
+      // ════════════════════════════════════
+      // SLIDE 2 — Deal Snapshot
+      // ════════════════════════════════════
+      var s2=pptx.addSlide();
+      s2.background={color:DARK};
+      s2.addShape(pptx.ShapeType.rect,{x:0,y:0,w:13.33,h:0.08,fill:{color:BLUE}});
+      s2.addShape(pptx.ShapeType.rect,{x:0,y:0.08,w:13.33,h:0.72,fill:{color:NAVY}});
+      s2.addText('DEAL SNAPSHOT',{x:0.4,y:0.12,w:8,h:0.6,fontSize:20,bold:true,color:TEXT,fontFace:'Courier New'});
+      s2.addText(addr,{x:5,y:0.12,w:8,h:0.6,fontSize:12,color:MUTED,fontFace:'Courier New',align:'right'});
+      [{label:'PURCHASE PRICE',value:'$'+Math.round(calc.ask/1e6*100)/100+'M',pass:null},
+       {label:'PRICE PSF',value:'$'+calc.psf,pass:null},
+       {label:'GOING-IN CAP',value:calc.goingInCap+'%',pass:parseFloat(calc.goingInCap)>=5.5},
+       {label:'LEVERED IRR',value:calc.irr+'%',pass:calc.meetsIRR},
+       {label:'EQUITY MULTIPLE',value:calc.em+'x',pass:calc.meetsEM},
+       {label:'LTV',value:(ltvPct*100).toFixed(0)+'%',pass:ltvPct<=0.70}].forEach(function(ss,i){
+        var col=i%3,row=Math.floor(i/3),bx=0.35+col*4.3,by=1.05+row*1.8;
+        var bdrC=ss.pass===null?'30363D':(ss.pass?GREEN:RED);
+        s2.addShape(pptx.ShapeType.rect,{x:bx,y:by,w:3.9,h:1.5,fill:{color:CARD},line:{color:bdrC,pt:2}});
+        s2.addText(ss.value,{x:bx,y:by+0.2,w:3.9,h:0.8,fontSize:26,bold:true,color:ss.pass===null?BLUE:(ss.pass?GREEN:RED),fontFace:'Courier New',align:'center'});
+        s2.addText(ss.label,{x:bx,y:by+1.0,w:3.9,h:0.4,fontSize:9,color:MUTED,fontFace:'Courier New',align:'center',charSpacing:2});
+      });
+      var dscrN=parseFloat(calc.dscr);
+      s2.addTable([[
+        {text:'NOI YR 1',options:{bold:true,color:MUTED,fontSize:9,fontFace:'Courier New',fill:{color:MID},align:'center'}},
+        {text:'$'+calc.noi1,options:{bold:true,color:TEXT,fontSize:11,fontFace:'Courier New',fill:{color:MID},align:'center'}},
+        {text:'DSCR',options:{bold:true,color:MUTED,fontSize:9,fontFace:'Courier New',fill:{color:MID},align:'center'}},
+        {text:calc.dscr+'x',options:{bold:true,color:dscrN>=1.2?GREEN:RED,fontSize:11,fontFace:'Courier New',fill:{color:MID},align:'center'}},
+        {text:'YR 3/4 YOC',options:{bold:true,color:MUTED,fontSize:9,fontFace:'Courier New',fill:{color:MID},align:'center'}},
+        {text:calc.yoc34+'%',options:{bold:true,color:calc.meetsYOC?GREEN:RED,fontSize:11,fontFace:'Courier New',fill:{color:MID},align:'center'}}
+      ]],{x:0.35,y:4.7,w:12.63,h:0.55,colW:[2.1,2.1,2.1,2.1,2.1,2.1],border:{pt:1,color:'30363D'}});
+      s2.addShape(pptx.ShapeType.rect,{x:0,y:6.9,w:13.33,h:0.6,fill:{color:NAVY}});
+      s2.addText('RIDGE Intelligence  ·  Entrada Partners  ·  CONFIDENTIAL',{x:0.5,y:6.95,w:9,h:0.45,fontSize:10,color:MUTED,fontFace:'Courier New'});
+      s2.addText(dateStr,{x:9.5,y:6.95,w:3.3,h:0.45,fontSize:10,color:MUTED,fontFace:'Courier New',align:'right'});
+
+      // ════════════════════════════════════
+      // SLIDE 3 — Return Stack
+      // ════════════════════════════════════
+      var s3=pptx.addSlide();
+      s3.background={color:DARK};
+      s3.addShape(pptx.ShapeType.rect,{x:0,y:0,w:13.33,h:0.08,fill:{color:BLUE}});
+      s3.addShape(pptx.ShapeType.rect,{x:0,y:0.08,w:13.33,h:0.72,fill:{color:NAVY}});
+      s3.addText('RETURN STACK',{x:0.4,y:0.12,w:8,h:0.6,fontSize:20,bold:true,color:TEXT,fontFace:'Courier New'});
+      s3.addText(addr,{x:5,y:0.12,w:8,h:0.6,fontSize:12,color:MUTED,fontFace:'Courier New',align:'right'});
+
+      function _retRow(lbl,val,hurdle,pf) {
+        var bg=pf===true?'0D2818':(pf===false?'2D0A0A':MID);
+        var vc=pf===true?GREEN:(pf===false?RED:TEXT);
+        var st=pf===true?'PASS':(pf===false?'FAIL':'—');
+        return [{text:lbl,options:{color:TEXT,fontSize:11,fontFace:'Courier New',fill:{color:bg}}},
+                {text:val,options:{bold:true,color:vc,fontSize:11,fontFace:'Courier New',fill:{color:bg}}},
+                {text:hurdle,options:{color:MUTED,fontSize:10,fontFace:'Courier New',fill:{color:bg}}},
+                {text:st,options:{bold:true,color:pf===true?GREEN:(pf===false?RED:MUTED),fontSize:10,fontFace:'Courier New',fill:{color:bg}}}];
       }
-    });
+      s3.addTable([
+        [{text:'METRIC',options:{bold:true,color:BLUE,fontSize:9,fontFace:'Courier New',fill:{color:NAVY},align:'center'}},
+         {text:'VALUE',options:{bold:true,color:BLUE,fontSize:9,fontFace:'Courier New',fill:{color:NAVY},align:'center'}},
+         {text:'HURDLE',options:{bold:true,color:BLUE,fontSize:9,fontFace:'Courier New',fill:{color:NAVY},align:'center'}},
+         {text:'STATUS',options:{bold:true,color:BLUE,fontSize:9,fontFace:'Courier New',fill:{color:NAVY},align:'center'}}],
+        _retRow('Levered IRR',calc.irr+'%','14.75%',calc.meetsIRR),
+        _retRow('Equity Multiple',calc.em+'x','1.75x',calc.meetsEM),
+        _retRow('YR 3/4 YOC',calc.yoc34+'%','7.50%',calc.meetsYOC),
+        _retRow('YR 1 Lev. CF','$'+calc.yr1LevCF,'—',null),
+        _retRow('DSCR',calc.dscr+'x','1.20x',dscrN>=1.2),
+        _retRow('Exit Sale Price','$'+calc.salePrice,'—',null)
+      ],{x:0.35,y:1.0,w:6.4,h:5.5,colW:[2.2,1.5,1.2,1.5],border:{pt:1,color:'30363D'}});
+
+      s3.addTable([
+        [{text:'DEBT STRUCTURE',options:{bold:true,color:BLUE,fontSize:9,fontFace:'Courier New',fill:{color:NAVY}}},{text:'',options:{fill:{color:NAVY}}}],
+        [{text:'Loan Amount',options:{color:TEXT,fontSize:11,fontFace:'Courier New',fill:{color:MID}}},{text:'$'+calc.loanAmt,options:{bold:true,color:TEXT,fontSize:11,fontFace:'Courier New',fill:{color:MID}}}],
+        [{text:'LTV',options:{color:TEXT,fontSize:11,fontFace:'Courier New',fill:{color:MID}}},{text:(ltvPct*100).toFixed(0)+'%',options:{bold:true,color:TEXT,fontSize:11,fontFace:'Courier New',fill:{color:MID}}}],
+        [{text:'Rate',options:{color:TEXT,fontSize:11,fontFace:'Courier New',fill:{color:MID}}},{text:(rateRaw*100).toFixed(2)+'%',options:{bold:true,color:TEXT,fontSize:11,fontFace:'Courier New',fill:{color:MID}}}],
+        [{text:'Amort.',options:{color:TEXT,fontSize:11,fontFace:'Courier New',fill:{color:MID}}},{text:amortYrs+' yr',options:{bold:true,color:TEXT,fontSize:11,fontFace:'Courier New',fill:{color:MID}}}],
+        [{text:'IO Period',options:{color:TEXT,fontSize:11,fontFace:'Courier New',fill:{color:MID}}},{text:ioYrs>0?ioYrs+' yr':'None',options:{bold:true,color:TEXT,fontSize:11,fontFace:'Courier New',fill:{color:MID}}}],
+        [{text:'Annual DS',options:{color:TEXT,fontSize:11,fontFace:'Courier New',fill:{color:MID}}},{text:'$'+calc.annualDS,options:{bold:true,color:TEXT,fontSize:11,fontFace:'Courier New',fill:{color:MID}}}]
+      ],{x:7.0,y:1.0,w:5.9,h:3.4,colW:[2.8,3.1],border:{pt:1,color:'30363D'}});
+
+      s3.addShape(pptx.ShapeType.rect,{x:7.0,y:4.55,w:5.9,h:1.85,fill:{color:NAVY},line:{color:BLUE,pt:2}});
+      s3.addText('MAX PRICE @ 14.75% IRR',{x:7.1,y:4.65,w:5.7,h:0.4,fontSize:9,bold:true,color:BLUE,fontFace:'Courier New',align:'center',charSpacing:2});
+      s3.addText('$'+calc.maxPrice,{x:7.1,y:5.1,w:5.7,h:0.65,fontSize:28,bold:true,color:GREEN,fontFace:'Courier New',align:'center'});
+      s3.addText('$'+calc.maxPricePSF+' PSF  ·  $'+calc.priceReduction+' BELOW ASK',{x:7.1,y:5.8,w:5.7,h:0.35,fontSize:9,color:MUTED,fontFace:'Courier New',align:'center'});
+      s3.addShape(pptx.ShapeType.rect,{x:0,y:6.9,w:13.33,h:0.6,fill:{color:NAVY}});
+      s3.addText('RIDGE Intelligence  ·  Entrada Partners  ·  CONFIDENTIAL',{x:0.5,y:6.95,w:9,h:0.45,fontSize:10,color:MUTED,fontFace:'Courier New'});
+      s3.addText(dateStr,{x:9.5,y:6.95,w:3.3,h:0.45,fontSize:10,color:MUTED,fontFace:'Courier New',align:'right'});
+
+      // ════════════════════════════════════
+      // SLIDE 4 — Sensitivity Analysis
+      // ════════════════════════════════════
+      var s4=pptx.addSlide();
+      s4.background={color:DARK};
+      s4.addShape(pptx.ShapeType.rect,{x:0,y:0,w:13.33,h:0.08,fill:{color:BLUE}});
+      s4.addShape(pptx.ShapeType.rect,{x:0,y:0.08,w:13.33,h:0.72,fill:{color:NAVY}});
+      s4.addText('SENSITIVITY ANALYSIS',{x:0.4,y:0.12,w:8,h:0.6,fontSize:20,bold:true,color:TEXT,fontFace:'Courier New'});
+      s4.addText(addr,{x:5,y:0.12,w:8,h:0.6,fontSize:12,color:MUTED,fontFace:'Courier New',align:'right'});
+
+      var priceMults=[0.85,0.90,0.95,1.00,1.05];
+      var holdMos=[36,48,60];
+      var capOpts=[5.75,6.00,6.25,6.50];
+      var askNum=calc.ask;
+      var exitCapPctBase=parseFloat(calc.exitCap);
+
+      function _sensCell(v,star) {
+        var bg=v>=15?'0D2818':(v>=12?'2D2600':'2D0A0A');
+        var tc=v>=15?GREEN:(v>=12?YELLOW:RED);
+        return {text:(star?'★ ':'')+v.toFixed(1)+'%',options:{bold:star,color:tc,fontSize:10,fontFace:'Courier New',fill:{color:bg},align:'center'}};
+      }
+      function _priceCell(pm,pa) {
+        return {text:'$'+(Math.round(pa/1e6*100)/100)+'M ('+(pm*100).toFixed(0)+'%)',options:{color:TEXT,fontSize:9,fontFace:'Courier New',fill:{color:MID},align:'center'}};
+      }
+
+      s4.addText('IRR by Price × Hold Period',{x:0.35,y:1.0,w:6.0,h:0.4,fontSize:11,bold:true,color:TEXT,fontFace:'Courier New'});
+      var holdHdr=[{text:'Price',options:{bold:true,color:BLUE,fontSize:9,fontFace:'Courier New',fill:{color:NAVY},align:'center'}}];
+      holdMos.forEach(function(m){holdHdr.push({text:m+' mo',options:{bold:true,color:BLUE,fontSize:9,fontFace:'Courier New',fill:{color:NAVY},align:'center'}});});
+      var holdTbl=[holdHdr];
+      priceMults.forEach(function(pm){
+        var pa=askNum*pm;
+        var row=[_priceCell(pm,pa)];
+        holdMos.forEach(function(m){row.push(_sensCell(_sensIRR(pa,m/12,exitCapDefault),pm===1.00&&m===60));});
+        holdTbl.push(row);
+      });
+      s4.addTable(holdTbl,{x:0.35,y:1.45,w:6.2,h:2.8,colW:[2.5,1.23,1.23,1.23],border:{pt:1,color:'30363D'}});
+
+      s4.addText('IRR by Price × Exit Cap Rate',{x:7.0,y:1.0,w:6.0,h:0.4,fontSize:11,bold:true,color:TEXT,fontFace:'Courier New'});
+      var capHdr=[{text:'Price',options:{bold:true,color:BLUE,fontSize:9,fontFace:'Courier New',fill:{color:NAVY},align:'center'}}];
+      capOpts.forEach(function(c){capHdr.push({text:c.toFixed(2)+'%',options:{bold:true,color:BLUE,fontSize:9,fontFace:'Courier New',fill:{color:NAVY},align:'center'}});});
+      var capTbl=[capHdr];
+      priceMults.forEach(function(pm){
+        var pa=askNum*pm;
+        var row=[_priceCell(pm,pa)];
+        capOpts.forEach(function(c){row.push(_sensCell(_sensIRR(pa,5,c/100),pm===1.00&&Math.abs(c-exitCapPctBase)<0.01));});
+        capTbl.push(row);
+      });
+      s4.addTable(capTbl,{x:7.0,y:1.45,w:6.0,h:2.8,colW:[2.3,0.93,0.93,0.93,0.91],border:{pt:1,color:'30363D'}});
+
+      s4.addShape(pptx.ShapeType.rect,{x:0.35,y:4.45,w:0.25,h:0.25,fill:{color:'0D2818'},line:{color:GREEN,pt:1}});
+      s4.addText('≥ 15.0% (PASS)',{x:0.65,y:4.45,w:2.5,h:0.25,fontSize:9,color:MUTED,fontFace:'Courier New'});
+      s4.addShape(pptx.ShapeType.rect,{x:3.4,y:4.45,w:0.25,h:0.25,fill:{color:'2D2600'},line:{color:YELLOW,pt:1}});
+      s4.addText('12–15% (WATCH)',{x:3.7,y:4.45,w:2.5,h:0.25,fontSize:9,color:MUTED,fontFace:'Courier New'});
+      s4.addShape(pptx.ShapeType.rect,{x:6.5,y:4.45,w:0.25,h:0.25,fill:{color:'2D0A0A'},line:{color:RED,pt:1}});
+      s4.addText('< 12% (FAIL)  ·  ★ = Current Assumptions',{x:6.8,y:4.45,w:6.3,h:0.25,fontSize:9,color:MUTED,fontFace:'Courier New'});
+      s4.addText('Hold sensitivity uses base exit cap ('+calc.exitCap+'%); Cap sensitivity uses 5-yr hold.',{x:0.35,y:4.82,w:12.63,h:0.35,fontSize:9,color:MUTED,fontFace:'Courier New'});
+      s4.addShape(pptx.ShapeType.rect,{x:0,y:6.9,w:13.33,h:0.6,fill:{color:NAVY}});
+      s4.addText('RIDGE Intelligence  ·  Entrada Partners  ·  CONFIDENTIAL',{x:0.5,y:6.95,w:9,h:0.45,fontSize:10,color:MUTED,fontFace:'Courier New'});
+      s4.addText(dateStr,{x:9.5,y:6.95,w:3.3,h:0.45,fontSize:10,color:MUTED,fontFace:'Courier New',align:'right'});
+
+      // ════════════════════════════════════
+      // SLIDE 5 — IC Recommendation
+      // ════════════════════════════════════
+      var s5=pptx.addSlide();
+      s5.background={color:DARK};
+      s5.addShape(pptx.ShapeType.rect,{x:0,y:0,w:13.33,h:0.08,fill:{color:BLUE}});
+      s5.addShape(pptx.ShapeType.rect,{x:0,y:0.08,w:13.33,h:0.72,fill:{color:NAVY}});
+      s5.addText('IC RECOMMENDATION',{x:0.4,y:0.12,w:8,h:0.6,fontSize:20,bold:true,color:TEXT,fontFace:'Courier New'});
+      s5.addText(addr,{x:5,y:0.12,w:8,h:0.6,fontSize:12,color:MUTED,fontFace:'Courier New',align:'right'});
+
+      var allPass=calc.meetsIRR&&calc.meetsEM&&calc.meetsYOC;
+      var anyPass=calc.meetsIRR||calc.meetsEM||calc.meetsYOC;
+      var convLabel=allPass?'HIGH CONVICTION':(anyPass?'CONDITIONAL':'PASS');
+      var convColor=allPass?GREEN:(anyPass?YELLOW:RED);
+      var convBg=allPass?'0D2818':(anyPass?'2D2600':'2D0A0A');
+      s5.addShape(pptx.ShapeType.rect,{x:0.5,y:1.05,w:12.33,h:1.6,fill:{color:convBg},line:{color:convColor,pt:3}});
+      s5.addText(convLabel,{x:0.5,y:1.15,w:12.33,h:1.2,fontSize:40,bold:true,color:convColor,fontFace:'Courier New',align:'center'});
+
+      [{label:'LEVERED IRR',value:calc.irr+'%',pass:calc.meetsIRR},
+       {label:'EQUITY MULTIPLE',value:calc.em+'x',pass:calc.meetsEM},
+       {label:'YR 3/4 YOC',value:calc.yoc34+'%',pass:calc.meetsYOC},
+       {label:'MAX PRICE',value:'$'+calc.maxPrice,pass:calc.meetsIRR}].forEach(function(b,i){
+        var bx=0.5+i*3.2;
+        s5.addShape(pptx.ShapeType.rect,{x:bx,y:2.85,w:2.9,h:1.3,fill:{color:b.pass?'0D2818':'2D0A0A'},line:{color:b.pass?GREEN:RED,pt:1}});
+        s5.addText(b.value,{x:bx,y:2.95,w:2.9,h:0.65,fontSize:20,bold:true,color:b.pass?GREEN:RED,fontFace:'Courier New',align:'center'});
+        s5.addText(b.label,{x:bx,y:3.6,w:2.9,h:0.35,fontSize:9,color:MUTED,fontFace:'Courier New',align:'center',charSpacing:2});
+      });
+
+      s5.addText('NEXT STEPS',{x:0.5,y:4.35,w:5,h:0.4,fontSize:11,bold:true,color:BLUE,fontFace:'Courier New',charSpacing:3});
+      s5.addShape(pptx.ShapeType.rect,{x:0.5,y:4.8,w:12.33,h:0.04,fill:{color:'30363D'}});
+      var panelTxt=el?el.innerText:'';
+      var nsMatch=panelTxt.match(/NEXT STEPS[\s\S]{0,600}/i);
+      var nsLines=nsMatch?nsMatch[0].split('\n').filter(function(l){return l.trim()&&!l.match(/^NEXT STEPS/i);}).slice(0,5):[];
+      if (nsLines.length) {
+        s5.addText(nsLines.map(function(l){return {text:l.trim(),options:{bullet:{type:'bullet'},fontSize:11,color:TEXT,fontFace:'Courier New',breakLine:true}};}),{x:0.5,y:4.9,w:12.33,h:1.65,valign:'top',wrap:true});
+      } else {
+        s5.addText('• Confirm off-market / broker relationship\n• Schedule site visit and market tour\n• Request T-12 operating statements\n• Run waterfall and full IC model',{x:0.5,y:4.9,w:12.33,h:1.65,fontSize:11,color:TEXT,fontFace:'Courier New',valign:'top'});
+      }
+      s5.addShape(pptx.ShapeType.rect,{x:0,y:6.9,w:13.33,h:0.6,fill:{color:NAVY}});
+      s5.addText('RIDGE Intelligence  ·  Entrada Partners  ·  CONFIDENTIAL  ·  '+dateStr,{x:0.5,y:6.95,w:12.63,h:0.45,fontSize:10,color:MUTED,fontFace:'Courier New',align:'center'});
+
+      var fname='RIDGE_Napkin_'+safeAddr+'_'+new Date().toISOString().slice(0,10)+'.pptx';
+      await pptx.writeFile({fileName:fname});
+      return;
+    }
   }
 
-  var fname = 'RIDGE_' + skillName.replace(/[^a-zA-Z0-9]/g,'_') + '_' + new Date().toISOString().slice(0,10) + '.pptx';
-  await pptx.writeFile({ fileName: fname });
+  // ── Generic fallback for non-Napkin skills ──
+  var pptx = new PptxGenJS();
+  pptx.layout = 'LAYOUT_WIDE';
+  var s0=pptx.addSlide();
+  s0.background={color:'0D1117'};
+  s0.addText(skillName,{x:0.5,y:2.2,w:12.3,h:1.4,fontSize:44,bold:true,color:'2196F3',fontFace:'Courier New',align:'center'});
+  s0.addText('RIDGE Intelligence  ·  '+dateStr,{x:0.5,y:3.8,w:12.3,h:0.6,fontSize:16,color:'8B949E',align:'center'});
+  var h2s=el.querySelectorAll('h2');
+  if (h2s.length===0) {
+    var sg=pptx.addSlide();
+    sg.background={color:'0D1117'};
+    sg.addText(el.innerText.slice(0,2000),{x:0.5,y:0.5,w:12.3,h:6.5,fontSize:13,color:'E6EDF3',valign:'top',wrap:true});
+  } else {
+    h2s.forEach(function(h2){
+      var sl=pptx.addSlide();
+      sl.background={color:'0D1117'};
+      sl.addText(h2.textContent,{x:0.5,y:0.3,w:12.3,h:0.9,fontSize:26,bold:true,color:'2196F3',fontFace:'Courier New'});
+      var bullets=[],node=h2.nextSibling;
+      while (node&&node.nodeName!=='H2') {
+        var txt=(node.textContent||'').trim();
+        if (txt) txt.split('\n').forEach(function(ln){if(ln.trim())bullets.push({text:ln.trim(),options:{bullet:{type:'bullet'},fontSize:13,color:'E6EDF3',breakLine:true}});});
+        node=node.nextSibling;
+      }
+      if (bullets.length) sl.addText(bullets,{x:0.5,y:1.4,w:12.3,h:5.8,valign:'top',wrap:true});
+    });
+  }
+  var fname='RIDGE_'+skillName.replace(/[^a-zA-Z0-9]/g,'_')+'_'+new Date().toISOString().slice(0,10)+'.pptx';
+  await pptx.writeFile({fileName:fname});
 }
 
 
