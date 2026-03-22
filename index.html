@@ -2801,7 +2801,16 @@ async function _sbInit() {
     _sbOk = !error;
   } catch(e) { _sbOk = false; }
   _sbSetIndicator(_sbOk);
-  if (_sbOk) await _sbLoadDeals();
+  if (_sbOk) { await _sbLoadDeals(); _sbSubscribe(); }
+}
+
+function _sbSubscribe() {
+  if (!_sbOk || !_sb) return;
+  _sb.channel('pipeline-sync')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'deals' }, function() {
+      _sbLoadDeals();
+    })
+    .subscribe();
 }
 
 async function _sbLoadDeals() {
@@ -2871,7 +2880,6 @@ function getPipelineDeals() {
 }
 function savePipelineDeals(arr) {
   localStorage.setItem('ridge_pipeline', JSON.stringify(arr));
-  if (_sbOk && _sb) arr.forEach(function(deal) { _sbUpsertDeal(deal); });
 }
 function plUpdateDeal(id, updates) {
   var deals = getPipelineDeals();
@@ -2880,6 +2888,7 @@ function plUpdateDeal(id, updates) {
     Object.assign(deals[idx], updates);
     deals[idx].updatedAt = new Date().toISOString();
     savePipelineDeals(deals);
+    _sbUpsertDeal(deals[idx]);
     if (_sbOk && _sb && updates.stage) {
       _sb.from('activity_log').insert({
         deal_id: id,
@@ -2925,6 +2934,7 @@ function plAddDeal() {
   var deals = getPipelineDeals();
   deals.unshift(deal);
   savePipelineDeals(deals);
+  _sbUpsertDeal(deal);
   // Clear form
   ['pla-addr','pla-price','pla-sf','pla-broker','pla-notes','pla-date'].forEach(function(id) {
     var el = document.getElementById(id); if (el) el.value = '';
