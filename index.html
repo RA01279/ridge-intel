@@ -2880,6 +2880,7 @@ function buildTrigger(toolId, d) {
       p += '## LANDLORD OBLIGATIONS\nAll landlord responsibilities — maintenance, capex, TI delivery, free rent, insurance.\n\n';
       p += '## ACQUISITION IMPACT\nHow does this lease affect underwriting? Mark-to-market potential, rollover risk, credit quality assessment, impact on NOI stability.\n\n';
       p += 'Be precise. Flag anything that would affect acquisition pricing or due diligence.';
+      p += '\n\nIMPORTANT: At the very end of your response, after all analysis, output a JSON block in this exact format with no deviation:\n\n```json\n{"sf":4391,"base_rent_psf":7.50,"lease_term_months":63,"commencement_date":"2007-07-01","expiration_date":"2013-05-31","lease_type":"NNN","rent_escalation_pct":3.0,"free_rent_months":0,"ti_psf":null}\n```\n\nUse null for any field you cannot determine. The commencement_date and expiration_date must be in YYYY-MM-DD format. This JSON block is required for database storage.';
       return p;
 
     case 'legal':
@@ -5060,71 +5061,28 @@ async function runRidgeAPI(skillName, prompt) {
           console.log('Gavel post-run firing — leaseId:', _leaseId ? _leaseId : 'MISSING — will INSERT');
           var _leaseUpdate = { extracted_data: {} };
           var gavelOutput = outputText;
-          console.log('Gavel output first 1000 chars:', outputText.slice(0, 1000));
-          console.log('Gavel output chars 1000-2000:', outputText.slice(1000, 2000));
-          // SF — handles tab-separated, no-space, and bare SF formats
-          var sfMatch = gavelOutput.match(/Rentable\s*SF[\s\t]+([0-9,]+)/i);
-          if (!sfMatch) sfMatch = gavelOutput.match(/Square\s*Footage[\s\t]*([0-9,]+)/i);
-          if (!sfMatch) sfMatch = gavelOutput.match(/([0-9,]+)\s+(?:rentable\s+)?SF\b/i);
-          if (!sfMatch) sfMatch = gavelOutput.match(/([0-9,]{4,7})\s*SF/i);
-          if (sfMatch) _leaseUpdate.sf = parseFloat(sfMatch[1].replace(/,/g,''));
-          console.log('SF match:', sfMatch ? sfMatch[1] : 'none');
-          // Base Rent PSF — Year 1 rate preferred; fallback to any Base Rent line
-          var rentMatch = gavelOutput.match(/(?:Base\s+Rent\s+Year\s+1|Year\s+1[^$\n]{0,20})\$([0-9]+\.?[0-9]*)\s*PSF/i);
-          if (!rentMatch) rentMatch = gavelOutput.match(/1[-–]\s*12[^$\n]{0,20}\$([0-9]+\.?[0-9]*)/i);
-          if (!rentMatch) rentMatch = gavelOutput.match(/Base\s+Rent[^\n$]{0,40}\$([0-9]+\.?[0-9]*)\s*PSF/i);
-          if (rentMatch) _leaseUpdate.base_rent_psf = parseFloat(rentMatch[1]);
-          console.log('Rent match:', rentMatch ? rentMatch[1] : 'none');
-          // Lease term — "Lease Term\t63 months", "Expiration63 full months from commencement"
-          var termMatch = gavelOutput.match(/Lease\s+Term[\s\t]+([0-9]+)\s*months/i);
-          if (!termMatch) termMatch = gavelOutput.match(/Expiration[\s\t][^0-9]*([0-9]+)\s*(?:full\s+calendar\s+|full\s+)?months/i);
-          if (!termMatch) termMatch = gavelOutput.match(/([0-9]+)\s*(?:full\s+)?months\s+from\s+commencement/i);
-          if (!termMatch) termMatch = gavelOutput.match(/Term[:\s\t]+([0-9]+)\s*months/i);
-          if (!termMatch) {
-            var termYrMatch = gavelOutput.match(/Term[:\s]+([0-9]+)\s*years?/i);
-            if (termYrMatch) termMatch = [null, String(parseInt(termYrMatch[1]) * 12)];
-          }
-          if (termMatch) _leaseUpdate.lease_term_months = parseInt(termMatch[1]);
-          console.log('Term match:', termMatch ? termMatch[1] : 'none');
-          // Commencement — matches "CommencementJuly 1, 2007"
-          var commMatch = gavelOutput.match(/Commencement\s*([A-Za-z]+\s+[0-9]{1,2},?\s*[0-9]{4})/i);
-          if (!commMatch) commMatch = gavelOutput.match(/Commencement[:\s]+([A-Za-z]+\s+[0-9]{1,2},?\s*[0-9]{4})/i);
-          if (commMatch) { try { var _cd = new Date(commMatch[1]); if (!isNaN(_cd)) { _leaseUpdate.commencement_date = _cd.toISOString().slice(0,10); console.log('lease commencement_date parsed:', _leaseUpdate.commencement_date); } } catch(e) { console.warn('commencement_date parse failed:', commMatch[1]); } }
-          console.log('Commencement match:', commMatch ? commMatch[1] : 'none');
-          // Expiration date — matches "~September 30, 2012" or "September 2012"
-          var expMatch = gavelOutput.match(/Expiration[^\n]{0,30}~?([A-Za-z]+\s+[0-9]{1,2},?\s*[0-9]{4})/i);
-          if (!expMatch) expMatch = gavelOutput.match(/Expiration[^\n]{0,30}~?([A-Za-z]+\s+[0-9]{4})/i);
-          if (expMatch) { try { var _ed = new Date(expMatch[1]); if (!isNaN(_ed)) _leaseUpdate.expiration_date = _ed.toISOString().slice(0,10); } catch(e) {} }
-          // Escalation — rent context preferred; avoid CAM/opex % matches
-          var escalMatch = gavelOutput.match(/(?:Base\s+Rent|Rent)\s*[^\n]{0,30}([0-9]+\.?[0-9]*)%\s*(?:annual|per\s+year|increase)/i);
-          if (!escalMatch) escalMatch = gavelOutput.match(/Escalations?[\s\t]+Annual[:\s]+([0-9]+\.?[0-9]*)%/i);
-          if (!escalMatch) escalMatch = gavelOutput.match(/Escalations?[\s\t][^\n]{0,20}([0-9]+\.?[0-9]*)%/i);
-          if (!escalMatch) {
-            var escalCandidates = gavelOutput.match(/([0-9]+\.?[0-9]*)%\s*(?:annual|annually|per\s+year)/gi);
-            if (escalCandidates) {
-              var rentEscal = escalCandidates.find(function(m) { return parseFloat(m) < 10; });
-              if (rentEscal) escalMatch = [null, rentEscal.match(/([0-9]+\.?[0-9]*)/)[1]];
+          // Parse structured JSON block emitted by Claude at end of response
+          var jsonMatch = gavelOutput.match(/```json\s*(\{[\s\S]+?\})\s*```/);
+          if (jsonMatch) {
+            try {
+              var extracted = JSON.parse(jsonMatch[1]);
+              if (extracted.sf) _leaseUpdate.sf = extracted.sf;
+              if (extracted.base_rent_psf) _leaseUpdate.base_rent_psf = extracted.base_rent_psf;
+              if (extracted.lease_term_months) _leaseUpdate.lease_term_months = extracted.lease_term_months;
+              if (extracted.commencement_date) _leaseUpdate.commencement_date = extracted.commencement_date;
+              if (extracted.expiration_date) _leaseUpdate.expiration_date = extracted.expiration_date;
+              if (extracted.lease_type) _leaseUpdate.lease_type = extracted.lease_type;
+              if (extracted.rent_escalation_pct) _leaseUpdate.rent_escalation_pct = extracted.rent_escalation_pct;
+              if (extracted.free_rent_months !== null && extracted.free_rent_months !== undefined) _leaseUpdate.free_rent_months = extracted.free_rent_months;
+              if (extracted.ti_psf) _leaseUpdate.ti_psf = extracted.ti_psf;
+              console.log('Gavel JSON extracted:', extracted);
+            } catch(e) {
+              console.warn('Gavel JSON parse failed:', e.message);
             }
+          } else {
+            console.warn('Gavel JSON block not found in output');
           }
-          if (escalMatch) _leaseUpdate.rent_escalation_pct = parseFloat(escalMatch[1]);
-          console.log('Escalation match:', escalMatch ? escalMatch[1] : 'none');
-          // Free rent — matches "Free RentNone specified" or "Free Rent6 months"
-          var freeMatch = gavelOutput.match(/Free\s+Rent\s*([0-9]+)\s*months?/i);
-          if (!freeMatch && gavelOutput.match(/Free\s+Rent\s*(?:None|Waived|N\/A|Not\s+specified|No\s+free)/i)) freeMatch = [null, '0'];
-          if (freeMatch) _leaseUpdate.free_rent_months = parseInt(freeMatch[1]);
-          // TI — matches "$25.00/SF" near TI/allowance
-          var tiMatch = gavelOutput.match(/TI[^$\n]{0,40}\$([0-9]+\.?[0-9]*)\s*(?:psf|\/sf|per\s+sf)/i);
-          if (!tiMatch) tiMatch = gavelOutput.match(/\$([0-9]+\.?[0-9]*)\s*(?:psf|\/sf)[^|\n]{0,30}(?:TI|allowance|improvement)/i);
-          if (tiMatch) _leaseUpdate.ti_psf = parseFloat(tiMatch[1]);
-          // Lease type — infer from content
-          var typeMatch = null;
-          if (gavelOutput.match(/triple.?net|NNN/i)) typeMatch = [null, 'NNN'];
-          else if (gavelOutput.match(/modified.?gross|MG\b/i)) typeMatch = [null, 'Modified Gross'];
-          else if (gavelOutput.match(/full.?service|FSG/i)) typeMatch = [null, 'Full Service Gross'];
-          else if (gavelOutput.match(/\bNN\b/i)) typeMatch = [null, 'NN'];
-          else if (/\bgross\b/i.test(gavelOutput)) typeMatch = [null, 'Gross'];
-          if (typeMatch) _leaseUpdate.lease_type = typeMatch[1];
-          // Landlord
+          // Landlord (still regex — not in JSON schema)
           var _llMatch = gavelOutput.match(/landlord[:\s|]+([^\n|]{3,60})/i);
           if (_llMatch) _leaseUpdate.landlord = _llMatch[1].trim().slice(0,100);
           // Address/tenant from form fields
