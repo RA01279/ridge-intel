@@ -2900,10 +2900,41 @@ function buildTrigger(toolId, d) {
       return p;
 
     case 'legal':
-      p = 'You are a senior acquisitions officer at Entrada Partners with CRE legal expertise reviewing a transaction document.\n\n';
-      p += 'DOCUMENT TYPE: ' + (d.dtype||'CRE Document') + '\nPROPERTY: ' + (d.addr||'') + '\nREVIEW FOCUS: ' + (d.focus||'All material provisions') + '\n\n';
-      p += 'DOCUMENT TEXT:\n' + (d.doc_text ? d.doc_text.slice(0, 20000) : '[No document uploaded]') + '\n\n';
-      p += 'Produce:\n## DOCUMENT SUMMARY\nWhat this document is, who the parties are, key dates, and the transaction it governs. Two paragraphs max.\n\n## PROVISION MATRIX\nTable: Section | Provision | Entrada Position | Risk Level | Notes\nCover every material provision. Flag anything non-standard.\n\n## HIGH FLAGS 🔴\nProvisions that require immediate attention, negotiation, or legal counsel before proceeding. For each: exact clause language, why it is a problem, recommended redline.\n\n## MEDIUM FLAGS 🟡\nProvisions that are above market or create risk but are negotiable. Recommended negotiating position for each.\n\n## MISSING PROVISIONS\nStandard protections that should be in this document but are absent. What Entrada should request be added.\n\n## COMPARISON TO MARKET STANDARD\nOverall assessment: is this document seller/landlord-friendly, market-standard, or buyer/tenant-friendly? What is the leverage dynamic?\n\n## RECOMMENDED ACTION\nOne of: EXECUTE AS-IS | EXECUTE WITH MINOR REDLINES | NEGOTIATE BEFORE EXECUTING | DO NOT EXECUTE\nThen specific redlines in priority order.';
+      p = 'You are a senior acquisitions officer at Entrada Partners with deep CRE legal expertise. You are reviewing a transaction document during due diligence. Your job is to protect Entrada\'s interests, flag every non-standard provision, and tell the deal team exactly what to negotiate.\n\n';
+      p += 'DOCUMENT TYPE: ' + (d.dtype||'CRE Document') + '\n';
+      p += 'PROPERTY: ' + (d.addr||'Subject Property') + '\n';
+      p += 'REVIEW FOCUS: ' + (d.focus||'All material provisions') + '\n\n';
+      p += 'DOCUMENT TEXT:\n' + (d.doc_text ? d.doc_text.slice(0, 25000) : '[No document uploaded — upload the document to proceed]') + '\n\n';
+      p += 'ENTRADA CONTEXT: Industrial/flex acquisitions $10M-$70M | Atlanta, Savannah, DFW, Houston | Value-add strategy | Institutional LP capital | 5-year hold\n\n';
+      p += 'Produce a complete legal review at the level of experienced CRE counsel. Structure as follows:\n\n';
+      p += '## DOCUMENT IDENTIFICATION\n';
+      p += 'Document type, parties, property, key dates, transaction overview. Two paragraphs.\n\n';
+      p += '## EXECUTIVE SUMMARY\n';
+      p += 'One paragraph: overall assessment of this document. Is it buyer-friendly, seller-friendly, or market-standard? What is the single biggest issue Entrada needs to address before executing?\n\n';
+      p += '## 🔴 HIGH PRIORITY FLAGS\n';
+      p += 'Provisions that require immediate attention, negotiation, or outside counsel before proceeding. For each:\n';
+      p += '- **Provision name** (Section X.X): Exact issue, why it is problematic for Entrada, dollar impact if quantifiable, recommended redline language\n\n';
+      p += '## 🟡 MODERATE FLAGS\n';
+      p += 'Provisions that are above market or create risk but are negotiable. Same format as above.\n\n';
+      p += '## 🟢 STANDARD PROVISIONS\n';
+      p += 'Brief confirmation of provisions that are market-standard and acceptable as written.\n\n';
+      p += '## MISSING PROVISIONS\n';
+      p += 'Standard protections that should be in this document type but are absent. What Entrada should request be added, and why.\n\n';
+      p += '## KEY ECONOMIC TERMS\n';
+      p += 'Extract and table all economic terms: purchase price, deposits (amount, when hard, held by whom), DD period, closing timeline, extension rights, termination fees, break-up fees, prorations, adjustments. For lease proposals/leases: base rent, escalations, term, TI allowance, free rent, options, assignment rights.\n\n';
+      p += '## CRITICAL DATES & DEADLINES\n';
+      p += 'Table: Date/Deadline | Action Required | Consequence of Missing | Priority\n';
+      p += 'Include: DD expiration, deposit hard date, closing date, notice periods, option exercise deadlines.\n\n';
+      p += '## MARKET STANDARD COMPARISON\n';
+      p += 'For each major provision category, assess: Is this market-standard for institutional CRE transactions in the Southeast? If not, specify the deviation and the market norm.\n\n';
+      p += '## NEGOTIATION STRATEGY\n';
+      p += 'Prioritized list of redlines Entrada should push for, in order of importance:\n';
+      p += '1. Must-have (walk if not obtained)\n';
+      p += '2. Should-have (push hard but can compromise)\n';
+      p += '3. Nice-to-have (raise but accept pushback)\n\n';
+      p += '## RECOMMENDED ACTION\n';
+      p += 'One of: **EXECUTE AS-IS** | **EXECUTE WITH MINOR REDLINES** | **NEGOTIATE BEFORE EXECUTING** | **DO NOT EXECUTE — MATERIAL ISSUES**\n';
+      p += 'Followed by: the top 3 specific actions the deal team should take in the next 48 hours.';
       return p;
 
     case 'daily-signal':
