@@ -429,6 +429,7 @@ footer{border-top:1px solid var(--border);padding:20px 24px;text-align:center;co
 <div class="lease-panel-bg" id="lease-panel">
   <div class="lease-head">
     <span class="lease-head-title">📋 LEASE LIBRARY</span>
+    <button class="btn btn-o" onclick="deduplicateLeases()" style="font-size:11px;padding:5px 12px;">🧹 Dedupe</button>
     <button class="btn btn-o" onclick="closeLeaseLibrary()" style="font-size:11px;padding:5px 12px;">✕ Close</button>
   </div>
   <div class="lease-filters">
@@ -2536,11 +2537,14 @@ function handleFile(toolId, uploadId, input, type) {
               if (tenantEl && !tenantEl.value && tenantMatch && tenantMatch[1]) {
                 tenantEl.value = tenantMatch[1].trim().slice(0,60);
               }
-              // Try to append city/state if address doesn't already have it
-              var cityMatch = fullText.match(/([A-Za-z\s]+,\s*(?:GA|TX|FL|NC|SC|TN|AL|MS|VA|MD|DC|NY|CA|IL|OH|PA|MI|WA|OR|CO|AZ|NV|UT|MN|WI|MO|IN|KY|WV|OK|KS|NE|IA|AR|LA|ID|MT|WY|SD|ND|NM|HI|AK|ME|VT|NH|MA|RI|CT|NJ|DE)\s+[0-9]{5})/i);
-              if (cityMatch && addrEl && addrEl.value && !addrEl.value.includes(',')) {
-                var cityState = cityMatch[1].trim();
-                addrEl.value = addrEl.value + ', ' + cityState;
+              // Try to append city/state immediately following the street address
+              if (addrEl && addrEl.value) {
+                var streetAddr = addrEl.value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                var cityStateMatch = fullText.match(new RegExp(streetAddr + '[,\\s]+([A-Za-z\\s]+,\\s*(?:GA|TX|FL|NC|SC|TN|AL|VA|MD|NY|CA|IL|OH|PA|WA|OR|CO|AZ|NV)\\s*[0-9]{5})', 'i'));
+                if (!cityStateMatch) cityStateMatch = fullText.match(/(?:Smyrna|Atlanta|Savannah|Dallas|Houston|Austin)[,\s]+(?:GA|TX)\s+[0-9]{5}/i);
+                if (cityStateMatch && !addrEl.value.includes(',')) {
+                  addrEl.value = addrEl.value + ', ' + cityStateMatch[0].trim();
+                }
               }
               // Save to leases table on upload
               if (_sbOk && _sb) {
@@ -4660,6 +4664,32 @@ async function showLeaseLibrary() {
 
 function closeLeaseLibrary() {
   document.getElementById('lease-panel').classList.remove('show');
+}
+
+async function deduplicateLeases() {
+  if (!_sbOk || !_sb) { showToast('Supabase not connected'); return; }
+  // Group rows by address+tenant key, keep the most complete (most non-null fields)
+  var seen = {};
+  var toDelete = [];
+  _leaseRows.forEach(function(r) {
+    var key = (r.address || '').toLowerCase().trim() + '||' + (r.tenant || '').toLowerCase().trim();
+    if (!key || key === '||') return; // skip rows with no address or tenant
+    var score = ['sf','base_rent_psf','lease_term_months','commencement_date','expiration_date','lease_type','ti_psf','free_rent_months','rent_escalation_pct','landlord'].filter(function(f){ return r[f] != null; }).length;
+    if (!seen[key]) {
+      seen[key] = { row: r, score: score };
+    } else if (score > seen[key].score) {
+      toDelete.push(seen[key].row.id);
+      seen[key] = { row: r, score: score };
+    } else {
+      toDelete.push(r.id);
+    }
+  });
+  if (!toDelete.length) { showToast('No duplicates found'); return; }
+  try {
+    await _sb.from('leases').delete().in('id', toDelete);
+    showToast('Deleted ' + toDelete.length + ' duplicate lease' + (toDelete.length > 1 ? 's' : ''));
+    showLeaseLibrary(); // reload
+  } catch(e) { showToast('Dedupe failed: ' + e.message); }
 }
 
 function renderLeaseTable() {
