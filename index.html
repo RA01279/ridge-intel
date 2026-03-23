@@ -1328,7 +1328,7 @@ var TOOLS = [
       {row:[{id:'sf',label:'Building SF',ph:'e.g. 94,000'},{id:'price',label:'Purchase Price',ph:'e.g. $15,500,000'},{id:'psf',label:'Price PSF',ph:'e.g. $165'}]},
       {row:[{id:'irr',label:'Levered IRR',ph:'e.g. 15.8%'},{id:'em',label:'Equity Multiple',ph:'e.g. 2.04x'},{id:'cap',label:'Going-In Cap',ph:'e.g. 5.3%'}]},
       {row:[{id:'yoc',label:'YOC (Yr 3/4)',ph:'e.g. 7.9%'},{id:'ltv',label:'LTV',ph:'e.g. 65%'},{id:'hold',label:'Hold Period',ph:'e.g. 5 years'}]},
-      {row:[{id:'thesis',label:'Investment Thesis',ph:'e.g. Value-add multi-tenant flex, below-market rents, lease-up to stabilized YOC...',type:'textarea'}]},
+      {row:[{id:'thesis',label:'Investment Thesis',type:'textarea',rows:8,ph:'Investment thesis — paste your 4 thesis points here, or write free-form notes.\n\nExample:\n1. [Headline] — [supporting detail with specific data]\n2. [Headline] — [supporting detail]\n3. [Headline] — [supporting detail]\n4. [Headline] — [supporting detail]\n\nAny notes here feed directly into the Investment Thesis slide.'}]},
     ],
     isISR:true,
     steps:['Parsing acquisition model...','Extracting return metrics...','Analyzing cash flows...','Cross-referencing OM...','Building investment thesis...','Running risk assessment...','Drafting IC recommendation...','Assembling report...'],
@@ -1683,7 +1683,8 @@ function buildFieldsHTML(tool) {
     var cols = f.row.length === 3 ? 'three' : f.row.length === 2 ? 'two' : 'one';
     var cells = f.row.map(field => {
       if (field.type === 'textarea') {
-        return `<div class="fg"><label class="fl">${field.label}</label><textarea id="f-${tool.id}-${field.id}" placeholder="${field.ph||''}"></textarea></div>`;
+        var taStyle = field.rows ? ` style="min-height:${field.rows * 22}px"` : '';
+        return `<div class="fg"><label class="fl">${field.label}</label><textarea id="f-${tool.id}-${field.id}" placeholder="${field.ph||''}"${taStyle}></textarea></div>`;
       } else if (field.type === 'select') {
         return `<div class="fg"><label class="fl">${field.label}</label><select id="f-${tool.id}-${field.id}">${field.opts.map(o=>`<option>${o}</option>`).join('')}</select></div>`;
       } else {
@@ -2948,7 +2949,9 @@ function buildTrigger(toolId, d) {
       p = 'You are a senior acquisitions officer at Entrada Partners preparing an institutional investment committee presentation.\n\n';
       if (d.model_text) p += '=== ACQUISITION MODEL (rent roll, cash flows, assumptions) ===\n' + d.model_text.slice(0, 12000) + '\n\n';
       p += 'PROPERTY: ' + (d.addr||'') + '\nASSET TYPE: ' + (d.type||'') + '\nSIZE: ' + (d.sf||'') + ' SF\nPURCHASE PRICE: $' + (d.price||'') + ' ($' + (d.psf||'') + ' PSF)\nLEVERED IRR: ' + (d.irr||'') + '\nEQUITY MULTIPLE: ' + (d.em||'') + '\nGOING-IN CAP: ' + (d.cap||'') + '\nYOC YR 3/4: ' + (d.yoc||'') + '\nLTV: ' + (d.ltv||'') + '\nHOLD: ' + (d.hold||'') + '\n\n';
-      p += 'INVESTMENT THESIS: ' + (d.thesis||'') + '\n\n';
+      if (d.thesis) {
+        p += 'ACQUISITION TEAM NOTES (use these directly in the Investment Thesis slide — do not override with generic content):\n' + d.thesis + '\n\n';
+      }
       p += 'ENTRADA HURDLES: 14.75%+ levered IRR | 7.5-8.0% YOC Yr3/4 | 1.75x+ EM | Max 65% LTV\n\n';
       if (d.om_text) p += 'OFFERING MEMORANDUM:\n' + d.om_text.slice(0, 6000) + '\n\n';
       if (d.comps_text) p += 'LEASE COMP DATA:\n' + d.comps_text.slice(0, 4000) + '\n\n';
@@ -7005,12 +7008,14 @@ async function ridgeExportPPT() {
     var pptx = new PptxGenJS();
     pptx.layout = 'LAYOUT_WIDE';
 
-    var NAVY = '0D1117';
-    var NAVY2 = '1E2761';
-    var BLUE = '2196F3';
+    var NAVY  = '0D47A1';
+    var NAVY2 = '1565C0';
+    var BLUE  = '1976D2';
     var WHITE = 'FFFFFF';
     var MUTED = '8B949E';
     var GREEN = '1B5E20';
+    var LGREY = 'F3F8FF';
+    var MGREY = 'BBDEFB';
     var dateStr = new Date().toLocaleDateString('en-US',{month:'long',year:'numeric'});
 
     function addFooter(sl, addr) {
@@ -7069,11 +7074,33 @@ async function ridgeExportPPT() {
     });
     addFooter(s2, d.addr);
 
-    // SLIDE 3 — Investment Thesis (JSON-driven)
+    // SLIDE 3 — Investment Thesis
     var s3 = pptx.addSlide();
     s3.background = {color: NAVY};
     s3.addText('Investment Thesis', {x:0.5,y:0.25,w:12.3,h:0.55,fontSize:28,color:WHITE,bold:true});
-    var thesisItems = (jd && jd.thesis && jd.thesis.length) ? jd.thesis : null;
+
+    // Priority 1: user-typed thesis field — parse numbered points
+    var userThesisRaw = (d.thesis || '').trim();
+    var userPoints = [];
+    if (userThesisRaw) {
+      userThesisRaw.split('\n').map(function(l){ return l.trim(); }).filter(Boolean).forEach(function(line) {
+        var m = line.match(/^[1-4][\.\)]\s*(.+)/);
+        if (m) {
+          var parts = m[1].split(/ — | - /);
+          userPoints.push({headline: parts[0].trim(), body: (parts.slice(1).join(' — ')||'').trim()});
+        }
+      });
+    }
+
+    var thesisItems;
+    if (userPoints.length >= 2) {
+      thesisItems = userPoints;                                    // user structured points
+    } else if (jd && jd.thesis && jd.thesis.length) {
+      thesisItems = jd.thesis;                                     // JSON from Claude
+    } else {
+      thesisItems = null;
+    }
+
     if (thesisItems) {
       thesisItems.slice(0,4).forEach(function(pt,i){
         var y = 1.0 + i*1.45;
@@ -7081,7 +7108,11 @@ async function ridgeExportPPT() {
         s3.addText(pt.headline||'', {x:1.1,y:y,w:11.5,h:0.35,fontSize:13,color:WHITE,bold:true});
         s3.addText((pt.body||'').slice(0,200), {x:1.1,y:y+0.38,w:11.5,h:0.7,fontSize:11,color:MUTED,wrap:true});
       });
+    } else if (userThesisRaw) {
+      // Free-form narrative — inject as single block
+      s3.addText(userThesisRaw.slice(0,600), {x:0.5,y:1.0,w:12.3,h:5.5,fontSize:12,color:MUTED,wrap:true,valign:'top'});
     } else {
+      // extractSection fallback
       var thesisText = extractSection(panelText, 'INVESTMENT THESIS');
       var thesisPoints = thesisText.split('\n').filter(function(l){return l.match(/^\d+\.|^#{1,3}/);}).slice(0,4);
       if (thesisPoints.length === 0) thesisPoints = thesisText.split('\n\n').filter(function(l){return l.trim();}).slice(0,4);
