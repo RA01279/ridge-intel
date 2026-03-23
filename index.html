@@ -2742,23 +2742,17 @@ function copyAndLaunch() {} // kept for safety
 function buildTrigger(toolId, d) {
   switch(toolId) {
     case 'lens':
-      var p = 'Run LENS';
-      if (d.addr) p += ' on ' + d.addr;
-      if (d.type) p += ' — ' + d.type;
-      if (d.sf)   p += ', ' + d.sf + ' SF';
-      if (d.ask)  p += ', asking ' + d.ask;
-      if (d.notes) p += '. Context: ' + d.notes;
-      p += '. Tear it down at RIDGE criteria.';
+      p = 'You are a senior acquisitions officer at Entrada Partners reviewing a broker OM. Your job is to strip the narrative, stress-test every assumption, and tell the IC whether this deal is real.\n\n';
+      p += 'PROPERTY: ' + (d.addr||'') + '\nASSET TYPE: ' + (d.type||'') + '\nSIZE: ' + (d.sf||'') + ' SF\nASKING: $' + (d.ask||'') + '\nCONTEXT: ' + (d.notes||'') + '\n\n';
+      p += 'ENTRADA CRITERIA: $10M-$70M | Atlanta/Savannah/DFW/Houston | 14.75%+ levered IRR | 7.5-8.0% YOC Yr3/4 | 95% off-market\n\n';
+      p += 'Produce:\n## BROKER NARRATIVE vs REALITY\nWhat the broker is claiming vs what the data actually supports. Be specific and cite numbers.\n\n## RE-UNDERWRITE\nRebuild the return stack from scratch using RIDGE assumptions (60-65% LTV, market debt terms, realistic vacancy, market exit cap). Show your math.\n\n## STRESS TEST\n3 scenarios: Base / Downside (-15% NOI, +50bps exit cap) / Severe (-25% NOI, +100bps exit cap). IRR and EM for each.\n\n## WHAT THE BROKER IS HIDING\nFlag every assumption that is aggressive, missing, or impossible to verify. Be direct.\n\n## MAX ENTRY PRICE\nThe exact price where this deal clears 14.75% IRR under RIDGE assumptions. Dollar amount and PSF.\n\n## VERDICT\nPURSUE | CONDITIONAL | PASS — one word, then one paragraph defending it. If CONDITIONAL, state exactly what has to be true.';
       return p;
 
     case 'scout':
-      var p = 'Run SCOUT — ' + (d.mode || 'Submarket Sweep');
-      if (d.mkt)     p += ' in ' + d.mkt;
-      if (d.sfmin)   p += '. Min SF: ' + d.sfmin;
-      if (d.sfmax)   p += ', Max SF: ' + d.sfmax;
-      if (d.price)   p += '. Max price: ' + d.price;
-      if (d.signals) p += '. Signal focus: ' + d.signals;
-      if (d.addr)    p += '. Property: ' + d.addr;
+      p = 'You are a senior acquisitions officer at Entrada Partners running a sourcing sweep.\n\n';
+      p += 'MODE: ' + (d.mode||'Submarket Sweep') + '\nMARKET: ' + (d.mkt||'') + '\nSF RANGE: ' + (d.sfmin||'10,000') + ' - ' + (d.sfmax||'300,000') + ' SF\nMAX PRICE: $' + (d.price||'') + '\nSIGNALS: ' + (d.signals||'All') + '\nPROPERTY: ' + (d.addr||'') + '\n\n';
+      p += 'ENTRADA SOURCING CRITERIA:\n- Private owners, 7-15yr hold, family LLC or local operating company\n- Debt stress: bridge loans 2019-2022 vintage, CMBS watchlist, loan maturity within 18 months\n- Physical signals: no permits 5+ years, vacancy above submarket average, capex neglect\n- Target: motivated seller who hasnt acknowledged the situation publicly\n\n';
+      p += 'Produce:\n## SUBMARKET SNAPSHOT\nVacancy rate, asking rents (Class A/B/C), absorption trend, new supply pipeline, 3 most recent comparable sales with cap rates and PSF. Be specific — cite actual numbers.\n\n## TOP 10 PROSPECT LIST\n| # | Address | Est SF | Owner Entity | Hold (yrs) | Primary Signal | Debt Signal | Conviction |\nFor each: specific owner name/entity from public records, estimated acquisition year, what makes them motivated, recommended outreach angle.\n\n## DEBT STRESS FLAGS\nAny CMBS watchlist placements, bridge loans approaching maturity, or special servicer assignments in this submarket. Cite EDGAR or public sources.\n\n## PORTFOLIO PLAYS\nAny owners with multiple assets who might entertain a portfolio conversation. Flag the clustering opportunity.\n\n## RECOMMENDED FIRST CALL\nThe single highest-conviction prospect. Why them, why now, what to say in the first 30 seconds.';
       return p;
 
     case 'napkin':
@@ -2856,10 +2850,9 @@ function buildTrigger(toolId, d) {
       return p;
 
     case 'market-pulse':
-      var p = 'Run Market Pulse — ' + (d.mode || 'Full Market Report');
-      if (d.mkt)  p += ' for ' + d.mkt;
-      if (d.sub)  p += ', ' + d.sub;
-      if (d.deal) p += '. Active deal: ' + d.deal;
+      p = 'You are a senior acquisitions officer at Entrada Partners. Run a comprehensive market intelligence report.\n\n';
+      p += 'MODE: ' + (d.mode||'Full Market') + '\nMARKET: ' + (d.mkt||'') + '\nSUBMARKET: ' + (d.sub||'') + '\nACTIVE DEAL: ' + (d.deal||'None') + '\n\n';
+      p += 'Produce:\n## MARKET DASHBOARD\nTable: Vacancy | Asking Rent (Class A/B/C) | Net Absorption (TTM) | New Supply (Under Construction) | Cap Rate Range | YoY Rent Growth\n\n## SUBMARKET DEEP DIVE\nFor the specific submarket: vacancy trend (24-month direction), largest recent leases signed, active tenants in the market, key demand drivers, new supply risk.\n\n## COMPARABLE TRANSACTIONS\nLast 6 months: minimum 5 industrial/flex sales. For each: address, SF, sale price, PSF, cap rate, buyer, seller, date. Bold the most relevant comp to active deal if provided.\n\n## RENT FORECAST\n12-month and 24-month rent trajectory. What drives it — supply/demand balance, tenant demand, macro. Be specific.\n\n## ACQUISITION IMPLICATIONS\nFor Entrada specifically: where are the best basis opportunities right now? Which submarkets are showing motivated seller activity? Where are rents running ahead of cap rate compression?\n\n## CONVICTION CALL\nOne paragraph: if Entrada is buying industrial/flex in this market today, what is the specific thesis and where exactly should we be looking?';
       return p;
 
     case 'lease-comp':
@@ -2874,104 +2867,58 @@ function buildTrigger(toolId, d) {
       return p;
 
     case 'debt':
-      var p = 'Run the Debt Tool';
-      if (d.addr)  p += ' for ' + d.addr;
-      if (d.price) p += '. Price: ' + d.price;
-      if (d.noi)   p += '. Yr1 NOI: ' + d.noi;
-      if (d.ltv)   p += '. Target LTV: ' + d.ltv;
-      if (d.type)  p += '. Scenario: ' + d.type;
-      if (d.hold)  p += '. Hold: ' + d.hold;
+      p = 'You are a senior acquisitions officer at Entrada Partners modeling the capital stack.\n\n';
+      p += 'PROPERTY: ' + (d.addr||'') + '\nPURCHASE PRICE: $' + (d.price||'') + '\nYEAR 1 NOI: $' + (d.noi||'') + '\nTARGET LTV: ' + (d.ltv||'65') + '%\nSCENARIO: ' + (d.type||'Permanent') + '\nHOLD: ' + (d.hold||'5') + ' years\n\n';
+      p += 'ENTRADA DEBT PARAMETERS: Max LTV 65% | Min DSCR 1.25x | Prefer fixed-rate for core-plus, bridge acceptable for value-add | 5-year term standard\n\n';
+      p += 'Produce:\n## CAPITAL STACK SUMMARY\nTable showing: Loan Amount | LTV | Rate | Term | IO Period | Amortization | Annual Debt Service | DSCR | Debt Yield\n\n## LENDER MATRIX\nFor each of: Agency (Fannie/Freddie) | CMBS | Life Company | Bank/Regional | Debt Fund/Bridge:\n- Indicative terms today (rate, LTV, DSCR requirement)\n- Best fit for this deal type\n- Timing to close\n- Key requirement or constraint\n\n## OPTIMAL STRUCTURE\nRecommended capital stack for this specific deal. Why this lender type. What to negotiate.\n\n## SENSITIVITY\nTable: DSCR and debt yield at 90% / 95% / 100% occupancy at in-place rents. Flag the breakeven occupancy for debt service.\n\n## MAX PROCEEDS ANALYSIS\nMaximum loan at 65% LTV vs maximum loan at 1.25x DSCR — which is the binding constraint? By how much?\n\n## RED FLAGS\nAnything in this deal that will cause lender pushback — lease rollover, single tenant, below-market rents, vintage, etc.';
       return p;
 
     case 'isr':
-      var p = 'Build the IC Report';
-      if (d.addr)  p += ' for ' + d.addr;
-      if (d.type)  p += ' — ' + d.type;
-      if (d.sf)    p += ', ' + d.sf + ' SF';
-      if (d.price) p += '. Price: ' + d.price;
-      if (d.psf)   p += ' (' + d.psf + ' PSF)';
-      if (d.irr)   p += '. IRR: ' + d.irr;
-      if (d.em)    p += '. EM: ' + d.em;
-      if (d.cap)   p += '. Cap: ' + d.cap;
-      if (d.yoc)   p += '. YOC: ' + d.yoc;
-      if (d.ltv)   p += '. LTV: ' + d.ltv;
-      if (d.hold)  p += '. Hold: ' + d.hold;
-      if (d.thesis) p += '. Thesis: ' + d.thesis;
+      p = 'You are a senior acquisitions officer at Entrada Partners preparing an institutional investment committee presentation.\n\n';
+      p += 'PROPERTY: ' + (d.addr||'') + '\nASSET TYPE: ' + (d.type||'') + '\nSIZE: ' + (d.sf||'') + ' SF\nPURCHASE PRICE: $' + (d.price||'') + ' ($' + (d.psf||'') + ' PSF)\nLEVERED IRR: ' + (d.irr||'') + '\nEQUITY MULTIPLE: ' + (d.em||'') + '\nGOING-IN CAP: ' + (d.cap||'') + '\nYOC YR 3/4: ' + (d.yoc||'') + '\nLTV: ' + (d.ltv||'') + '\nHOLD: ' + (d.hold||'') + '\n\n';
+      p += 'INVESTMENT THESIS: ' + (d.thesis||'') + '\n\n';
+      p += 'ENTRADA HURDLES: 14.75%+ levered IRR | 7.5-8.0% YOC Yr3/4 | 1.75x+ EM | Max 65% LTV\n\n';
+      if (d.model_text) p += 'ACQUISITION MODEL DATA:\n' + d.model_text.slice(0, 8000) + '\n\n';
+      if (d.om_text) p += 'OFFERING MEMORANDUM:\n' + d.om_text.slice(0, 6000) + '\n\n';
+      if (d.comps_text) p += 'LEASE COMP DATA:\n' + d.comps_text.slice(0, 4000) + '\n\n';
+      p += 'Produce a complete IC memo in the following structure. Write at the level of a senior PE professional presenting to an investment committee — specific, data-driven, no filler language.\n\n## DEAL SUMMARY\nTwo paragraphs: what the asset is, why we are buying it, and the return profile. Include all key metrics.\n\n## INVESTMENT THESIS\nFour numbered thesis points in the format used by institutional PE firms:\n1. [Compelling headline] — detailed paragraph with specific data\n2. [Compelling headline] — detailed paragraph with specific data\n3. [Compelling headline] — detailed paragraph with specific data\n4. [Compelling headline] — detailed paragraph with specific data\n\n## RETURN STACK\nTable: Metric | Value | vs Entrada Hurdle\nAll returns at purchase price. IRR, EM, YOC Yr1/Yr3/Yr4, Going-in Cap, Exit Cap, DSCR, Equity Required, Total Capitalization.\n\n## CAPITAL STACK\nSources and uses table. Debt terms. Equity required. LTV. DSCR.\n\n## MARKET & SUBMARKET\nSubmarket fundamentals: vacancy, rents, absorption, new supply. Recent comparable transactions (minimum 3) with address, SF, price, PSF, cap rate, buyer, date. Why this submarket now.\n\n## RENT ROLL ANALYSIS\nTenant summary: tenant name, SF, % of NRA, lease expiration, rent PSF, rent vs market. WALT. Rollover schedule. Mark-to-market upside.\n\n## SENSITIVITY ANALYSIS\nTable 1: IRR by Purchase Price × Hold Period\nTable 2: IRR by Purchase Price × Exit Cap Rate\nColor commentary: green = clears hurdle, yellow = borderline, red = fails\n\n## RISK MATRIX\nTable: Risk Factor | Severity (High/Medium/Low) | Mitigant\nMinimum 6 risks. Be specific — name the tenants, the dates, the dollar amounts.\n\n## IC RECOMMENDATION\nPURSUE | CONDITIONAL | PASS\nIf PURSUE: state the conviction and next steps\nIf CONDITIONAL: state exactly what must be verified before proceeding\n5 specific next steps numbered and actionable';
       return p;
 
     case 'loi':
-      var p = 'Draft the LOI';
-      if (d.addr)    p += ' for ' + d.addr;
-      if (d.city)    p += ', ' + d.city;
-      if (d.sf)      p += '. SF: ' + d.sf;
-      if (d.price)   p += '. Price: ' + d.price;
-      if (d.deposit) p += '. Deposit: ' + d.deposit;
-      if (d.broker)  p += '. Broker: ' + d.broker;
-      if (d.exp)     p += '. Expiration: ' + d.exp;
+      p = 'You are a senior acquisitions officer at Entrada Partners drafting a letter of intent.\n\n';
+      p += 'PROPERTY: ' + (d.addr||'') + ', ' + (d.city||'') + '\nSF: ' + (d.sf||'') + '\nPURCHASE PRICE: $' + (d.price||'') + '\nDEPOSIT: $' + (d.deposit||'') + '\nBROKER: ' + (d.broker||'') + '\nEXPIRATION: ' + (d.exp||'') + '\n\n';
+      p += 'ENTRADA STANDARD TERMS:\n- Buyer: Entrada Partners Acquisitions, LLC or Assignee\n- DD Period: 30 days\n- Closing Period: 30 days after DD\n- Principals: Reuben Berman, Justin Schuman, Joshua Bar-Yadin\n- Deposit: Hard at close of DD unless otherwise negotiated\n\n';
+      p += 'Draft a complete, professional LOI in the Steve Reynolds format. Include:\n1. Opening paragraph identifying buyer, seller, property\n2. Purchase price and PSF\n3. Earnest money deposit — amount, when hard, held by whom\n4. Due diligence period — length, what it covers, termination right\n5. Closing period\n6. Financing contingency (or none if all-cash)\n7. Broker acknowledgment\n8. LOI expiration\n9. Non-binding language\n10. Signature block for Entrada Partners\n\nWrite in formal legal letter format. No bullet points in the LOI itself — full paragraphs. Professional tone throughout.';
       return p;
 
     case 'gavel':
-      var p = 'You are RIDGE running The Gavel — Lease Administration module for Entrada Partners.\n\n';
-      p += 'TASK: Produce a full institutional lease abstract and risk assessment.\n\n';
-      if (d.addr) p += 'Property: ' + d.addr + '\n';
-      if (d.tenant) p += 'Tenant: ' + d.tenant + '\n';
-      if (d.notes) p += 'Focus areas: ' + d.notes + '\n';
-      p += '\n';
-      if (d.lease_text) {
-        p += 'LEASE DOCUMENT:\n' + d.lease_text + '\n\n';
-      } else {
-        p += '[No lease document uploaded — ask user to upload the lease PDF or DOCX]\n\n';
-      }
-      if (d.rentroll_text) {
-        p += 'RENT ROLL:\n' + d.rentroll_text + '\n\n';
-      }
-      p += 'Produce the following sections:\n\n';
-      p += '## LEASE ABSTRACT\nKey terms table: Tenant, Commencement, Expiration, Base Rent, Escalations, Options, TI Allowance, Free Rent, Security Deposit, Permitted Use, Assignment/Subletting rights.\n\n';
-      p += '## CRITICAL DATES\nAll dates that require action: expiration, option exercise deadlines, rent bumps, renewal notice windows.\n\n';
-      p += '## RENT SCHEDULE\nYear-by-year rent table showing base rent PSF and annual total through lease expiration.\n\n';
-      p += '## RISK FLAGS\nAny provisions that are landlord-unfavorable, unusual, or require attention — co-tenancy clauses, termination rights, below-market renewal options, assignment rights, etc.\n\n';
-      p += '## LANDLORD OBLIGATIONS\nAll landlord responsibilities — maintenance, capex, TI delivery, free rent, insurance.\n\n';
-      p += '## ACQUISITION IMPACT\nHow does this lease affect underwriting? Mark-to-market potential, rollover risk, credit quality assessment, impact on NOI stability.\n\n';
-      p += 'Be precise. Flag anything that would affect acquisition pricing or due diligence.';
-      p += '\n\nIMPORTANT: At the very end of your response, after all analysis, append this exact JSON block with extracted lease data (use null for any field not found):\n\n```json\n{"sf":null,"base_rent_psf":null,"lease_term_months":null,"commencement_date":null,"expiration_date":null,"lease_type":null,"ti_psf":null,"rent_escalation_pct":null,"free_rent_months":null}\n```\n\nReplace null values with actual extracted data. commencement_date and expiration_date in YYYY-MM-DD format. sf as integer. rent_escalation_pct as number only (e.g. 3 not 3%). Do not add any text after the JSON block.';
+      p = 'You are a senior acquisitions officer at Entrada Partners reviewing a lease document for an acquisition target.\n\n';
+      p += 'PROPERTY: ' + (d.addr||'') + '\nTENANT: ' + (d.tenant||'') + '\nREVIEW FOCUS: ' + (d.notes||'All material provisions') + '\n\n';
+      p += 'LEASE DOCUMENT TEXT:\n' + (d.lease_text ? d.lease_text.slice(0, 20000) : '[No lease document uploaded — request the lease before proceeding]') + '\n\n';
+      p += 'Produce an institutional lease abstract and risk assessment:\n\n## LEASE ABSTRACT\nTable format — Field | Details:\nTenant | Landlord | Commencement | Expiration | Lease Term | Rentable SF | Tenant\'s Share | Base Rent Year 1 | Escalations | Options | TI Allowance | Free Rent | Security Deposit | Permitted Use | Assignment Rights\n\n## CRITICAL DATES\nTable: Date | Action Required | Risk Level (High/Medium/Low)\n\n## RENT SCHEDULE\nFull rent schedule table: Year | Months | Rate PSF | Monthly Rent | Annual Rent\n\n## RISK FLAGS\nOrganized by severity:\n🔴 CRITICAL: Provisions that could kill deal value or create major liability\n🟡 MODERATE: Provisions that affect underwriting or require negotiation\n🟢 LOW: Standard provisions, minor concerns\n\nFor each flag: specific clause reference, dollar impact if quantifiable, recommended action.\n\n## LANDLORD OBLIGATIONS\nWhat Entrada inherits as landlord. CapEx obligations, TI commitments, maintenance responsibilities, any ongoing landlord covenants.\n\n## ACQUISITION IMPACT\nTable: Factor | Impact | Assessment\nNOI contribution, mark-to-market upside/downside, rollover risk, credit quality, occupancy risk, lease structure quality.\n\n## CONVICTION STATEMENT\nOne paragraph: does this lease support or undermine the acquisition thesis? What must be true for this lease to not be a problem at exit?\n\nIMPORTANT: At the very end of your response, after all analysis, append this exact JSON block with extracted lease data (use null for any field not found):\n\n```json\n{"sf":null,"base_rent_psf":null,"lease_term_months":null,"commencement_date":null,"expiration_date":null,"lease_type":null,"ti_psf":null,"rent_escalation_pct":null,"free_rent_months":null}\n```\n\nReplace null values with actual extracted data. commencement_date and expiration_date in YYYY-MM-DD format. sf as integer. rent_escalation_pct as number only. Do not add any text after the JSON block.';
       return p;
 
     case 'legal':
-      var p = 'You are RIDGE running the CRE Legal Reviewer for Entrada Partners.\n\n';
-      p += 'TASK: Full legal review and risk assessment.\n\n';
-      if (d.dtype) p += 'Document type: ' + d.dtype + '\n';
-      if (d.addr)  p += 'Property / Deal: ' + d.addr + '\n';
-      if (d.focus) p += 'Focus areas: ' + d.focus + '\n';
-      p += '\n';
-      if (d.doc1_text) {
-        p += 'PRIMARY DOCUMENT:\n' + d.doc1_text + '\n\n';
-      } else {
-        p += '[No primary document uploaded — ask user to upload the document]\n\n';
-      }
-      if (d.doc2_text) {
-        p += 'SECONDARY DOCUMENT:\n' + d.doc2_text + '\n\n';
-      }
-      p += 'Produce:\n## DOCUMENT SUMMARY\nParties, purpose, key dates, transaction structure in 3–5 sentences.\n\n## KEY PROVISIONS TABLE\nTable: Section | Provision | Summary | Risk Level\n\n## RED FLAGS\nFor each flag: Section reference, what it says, why it\'s a problem, suggested fix or redline language.\n\n## RIDGE-SPECIFIC CONCERNS\nAnything that affects: earnest money refundability, financing contingency, assignment rights, seller reps on leases, waterfall/preferred return (if JV), prepayment/defeasance (if loan docs), termination rights (if PMA).\n\n## MISSING PROVISIONS\nAnything RIDGE typically requires that is absent from this document.\n\n## RECOMMENDED REDLINES\n3–5 specific changes with proposed language.';
+      p = 'You are a senior acquisitions officer at Entrada Partners with CRE legal expertise reviewing a transaction document.\n\n';
+      p += 'DOCUMENT TYPE: ' + (d.dtype||'CRE Document') + '\nPROPERTY: ' + (d.addr||'') + '\nREVIEW FOCUS: ' + (d.focus||'All material provisions') + '\n\n';
+      p += 'DOCUMENT TEXT:\n' + (d.doc_text ? d.doc_text.slice(0, 20000) : '[No document uploaded]') + '\n\n';
+      p += 'Produce:\n## DOCUMENT SUMMARY\nWhat this document is, who the parties are, key dates, and the transaction it governs. Two paragraphs max.\n\n## PROVISION MATRIX\nTable: Section | Provision | Entrada Position | Risk Level | Notes\nCover every material provision. Flag anything non-standard.\n\n## HIGH FLAGS 🔴\nProvisions that require immediate attention, negotiation, or legal counsel before proceeding. For each: exact clause language, why it is a problem, recommended redline.\n\n## MEDIUM FLAGS 🟡\nProvisions that are above market or create risk but are negotiable. Recommended negotiating position for each.\n\n## MISSING PROVISIONS\nStandard protections that should be in this document but are absent. What Entrada should request be added.\n\n## COMPARISON TO MARKET STANDARD\nOverall assessment: is this document seller/landlord-friendly, market-standard, or buyer/tenant-friendly? What is the leverage dynamic?\n\n## RECOMMENDED ACTION\nOne of: EXECUTE AS-IS | EXECUTE WITH MINOR REDLINES | NEGOTIATE BEFORE EXECUTING | DO NOT EXECUTE\nThen specific redlines in priority order.';
       return p;
 
     case 'daily-signal':
-      var p = 'Run Daily Signal report';
-      if (d.date)  p += ' for ' + d.date;
-      if (d.notes) p += '. Focus: ' + d.notes;
-      var sourced = localStorage.getItem('ridge_daily_sourced') || '';
-      if (sourced.trim()) p += '\n\nPREVIOUSLY SOURCED — exclude these unless a new signal fires (vacancy +5%, newly for-sale, or new owner):\n' + sourced;
-      if (d.costar_text) p += '\n\nCoStar export data:\n' + d.costar_text;
-      else p += '. CoStar export data is attached.';
-      p += '\n\nAt the end of your report, output a section titled "SOURCED THIS RUN:" followed by the 15 addresses you surfaced, one per line.';
+      p = 'You are a senior acquisitions officer at Entrada Partners running the daily sourcing signal report.\n\n';
+      p += 'REPORT DATE: ' + (d.date||new Date().toLocaleDateString()) + '\nFOCUS: ' + (d.notes||'All target markets') + '\n\n';
+      if (d.costar_text) p += 'COSTAR EXPORT DATA:\n' + d.costar_text.slice(0, 15000) + '\n\n';
+      p += 'PREVIOUSLY SOURCED (exclude these):\n' + (localStorage.getItem('ridge_daily_sourced') || 'None') + '\n\n';
+      p += 'ENTRADA SIGNAL CRITERIA:\n- Private owner, 7-15yr hold, family LLC or local operating company (3 pts)\n- Vacancy above submarket average (2 pts)\n- No meaningful capex/permits in 5+ years (2 pts)\n- Debt maturity within 18 months or bridge loan stress (3 pts)\n- CMBS watchlist or special servicer (3 pts)\n- Below-market rents with near-term rollover (2 pts)\nMax score: 15 pts | Threshold for inclusion: 6+ pts\n\n';
+      p += 'Produce:\n## SIGNAL REPORT — ' + (d.date||new Date().toLocaleDateString()) + '\n\n### TOP 15 PROSPECTS\n| Rank | Address | Market | Submarket | SF | Owner Entity | Hold (yrs) | Signal Score | Primary Signals | Conviction | Outreach Angle |\n\nFor each prospect: be specific about the owner entity name, estimated hold period, exactly which signals triggered and why, and the specific outreach angle that will resonate with this owner type.\n\n### PORTFOLIO CLUSTERS\nAny ownership clusters where the same entity owns multiple properties — flag as portfolio conversation opportunity.\n\n### DEBT STRESS WATCH\nProperties with loan maturities in the next 18 months. Lender name, estimated maturity, loan type.\n\n### MARKET OBSERVATIONS\nWhat the data is telling you about each submarket today — vacancy direction, rent trends, buyer activity.\n\nSOURCED THIS RUN:\n[List every property address included in the Top 15]';
       return p;
 
     case 'canvas':
-      var p = 'Run CANVAS — ' + (d.mode || 'Fill mode');
-      if (d.addr)  p += ' for ' + d.addr;
-      if (d.sf)    p += '. Available SF: ' + d.sf;
-      if (d.rent)  p += '. Target rent: ' + d.rent;
-      if (d.sub)   p += '. Submarket: ' + d.sub;
-      if (d.notes) p += '. Ideal profile: ' + d.notes;
+      p = 'You are a senior acquisitions officer at Entrada Partners running tenant intelligence.\n\n';
+      p += 'MODE: ' + (d.mode||'Fill') + '\nPROPERTY: ' + (d.addr||'') + '\nAVAILABLE SF: ' + (d.sf||'') + '\nTARGET RENT: $' + (d.rent||'') + ' PSF\nSUBMARKET: ' + (d.sub||'') + '\nIDEAL PROFILE: ' + (d.notes||'') + '\n\n';
+      p += 'ENTRADA TENANT CRITERIA: Industrial/flex users | NNN leases | 3-7yr terms | creditworthy | no retail or office users\n\n';
+      p += 'Produce:\n## DEMAND ANALYSIS\nWho is actively looking for space in this submarket right now? What size ranges are in demand? What rent tolerance? Which tenant categories are expanding vs contracting?\n\n## TIER 1 PROSPECTS (Immediate)\n| Company | Industry | Est SF Need | Current Location | Why They Move | Contact Angle |\nMinimum 5 prospects. These are companies actively in the market or clearly need to move.\n\n## TIER 2 PROSPECTS (Cultivate)\nMinimum 5 prospects. Companies that should need this space within 12-24 months based on growth signals, lease expirations, or business conditions.\n\n## DISPLACEMENT PLAYS\nTenants currently in inferior space (older building, wrong configuration, below-market location) who would upgrade to this asset. Specific names and why.\n\n## LEASING STRATEGY\nRecommended deal structure to attract the highest-quality tenant: asking rent, term, TI package, free rent. What concessions are market and what is above market.\n\n## HIGHEST CONVICTION TARGET\nOne company. Why them specifically. How to get in front of the decision maker.';
       return p;
 
     case 'pipeline':
