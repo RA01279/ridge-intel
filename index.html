@@ -2933,6 +2933,7 @@ function buildTrigger(toolId, d) {
 var _sb = null;
 var _sbOk = false;
 var _lastRunInputs = null;
+var _gavelRawOutput = '';
 
 function _sbSetIndicator(ok) {
   var el = document.getElementById('sb-dot');
@@ -4964,6 +4965,9 @@ async function runRidgeAPI(skillName, prompt) {
           var evt = JSON.parse(jsonStr);
           if (evt.type === 'content_block_delta' && evt.delta && evt.delta.type === 'text_delta') {
             accumulated += evt.delta.text;
+            if (document.getElementById('ridge-panel-skill-name').textContent.toLowerCase().includes('gavel')) {
+              _gavelRawOutput = accumulated;
+            }
             contentEl.innerHTML = parseMarkdown(accumulated);
             var panelBody = document.getElementById('ridge-response-panel').querySelector('.ridge-panel-body');
             panelBody.scrollTop = panelBody.scrollHeight;
@@ -5060,7 +5064,7 @@ async function runRidgeAPI(skillName, prompt) {
           var _leaseId = STATE['gavel'] && STATE['gavel']._leaseId ? STATE['gavel']._leaseId : null;
           console.log('Gavel post-run firing — leaseId:', _leaseId ? _leaseId : 'MISSING — will INSERT');
           var _leaseUpdate = { extracted_data: {} };
-          var gavelOutput = outputText;
+          var gavelOutput = _gavelRawOutput || document.getElementById('ridge-panel-content').innerText;
           // Parse structured JSON block emitted by Claude at end of response
           var jsonMatch = gavelOutput.match(/```json\s*(\{[\s\S]+?\})\s*```/);
           if (jsonMatch) {
