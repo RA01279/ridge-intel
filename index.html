@@ -1424,6 +1424,39 @@ var TOOLS = [
     ],
     steps:['Reading document 1...','Reading document 2...','Extracting all economic terms...','Building comparison matrix...','Flagging risk provisions...','Benchmarking to market...','Generating negotiation strategy...'],
     system:`You are a senior CRE attorney and acquisitions officer at Entrada Partners. You specialize in industrial and flex lease negotiation across Atlanta, Savannah, DFW, and Houston. You know exactly what provisions protect landlord value at exit, what institutional buyers require in lease abstracts, and what is genuinely market-standard in Southeast and Sun Belt industrial markets. You are direct, specific, and quantify economic impacts whenever possible.`
+  },
+  {
+    id:'lease-stack', num:'14', icon:'🗂️', name:'LEASE STACK ANALYZER',
+    badge:'Master · Amendments · Consolidated Abstract',
+    desc:'Upload the master lease and up to 10 amendments. Get a full consolidated abstract showing current effective terms, an amendment delta log, tenant leverage analysis, acquisition risk flags, and the complete expiration/option timeline.',
+    shortDesc:'Reconstruct current lease terms from master lease + all amendments. Consolidated abstract + risk flags.',
+    uploads:[
+      {id:'master', label:'Master Lease *',       hint:'Original executed lease agreement (required)',             icon:'📄', accept:'.pdf,.docx', type:'pdf'},
+      {id:'amd1',   label:'Amendment 1',           hint:'First lease amendment (if any)',                          icon:'📝', accept:'.pdf,.docx', type:'pdf'},
+      {id:'amd2',   label:'Amendment 2',           hint:'Second lease amendment (if any)',                         icon:'📝', accept:'.pdf,.docx', type:'pdf'},
+      {id:'amd3',   label:'Amendment 3',           hint:'Third lease amendment (if any)',                          icon:'📝', accept:'.pdf,.docx', type:'pdf'},
+      {id:'amd4',   label:'Amendment 4',           hint:'Fourth lease amendment (if any)',                         icon:'📝', accept:'.pdf,.docx', type:'pdf'},
+      {id:'amd5',   label:'Amendment 5',           hint:'Fifth lease amendment (if any)',                          icon:'📝', accept:'.pdf,.docx', type:'pdf'},
+      {id:'amd6',   label:'Amendment 6',           hint:'Sixth lease amendment (if any)',                          icon:'📝', accept:'.pdf,.docx', type:'pdf'},
+      {id:'amd7',   label:'Amendment 7',           hint:'Seventh lease amendment (if any)',                        icon:'📝', accept:'.pdf,.docx', type:'pdf'},
+      {id:'amd8',   label:'Amendment 8',           hint:'Eighth lease amendment (if any)',                         icon:'📝', accept:'.pdf,.docx', type:'pdf'},
+      {id:'amd9',   label:'Amendment 9',           hint:'Ninth lease amendment (if any)',                          icon:'📝', accept:'.pdf,.docx', type:'pdf'},
+      {id:'amd10',  label:'Amendment 10',          hint:'Tenth lease amendment (if any)',                          icon:'📝', accept:'.pdf,.docx', type:'pdf'},
+    ],
+    fields:[
+      {row:[{id:'addr',   label:'Property Address',       ph:'e.g. 4200 Commerce Pkwy, Atlanta, GA'},
+            {id:'tenant', label:'Tenant Name',             ph:'e.g. Acme Distribution LLC'}]},
+      {row:[{id:'exec_date', label:'Master Lease Date',   ph:'e.g. March 15, 2014'},
+            {id:'sf',        label:'Leased SF',            ph:'e.g. 72,400 SF'},
+            {id:'mkt_rent',  label:'Current Market Rent',  ph:'e.g. $9.50 NNN'}]},
+      {row:[{id:'context', label:'Analysis Context', type:'select',
+             opts:['Acquisition Due Diligence','Asset Management Review','Renewal / Lease-Up Prep','Disposition / Sale Prep','Refinance / Lender DD']},
+            {id:'role',    label:'Entrada Role',    type:'select',
+             opts:['Buyer / Acquirer — evaluate inherited lease','Landlord — manage existing tenant','Both']}]},
+      {row:[{id:'notes', label:'Additional Context', ph:'Credit quality, relationship notes, market context, known issues...', type:'textarea'}]},
+    ],
+    steps:['Reading master lease...','Parsing amendments...','Reconstructing current terms...','Building consolidated abstract...','Mapping amendment deltas...','Analyzing tenant leverage...','Generating acquisition summary...'],
+    system:`You are a senior CRE attorney and acquisitions officer at Entrada Partners. You specialize in reconstructing the effective current terms of industrial and flex leases from a master lease and a chain of amendments. You understand what long-tenured tenants negotiate over time, how amendment history reveals tenant leverage, and what provisions will concern institutional buyers at exit. Be specific — quote provisions, cite amendment numbers, and quantify economic impacts.`
   }
 ];
 
@@ -3085,6 +3118,112 @@ function buildTrigger(toolId, d) {
       }
       return p;
 
+    case 'lease-stack':
+      var amds = ['amd1','amd2','amd3','amd4','amd5','amd6','amd7','amd8','amd9','amd10'];
+      var amdCount = amds.filter(function(a){ return !!d[a+'_text']; }).length;
+      console.log('LEASE-STACK buildTrigger:', {addr:d.addr, tenant:d.tenant, master:!!d.master_text, amendments:amdCount});
+      p  = 'You are a senior CRE attorney and acquisitions officer at Entrada Partners performing a full lease stack review.\n\n';
+      p += 'PROPERTY: '         + (d.addr       || '[not provided]') + '\n';
+      p += 'TENANT: '           + (d.tenant     || '[not provided]') + '\n';
+      p += 'MASTER LEASE DATE: '+ (d.exec_date  || '[not provided]') + '\n';
+      p += 'LEASED SF: '        + (d.sf         || '[not provided]') + '\n';
+      p += 'CURRENT MARKET RENT:'+ (d.mkt_rent  || '[not provided]') + '\n';
+      p += 'ANALYSIS CONTEXT: ' + (d.context    || 'Acquisition Due Diligence') + '\n';
+      p += 'ENTRADA ROLE: '     + (d.role       || 'Buyer / Acquirer') + '\n';
+      if (d.notes) p += 'ADDITIONAL CONTEXT: ' + d.notes + '\n';
+      p += 'AMENDMENTS UPLOADED: ' + amdCount + '\n\n';
+
+      if (d.master_text) {
+        p += '=== MASTER LEASE ===\n' + d.master_text.slice(0, 15000) + '\n\n';
+      } else {
+        p += '=== MASTER LEASE ===\n[Not uploaded — upload the master lease to proceed]\n\n';
+      }
+      amds.forEach(function(a, i) {
+        if (d[a+'_text']) {
+          p += '=== AMENDMENT ' + (i+1) + ' ===\n' + d[a+'_text'].slice(0, 4000) + '\n\n';
+        }
+      });
+
+      p += 'Produce a complete lease stack analysis at the level of institutional CRE counsel. Be specific — quote provisions, cite amendment numbers, and quantify economic impacts in dollars where possible.\n\n';
+
+      p += '## LEASE DOCUMENT INVENTORY\n';
+      p += 'List every document in the stack: document type, parties, execution date, and a one-sentence summary of its purpose. Note any gaps (e.g., Amendment 3 references Amendment 2 but Amendment 2 was not provided).\n\n';
+
+      p += '## AMENDMENT DELTA LOG\n';
+      p += 'For each amendment, in chronological order, provide a structured entry:\n';
+      p += '**Amendment [#] — [Date]**\n';
+      p += '- What changed: [specific provisions modified, added, or deleted]\n';
+      p += '- Economic impact: [dollar or PSF change, if any]\n';
+      p += '- Why it likely happened: [market conditions, tenant leverage, renewal, expansion, etc.]\n';
+      p += '- Net effect on LL position: [improved / neutral / worse]\n\n';
+
+      p += '## CONSOLIDATED LEASE ABSTRACT — CURRENT EFFECTIVE TERMS\n';
+      p += 'Show the lease as it stands today after all amendments are applied. This is the single source of truth. For each term, cite which document is controlling (Master § or Amd #).\n\n';
+      p += 'Include every term:\n';
+      p += '- Parties (landlord, tenant, guarantor)\n';
+      p += '- Premises (address, suite, SF — note any expansions/contractions from amendments)\n';
+      p += '- Lease Term (commencement, expiration, total months)\n';
+      p += '- Current Base Rent ($/SF/year and $/month)\n';
+      p += '- Full Rent Schedule (all remaining years through expiration)\n';
+      p += '- Expense Structure (NNN / Modified Gross / Gross / Base Year Stop)\n';
+      p += '- Expense Stop / Base Year (if applicable)\n';
+      p += '- Rental Escalation Schedule (rate, frequency, effective dates)\n';
+      p += '- TI / Landlord Work Obligations (any remaining unfulfilled amounts)\n';
+      p += '- Free Rent (any remaining periods)\n';
+      p += '- Security Deposit (current amount, burn-down schedule)\n';
+      p += '- Renewal Options (number, term, rent basis, notice deadline, whether exercised)\n';
+      p += '- Expansion Options (space, timing, rent basis, notice deadline)\n';
+      p += '- ROFR / ROFO (scope, trigger, matching period)\n';
+      p += '- Termination Option (fee, notice, effective date)\n';
+      p += '- HVAC Responsibility (landlord vs tenant, replacement threshold)\n';
+      p += '- Roof / Structure (landlord vs tenant obligations)\n';
+      p += '- CapEx Obligations (remaining landlord commitments)\n';
+      p += '- Assignment / Subletting (permitted without consent, conditions, profit sharing)\n';
+      p += '- Guaranty (guarantor, amount, burn-down, remaining balance)\n';
+      p += '- Permitted Use (current allowed uses, any amendments broadening or narrowing)\n';
+      p += '- Holdover Rent (% of in-place base rent)\n';
+      p += '- Default Cure Periods (monetary and non-monetary)\n';
+      p += '- Co-tenancy / Kick Clause\n';
+      p += '- SNDA / Estoppel Requirements\n';
+      p += '- Key Notice Addresses\n\n';
+
+      p += '## TENANT LEVERAGE ANALYSIS\n';
+      p += 'What does the amendment history reveal about this tenant\'s negotiating position and relationship with the landlord?\n';
+      p += '- Did terms improve or deteriorate for the landlord over time?\n';
+      p += '- What concessions has the landlord made across the lease history (aggregate TI, free rent, rent reductions, added options)?\n';
+      p += '- Is this tenant sticky (long tenure, multiple renewals) or at risk (below-market, many outs)?\n';
+      p += '- What does the amendment pattern suggest about this tenant\'s credit, operational health, and market leverage?\n\n';
+
+      p += '## 🔴 HIGH PRIORITY FLAGS\n';
+      p += 'Provisions that materially harm Entrada\'s position, create significant liability, or will concern an institutional buyer at exit. For each:\n';
+      p += '**[Provision Name]** (Amd # or Master, Section Y.Z): What it says → Why it\'s a problem → Dollar/cap rate impact → Recommended action\n\n';
+
+      p += '## 🟡 MODERATE FLAGS\n';
+      p += 'Above-market, tenant-favorable, or unusual provisions that are negotiable or worth monitoring. Same format.\n\n';
+
+      p += '## ACQUISITION / UNDERWRITING IMPACT\n';
+      p += 'For Entrada as ' + (d.role || 'Buyer / Acquirer') + ':\n';
+      p += '- In-place NOI contribution (current rent × SF)\n';
+      p += '- Mark-to-market gap: in-place rent vs. current market rent of ' + (d.mkt_rent || '[market]') + '\n';
+      p += '- Remaining WALT (weighted average lease term)\n';
+      p += '- Renewal probability based on tenure and amendment history\n';
+      p += '- Provisions that institutional buyers will flag at exit (options, co-tenancy, below-market renewal rents, broad use clauses)\n';
+      p += '- Net upside or downside to underwriting from lease stack\n\n';
+
+      p += '## EXPIRATION & OPTION STACK\n';
+      p += 'A clean chronological timeline of every critical date:\n';
+      p += '- Lease expiration date\n';
+      p += '- Each renewal option: notice deadline → option period → rent basis\n';
+      p += '- Each expansion option: notice deadline → effective date → space\n';
+      p += '- ROFR / ROFO trigger events\n';
+      p += '- Termination option notice deadline (if any)\n';
+      p += '- Guaranty burn-down dates\n';
+      p += '- Any landlord delivery or construction obligations\n\n';
+
+      p += '## VERDICT\n';
+      p += 'One paragraph: Is this lease a net positive or negative for an acquisition at current pricing? What are the two or three most important things Entrada must address before closing or during asset management?';
+      return p;
+
     case 'pipeline':
       return '';
 
@@ -4010,6 +4149,7 @@ async function exportToolReport(toolId) {
       case 'gavel':       _exportGavel(wb, toolId, dateStr, paste); break;
       case 'legal':       _exportLegal(wb, toolId, dateStr, paste); break;
       case 'lease-compare': _exportLeaseCompare(wb, toolId, dateStr, paste); break;
+      case 'lease-stack':   _exportLeaseStack(wb, toolId, dateStr, paste); break;
       case 'canvas':      _exportCanvas(wb, toolId, dateStr, paste); break;
       default: showToast('No export configured'); return;
     }
@@ -4551,6 +4691,76 @@ function _exportCanvas(wb, tid, dateStr, paste) {
 
   r = rcAnalysis(ws, paste, r);
 }
+// ── LEASE STACK — Master + Amendments ────────────────────────
+function _exportLeaseStack(wb, tid, dateStr, paste) {
+  var ws = wb.addWorksheet('Lease Stack', { views:[{state:'frozen',xSplit:0,ySplit:3}] });
+  rcColWidths(ws, [30,22,22,22,16,14,12,12,12,12]);
+  var addr = rcGetField(tid,'addr') || rcGetField(tid,'tenant');
+  var r = rcTitle(ws, 'LEASE STACK ANALYZER', addr, dateStr);
+
+  rcSecHead(ws, r, 'DEAL PARAMETERS'); r++;
+  r = rcKV(ws, [
+    ['Property',            rcGetField(tid,'addr')],
+    ['Tenant',              rcGetField(tid,'tenant')],
+    ['Master Lease Date',   rcGetField(tid,'exec_date')],
+    ['Leased SF',           rcGetField(tid,'sf')],
+    ['Current Market Rent', rcGetField(tid,'mkt_rent')],
+    ['Analysis Context',    rcGetField(tid,'context')],
+    ['Entrada Role',        rcGetField(tid,'role')],
+    ['Additional Context',  rcGetField(tid,'notes')],
+  ], r);
+
+  rcSecHead(ws, r, 'AMENDMENT TIMELINE'); r++;
+  var amdHdr = ws.getRow(r);
+  ['DOCUMENT','EXECUTION DATE','KEY CHANGES','ECONOMIC IMPACT','NET LL EFFECT'].forEach(function(h,i){
+    amdHdr.getCell(i+1).value = h;
+    amdHdr.getCell(i+1).font = {bold:true,color:{argb:'FFFFFFFF'}};
+    amdHdr.getCell(i+1).fill = {type:'pattern',pattern:'solid',fgColor:{argb:'FF1E2761'}};
+  });
+  r++;
+  var amdRows = [['Master Lease','','','',''],
+    ['Amendment 1','','','',''],['Amendment 2','','','',''],['Amendment 3','','','',''],
+    ['Amendment 4','','','',''],['Amendment 5','','','',''],['Amendment 6','','','',''],
+    ['Amendment 7','','','',''],['Amendment 8','','','',''],['Amendment 9','','','',''],
+    ['Amendment 10','','','',''],
+  ];
+  amdRows.forEach(function(row) {
+    var wsRow = ws.getRow(r);
+    row.forEach(function(v,i){ wsRow.getCell(i+1).value = v; });
+    wsRow.getCell(1).font = {bold:true};
+    r++;
+  });
+
+  rcSecHead(ws, r, 'CONSOLIDATED LEASE ABSTRACT — CURRENT EFFECTIVE TERMS'); r++;
+  var termHdr = ws.getRow(r);
+  ['TERM','CURRENT EFFECTIVE VALUE','CONTROLLING DOCUMENT','NOTES / FLAGS'].forEach(function(h,i){
+    termHdr.getCell(i+1).value = h;
+    termHdr.getCell(i+1).font = {bold:true,color:{argb:'FFFFFFFF'}};
+    termHdr.getCell(i+1).fill = {type:'pattern',pattern:'solid',fgColor:{argb:'FF1E2761'}};
+  });
+  r++;
+  var abstractRows = [
+    'Parties (LL / Tenant / Guarantor)','Premises (Address, Suite, SF)',
+    'Lease Commencement','Lease Expiration','Total Term (months)',
+    'Current Base Rent ($/SF/yr)','Current Base Rent ($/month)',
+    'Remaining Rent Schedule','Expense Structure','Expense Stop / Base Year',
+    'Rental Escalation','TI / LL Work Remaining','Free Rent Remaining',
+    'Security Deposit','Renewal Options','Expansion Options','ROFR / ROFO',
+    'Termination Option','HVAC Responsibility','Roof / Structure',
+    'CapEx Obligations','Assignment / Subletting','Guaranty (amount + burn-down)',
+    'Permitted Use','Holdover Rent','Default Cure Periods',
+    'Co-tenancy / Kick Clause','SNDA / Estoppel',
+  ];
+  abstractRows.forEach(function(term) {
+    var wsRow = ws.getRow(r);
+    wsRow.getCell(1).value = term;
+    wsRow.getCell(1).font = {bold:true};
+    r++;
+  });
+
+  r = rcAnalysis(ws, paste, r);
+}
+
 // ═══════════════════════════════════════════════════════════
 //  END EXPORT SYSTEM
 // ═══════════════════════════════════════════════════════════
