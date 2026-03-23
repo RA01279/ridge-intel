@@ -4978,7 +4978,7 @@ async function runRidgeAPI(skillName, prompt) {
         if (_soId) {
           var _embedText = outputText.slice(0, 3000) + ' ' + skillNameSaved + ' ' + ((_lastRunInputs && _lastRunInputs.addr) || '');
           _generateEmbedding(_embedText).then(function(vec) {
-            if (vec && _sb) _sb.from('skill_outputs').update({ embedding: vec }).eq('id', _soId).catch(function(){});
+            if (vec && _sb) { try { _sb.from('skill_outputs').update({ embedding: vec }).eq('id', _soId); } catch(e) {} }
           });
         }
         // Auto-save to contacts table from SCOUT runs
@@ -4996,13 +4996,15 @@ async function runRidgeAPI(skillName, prompt) {
         }
         // Auto-save to signal_reports table from Daily Signal runs
         if (skillNameSaved.toLowerCase().includes('signal')) {
-          _sb.from('signal_reports').insert({
-            market: _detectMarket(_lastRunInputs),
-            submarket: (_lastRunInputs && _lastRunInputs.notes) ? _lastRunInputs.notes.slice(0,100) : null,
-            report_date: new Date().toISOString().slice(0,10),
-            prospects: [],
-            raw_data: { output: outputText.slice(0, 5000), inputs: _lastRunInputs }
-          }).catch(function(e) { console.warn('signal_reports save failed:', e); });
+          try {
+            await _sb.from('signal_reports').insert({
+              market: _detectMarket(_lastRunInputs),
+              submarket: (_lastRunInputs && _lastRunInputs.notes) ? _lastRunInputs.notes.slice(0,100) : null,
+              report_date: new Date().toISOString().slice(0,10),
+              prospects: [],
+              raw_data: { output: outputText.slice(0, 5000), inputs: _lastRunInputs }
+            });
+          } catch(e) { console.warn('signal_reports save failed:', e); }
         }
         // Update leases row after Gavel run
         if (skillNameSaved.toLowerCase().includes('gavel') && STATE['gavel'] && STATE['gavel']._leaseId) {
@@ -5036,9 +5038,15 @@ async function runRidgeAPI(skillName, prompt) {
           if (_addrFinal && _addrFinal.value) _leaseUpdate.address = _addrFinal.value;
           if (_tenantFinal && _tenantFinal.value) _leaseUpdate.tenant = _tenantFinal.value;
           if (_lastRunInputs && _lastRunInputs.notes) _leaseUpdate.notes = _lastRunInputs.notes;
-          _sb.from('leases').update(_leaseUpdate).eq('id', _leaseId)
-            .then(function() { console.log('leases row updated:', _leaseId); })
-            .catch(function(e) { console.warn('leases update failed:', e); });
+          try {
+            await _sb.from('leases').update(_leaseUpdate).eq('id', _leaseId);
+            console.log('leases row updated:', _leaseId);
+            // Fire-and-forget embedding after structured fields are written
+            var _leEmbedUpdate = [_leaseUpdate.address, _leaseUpdate.tenant, _leaseUpdate.lease_type, outputText.slice(0, 2000)].filter(Boolean).join(' ');
+            _generateEmbedding(_leEmbedUpdate).then(function(vec) {
+              if (vec && _sb) { try { _sb.from('leases').update({ embedding: vec }).eq('id', _leaseId); } catch(e) {} }
+            });
+          } catch(e) { console.warn('leases update failed:', e); }
         }
       } catch(e) { console.warn('Supabase save failed:', e); }
     }
