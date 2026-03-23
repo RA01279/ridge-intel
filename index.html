@@ -5082,6 +5082,15 @@ async function runRidgeAPI(skillName, prompt) {
           } else {
             console.warn('Gavel JSON block not found in output');
           }
+          // Term fallback regex — if JSON missing or lease_term_months not populated
+          if (!_leaseUpdate.lease_term_months) {
+            var termMatch = gavelOutput.match(/([0-9]+)(?:st|nd|rd|th)\s+full\s+calendar\s+month/i);
+            if (!termMatch) termMatch = gavelOutput.match(/Lease\s+Term[\s\t]+([0-9]+)\s*months/i);
+            if (!termMatch) termMatch = gavelOutput.match(/Expiration[\s\t][^0-9]*([0-9]+)\s*(?:full\s+)?months/i);
+            if (!termMatch) termMatch = gavelOutput.match(/([0-9]+)\s*(?:full\s+)?months\s+from\s+commencement/i);
+            if (!termMatch) termMatch = gavelOutput.match(/Term[:\s\t]+([0-9]+)\s*months/i);
+            if (termMatch) { _leaseUpdate.lease_term_months = parseInt(termMatch[1]); console.log('Term fallback match:', termMatch[1]); }
+          }
           // Landlord (still regex — not in JSON schema)
           var _llMatch = gavelOutput.match(/landlord[:\s|]+([^\n|]{3,60})/i);
           if (_llMatch) _leaseUpdate.landlord = _llMatch[1].trim().slice(0,100);
