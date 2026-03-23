@@ -2904,7 +2904,8 @@ function buildTrigger(toolId, d) {
       p += 'DOCUMENT TYPE: ' + (d.dtype||'CRE Document') + '\n';
       p += 'PROPERTY: ' + (d.addr||'Subject Property') + '\n';
       p += 'REVIEW FOCUS: ' + (d.focus||'All material provisions') + '\n\n';
-      p += 'DOCUMENT TEXT:\n' + (d.doc_text ? d.doc_text.slice(0, 25000) : '[No document uploaded — upload the document to proceed]') + '\n\n';
+      p += 'DOCUMENT TEXT:\n' + (d.doc1_text ? d.doc1_text.slice(0, 25000) : '[No document uploaded — upload the document to proceed]') + '\n\n';
+      if (d.doc2_text) p += 'SECONDARY DOCUMENT:\n' + d.doc2_text.slice(0, 10000) + '\n\n';
       p += 'ENTRADA CONTEXT: Industrial/flex acquisitions $10M-$70M | Atlanta, Savannah, DFW, Houston | Value-add strategy | Institutional LP capital | 5-year hold\n\n';
       p += 'Produce a complete legal review at the level of experienced CRE counsel. Structure as follows:\n\n';
       p += '## DOCUMENT IDENTIFICATION\n';
