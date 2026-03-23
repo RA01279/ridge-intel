@@ -2459,6 +2459,15 @@ function handleFile(toolId, uploadId, input, type) {
             STATE[toolId].files[uploadId] = fullText;
             uz.classList.add('loaded');
             st.textContent = '✓ ' + file.name + ' (' + total + ' pages extracted)';
+            // Auto-fill address and tenant from lease PDF
+            if (toolId === 'gavel' && uploadId === 'lease') {
+              var addrEl   = document.getElementById('f-gavel-addr');
+              var tenantEl = document.getElementById('f-gavel-tenant');
+              var addrMatch   = fullText.match(/(?:premises|property|located at|address)[:\s]+([^\n]{10,80})/i);
+              if (addrMatch && addrEl && !addrEl.value) addrEl.value = addrMatch[1].trim().slice(0, 80);
+              var tenantMatch = fullText.match(/(?:tenant|lessee)[:\s"]+([A-Z][^\n,]{3,50}(?:LLC|Inc|Corp|LP|LLP|Company|Co\.)?)/i);
+              if (tenantMatch && tenantEl && !tenantEl.value) tenantEl.value = tenantMatch[1].trim().slice(0, 60);
+            }
           });
         }).catch(function(err) {
           STATE[toolId].files[uploadId] = '';
