@@ -384,6 +384,8 @@ footer{border-top:1px solid var(--border);padding:20px 24px;text-align:center;co
     <h3>Anthropic API Key</h3>
     <p>Enter your Anthropic API key to enable native response streaming inside RIDGE.</p>
     <input type="password" id="apikey-input" placeholder="sk-ant-..." />
+    <p style="margin-top:14px;margin-bottom:6px;">Voyage AI API Key <span style="color:var(--muted);font-size:11px;">(for semantic lease search)</span></p>
+    <input type="password" id="voyage-input" placeholder="pa-..." />
     <div class="apikey-note">🔒 Stored in Supabase · Never logged · Never committed to GitHub</div>
     <div class="modal-btns" style="margin-top:16px;">
       <button class="btn btn-o" onclick="closeApiKeyModal()">Cancel</button>
@@ -449,6 +451,11 @@ footer{border-top:1px solid var(--border);padding:20px 24px;text-align:center;co
     </select>
     <label style="font-size:11px;color:var(--muted);white-space:nowrap;">Comm. From <input type="date" id="lease-comm-from" onchange="renderLeaseTable()" style="min-width:unset;width:130px;" /></label>
     <label style="font-size:11px;color:var(--muted);white-space:nowrap;">To <input type="date" id="lease-comm-to" onchange="renderLeaseTable()" style="min-width:unset;width:130px;" /></label>
+  </div>
+  <div style="display:flex;gap:8px;padding:10px 24px;border-bottom:1px solid var(--border);background:var(--surface);flex-shrink:0;align-items:center;">
+    <input type="text" id="lease-semantic-search" placeholder="🔍 Semantic search: e.g. 'aggressive termination clauses'…" style="flex:1;background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:4px;padding:7px 12px;font-size:12px;font-family:var(--mono);" onkeydown="if(event.key==='Enter')leaseSemanticSearch()" />
+    <button class="btn btn-p" id="lease-semantic-btn" onclick="leaseSemanticSearch()" style="font-size:11px;padding:6px 14px;white-space:nowrap;">Search</button>
+    <button class="btn btn-o" onclick="showLeaseLibrary()" style="font-size:11px;padding:6px 14px;white-space:nowrap;" title="Reset to all leases">↺ Reset</button>
   </div>
   <div class="lease-table-wrap">
     <div id="lease-table-body"><div class="lease-spinner">Loading…</div></div>
@@ -2540,6 +2547,11 @@ function handleFile(toolId, uploadId, input, type) {
                     if (!STATE['gavel']) STATE['gavel'] = {};
                     STATE['gavel']._leaseId = res.data.id;
                     console.log('leases row created:', res.data.id);
+                    // Fire-and-forget embedding
+                    var _leEmbedText = fullText.slice(0, 3500) + ' ' + (addrEl ? addrEl.value || '' : '') + ' ' + (tenantEl ? tenantEl.value || '' : '');
+                    _generateEmbedding(_leEmbedText).then(function(vec) {
+                      if (vec && _sb) _sb.from('leases').update({ embedding: vec }).eq('id', res.data.id).catch(function(){});
+                    });
                   }
                 }).catch(function(e) { console.warn('leases insert failed:', e); });
               }
@@ -2982,6 +2994,11 @@ async function _sbUpsertDeal(deal) {
       created_at: deal.createdAt,
       updated_at: deal.updatedAt
     }, { onConflict: 'id' });
+    // Fire-and-forget embedding
+    var _dealEmbedText = [deal.addr, deal.mkt, deal.stage, deal.type, deal.conv, deal.notes].filter(Boolean).join(' ');
+    _generateEmbedding(_dealEmbedText).then(function(vec) {
+      if (vec && _sb) _sb.from('deals').update({ embedding: vec }).eq('id', deal.id).catch(function(){});
+    });
   } catch(e) {}
 }
 
@@ -4459,6 +4476,7 @@ function _parseGavelLeases(txt){
 
 // ── ANTHROPIC API INTEGRATION ────────────────────────────────
 var _apiKey = null;
+var _voyageKey = null;
 
 var _mapsKey = null;
 async function loadMapsKey() {
@@ -4479,29 +4497,93 @@ async function loadApiKey() {
       _apiKey = data.data.apiKey;
     }
   } catch(e) {}
+  try {
+    var vr = await _sb.from('session_state').select('data').eq('id', 'voyage_config').single();
+    if (!vr.error && vr.data && vr.data.data && vr.data.data.voyageKey) {
+      _voyageKey = vr.data.data.voyageKey;
+    }
+  } catch(e) {}
 }
 
 async function saveApiKey() {
   var val = (document.getElementById('apikey-input').value || '').trim();
-  if (!val) { showToast('Enter an API key first'); return; }
+  var vval = (document.getElementById('voyage-input').value || '').trim();
+  if (!val) { showToast('Enter an Anthropic API key first'); return; }
   _apiKey = val;
+  if (vval) _voyageKey = vval;
   if (_sbOk && _sb) {
     try {
       await _sb.from('session_state').upsert({ id: 'api_config', data: { apiKey: val } }, { onConflict: 'id' });
     } catch(e) {}
+    if (vval) {
+      try {
+        await _sb.from('session_state').upsert({ id: 'voyage_config', data: { voyageKey: vval } }, { onConflict: 'id' });
+      } catch(e) {}
+    }
   }
   closeApiKeyModal();
-  showToast('API key saved');
+  showToast('API key' + (vval ? 's' : '') + ' saved');
 }
 
 function showApiKeyModal() {
   document.getElementById('apikey-input').value = '';
+  document.getElementById('voyage-input').value = '';
   document.getElementById('apikey-modal').classList.add('show');
   setTimeout(function() { document.getElementById('apikey-input').focus(); }, 100);
 }
 
 function closeApiKeyModal() {
   document.getElementById('apikey-modal').classList.remove('show');
+}
+
+// ── VOYAGE AI EMBEDDINGS ───────────────────────────────────────
+// Requires voyage_config row in session_state and vector(1536) columns on leases, skill_outputs, deals.
+// Supabase SQL for match_leases RPC (run in SQL editor):
+// create or replace function match_leases(query_embedding vector(1536), match_threshold float, match_count int)
+// returns table(id uuid, address text, tenant text, sf numeric, base_rent_psf numeric, ti_psf numeric,
+//   free_rent_months numeric, rent_escalation_pct numeric, lease_term_months numeric, lease_type text,
+//   commencement_date date, created_at timestamptz, similarity float)
+// language sql stable as $$
+//   select id, address, tenant, sf, base_rent_psf, ti_psf, free_rent_months, rent_escalation_pct,
+//     lease_term_months, lease_type, commencement_date, created_at,
+//     1 - (embedding <=> query_embedding) as similarity
+//   from leases
+//   where 1 - (embedding <=> query_embedding) > match_threshold
+//   order by similarity desc limit match_count;
+// $$;
+async function _generateEmbedding(text) {
+  if (!_voyageKey || !text) return null;
+  try {
+    var resp = await fetch('https://api.voyageai.com/v1/embeddings', {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'Authorization': 'Bearer ' + _voyageKey
+      },
+      body: JSON.stringify({
+        model: 'voyage-large-2',
+        input: [text.slice(0, 4000)]
+      })
+    });
+    var data = await resp.json();
+    return data.data && data.data[0] && data.data[0].embedding ? data.data[0].embedding : null;
+  } catch(e) { return null; }
+}
+
+async function leaseSemanticSearch() {
+  var query = document.getElementById('lease-semantic-search').value.trim();
+  if (!query || !_sbOk || !_sb) return;
+  var btn = document.getElementById('lease-semantic-btn');
+  if (btn) btn.disabled = true;
+  var vec = await _generateEmbedding(query);
+  if (btn) btn.disabled = false;
+  if (!vec) { showToast('Embedding failed — check Voyage key in API Key settings'); return; }
+  try {
+    var res = await _sb.rpc('match_leases', { query_embedding: vec, match_threshold: 0.7, match_count: 20 });
+    if (res.error) throw res.error;
+    _leaseRows = res.data || [];
+    renderLeaseTable();
+  } catch(e) { showToast('Semantic search failed: ' + _hEsc(e.message)); }
 }
 
 // ── HISTORY PANEL ─────────────────────────────────────────────
@@ -4876,7 +4958,7 @@ async function runRidgeAPI(skillName, prompt) {
         if (skillNameSaved.toLowerCase().includes('loi')) {
           autoTags.push('loi-generated');
         }
-        await _sb.from('skill_outputs').insert({
+        var _soInsert = await _sb.from('skill_outputs').insert({
           skill_name: skillNameSaved,
           output: outputText,
           inputs: _lastRunInputs || {},
@@ -4884,7 +4966,15 @@ async function runRidgeAPI(skillName, prompt) {
           market: _detectMarket(_lastRunInputs),
           tags: autoTags,
           loi_generated: skillNameSaved.toLowerCase().includes('loi')
-        });
+        }).select('id').single();
+        var _soId = _soInsert.data && _soInsert.data.id;
+        // Fire-and-forget embedding generation
+        if (_soId) {
+          var _embedText = outputText.slice(0, 3000) + ' ' + skillNameSaved + ' ' + ((_lastRunInputs && _lastRunInputs.addr) || '');
+          _generateEmbedding(_embedText).then(function(vec) {
+            if (vec && _sb) _sb.from('skill_outputs').update({ embedding: vec }).eq('id', _soId).catch(function(){});
+          });
+        }
         // Auto-save to contacts table from SCOUT runs
         if (skillNameSaved.toLowerCase().includes('scout') && _lastRunInputs) {
           var ownerMatch = outputText.match(/(?:owner|entity|owned by)[:\s]+([^\n]{3,60})/i);
