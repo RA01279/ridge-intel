@@ -2475,11 +2475,11 @@ function handleFile(toolId, uploadId, input, type) {
                 var addr = addrMatch[1].trim().replace(/\.{3,}/g,'').trim();
                 if (addr.length > 5 && !addr.match(/^[\s.]+$/)) addrEl.value = addr.slice(0,80);
               }
-              var tenantMatch = fullText.match(/(?:^|\n)Tenant[:\s"]+([A-Z][a-z][^\n,]{2,50}(?:LLC|Inc|Corp|LP|LLP|Company|Co\.|Group|Partners)?)/m);
-              if (!tenantMatch) tenantMatch = fullText.match(/(?:^|\n)Lessee[:\s"]+([A-Z][a-z][^\n,]{2,50})/m);
-              if (tenantMatch && tenantEl && !tenantEl.value) {
-                var tenant = tenantMatch[1].trim().replace(/\.{3,}/g, '').trim();
-                if (tenant.length > 3 && tenant !== tenant.toUpperCase()) tenantEl.value = tenant.slice(0, 60);
+              var tenantMatch = fullText.match(/(?:^|[\n\r])\s*Tenant[:\s"]+([^\n,]{2,60}?)(?:\s*,\s*a\s+[A-Z]|\s*LLC|\s*Inc\.|\s*Corp\.|\s*Company|\s*LP\b|\s*LLP\b|[\n\r])/i);
+              if (!tenantMatch) tenantMatch = fullText.match(/and\s+Tenant[:\s"]+([^\n,]{2,60}?)(?:\s*,\s*a\s+[A-Z]|\s*LLC|\s*Inc\.|\s*Corp\.|\s*Company|[\n\r])/i);
+              if (tenantEl && !tenantEl.value && tenantMatch) {
+                var tenant = tenantMatch[1].trim().replace(/\.{3,}/g,'').trim();
+                if (tenant.length > 1) tenantEl.value = tenant.slice(0,60);
               }
             }
           });
