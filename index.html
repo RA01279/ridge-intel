@@ -1767,6 +1767,10 @@ function handleXLSX(toolId, uploadId, input) {
           var sfNum   = sfRaw ? String(sfRaw).replace(/[^0-9]/g,'') : null;
           var price   = cv(wsGI, 'C19');
           var psf     = cv(wsGI, 'E19');
+          console.log('E19 (PSF):', wsGI && wsGI['E19'] ? wsGI['E19'].v : 'missing');
+          console.log('C19 (Price):', wsGI && wsGI['C19'] ? wsGI['C19'].v : 'missing');
+          console.log('D19:', wsGI && wsGI['D19'] ? wsGI['D19'].v : 'missing');
+          console.log('F19:', wsGI && wsGI['F19'] ? wsGI['F19'].v : 'missing');
           var irr     = cv(wsGI, 'D57');
           var em      = cv(wsGI, 'E57');
           var cap     = cv(wsGI, 'C131');
