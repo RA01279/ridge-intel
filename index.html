@@ -2470,15 +2470,14 @@ function handleFile(toolId, uploadId, input, type) {
               var addrMatch = fullText.match(/"Premises"[^.]{0,100}located at\s+([^,(]{10,80})/i);
               if (!addrMatch) addrMatch = fullText.match(/"Premises"[^.]{0,100}situated[^.]{0,50}at\s+([^,(]{10,80})/i);
               if (!addrMatch) addrMatch = fullText.match(/["\u201c\u201d]Premises["\u201c\u201d][:\s]+([^.,(]{10,80})/i);
-              var tenantMatch = fullText.slice(0,2000).match(/([A-Z0-9][A-Z0-9\s&,\.]{2,50}?),?\s+a\s+[A-Za-z]+\s+(?:limited\s+liability\s+company|corporation|partnership|company)[^.]{0,50}(?:herein\s+called\s+)?["\u201c\u201d]Tenant["\u201c\u201d]/i);
-              if (!tenantMatch) tenantMatch = fullText.slice(0,2000).match(/Tenant[:\s]+([^\n,]{2,50}?)(?:\s*,\s*a\s|\n)/i);
+              var tenantMatch = fullText.slice(0,3000).match(/Tenant[:\s"]+([A-Z0-9][^\n,]{1,50}),\s*a\s/i);
+              if (!tenantMatch) tenantMatch = fullText.slice(0,3000).match(/called\s+["\u201c\u201d]Tenant["\u201c\u201d]\s*\)\s*[\.\n]/i) ? fullText.slice(0,3000).match(/and\s+([A-Z0-9][A-Z0-9\s&\.]{1,40}),\s*a\s+[A-Za-z]/) : null;
               if (addrEl && !addrEl.value && addrMatch) {
                 var addr = addrMatch[1].trim().replace(/\.{3,}/g,'').replace(/\(.*$/,'').trim();
                 if (addr.length > 5) addrEl.value = addr.slice(0,80);
               }
-              if (tenantEl && !tenantEl.value && tenantMatch) {
-                var tenant = tenantMatch[1].trim().replace(/,$/,'').replace(/\.{3,}/g,'').trim();
-                if (tenant.length > 1) tenantEl.value = tenant.slice(0,60);
+              if (tenantEl && !tenantEl.value && tenantMatch && tenantMatch[1]) {
+                tenantEl.value = tenantMatch[1].trim().slice(0,60);
               }
             }
           });
