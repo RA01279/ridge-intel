@@ -2882,6 +2882,7 @@ function buildTrigger(toolId, d) {
       if (d.om_text) p += 'OFFERING MEMORANDUM:\n' + d.om_text.slice(0, 6000) + '\n\n';
       if (d.comps_text) p += 'LEASE COMP DATA:\n' + d.comps_text.slice(0, 4000) + '\n\n';
       p += 'Produce a complete IC memo in the following structure. Write at the level of a senior PE professional presenting to an investment committee — specific, data-driven, no filler language.\n\n## DEAL SUMMARY\nTwo paragraphs: what the asset is, why we are buying it, and the return profile. Include all key metrics.\n\n## INVESTMENT THESIS\nFour numbered thesis points in the format used by institutional PE firms:\n1. [Compelling headline] — detailed paragraph with specific data\n2. [Compelling headline] — detailed paragraph with specific data\n3. [Compelling headline] — detailed paragraph with specific data\n4. [Compelling headline] — detailed paragraph with specific data\n\n## RETURN STACK\nTable: Metric | Value | vs Entrada Hurdle\nAll returns at purchase price. IRR, EM, YOC Yr1/Yr3/Yr4, Going-in Cap, Exit Cap, DSCR, Equity Required, Total Capitalization.\n\n## CAPITAL STACK\nSources and uses table. Debt terms. Equity required. LTV. DSCR.\n\n## MARKET & SUBMARKET\nSubmarket fundamentals: vacancy, rents, absorption, new supply. Recent comparable transactions (minimum 3) with address, SF, price, PSF, cap rate, buyer, date. Why this submarket now.\n\n## RENT ROLL ANALYSIS\nTenant summary: tenant name, SF, % of NRA, lease expiration, rent PSF, rent vs market. WALT. Rollover schedule. Mark-to-market upside.\n\n## SENSITIVITY ANALYSIS\nTable 1: IRR by Purchase Price × Hold Period\nTable 2: IRR by Purchase Price × Exit Cap Rate\nColor commentary: green = clears hurdle, yellow = borderline, red = fails\n\n## RISK MATRIX\nTable: Risk Factor | Severity (High/Medium/Low) | Mitigant\nMinimum 6 risks. Be specific — name the tenants, the dates, the dollar amounts.\n\n## IC RECOMMENDATION\nPURSUE | CONDITIONAL | PASS\nIf PURSUE: state the conviction and next steps\nIf CONDITIONAL: state exactly what must be verified before proceeding\n5 specific next steps numbered and actionable';
+      p += '\n\nIMPORTANT: At the very end of your response, after all analysis, output a JSON block in this exact format for the PPT builder:\n\n```json\n{"thesis":[{"headline":"","body":""},{"headline":"","body":""},{"headline":"","body":""},{"headline":"","body":""}],"market":{"vacancy":"","avg_rent":"","new_supply":"","replacement_cost":"","comps":[{"name":"","sf":"","psf":"","cap":"","date":""}]},"sensitivity":{"hold_rows":[{"price":"","irr_36":"","irr_48":"","irr_60":""}],"cap_rows":[{"price":"","irr_600":"","irr_625":"","irr_650":""}]},"risks":[{"factor":"","severity":"","mitigant":""}],"recommendation":{"verdict":"","summary":"","next_steps":[""]}}\n```\n\nFill in ALL fields with real data from your analysis. thesis must have exactly 4 items. market.comps must have at least 3 items. sensitivity must have at least 4 price rows each. risks must have at least 5 items. Do not leave any field empty. Do not add text after the JSON block.';
       return p;
 
     case 'loi':
@@ -2934,6 +2935,7 @@ var _sb = null;
 var _sbOk = false;
 var _lastRunInputs = null;
 var _gavelRawOutput = '';
+var _isrRawOutput = '';
 
 function _sbSetIndicator(ok) {
   var el = document.getElementById('sb-dot');
@@ -4965,8 +4967,12 @@ async function runRidgeAPI(skillName, prompt) {
           var evt = JSON.parse(jsonStr);
           if (evt.type === 'content_block_delta' && evt.delta && evt.delta.type === 'text_delta') {
             accumulated += evt.delta.text;
-            if (document.getElementById('ridge-panel-skill-name').textContent.toLowerCase().includes('gavel')) {
+            var _sn = document.getElementById('ridge-panel-skill-name').textContent.toLowerCase();
+            if (_sn.includes('gavel')) {
               _gavelRawOutput = accumulated;
+            }
+            if (_sn.includes('acquisition investment') || _sn.includes('isr')) {
+              _isrRawOutput = accumulated;
             }
             contentEl.innerHTML = parseMarkdown(accumulated);
             var panelBody = document.getElementById('ridge-response-panel').querySelector('.ridge-panel-body');
@@ -6486,7 +6492,22 @@ async function ridgeExportPPT() {
 
   if (skillName.toLowerCase().includes('acquisition investment') || skillName.toLowerCase().includes('isr')) {
     var d = _lastRunInputs || {};
-    var panelText = _gavelRawOutput || document.getElementById('ridge-panel-content').innerText;
+    var panelText = _isrRawOutput || document.getElementById('ridge-panel-content').innerText;
+
+    // Parse structured JSON from end of response
+    var jd = null;
+    try {
+      var jm = panelText.match(/```json\s*([\s\S]*?)```\s*$/);
+      if (jm) jd = JSON.parse(jm[1]);
+      console.log('ISR PPT JSON parsed:', jd ? 'ok' : 'null');
+    } catch(e) { console.warn('ISR PPT JSON parse failed:', e); }
+
+    // Fallback section extractor for when JSON is unavailable
+    function extractSection(text, heading) {
+      var re = new RegExp('##\\s*' + heading + '[\\s\\S]*?(?=##|$)', 'i');
+      var m = text.match(re);
+      return m ? m[0].replace(/##[^\n]*/,'').trim() : '';
+    }
 
     var pptx = new PptxGenJS();
     pptx.layout = 'LAYOUT_WIDE';
@@ -6496,28 +6517,12 @@ async function ridgeExportPPT() {
     var BLUE = '2196F3';
     var WHITE = 'FFFFFF';
     var MUTED = '8B949E';
+    var GREEN = '1B5E20';
     var dateStr = new Date().toLocaleDateString('en-US',{month:'long',year:'numeric'});
 
-    // Helper to add standard footer
     function addFooter(sl, addr) {
-      sl.addText((addr||d.addr||'Subject Property') + '  |  Smyrna, GA  |  CONFIDENTIAL', {
+      sl.addText((addr||d.addr||'Subject Property') + '  |  CONFIDENTIAL', {
         x:0.3, y:7.1, w:12.7, h:0.3, fontSize:9, color:MUTED, align:'left'
-      });
-      sl.addText(String(pptx.slides ? pptx.slides.length : ''), {
-        x:12.7, y:7.1, w:0.5, h:0.3, fontSize:9, color:MUTED, align:'right'
-      });
-    }
-
-    // Extract sections from panel text
-    function extractSection(text, heading) {
-      var re = new RegExp('##\\s*' + heading + '[\\s\\S]*?(?=##|$)', 'i');
-      var m = text.match(re);
-      return m ? m[0].replace(/##[^\n]*/,'').trim() : '';
-    }
-
-    function bulletLines(text, max) {
-      return text.split('\n').filter(function(l){return l.trim() && !l.match(/^#{1,3}\s/);}).slice(0,max||8).map(function(l){
-        return {text: l.trim().replace(/^[-*•]\s*/,''), options:{bullet:{type:'bullet'}, fontSize:13, color:'E6EDF3', breakLine:true}};
       });
     }
 
@@ -6527,9 +6532,8 @@ async function ridgeExportPPT() {
     s1.addText('INVESTMENT COMMITTEE PRESENTATION', {x:0.5,y:0.4,w:12.3,h:0.4,fontSize:11,color:MUTED,bold:true,charSpacing:3});
     s1.addText((d.addr||'Subject Property'), {x:0.5,y:1.0,w:12.3,h:1.2,fontSize:36,color:WHITE,bold:true,fontFace:'Calibri'});
     s1.addText((d.addr ? d.addr.split(',').slice(1).join(',').trim() + '  |  Industrial Submarket' : 'Target Market  |  Industrial Submarket'), {x:0.5,y:2.1,w:12.3,h:0.4,fontSize:14,color:BLUE});
-    // Key stats row
     var stats = [
-      {l:'Asking Price', v:'$'+( d.price||'—')},
+      {l:'Asking Price', v:'$'+(d.price||'—')},
       {l:'Building Size', v:(d.sf||'—')+' SF'},
       {l:'Going-In Cap Rate', v:(d.cap||'—')}
     ];
@@ -6538,7 +6542,6 @@ async function ridgeExportPPT() {
       s1.addText(st.v, {x:x,y:3.0,w:4.0,h:0.7,fontSize:28,color:WHITE,bold:true,align:'center'});
       s1.addText(st.l, {x:x,y:3.7,w:4.0,h:0.3,fontSize:10,color:MUTED,align:'center',charSpacing:2});
     });
-    // Bottom row
     var meta = [
       {l:'ASSET TYPE', v:d.type||'Flex Industrial'},
       {l:'HOLD PERIOD', v:d.hold||'4 Years'},
@@ -6573,25 +6576,35 @@ async function ridgeExportPPT() {
     });
     addFooter(s2, d.addr);
 
-    // SLIDE 3 — Investment Thesis
+    // SLIDE 3 — Investment Thesis (JSON-driven)
     var s3 = pptx.addSlide();
     s3.background = {color: NAVY};
     s3.addText('Investment Thesis', {x:0.5,y:0.25,w:12.3,h:0.55,fontSize:28,color:WHITE,bold:true});
-    var thesisText = extractSection(panelText, 'INVESTMENT THESIS');
-    var thesisPoints = thesisText.split('\n').filter(function(l){return l.match(/^\d+\.|^#{1,3}/);}).slice(0,4);
-    if (thesisPoints.length === 0) thesisPoints = thesisText.split('\n\n').filter(function(l){return l.trim();}).slice(0,4);
-    thesisPoints.forEach(function(pt,i){
-      var y = 1.0 + i*1.45;
-      s3.addText(String(i+1).padStart(2,'0'), {x:0.5,y:y,w:0.5,h:0.4,fontSize:18,color:BLUE,bold:true});
-      var lines = pt.replace(/^\d+\.\s*/,'').split('\n');
-      var headline = lines[0].replace(/^#+\s*/,'').trim();
-      var body = lines.slice(1).join(' ').trim() || headline;
-      s3.addText(headline, {x:1.1,y:y,w:11.5,h:0.35,fontSize:13,color:WHITE,bold:true});
-      s3.addText(body.slice(0,180), {x:1.1,y:y+0.38,w:11.5,h:0.7,fontSize:11,color:MUTED,wrap:true});
-    });
+    var thesisItems = (jd && jd.thesis && jd.thesis.length) ? jd.thesis : null;
+    if (thesisItems) {
+      thesisItems.slice(0,4).forEach(function(pt,i){
+        var y = 1.0 + i*1.45;
+        s3.addText(String(i+1).padStart(2,'0'), {x:0.5,y:y,w:0.5,h:0.4,fontSize:18,color:BLUE,bold:true});
+        s3.addText(pt.headline||'', {x:1.1,y:y,w:11.5,h:0.35,fontSize:13,color:WHITE,bold:true});
+        s3.addText((pt.body||'').slice(0,200), {x:1.1,y:y+0.38,w:11.5,h:0.7,fontSize:11,color:MUTED,wrap:true});
+      });
+    } else {
+      var thesisText = extractSection(panelText, 'INVESTMENT THESIS');
+      var thesisPoints = thesisText.split('\n').filter(function(l){return l.match(/^\d+\.|^#{1,3}/);}).slice(0,4);
+      if (thesisPoints.length === 0) thesisPoints = thesisText.split('\n\n').filter(function(l){return l.trim();}).slice(0,4);
+      thesisPoints.forEach(function(pt,i){
+        var y = 1.0 + i*1.45;
+        s3.addText(String(i+1).padStart(2,'0'), {x:0.5,y:y,w:0.5,h:0.4,fontSize:18,color:BLUE,bold:true});
+        var lines = pt.replace(/^\d+\.\s*/,'').split('\n');
+        var headline = lines[0].replace(/^#+\s*/,'').trim();
+        var body = lines.slice(1).join(' ').trim() || headline;
+        s3.addText(headline, {x:1.1,y:y,w:11.5,h:0.35,fontSize:13,color:WHITE,bold:true});
+        s3.addText(body.slice(0,180), {x:1.1,y:y+0.38,w:11.5,h:0.7,fontSize:11,color:MUTED,wrap:true});
+      });
+    }
     addFooter(s3, d.addr);
 
-    // SLIDE 4 — Return Stack
+    // SLIDE 4 — Return Stack (extractSection — markdown table)
     var s4 = pptx.addSlide();
     s4.background = {color: NAVY};
     s4.addText('Return Stack', {x:0.5,y:0.25,w:8,h:0.55,fontSize:28,color:WHITE,bold:true});
@@ -6605,7 +6618,6 @@ async function ridgeExportPPT() {
     } else {
       s4.addText(returnText.slice(0,600), {x:0.5,y:1.0,w:8,h:5,fontSize:11,color:'E6EDF3',wrap:true});
     }
-    // Capital stack sidebar
     s4.addText('Capital Stack', {x:9.0,y:0.25,w:3.5,h:0.4,fontSize:16,color:WHITE,bold:true});
     var capItems = [
       {l:'Purchase Price',v:'$'+(d.price||'—')},
@@ -6621,57 +6633,137 @@ async function ridgeExportPPT() {
     });
     addFooter(s4, d.addr);
 
-    // SLIDE 5 — Market & Comparable Transactions
+    // SLIDE 5 — Market & Comparable Transactions (JSON-driven)
     var s5 = pptx.addSlide();
     s5.background = {color: NAVY};
     s5.addText('Market & Comparable Transactions', {x:0.5,y:0.25,w:12.3,h:0.55,fontSize:24,color:WHITE,bold:true});
-    var mktText = extractSection(panelText, 'MARKET');
-    s5.addText(mktText.slice(0,1200)||'Market analysis not available — upload OM for market data.', {x:0.5,y:0.9,w:12.3,h:5.8,fontSize:11,color:'E6EDF3',wrap:true});
+    if (jd && jd.market) {
+      var mkt = jd.market;
+      var mktStats = [
+        {l:'Vacancy',v:mkt.vacancy||'—'},
+        {l:'Avg Asking Rent',v:mkt.avg_rent||'—'},
+        {l:'New Supply',v:mkt.new_supply||'—'},
+        {l:'Replacement Cost',v:mkt.replacement_cost||'—'}
+      ];
+      mktStats.forEach(function(ms,i){
+        var x = 0.5 + i*3.2;
+        s5.addText(ms.v, {x:x,y:0.95,w:3.0,h:0.5,fontSize:18,color:WHITE,bold:true,align:'center'});
+        s5.addText(ms.l, {x:x,y:1.45,w:3.0,h:0.25,fontSize:9,color:MUTED,align:'center',charSpacing:1});
+      });
+      if (mkt.comps && mkt.comps.length) {
+        var hdr = [{text:'Property',options:{bold:true,color:WHITE,fontSize:10}},{text:'SF',options:{bold:true,color:WHITE,fontSize:10}},{text:'PSF',options:{bold:true,color:WHITE,fontSize:10}},{text:'Cap Rate',options:{bold:true,color:WHITE,fontSize:10}},{text:'Date',options:{bold:true,color:WHITE,fontSize:10}}];
+        var compRows = [hdr].concat(mkt.comps.slice(0,6).map(function(c){
+          return [
+            {text:c.name||'',options:{fontSize:10,color:'E6EDF3'}},
+            {text:c.sf||'',options:{fontSize:10,color:'E6EDF3'}},
+            {text:c.psf||'',options:{fontSize:10,color:'E6EDF3'}},
+            {text:c.cap||'',options:{fontSize:10,color:'E6EDF3'}},
+            {text:c.date||'',options:{fontSize:10,color:'E6EDF3'}}
+          ];
+        }));
+        s5.addTable(compRows, {x:0.5,y:1.85,w:12.3,colW:[4.5,1.8,1.8,1.8,2.4],border:{type:'solid',color:'2d3a7a',w:0.5},fill:{color:NAVY2}});
+      }
+    } else {
+      var mktText = extractSection(panelText, 'MARKET');
+      s5.addText(mktText.slice(0,1200)||'Market analysis not available — upload OM for market data.', {x:0.5,y:0.9,w:12.3,h:5.8,fontSize:11,color:'E6EDF3',wrap:true});
+    }
     addFooter(s5, d.addr);
 
-    // SLIDE 6 — Sensitivity Analysis
+    // SLIDE 6 — Sensitivity Analysis (JSON-driven)
     var s6 = pptx.addSlide();
     s6.background = {color: NAVY};
     s6.addText('Sensitivity Analysis', {x:0.5,y:0.25,w:12.3,h:0.55,fontSize:28,color:WHITE,bold:true});
-    var sensText = extractSection(panelText, 'SENSITIVITY');
-    s6.addText(sensText.slice(0,1500)||'Sensitivity analysis not available.', {x:0.5,y:0.9,w:12.3,h:5.8,fontSize:11,color:'E6EDF3',wrap:true});
+    if (jd && jd.sensitivity) {
+      var sens = jd.sensitivity;
+      // Table 1: IRR by Price × Hold Period
+      s6.addText('IRR by Purchase Price × Hold Period', {x:0.5,y:0.95,w:6.0,h:0.3,fontSize:12,color:BLUE,bold:true});
+      if (sens.hold_rows && sens.hold_rows.length) {
+        var holdHdr = [{text:'Price',options:{bold:true,color:WHITE,fontSize:10}},{text:'3-Year',options:{bold:true,color:WHITE,fontSize:10}},{text:'4-Year',options:{bold:true,color:WHITE,fontSize:10}},{text:'5-Year',options:{bold:true,color:WHITE,fontSize:10}}];
+        var holdRows = [holdHdr].concat(sens.hold_rows.map(function(r){
+          return [
+            {text:r.price||'',options:{fontSize:10,color:'E6EDF3'}},
+            {text:r.irr_36||'',options:{fontSize:10,color:'E6EDF3'}},
+            {text:r.irr_48||'',options:{fontSize:10,color:'E6EDF3'}},
+            {text:r.irr_60||'',options:{fontSize:10,color:'E6EDF3'}}
+          ];
+        }));
+        s6.addTable(holdRows, {x:0.5,y:1.3,w:6.0,colW:[2.0,1.33,1.33,1.34],border:{type:'solid',color:'2d3a7a',w:0.5},fill:{color:NAVY2}});
+      }
+      // Table 2: IRR by Price × Exit Cap
+      s6.addText('IRR by Purchase Price × Exit Cap Rate', {x:6.8,y:0.95,w:6.0,h:0.3,fontSize:12,color:BLUE,bold:true});
+      if (sens.cap_rows && sens.cap_rows.length) {
+        var capHdr = [{text:'Price',options:{bold:true,color:WHITE,fontSize:10}},{text:'6.00%',options:{bold:true,color:WHITE,fontSize:10}},{text:'6.25%',options:{bold:true,color:WHITE,fontSize:10}},{text:'6.50%',options:{bold:true,color:WHITE,fontSize:10}}];
+        var capRows = [capHdr].concat(sens.cap_rows.map(function(r){
+          return [
+            {text:r.price||'',options:{fontSize:10,color:'E6EDF3'}},
+            {text:r.irr_600||'',options:{fontSize:10,color:'E6EDF3'}},
+            {text:r.irr_625||'',options:{fontSize:10,color:'E6EDF3'}},
+            {text:r.irr_650||'',options:{fontSize:10,color:'E6EDF3'}}
+          ];
+        }));
+        s6.addTable(capRows, {x:6.8,y:1.3,w:6.0,colW:[2.0,1.33,1.33,1.34],border:{type:'solid',color:'2d3a7a',w:0.5},fill:{color:NAVY2}});
+      }
+      s6.addText('★ = clears 14.75% IRR hurdle', {x:0.5,y:6.8,w:12.3,h:0.3,fontSize:10,color:MUTED});
+    } else {
+      var sensText = extractSection(panelText, 'SENSITIVITY');
+      s6.addText(sensText.slice(0,1500)||'Sensitivity analysis not available.', {x:0.5,y:0.9,w:12.3,h:5.8,fontSize:11,color:'E6EDF3',wrap:true});
+    }
     addFooter(s6, d.addr);
 
-    // SLIDE 7 — Risk Matrix
+    // SLIDE 7 — Risk Matrix (JSON-driven)
     var s7 = pptx.addSlide();
     s7.background = {color: NAVY};
     s7.addText('Risk Matrix', {x:0.5,y:0.25,w:12.3,h:0.55,fontSize:28,color:WHITE,bold:true});
-    var riskText = extractSection(panelText, 'RISK');
-    var riskLines = riskText.split('\n').filter(function(l){return l.includes('|') && !l.match(/^[\s|-]+$/);}).slice(0,8);
-    if (riskLines.length > 0) {
-      var riskRows = riskLines.map(function(l){
-        var cells = l.split('|').filter(function(c){return c.trim();});
-        return cells.map(function(c,ci){
-          var color = 'E6EDF3';
-          if (ci===1) { if (c.match(/High/i)) color='FF5555'; else if (c.match(/Medium/i)) color='FFAA00'; else color='33CC66'; }
-          return {text:c.trim(),options:{fontSize:11,color:color,bold:ci===1}};
-        });
-      });
-      s7.addTable(riskRows, {x:0.5,y:0.9,w:12.3,colW:[4,1.5,6.8],border:{type:'solid',color:'2d3a7a',w:0.5},fill:{color:NAVY2}});
+    if (jd && jd.risks && jd.risks.length) {
+      var riskHdr = [{text:'Risk Factor',options:{bold:true,color:WHITE,fontSize:10}},{text:'Severity',options:{bold:true,color:WHITE,fontSize:10}},{text:'Mitigant',options:{bold:true,color:WHITE,fontSize:10}}];
+      var riskRows = [riskHdr].concat(jd.risks.slice(0,8).map(function(r){
+        var sevColor = r.severity && r.severity.match(/high/i) ? 'FF5555' : r.severity && r.severity.match(/medium/i) ? 'FFAA00' : '33CC66';
+        return [
+          {text:r.factor||'',options:{fontSize:10,color:'E6EDF3'}},
+          {text:r.severity||'',options:{fontSize:10,color:sevColor,bold:true}},
+          {text:r.mitigant||'',options:{fontSize:10,color:'E6EDF3'}}
+        ];
+      }));
+      s7.addTable(riskRows, {x:0.5,y:0.9,w:12.3,colW:[3.5,1.3,7.5],border:{type:'solid',color:'2d3a7a',w:0.5},fill:{color:NAVY2}});
     } else {
-      s7.addText(riskText.slice(0,1000), {x:0.5,y:0.9,w:12.3,h:5.8,fontSize:11,color:'E6EDF3',wrap:true});
+      var riskText = extractSection(panelText, 'RISK');
+      var riskLines = riskText.split('\n').filter(function(l){return l.includes('|') && !l.match(/^[\s|-]+$/);}).slice(0,8);
+      if (riskLines.length > 0) {
+        var riskRowsFb = riskLines.map(function(l){
+          var cells = l.split('|').filter(function(c){return c.trim();});
+          return cells.map(function(c,ci){
+            var color = 'E6EDF3';
+            if (ci===1) { if (c.match(/High/i)) color='FF5555'; else if (c.match(/Medium/i)) color='FFAA00'; else color='33CC66'; }
+            return {text:c.trim(),options:{fontSize:11,color:color,bold:ci===1}};
+          });
+        });
+        s7.addTable(riskRowsFb, {x:0.5,y:0.9,w:12.3,colW:[4,1.5,6.8],border:{type:'solid',color:'2d3a7a',w:0.5},fill:{color:NAVY2}});
+      } else {
+        s7.addText(riskText.slice(0,1000), {x:0.5,y:0.9,w:12.3,h:5.8,fontSize:11,color:'E6EDF3',wrap:true});
+      }
     }
     addFooter(s7, d.addr);
 
-    // SLIDE 8 — IC Recommendation
+    // SLIDE 8 — IC Recommendation (JSON-driven)
     var s8 = pptx.addSlide();
     s8.background = {color: NAVY};
     s8.addText('IC Recommendation', {x:0.5,y:0.25,w:12.3,h:0.55,fontSize:28,color:WHITE,bold:true});
-    var recText = extractSection(panelText, 'IC RECOMMENDATION');
-    var verdict = recText.match(/PURSUE|CONDITIONAL|PASS/i) ? recText.match(/PURSUE|CONDITIONAL|PASS/i)[0].toUpperCase() : 'CONDITIONAL';
-    var verdictColor = verdict==='PURSUE' ? '1B5E20' : verdict==='PASS' ? '7B0000' : '5D4037';
-    var verdictBg = verdict==='PURSUE' ? '1E4620' : verdict==='PASS' ? '3E0000' : '3E2A00';
+    var verdict, verdictLabel, verdictColor, verdictBg;
+    if (jd && jd.recommendation) {
+      verdict = (jd.recommendation.verdict||'CONDITIONAL').toUpperCase();
+    } else {
+      var recText = extractSection(panelText, 'IC RECOMMENDATION');
+      verdict = recText.match(/PURSUE|CONDITIONAL|PASS/i) ? recText.match(/PURSUE|CONDITIONAL|PASS/i)[0].toUpperCase() : 'CONDITIONAL';
+    }
+    verdictColor = verdict==='PURSUE' ? '1B5E20' : verdict==='PASS' ? '7B0000' : '5D4037';
+    verdictBg   = verdict==='PURSUE' ? '1E4620' : verdict==='PASS' ? '3E0000' : '3E2A00';
+    verdictLabel = verdict==='PURSUE' ? '✓  RECOMMEND FOR INVESTMENT' : verdict==='PASS' ? '✗  PASS' : '⚠  CONDITIONAL APPROVAL';
     s8.addShape(pptx.ShapeType.rect,{x:0.5,y:0.9,w:12.3,h:0.9,fill:{color:verdictBg},line:{color:verdictColor,w:2}});
-    s8.addText('✓  RECOMMEND FOR INVESTMENT', {x:0.5,y:0.9,w:12.3,h:0.9,fontSize:22,color:WHITE,bold:true,align:'center',valign:'middle'});
+    s8.addText(verdictLabel, {x:0.5,y:0.9,w:12.3,h:0.9,fontSize:22,color:WHITE,bold:true,align:'center',valign:'middle'});
     var keyMetrics = [
       {l:'Levered IRR',v:(d.irr||'—')},
       {l:'Equity Multiple',v:(d.em||'—')},
-      {l:'Yr 1 YOC',v:(d.yoc||'—')},
+      {l:'YOC Yr 3/4',v:(d.yoc||'—')},
       {l:'LTV',v:(d.ltv||'—')}
     ];
     keyMetrics.forEach(function(m2,i){
@@ -6679,11 +6771,17 @@ async function ridgeExportPPT() {
       s8.addText(m2.v, {x:x,y:2.1,w:3.0,h:0.6,fontSize:22,color:WHITE,bold:true,align:'center'});
       s8.addText(m2.l, {x:x,y:2.7,w:3.0,h:0.3,fontSize:9,color:MUTED,align:'center',charSpacing:1});
     });
-    var nextSteps = extractSection(panelText, 'NEXT STEPS');
-    s8.addText('Next Steps & Key Conditions', {x:0.5,y:3.2,w:12.3,h:0.35,fontSize:14,color:WHITE,bold:true});
-    var steps = nextSteps.split('\n').filter(function(l){return l.trim() && !l.match(/^##/);}).slice(0,5);
-    steps.forEach(function(st,i){
-      s8.addText((i+1)+'.  '+st.replace(/^\d+\.\s*/,'').replace(/^[-*]\s*/,''), {x:0.5,y:3.65+i*0.6,w:12.3,h:0.5,fontSize:11,color:'E6EDF3',wrap:true});
+    if (jd && jd.recommendation && jd.recommendation.summary) {
+      s8.addText(jd.recommendation.summary.slice(0,300), {x:0.5,y:3.15,w:12.3,h:0.7,fontSize:11,color:'E6EDF3',wrap:true});
+    }
+    s8.addText('Next Steps', {x:0.5,y:3.95,w:12.3,h:0.35,fontSize:14,color:WHITE,bold:true});
+    var steps = (jd && jd.recommendation && jd.recommendation.next_steps) ? jd.recommendation.next_steps : [];
+    if (!steps.length) {
+      var nsText = extractSection(panelText, 'NEXT STEPS');
+      steps = nsText.split('\n').filter(function(l){return l.trim() && !l.match(/^##/);}).slice(0,5);
+    }
+    steps.slice(0,5).forEach(function(st,i){
+      s8.addText((i+1)+'.  '+String(st).replace(/^\d+\.\s*/,'').replace(/^[-*]\s*/,''), {x:0.5,y:4.4+i*0.52,w:12.3,h:0.45,fontSize:11,color:'E6EDF3',wrap:true});
     });
     s8.addText('ENTRADA PARTNERS  |  CONFIDENTIAL & PROPRIETARY  |  '+dateStr.toUpperCase(), {x:0.5,y:7.0,w:12.3,h:0.3,fontSize:9,color:MUTED,align:'center'});
 
