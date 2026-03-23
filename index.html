@@ -6688,7 +6688,13 @@ async function ridgeExportPPT() {
     s8.addText('ENTRADA PARTNERS  |  CONFIDENTIAL & PROPRIETARY  |  '+dateStr.toUpperCase(), {x:0.5,y:7.0,w:12.3,h:0.3,fontSize:9,color:MUTED,align:'center'});
 
     var fname = 'RIDGE_IC_Report_'+String(d.addr||'Deal').replace(/[^a-zA-Z0-9]/g,'_').slice(0,30)+'_'+new Date().toISOString().slice(0,10)+'.pptx';
-    await pptx.writeFile({fileName:fname});
+    console.log('ISR PPT writing file...');
+    try {
+      await pptx.writeFile({ fileName: fname });
+      console.log('ISR PPT write complete:', fname);
+    } catch(err) {
+      console.error('ISR PPT write failed:', err);
+    }
     return;
   }
 
