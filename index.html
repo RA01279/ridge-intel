@@ -1417,8 +1417,8 @@ var TOOLS = [
       {id:'doc3',label:'Document 3',hint:'Optional: third scenario, prior executed lease, or market comp',icon:'📑',accept:'.pdf,.docx',type:'pdf'}
     ],
     fields:[
-      {row:[{id:'addr',label:'Property Address',ph:'e.g. 4200 Commerce Pkwy, Savannah, GA'},{id:'sf',label:'Rentable SF',ph:'e.g. 48,500'}]},
-      {row:[{id:'mkt_rent',label:'Market Rent PSF',ph:'e.g. $12.50 NNN'},{id:'mkt_ti',label:'Market TI PSF',ph:'e.g. $25–30 PSF'}]},
+      {row:[{id:'doc1_label',label:'Document 1 — Name / Address',ph:'e.g. 4200 Commerce Pkwy — Tenant A Proposal'},{id:'doc2_label',label:'Document 2 — Name / Address',ph:'e.g. 7100 Distribution Dr — Counter-Proposal'},{id:'doc3_label',label:'Document 3 — Name / Address (optional)',ph:'e.g. Prior executed lease for comp'}]},
+      {row:[{id:'mkt_rent',label:'Market Rent PSF',ph:'e.g. $12.50 NNN'},{id:'mkt_ti',label:'Market TI PSF',ph:'e.g. $25–30 PSF'},{id:'sf',label:'Rentable SF',ph:'e.g. 48,500'}]},
       {row:[{id:'mode',label:'Comparison Mode',type:'select',opts:['Proposal vs Proposal (pick the better deal)','Proposal vs Executed Lease (is this standard?)','Two Executed Leases (acquisition DD)','Counter-Proposal Analysis','Single Document Deep Review']},{id:'role',label:'Entrada Role',type:'select',opts:['Landlord — maximize NOI and protect asset value','Buyer / Acquirer — evaluate inherited leases','Tenant — minimize cost and maximize flexibility']}]},
       {row:[{id:'notes',label:'Context & Priority Issues',ph:'Tenant credit, deal urgency, specific concerns, prior negotiations...',type:'textarea'}]},
     ],
@@ -2987,29 +2987,31 @@ function buildTrigger(toolId, d) {
       return p;
 
     case 'lease-compare':
-      console.log('LEASE-COMPARE buildTrigger inputs:', {addr:d.addr, sf:d.sf, mode:d.mode, role:d.role, doc1:!!d.doc1_text, doc2:!!d.doc2_text, doc3:!!d.doc3_text});
+      var lc1 = d.doc1_label || 'Document 1';
+      var lc2 = d.doc2_label || 'Document 2';
+      var lc3 = d.doc3_label || 'Document 3';
+      console.log('LEASE-COMPARE buildTrigger:', {lc1:lc1, lc2:lc2, lc3:lc3, doc1:!!d.doc1_text, doc2:!!d.doc2_text, doc3:!!d.doc3_text});
       p = 'You are a senior CRE attorney and acquisitions officer at Entrada Partners. You are conducting a lease analysis and negotiation review.\n\n';
-      p += 'PROPERTY: ' + (d.addr||'Subject Property') + '\n';
-      p += 'RENTABLE SF: ' + (d.sf||'') + '\n';
       p += 'COMPARISON MODE: ' + (d.mode||'Proposal vs Proposal') + '\n';
       p += 'ENTRADA ROLE: ' + (d.role||'Landlord — maximize NOI and protect asset value') + '\n';
+      p += 'RENTABLE SF: ' + (d.sf||'[not provided]') + '\n';
       p += 'MARKET RENT: ' + (d.mkt_rent||'[not provided — estimate from submarket data]') + '\n';
       p += 'MARKET TI: ' + (d.mkt_ti||'[not provided — estimate from submarket data]') + '\n';
       if (d.notes) p += 'CONTEXT: ' + d.notes + '\n';
       p += '\n';
-      if (d.doc1_text) p += '=== DOCUMENT 1 ===\n' + d.doc1_text.slice(0, 18000) + '\n\n';
-      else p += '=== DOCUMENT 1 ===\n[Not uploaded — upload Document 1 to proceed]\n\n';
-      if (d.doc2_text) p += '=== DOCUMENT 2 ===\n' + d.doc2_text.slice(0, 18000) + '\n\n';
-      else p += '=== DOCUMENT 2 ===\n[Not uploaded]\n\n';
-      if (d.doc3_text) p += '=== DOCUMENT 3 ===\n' + d.doc3_text.slice(0, 10000) + '\n\n';
+      if (d.doc1_text) p += '=== ' + lc1.toUpperCase() + ' ===\n' + d.doc1_text.slice(0, 18000) + '\n\n';
+      else p += '=== ' + lc1.toUpperCase() + ' ===\n[Not uploaded — upload Document 1 to proceed]\n\n';
+      if (d.doc2_text) p += '=== ' + lc2.toUpperCase() + ' ===\n' + d.doc2_text.slice(0, 18000) + '\n\n';
+      else p += '=== ' + lc2.toUpperCase() + ' ===\n[Not uploaded]\n\n';
+      if (d.doc3_text) p += '=== ' + lc3.toUpperCase() + ' ===\n' + d.doc3_text.slice(0, 10000) + '\n\n';
       p += 'Produce a complete lease analysis at the level of institutional CRE counsel. Be specific — quote provisions, cite section numbers, and quantify economic impacts in dollars where possible.\n\n';
 
       p += '## DOCUMENT IDENTIFICATION\n';
       p += 'For each document: identify what it is (proposal, executed lease, counter, LOI), the parties, the property, and the key dates. One paragraph per document.\n\n';
 
       p += '## ECONOMIC TERMS COMPARISON MATRIX\n';
-      p += 'Side-by-side table for every economic term. If only one document, use Document 1 vs Market Standard as the two columns.\n\n';
-      p += 'Table: Term | Document 1 | Document 2 | Document 3 (if applicable) | Market Standard | Better For (LL/Tenant)\n\n';
+      p += 'Side-by-side table for every economic term. If only one document, use ' + lc1 + ' vs Market Standard as the two columns.\n\n';
+      p += 'Table: Term | ' + lc1 + ' | ' + lc2 + ' | ' + lc3 + ' (if applicable) | Market Standard | Better For (LL/Tenant)\n\n';
       p += 'Include every row below — use "Not Stated" if a term is absent (that itself is a flag):\n';
       p += '- Lease Term (start date, end date, months)\n';
       p += '- Base Rent Year 1 ($/SF and $/month)\n';
@@ -4510,7 +4512,10 @@ function _exportLeaseCompare(wb, tid, dateStr, paste) {
     ['Permitted Use','','',''],['Holdover Rent','','',''],['SNDA / Estoppel','','',''],
   ];
   var hdrRow = ws.getRow(r);
-  ['TERM','DOC 1','DOC 2','DOC 3','MARKET STD','BETTER FOR'].forEach(function(h,i){
+  var lc1x = rcGetField(tid,'doc1_label') || 'DOC 1';
+  var lc2x = rcGetField(tid,'doc2_label') || 'DOC 2';
+  var lc3x = rcGetField(tid,'doc3_label') || 'DOC 3';
+  ['TERM', lc1x, lc2x, lc3x, 'MARKET STD','BETTER FOR'].forEach(function(h,i){
     hdrRow.getCell(i+1).value = h;
     hdrRow.getCell(i+1).font = {bold:true,color:{argb:'FFFFFFFF'}};
     hdrRow.getCell(i+1).fill = {type:'pattern',pattern:'solid',fgColor:{argb:'FF1E2761'}};
