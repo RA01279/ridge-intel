@@ -2679,12 +2679,12 @@ function showParsedKPIs(toolId, m) {
   if (_psf) items.push({l:'Price PSF',v:'$'+_psf.toFixed(2)});
   if (m.sf) items.push({l:'Building SF',v:Number(m.sf).toLocaleString()});
   if (m.noi) items.push({l:'Year 1 NOI',v:'$'+Number(m.noi).toLocaleString()});
-  if (m.irr) items.push({l:'Levered IRR',v:(Number(m.irr)*100).toFixed(1)+'%'});
+  if (m.irr) items.push({l:'Levered IRR',v:(Number(m.irr)*100).toFixed(2)+'%'});
   if (m.em) items.push({l:'Equity Multiple',v:Number(m.em).toFixed(2)+'x'});
-  if (m.cap) items.push({l:'Going-In Cap',v:(Number(m.cap)*100).toFixed(1)+'%'});
-  if (m.exitcap) items.push({l:'Exit Cap',v:(Number(m.exitcap)*100).toFixed(1)+'%'});
-  if (m.yoc) items.push({l:'YOC Yr4/5',v:(Number(m.yoc)*100).toFixed(1)+'%'});
-  if (m.ltv) items.push({l:'LTV',v:(Number(m.ltv)*100).toFixed(0)+'%'});
+  if (m.cap) items.push({l:'Going-In Cap',v:(Number(m.cap)*100).toFixed(2)+'%'});
+  if (m.exitcap) items.push({l:'Exit Cap',v:(Number(m.exitcap)*100).toFixed(2)+'%'});
+  if (m.yoc) items.push({l:'YOC Yr4/5',v:(Number(m.yoc)*100).toFixed(2)+'%'});
+  if (m.ltv) items.push({l:'LTV',v:(Number(m.ltv)*100).toFixed(2)+'%'});
   kpis.innerHTML = items.map(i=>`<div class="kpi-chip"><div class="kpi-chip-l">${i.l}</div><div class="kpi-chip-v">${i.v}</div></div>`).join('');
 }
 
