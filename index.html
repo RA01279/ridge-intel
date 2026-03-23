@@ -1764,13 +1764,9 @@ function handleXLSX(toolId, uploadId, input) {
           var cityState = cv(ws1PS, 'D9');
           var propName  = cv(ws1PS, 'D6');
           var sfRaw   = cv(ws1PS, 'D11');
-          var sfNum   = sfRaw ? String(sfRaw).replace(/[^0-9]/g,'') : null;
+          var sfNum   = sfRaw ? parseInt(String(sfRaw).replace(/[^0-9]/g,'')) : null;
           var price   = cv(wsGI, 'C19');
-          var psf     = cv(wsGI, 'E19');
-          console.log('E19 (PSF):', wsGI && wsGI['E19'] ? wsGI['E19'].v : 'missing');
-          console.log('C19 (Price):', wsGI && wsGI['C19'] ? wsGI['C19'].v : 'missing');
-          console.log('D19:', wsGI && wsGI['D19'] ? wsGI['D19'].v : 'missing');
-          console.log('F19:', wsGI && wsGI['F19'] ? wsGI['F19'].v : 'missing');
+          var psf     = (price && sfNum) ? (price / sfNum) : cv(wsGI, 'E19');
           var irr     = cv(wsGI, 'D57');
           var em      = cv(wsGI, 'E57');
           var cap     = cv(wsGI, 'C131');
@@ -1798,7 +1794,7 @@ function handleXLSX(toolId, uploadId, input) {
           }
           if (sfEl && !sfEl.value && sfNum) sfEl.value = parseInt(sfNum).toLocaleString();
           if (priceEl && !priceEl.value && price) priceEl.value = '$' + Math.round(price).toLocaleString();
-          if (psfEl && !psfEl.value && psf) psfEl.value = '$' + Math.round(psf);
+          if (psfEl && psf) psfEl.value = '$' + parseFloat(psf).toFixed(2);
           if (irrEl && !irrEl.value && irr) irrEl.value = (parseFloat(irr) < 1 ? (irr * 100).toFixed(2) : parseFloat(irr).toFixed(2)) + '%';
           if (emEl && !emEl.value && em) emEl.value = parseFloat(em).toFixed(2) + 'x';
           if (capEl && !capEl.value && cap) capEl.value = (parseFloat(cap) < 1 ? (cap * 100).toFixed(2) : parseFloat(cap).toFixed(2)) + '%';
