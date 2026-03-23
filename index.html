@@ -4552,6 +4552,7 @@ function closeApiKeyModal() {
 //   order by similarity desc limit match_count;
 // $$;
 async function _generateEmbedding(text) {
+  console.log('_generateEmbedding called — voyageKey:', _voyageKey ? 'present (length ' + _voyageKey.length + ')' : 'MISSING');
   if (!_voyageKey || !text) return null;
   try {
     var resp = await fetch('https://api.voyageai.com/v1/embeddings', {
@@ -4565,9 +4566,14 @@ async function _generateEmbedding(text) {
         input: [text.slice(0, 4000)]
       })
     });
+    console.log('Voyage response status:', resp.status);
     var data = await resp.json();
+    console.log('Voyage response data keys:', Object.keys(data));
     return data.data && data.data[0] && data.data[0].embedding ? data.data[0].embedding : null;
-  } catch(e) { return null; }
+  } catch(e) {
+    console.error('Voyage embedding error:', e.message);
+    return null;
+  }
 }
 
 async function leaseSemanticSearch() {
