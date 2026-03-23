@@ -1754,6 +1754,57 @@ function handleXLSX(toolId, uploadId, input) {
       document.getElementById('mbody-'+toolId).classList.add('open');
       document.getElementById('marrow-'+toolId).textContent = '▼';
 
+      // ISR cell-reference fallback — for models with General Inputs / 1-Prop Summary layout
+      if (toolId === 'isr' && uploadId === 'model') {
+        try {
+          var wsGI = wb.Sheets['General Inputs'];
+          var ws1PS = wb.Sheets['1-Prop Summary'];
+          function cv(ws, ref) { if (!ws || !ws[ref]) return null; return ws[ref].v; }
+          var addr    = cv(ws1PS, 'D8');
+          var cityState = cv(ws1PS, 'D9');
+          var propName  = cv(ws1PS, 'D6');
+          var sfRaw   = cv(ws1PS, 'D11');
+          var sfNum   = sfRaw ? String(sfRaw).replace(/[^0-9]/g,'') : null;
+          var price   = cv(wsGI, 'C19');
+          var psf     = cv(wsGI, 'E19');
+          var irr     = cv(wsGI, 'D57');
+          var em      = cv(wsGI, 'E57');
+          var cap     = cv(wsGI, 'C131');
+          var yoc     = cv(wsGI, 'F131');
+          var ltv     = cv(wsGI, 'K37');
+          var holdMonths = cv(wsGI, 'I6');
+          var addrEl  = document.getElementById('f-isr-addr');
+          var sfEl    = document.getElementById('f-isr-sf');
+          var priceEl = document.getElementById('f-isr-price');
+          var psfEl   = document.getElementById('f-isr-psf');
+          var irrEl   = document.getElementById('f-isr-irr');
+          var emEl    = document.getElementById('f-isr-em');
+          var capEl   = document.getElementById('f-isr-cap');
+          var yocEl   = document.getElementById('f-isr-yoc');
+          var ltvEl   = document.getElementById('f-isr-ltv');
+          var holdEl  = document.getElementById('f-isr-hold');
+          if (addrEl && !addrEl.value) {
+            if (addr && addr !== 0) {
+              addrEl.value = cityState && cityState !== 0 ? addr + ', ' + cityState : String(addr);
+            } else if (propName && propName !== 0) {
+              addrEl.value = String(propName).replace(/\s*-\s*Updated.*$/i,'').trim();
+            } else {
+              addrEl.value = input.files[0].name.replace(/\.xlsx?$/i,'').replace(/[_-]/g,' ').trim();
+            }
+          }
+          if (sfEl && !sfEl.value && sfNum) sfEl.value = parseInt(sfNum).toLocaleString();
+          if (priceEl && !priceEl.value && price) priceEl.value = '$' + Math.round(price).toLocaleString();
+          if (psfEl && !psfEl.value && psf) psfEl.value = '$' + Math.round(psf);
+          if (irrEl && !irrEl.value && irr) irrEl.value = (parseFloat(irr) < 1 ? (irr * 100).toFixed(2) : parseFloat(irr).toFixed(2)) + '%';
+          if (emEl && !emEl.value && em) emEl.value = parseFloat(em).toFixed(2) + 'x';
+          if (capEl && !capEl.value && cap) capEl.value = (parseFloat(cap) < 1 ? (cap * 100).toFixed(2) : parseFloat(cap).toFixed(2)) + '%';
+          if (yocEl && !yocEl.value && yoc) yocEl.value = (parseFloat(yoc) < 1 ? (yoc * 100).toFixed(2) : parseFloat(yoc).toFixed(2)) + '%';
+          if (ltvEl && !ltvEl.value && ltv) ltvEl.value = Math.round(parseFloat(ltv) < 1 ? ltv * 100 : ltv) + '%';
+          if (holdEl && !holdEl.value && holdMonths) holdEl.value = Math.round(holdMonths / 12) + ' years';
+          showToast('✓ Model parsed — fields auto-filled');
+        } catch(err) { console.warn('ISR cell-ref parse failed:', err); showToast('Model parse failed — fill manually'); }
+      }
+
     } catch(err) { st.textContent = 'Error: '+err.message; st.className = 'uz-st err'; }
   };
   reader.readAsArrayBuffer(file);
