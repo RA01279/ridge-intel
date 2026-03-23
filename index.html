@@ -5052,6 +5052,7 @@ async function runRidgeAPI(skillName, prompt) {
         }
         // Update leases row after Gavel run
         if (skillNameSaved.toLowerCase().includes('gavel') && STATE['gavel'] && STATE['gavel']._leaseId) {
+          console.log('Gavel post-run extraction firing — leaseId:', STATE['gavel'] && STATE['gavel']._leaseId ? STATE['gavel']._leaseId : 'MISSING');
           var _leaseId = STATE['gavel']._leaseId;
           var _leaseUpdate = { extracted_data: {} };
           var gavelOutput = outputText;
@@ -5059,10 +5060,12 @@ async function runRidgeAPI(skillName, prompt) {
           var sfMatch = gavelOutput.match(/Square\s+Footage\s*([0-9,]+)/i);
           if (!sfMatch) sfMatch = gavelOutput.match(/([0-9,]+)\s+rentable\s+SF/i);
           if (sfMatch) _leaseUpdate.sf = parseFloat(sfMatch[1].replace(/,/g,''));
+          console.log('SF match:', sfMatch ? sfMatch[1] : 'none');
           // Base Rent PSF — matches "Base Rent Year 1$7.50 PSF"
           var rentMatch = gavelOutput.match(/Base\s+Rent[^\n$]{0,30}\$([0-9]+\.?[0-9]*)\s*PSF/i);
           if (!rentMatch) rentMatch = gavelOutput.match(/\$([0-9]+\.?[0-9]*)\s*PSF/i);
           if (rentMatch) _leaseUpdate.base_rent_psf = parseFloat(rentMatch[1]);
+          console.log('Rent match:', rentMatch ? rentMatch[1] : 'none');
           // Lease term — matches "Expiration63 months from commencement" or "63 full calendar months"
           var termMatch = gavelOutput.match(/Expiration\s*([0-9]+)\s*(?:full\s+calendar\s+)?months/i);
           if (!termMatch) termMatch = gavelOutput.match(/([0-9]+)\s*(?:full\s+calendar\s+)?months\s+from\s+commencement/i);
@@ -5071,6 +5074,7 @@ async function runRidgeAPI(skillName, prompt) {
             if (termYrMatch) termMatch = [null, String(parseInt(termYrMatch[1]) * 12)];
           }
           if (termMatch) _leaseUpdate.lease_term_months = parseInt(termMatch[1]);
+          console.log('Term match:', termMatch ? termMatch[1] : 'none');
           // Commencement — matches "CommencementJuly 1, 2007"
           var commMatch = gavelOutput.match(/Commencement\s*([A-Za-z]+\s+[0-9]{1,2},?\s*[0-9]{4})/i);
           if (!commMatch) commMatch = gavelOutput.match(/Commencement[:\s]+([A-Za-z]+\s+[0-9]{1,2},?\s*[0-9]{4})/i);
@@ -5083,6 +5087,7 @@ async function runRidgeAPI(skillName, prompt) {
           var escalMatch = gavelOutput.match(/Escalations?\s*([0-9]+\.?[0-9]*)%/i);
           if (!escalMatch) escalMatch = gavelOutput.match(/([0-9]+\.?[0-9]*)%\s*annual/i);
           if (escalMatch) _leaseUpdate.rent_escalation_pct = parseFloat(escalMatch[1]);
+          console.log('Escalation match:', escalMatch ? escalMatch[1] : 'none');
           // Free rent — matches "Free RentNone specified" or "Free Rent6 months"
           var freeMatch = gavelOutput.match(/Free\s+Rent\s*([0-9]+)\s*months?/i);
           if (!freeMatch && gavelOutput.match(/Free\s+Rent\s*(?:None|Waived|N\/A|Not\s+specified|No\s+free)/i)) freeMatch = [null, '0'];
