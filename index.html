@@ -2880,7 +2880,7 @@ function buildTrigger(toolId, d) {
       p += '## LANDLORD OBLIGATIONS\nAll landlord responsibilities — maintenance, capex, TI delivery, free rent, insurance.\n\n';
       p += '## ACQUISITION IMPACT\nHow does this lease affect underwriting? Mark-to-market potential, rollover risk, credit quality assessment, impact on NOI stability.\n\n';
       p += 'Be precise. Flag anything that would affect acquisition pricing or due diligence.';
-      p += '\n\nIMPORTANT: At the very end of your response, after all analysis, output a JSON block in this exact format with no deviation:\n\n```json\n{"sf":4391,"base_rent_psf":7.50,"lease_term_months":63,"commencement_date":"2007-07-01","expiration_date":"2013-05-31","lease_type":"NNN","rent_escalation_pct":3.0,"free_rent_months":0,"ti_psf":null}\n```\n\nUse null for any field you cannot determine. The commencement_date and expiration_date must be in YYYY-MM-DD format. This JSON block is required for database storage.';
+      p += '\n\nIMPORTANT: At the very end of your response, after all analysis, append this exact JSON block with extracted lease data (use null for any field not found):\n\n```json\n{"sf":null,"base_rent_psf":null,"lease_term_months":null,"commencement_date":null,"expiration_date":null,"lease_type":null,"ti_psf":null,"rent_escalation_pct":null,"free_rent_months":null}\n```\n\nReplace null values with actual extracted data. commencement_date and expiration_date in YYYY-MM-DD format. sf as integer. rent_escalation_pct as number only (e.g. 3 not 3%). Do not add any text after the JSON block.';
       return p;
 
     case 'legal':
