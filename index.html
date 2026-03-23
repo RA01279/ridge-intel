@@ -2467,24 +2467,16 @@ function handleFile(toolId, uploadId, input, type) {
             if (toolId === 'gavel' && uploadId === 'lease') {
               var addrEl   = document.getElementById('f-gavel-addr');
               var tenantEl = document.getElementById('f-gavel-tenant');
-              var tenantMatch = fullText.slice(0, 2000).match(/Tenant[:\s]+([^\n,]{2,50}?)(?:\s*,\s*a\s|\n)/i);
-              var addrMatch = fullText.match(/5\d{3}\s+Highlands[^\n,.(]{0,40}/i);
-              if (!addrMatch) {
-                var allPremises = [...fullText.matchAll(/(?:Premises|PREMISES)[:\s]+([^\n]{10,100})/g)];
-                for (var pi = 0; pi < allPremises.length; pi++) {
-                  var candidate = allPremises[pi][1].trim();
-                  if (candidate.match(/\d/) && !candidate.match(/3900|Glenlake/i) && candidate.length > 8) {
-                    addrMatch = allPremises[pi];
-                    break;
-                  }
-                }
-              }
-              if (addrMatch) {
-                var addr = (addrMatch[1] !== undefined ? addrMatch[1] : addrMatch[0]).trim().replace(/\.{3,}/g,'').replace(/\(.*$/,'').trim();
-                if (addr.length > 5 && addrEl && !addrEl.value) addrEl.value = addr.slice(0,80);
+              var addrMatch = fullText.match(/"Premises"[^.]{0,100}located at\s+([^,(]{10,80})/i);
+              if (!addrMatch) addrMatch = fullText.match(/"Premises"[^.]{0,100}situated[^.]{0,50}at\s+([^,(]{10,80})/i);
+              if (!addrMatch) addrMatch = fullText.match(/["\u201c\u201d]Premises["\u201c\u201d][:\s]+([^.,(]{10,80})/i);
+              var tenantMatch = fullText.match(/([A-Z0-9][A-Z0-9\s&,\.]{2,50}?),?\s+a\s+[A-Za-z]+\s+(?:limited\s+liability\s+company|corporation|partnership|company)[^.]{0,50}(?:herein\s+called\s+)?["\u201c\u201d]Tenant["\u201c\u201d]/i);
+              if (addrEl && !addrEl.value && addrMatch) {
+                var addr = addrMatch[1].trim().replace(/\.{3,}/g,'').replace(/\(.*$/,'').trim();
+                if (addr.length > 5) addrEl.value = addr.slice(0,80);
               }
               if (tenantEl && !tenantEl.value && tenantMatch) {
-                var tenant = tenantMatch[1].trim().replace(/\.{3,}/g,'').trim();
+                var tenant = tenantMatch[1].trim().replace(/,$/,'').trim();
                 if (tenant.length > 1) tenantEl.value = tenant.slice(0,60);
               }
             }
