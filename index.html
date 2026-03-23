@@ -2467,13 +2467,16 @@ function handleFile(toolId, uploadId, input, type) {
             if (toolId === 'gavel' && uploadId === 'lease') {
               var addrEl   = document.getElementById('f-gavel-addr');
               var tenantEl = document.getElementById('f-gavel-tenant');
-              var leaseBody = fullText.slice(200);
               var tenantMatch = fullText.slice(0, 2000).match(/Tenant[:\s]+([^\n,]{2,50}?)(?:\s*,\s*a\s|\n)/i);
-              var addrMatch = leaseBody.match(/Premises[:\s"]+(?:known as\s+|located at\s+)?([^\n(]{10,80})/i);
-              if (!addrMatch) addrMatch = leaseBody.match(/(\d{3,5}\s+[A-Za-z][^\n,]{5,60}(?:Parkway|Pkwy|Street|St|Avenue|Ave|Boulevard|Blvd|Drive|Dr|Road|Rd|Way|Court|Ct|Lane|Ln|Overlook|Commons|Center|Circle)[^\n]{0,20})/i);
-              if (addrEl && !addrEl.value && addrMatch) {
+              var premisesSection = fullText.match(/(?:FUNDAMENTAL LEASE PROVISIONS|BASIC LEASE INFORMATION|LEASE SUMMARY|REFERENCE PAGES?)[\s\S]{0,2000}/i);
+              var searchArea = premisesSection ? premisesSection[0] : fullText;
+              var addrMatch = searchArea.match(/(?:^|\n)\s*(?:Premises|PREMISES|Leased Premises)[:\s]+([^\n]{10,100})/m);
+              if (!addrMatch) addrMatch = searchArea.match(/(?:^|\n)\s*(?:Address of Premises|Building Address|Property Address)[:\s]+([^\n]{10,100})/im);
+              if (addrMatch) {
                 var addr = addrMatch[1].trim().replace(/\.{3,}/g,'').replace(/\(.*$/,'').trim();
-                if (addr.length > 5) addrEl.value = addr.slice(0,80);
+                if (addr.length > 5 && !addr.match(/^3900\b/) && !addr.match(/Glenlake/i)) {
+                  if (addrEl && !addrEl.value) addrEl.value = addr.slice(0,80);
+                }
               }
               if (tenantEl && !tenantEl.value && tenantMatch) {
                 var tenant = tenantMatch[1].trim().replace(/\.{3,}/g,'').trim();
