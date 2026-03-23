@@ -5062,10 +5062,11 @@ async function runRidgeAPI(skillName, prompt) {
           var gavelOutput = outputText;
           console.log('Gavel output first 1000 chars:', outputText.slice(0, 1000));
           console.log('Gavel output chars 1000-2000:', outputText.slice(1000, 2000));
-          // SF — matches "Square Footage4,391" (no space), "4,391 rentable SF", "Premises Size: 4,391"
-          var sfMatch = gavelOutput.match(/Square\s*Footage\s*([0-9,]+)/i);
-          if (!sfMatch) sfMatch = gavelOutput.match(/([0-9,]+)\s+rentable\s+(?:SF|square)/i);
-          if (!sfMatch) sfMatch = gavelOutput.match(/Premises\s+(?:Size|SF|Area)[:\s]+([0-9,]+)/i);
+          // SF — handles tab-separated, no-space, and bare SF formats
+          var sfMatch = gavelOutput.match(/Rentable\s*SF[\s\t]+([0-9,]+)/i);
+          if (!sfMatch) sfMatch = gavelOutput.match(/Square\s*Footage[\s\t]*([0-9,]+)/i);
+          if (!sfMatch) sfMatch = gavelOutput.match(/([0-9,]+)\s+(?:rentable\s+)?SF\b/i);
+          if (!sfMatch) sfMatch = gavelOutput.match(/([0-9,]{4,7})\s*SF/i);
           if (sfMatch) _leaseUpdate.sf = parseFloat(sfMatch[1].replace(/,/g,''));
           console.log('SF match:', sfMatch ? sfMatch[1] : 'none');
           // Base Rent PSF — Year 1 rate preferred; fallback to any Base Rent line
