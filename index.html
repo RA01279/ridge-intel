@@ -5060,6 +5060,8 @@ async function runRidgeAPI(skillName, prompt) {
           console.log('Gavel post-run firing — leaseId:', _leaseId ? _leaseId : 'MISSING — will INSERT');
           var _leaseUpdate = { extracted_data: {} };
           var gavelOutput = outputText;
+          console.log('Gavel output first 1000 chars:', outputText.slice(0, 1000));
+          console.log('Gavel output chars 1000-2000:', outputText.slice(1000, 2000));
           // SF — matches "Square Footage4,391 rentable SF" or "4,391 rentable SF"
           var sfMatch = gavelOutput.match(/Square\s+Footage\s*([0-9,]+)/i);
           if (!sfMatch) sfMatch = gavelOutput.match(/([0-9,]+)\s+rentable\s+SF/i);
