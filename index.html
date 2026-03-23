@@ -2736,18 +2736,46 @@ function buildTrigger(toolId, d) {
       return p;
 
     case 'gavel':
-      var p = 'Run Lease Admin';
-      if (d.tenant) p += ' for ' + d.tenant;
-      if (d.addr)   p += ' at ' + d.addr;
-      if (d.notes)  p += '. Focus: ' + d.notes;
-      p += '. Lease document is attached.';
+      var p = 'You are RIDGE running The Gavel — Lease Administration module for Entrada Partners.\n\n';
+      p += 'TASK: Produce a full institutional lease abstract and risk assessment.\n\n';
+      if (d.addr) p += 'Property: ' + d.addr + '\n';
+      if (d.tenant) p += 'Tenant: ' + d.tenant + '\n';
+      if (d.notes) p += 'Focus areas: ' + d.notes + '\n';
+      p += '\n';
+      if (d.lease_text) {
+        p += 'LEASE DOCUMENT:\n' + d.lease_text + '\n\n';
+      } else {
+        p += '[No lease document uploaded — ask user to upload the lease PDF or DOCX]\n\n';
+      }
+      if (d.rentroll_text) {
+        p += 'RENT ROLL:\n' + d.rentroll_text + '\n\n';
+      }
+      p += 'Produce the following sections:\n\n';
+      p += '## LEASE ABSTRACT\nKey terms table: Tenant, Commencement, Expiration, Base Rent, Escalations, Options, TI Allowance, Free Rent, Security Deposit, Permitted Use, Assignment/Subletting rights.\n\n';
+      p += '## CRITICAL DATES\nAll dates that require action: expiration, option exercise deadlines, rent bumps, renewal notice windows.\n\n';
+      p += '## RENT SCHEDULE\nYear-by-year rent table showing base rent PSF and annual total through lease expiration.\n\n';
+      p += '## RISK FLAGS\nAny provisions that are landlord-unfavorable, unusual, or require attention — co-tenancy clauses, termination rights, below-market renewal options, assignment rights, etc.\n\n';
+      p += '## LANDLORD OBLIGATIONS\nAll landlord responsibilities — maintenance, capex, TI delivery, free rent, insurance.\n\n';
+      p += '## ACQUISITION IMPACT\nHow does this lease affect underwriting? Mark-to-market potential, rollover risk, credit quality assessment, impact on NOI stability.\n\n';
+      p += 'Be precise. Flag anything that would affect acquisition pricing or due diligence.';
       return p;
 
     case 'legal':
-      var p = 'Legal review — ' + (d.dtype || 'CRE document');
-      if (d.addr)  p += ' for ' + d.addr;
-      if (d.focus) p += '. Focus: ' + d.focus;
-      p += '. Document is attached.';
+      var p = 'You are RIDGE running the CRE Legal Reviewer for Entrada Partners.\n\n';
+      p += 'TASK: Full legal review and risk assessment.\n\n';
+      if (d.dtype) p += 'Document type: ' + d.dtype + '\n';
+      if (d.addr)  p += 'Property / Deal: ' + d.addr + '\n';
+      if (d.focus) p += 'Focus areas: ' + d.focus + '\n';
+      p += '\n';
+      if (d.doc1_text) {
+        p += 'PRIMARY DOCUMENT:\n' + d.doc1_text + '\n\n';
+      } else {
+        p += '[No primary document uploaded — ask user to upload the document]\n\n';
+      }
+      if (d.doc2_text) {
+        p += 'SECONDARY DOCUMENT:\n' + d.doc2_text + '\n\n';
+      }
+      p += 'Produce:\n## DOCUMENT SUMMARY\nParties, purpose, key dates, transaction structure in 3–5 sentences.\n\n## KEY PROVISIONS TABLE\nTable: Section | Provision | Summary | Risk Level\n\n## RED FLAGS\nFor each flag: Section reference, what it says, why it\'s a problem, suggested fix or redline language.\n\n## RIDGE-SPECIFIC CONCERNS\nAnything that affects: earnest money refundability, financing contingency, assignment rights, seller reps on leases, waterfall/preferred return (if JV), prepayment/defeasance (if loan docs), termination rights (if PMA).\n\n## MISSING PROVISIONS\nAnything RIDGE typically requires that is absent from this document.\n\n## RECOMMENDED REDLINES\n3–5 specific changes with proposed language.';
       return p;
 
     case 'daily-signal':
