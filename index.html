@@ -5012,29 +5012,58 @@ async function runRidgeAPI(skillName, prompt) {
         // Update leases row after Gavel run
         if (skillNameSaved.toLowerCase().includes('gavel') && STATE['gavel'] && STATE['gavel']._leaseId) {
           var _leaseId = STATE['gavel']._leaseId;
-          var _extractedData = {};
-          var _leaseUpdate = { extracted_data: _extractedData };
-          // Parse structured fields from Claude output
-          var _sfMatch = outputText.match(/(?:rentable\s+)?(?:square\s+feet|sf|sq\s*ft)[:\s]+([0-9,]+)/i);
-          if (_sfMatch) _leaseUpdate.sf = parseFloat(_sfMatch[1].replace(/,/g,''));
-          var _rentMatch = outputText.match(/base\s+rent[^$\n]{0,30}\$([0-9.]+)\s*(?:psf|\/sf)/i);
-          if (_rentMatch) _leaseUpdate.base_rent_psf = parseFloat(_rentMatch[1]);
-          var _termMatch = outputText.match(/(?:lease\s+)?term[:\s]+([0-9]+)\s*months/i);
-          if (_termMatch) _leaseUpdate.lease_term_months = parseInt(_termMatch[1]);
-          var _commMatch = outputText.match(/commencement[:\s]+([A-Za-z]+ [0-9]{1,2},?\s*[0-9]{4}|[0-9]{1,2}\/[0-9]{1,2}\/[0-9]{4}|[0-9]{4}-[0-9]{2}-[0-9]{2})/i);
-          if (_commMatch) { try { var _cd = new Date(_commMatch[1]); if (!isNaN(_cd)) { _leaseUpdate.commencement_date = _cd.toISOString().slice(0,10); console.log('lease commencement_date parsed:', _leaseUpdate.commencement_date); } } catch(e) { console.warn('commencement_date parse failed:', _commMatch[1]); } }
-          var _expMatch = outputText.match(/expir(?:ation|es)[:\s]+([A-Za-z]+ [0-9]{1,2},?\s*[0-9]{4}|[0-9]{1,2}\/[0-9]{1,2}\/[0-9]{4})/i);
-          if (_expMatch) { try { _leaseUpdate.expiration_date = new Date(_expMatch[1]).toISOString().slice(0,10); } catch(e) {} }
-          var _typeMatch = outputText.match(/lease\s+type[:\s]+(NNN|NN|Gross|Modified\s+Gross|Full\s+Service|Net)/i);
-          if (_typeMatch) _leaseUpdate.lease_type = _typeMatch[1];
-          var _llMatch = outputText.match(/landlord[:\s]+([^\n]{3,60})/i);
+          var _leaseUpdate = { extracted_data: {} };
+          var gavelOutput = outputText;
+          // SF
+          var sfMatch = gavelOutput.match(/(?:rentable\s+)?(?:square\s+feet|sf|sq\s*ft|size|premises)[:\s|]+([0-9,]+)\s*(?:sf|sq|square)?/i);
+          if (!sfMatch) sfMatch = gavelOutput.match(/([0-9,]{4,7})\s*(?:RSF|SF|sq\.?\s*ft)/i);
+          if (sfMatch) _leaseUpdate.sf = parseFloat(sfMatch[1].replace(/,/g,''));
+          // Base Rent PSF
+          var rentMatch = gavelOutput.match(/base\s+rent[^|\n]{0,40}\$\s*([0-9]+\.?[0-9]*)\s*(?:psf|\/sf|per\s+sf)/i);
+          if (!rentMatch) rentMatch = gavelOutput.match(/\$\s*([0-9]+\.?[0-9]*)\s*(?:psf|\/sf|per\s+sf)[^|\n]{0,30}(?:base|rent|annual)/i);
+          if (!rentMatch) rentMatch = gavelOutput.match(/(?:base|annual)\s+rent[^|\n]{0,20}\$\s*([0-9]+\.?[0-9]*)/i);
+          if (rentMatch) _leaseUpdate.base_rent_psf = parseFloat(rentMatch[1]);
+          // Lease term in months
+          var termMatch = gavelOutput.match(/term[:\s|]+([0-9]+)\s*months/i);
+          if (!termMatch) {
+            var yrMatch = gavelOutput.match(/term[:\s|]+([0-9]+)\s*years?/i);
+            if (yrMatch) termMatch = [null, String(parseInt(yrMatch[1]) * 12)];
+          }
+          if (!termMatch) termMatch = gavelOutput.match(/([0-9]+)\s*(?:full\s+calendar\s+)?months?\s+(?:from|following|commencing)/i);
+          if (termMatch) _leaseUpdate.lease_term_months = parseInt(termMatch[1]);
+          // Commencement date
+          var commMatch = gavelOutput.match(/commencement[:\s|]+([A-Za-z]+\s+[0-9]{1,2},?\s*[0-9]{4}|[0-9]{1,2}\/[0-9]{1,2}\/[0-9]{4}|[0-9]{4}-[0-9]{2}-[0-9]{2})/i);
+          if (!commMatch) commMatch = gavelOutput.match(/(?:start|begins?|effective)[:\s|]+([A-Za-z]+\s+[0-9]{1,2},?\s*[0-9]{4})/i);
+          if (commMatch) { try { var _cd = new Date(commMatch[1]); if (!isNaN(_cd)) { _leaseUpdate.commencement_date = _cd.toISOString().slice(0,10); console.log('lease commencement_date parsed:', _leaseUpdate.commencement_date); } } catch(e) { console.warn('commencement_date parse failed:', commMatch[1]); } }
+          // Expiration date
+          var expMatch = gavelOutput.match(/expir(?:ation|es?)[:\s|]+([A-Za-z]+\s+[0-9]{1,2},?\s*[0-9]{4}|[0-9]{1,2}\/[0-9]{1,2}\/[0-9]{4}|[0-9]{4}-[0-9]{2}-[0-9]{2})/i);
+          if (!expMatch) expMatch = gavelOutput.match(/(?:end|ends?|termination)[:\s|]+([A-Za-z]+\s+[0-9]{1,2},?\s*[0-9]{4})/i);
+          if (expMatch) { try { var _ed = new Date(expMatch[1]); if (!isNaN(_ed)) _leaseUpdate.expiration_date = _ed.toISOString().slice(0,10); } catch(e) {} }
+          // Lease type
+          var typeMatch = gavelOutput.match(/(?:lease\s+)?type[:\s|]+(NNN|NN|Triple\s*Net|Double\s*Net|Gross|Modified\s+Gross|Full\s+Service|Net|MG|FSG)/i);
+          if (!typeMatch) {
+            if (gavelOutput.match(/triple.?net|NNN/i)) typeMatch = [null, 'NNN'];
+            else if (gavelOutput.match(/modified.?gross|MG\b/i)) typeMatch = [null, 'Modified Gross'];
+            else if (gavelOutput.match(/full.?service|FSG/i)) typeMatch = [null, 'Full Service Gross'];
+            else if (/gross/i.test(gavelOutput)) typeMatch = [null, 'Gross'];
+          }
+          if (typeMatch) _leaseUpdate.lease_type = typeMatch[1];
+          // Landlord
+          var _llMatch = gavelOutput.match(/landlord[:\s|]+([^\n|]{3,60})/i);
           if (_llMatch) _leaseUpdate.landlord = _llMatch[1].trim().slice(0,100);
-          var _tiMatch = outputText.match(/(?:TI|tenant\s+improvement)[^$\n]{0,30}\$([0-9.]+)\s*(?:psf|\/sf)/i);
-          if (_tiMatch) _leaseUpdate.ti_psf = parseFloat(_tiMatch[1]);
-          var _escalMatch = outputText.match(/(?:escalation|increases?)[^%\n]{0,30}([0-9.]+)%/i);
-          if (_escalMatch) _leaseUpdate.rent_escalation_pct = parseFloat(_escalMatch[1]);
-          var _frMatch = outputText.match(/free\s+rent[:\s]+([0-9]+)\s*months/i);
-          if (_frMatch) _leaseUpdate.free_rent_months = parseInt(_frMatch[1]);
+          // TI/SF
+          var tiMatch = gavelOutput.match(/(?:TI|tenant\s+improvement)[^|\n$]{0,40}\$\s*([0-9]+\.?[0-9]*)\s*(?:psf|\/sf|per\s+sf)/i);
+          if (!tiMatch) tiMatch = gavelOutput.match(/\$\s*([0-9]+\.?[0-9]*)\s*(?:psf|\/sf)[^|\n]{0,30}(?:TI|allowance|improvement)/i);
+          if (tiMatch) _leaseUpdate.ti_psf = parseFloat(tiMatch[1]);
+          // Rent escalation %
+          var escalMatch = gavelOutput.match(/(?:escalation|escalating|increases?|bumps?)[^|\n%]{0,40}([0-9]+\.?[0-9]*)%/i);
+          if (!escalMatch) escalMatch = gavelOutput.match(/([0-9]+\.?[0-9]*)%\s*(?:annual|per\s+year|compound|escalat)/i);
+          if (escalMatch) _leaseUpdate.rent_escalation_pct = parseFloat(escalMatch[1]);
+          // Free rent months
+          var freeMatch = gavelOutput.match(/free\s+rent[:\s|]+([0-9]+)\s*months?/i);
+          if (!freeMatch) freeMatch = gavelOutput.match(/([0-9]+)\s*months?\s+(?:free|abated|of\s+free)/i);
+          if (!freeMatch && gavelOutput.match(/free\s+rent[^|\n]{0,30}(?:none|waived|n\/a|not\s+specified|no\s+free)/i)) freeMatch = [null, '0'];
+          if (freeMatch) _leaseUpdate.free_rent_months = parseInt(freeMatch[1]);
           // Address/tenant from form fields (may have been auto-filled)
           var _addrFinal = document.getElementById('f-gavel-addr');
           var _tenantFinal = document.getElementById('f-gavel-tenant');
