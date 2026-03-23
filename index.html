@@ -1795,6 +1795,7 @@ function handleXLSX(toolId, uploadId, input) {
           if (sfEl && !sfEl.value && sfNum) sfEl.value = parseInt(sfNum).toLocaleString();
           if (priceEl && !priceEl.value && price) priceEl.value = '$' + Math.round(price).toLocaleString();
           if (psfEl && psf) psfEl.value = '$' + parseFloat(psf).toFixed(2);
+          if (psf) { STATE[toolId].metrics.psf = psf; showParsedKPIs(toolId, STATE[toolId].metrics); }
           if (irrEl && !irrEl.value && irr) irrEl.value = (parseFloat(irr) < 1 ? (irr * 100).toFixed(2) : parseFloat(irr).toFixed(2)) + '%';
           if (emEl && !emEl.value && em) emEl.value = parseFloat(em).toFixed(2) + 'x';
           if (capEl && !capEl.value && cap) capEl.value = (parseFloat(cap) < 1 ? (cap * 100).toFixed(2) : parseFloat(cap).toFixed(2)) + '%';
