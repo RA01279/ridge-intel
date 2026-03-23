@@ -447,6 +447,8 @@ footer{border-top:1px solid var(--border);padding:20px 24px;text-align:center;co
       <option value="yes">Has Free Rent</option>
       <option value="no">No Free Rent</option>
     </select>
+    <label style="font-size:11px;color:var(--muted);white-space:nowrap;">Comm. From <input type="date" id="lease-comm-from" onchange="renderLeaseTable()" style="min-width:unset;width:130px;" /></label>
+    <label style="font-size:11px;color:var(--muted);white-space:nowrap;">To <input type="date" id="lease-comm-to" onchange="renderLeaseTable()" style="min-width:unset;width:130px;" /></label>
   </div>
   <div class="lease-table-wrap">
     <div id="lease-table-body"><div class="lease-spinner">Loading…</div></div>
@@ -4572,6 +4574,8 @@ function renderLeaseTable() {
   var maxSF = parseFloat(document.getElementById('lease-max-sf').value) || Infinity;
   var minTI = parseFloat(document.getElementById('lease-min-ti').value) || 0;
   var freeRentFilter = document.getElementById('lease-has-free-rent').value;
+  var commFrom = document.getElementById('lease-comm-from').value;
+  var commTo = document.getElementById('lease-comm-to').value;
 
   var rows = _leaseRows.filter(function(r) {
     if (search && !((r.address||'') + ' ' + (r.tenant||'')).toLowerCase().includes(search)) return false;
@@ -4581,6 +4585,8 @@ function renderLeaseTable() {
     if (minTI && (!r.ti_psf || r.ti_psf < minTI)) return false;
     if (freeRentFilter === 'yes' && (!r.free_rent_months || r.free_rent_months <= 0)) return false;
     if (freeRentFilter === 'no' && r.free_rent_months > 0) return false;
+    if (commFrom && (!r.commencement_date || r.commencement_date < commFrom)) return false;
+    if (commTo && (!r.commencement_date || r.commencement_date > commTo)) return false;
     return true;
   });
 
@@ -4914,8 +4920,8 @@ async function runRidgeAPI(skillName, prompt) {
           if (_rentMatch) _leaseUpdate.base_rent_psf = parseFloat(_rentMatch[1]);
           var _termMatch = outputText.match(/(?:lease\s+)?term[:\s]+([0-9]+)\s*months/i);
           if (_termMatch) _leaseUpdate.lease_term_months = parseInt(_termMatch[1]);
-          var _commMatch = outputText.match(/commencement[:\s]+([A-Za-z]+ [0-9]{1,2},?\s*[0-9]{4}|[0-9]{1,2}\/[0-9]{1,2}\/[0-9]{4})/i);
-          if (_commMatch) { try { _leaseUpdate.commencement_date = new Date(_commMatch[1]).toISOString().slice(0,10); } catch(e) {} }
+          var _commMatch = outputText.match(/commencement[:\s]+([A-Za-z]+ [0-9]{1,2},?\s*[0-9]{4}|[0-9]{1,2}\/[0-9]{1,2}\/[0-9]{4}|[0-9]{4}-[0-9]{2}-[0-9]{2})/i);
+          if (_commMatch) { try { var _cd = new Date(_commMatch[1]); if (!isNaN(_cd)) { _leaseUpdate.commencement_date = _cd.toISOString().slice(0,10); console.log('lease commencement_date parsed:', _leaseUpdate.commencement_date); } } catch(e) { console.warn('commencement_date parse failed:', _commMatch[1]); } }
           var _expMatch = outputText.match(/expir(?:ation|es)[:\s]+([A-Za-z]+ [0-9]{1,2},?\s*[0-9]{4}|[0-9]{1,2}\/[0-9]{1,2}\/[0-9]{4})/i);
           if (_expMatch) { try { _leaseUpdate.expiration_date = new Date(_expMatch[1]).toISOString().slice(0,10); } catch(e) {} }
           var _typeMatch = outputText.match(/lease\s+type[:\s]+(NNN|NN|Gross|Modified\s+Gross|Full\s+Service|Net)/i);
