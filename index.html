@@ -5050,10 +5050,10 @@ async function runRidgeAPI(skillName, prompt) {
             });
           } catch(e) { console.warn('signal_reports save failed:', e); }
         }
-        // Update leases row after Gavel run
-        if (skillNameSaved.toLowerCase().includes('gavel') && STATE['gavel'] && STATE['gavel']._leaseId) {
-          console.log('Gavel post-run extraction firing — leaseId:', STATE['gavel'] && STATE['gavel']._leaseId ? STATE['gavel']._leaseId : 'MISSING');
-          var _leaseId = STATE['gavel']._leaseId;
+        // Update/insert leases row after Gavel run
+        if (skillNameSaved.toLowerCase().includes('gavel')) {
+          var _leaseId = STATE['gavel'] && STATE['gavel']._leaseId ? STATE['gavel']._leaseId : null;
+          console.log('Gavel post-run firing — leaseId:', _leaseId ? _leaseId : 'MISSING — will INSERT');
           var _leaseUpdate = { extracted_data: {} };
           var gavelOutput = outputText;
           // SF — matches "Square Footage4,391 rentable SF" or "4,391 rentable SF"
@@ -5079,6 +5079,7 @@ async function runRidgeAPI(skillName, prompt) {
           var commMatch = gavelOutput.match(/Commencement\s*([A-Za-z]+\s+[0-9]{1,2},?\s*[0-9]{4})/i);
           if (!commMatch) commMatch = gavelOutput.match(/Commencement[:\s]+([A-Za-z]+\s+[0-9]{1,2},?\s*[0-9]{4})/i);
           if (commMatch) { try { var _cd = new Date(commMatch[1]); if (!isNaN(_cd)) { _leaseUpdate.commencement_date = _cd.toISOString().slice(0,10); console.log('lease commencement_date parsed:', _leaseUpdate.commencement_date); } } catch(e) { console.warn('commencement_date parse failed:', commMatch[1]); } }
+          console.log('Commencement match:', commMatch ? commMatch[1] : 'none');
           // Expiration date — matches "~September 30, 2012" or "September 2012"
           var expMatch = gavelOutput.match(/Expiration[^\n]{0,30}~?([A-Za-z]+\s+[0-9]{1,2},?\s*[0-9]{4})/i);
           if (!expMatch) expMatch = gavelOutput.match(/Expiration[^\n]{0,30}~?([A-Za-z]+\s+[0-9]{4})/i);
@@ -5107,24 +5108,37 @@ async function runRidgeAPI(skillName, prompt) {
           // Landlord
           var _llMatch = gavelOutput.match(/landlord[:\s|]+([^\n|]{3,60})/i);
           if (_llMatch) _leaseUpdate.landlord = _llMatch[1].trim().slice(0,100);
-          // Address/tenant from form fields (may have been auto-filled)
+          // Address/tenant from form fields
           var _addrFinal = document.getElementById('f-gavel-addr');
           var _tenantFinal = document.getElementById('f-gavel-tenant');
           if (_addrFinal && _addrFinal.value) _leaseUpdate.address = _addrFinal.value;
           if (_tenantFinal && _tenantFinal.value) _leaseUpdate.tenant = _tenantFinal.value;
           if (_lastRunInputs && _lastRunInputs.notes) _leaseUpdate.notes = _lastRunInputs.notes;
           try {
-            await _sb.from('leases').update(_leaseUpdate).eq('id', _leaseId);
-            console.log('leases row updated:', _leaseId);
-            // Fire-and-forget embedding after structured fields are written
-            var _leEmbedUpdate = [_leaseUpdate.address, _leaseUpdate.tenant, _leaseUpdate.lease_type, outputText.slice(0, 2000)].filter(Boolean).join(' ');
-            _generateEmbedding(_leEmbedUpdate).then(async function(vec) {
-              if (vec && _sb) {
-                try { await _sb.from('leases').update({ embedding: '[' + vec.join(',') + ']' }).eq('id', _leaseId); }
-                catch(e) { console.warn('Lease embedding update failed:', e.message); }
+            var _embedRowId = _leaseId;
+            if (_leaseId) {
+              await _sb.from('leases').update(_leaseUpdate).eq('id', _leaseId);
+              console.log('leases row updated:', _leaseId);
+            } else {
+              var _insertRes = await _sb.from('leases').insert(_leaseUpdate).select('id').single();
+              if (_insertRes.data) {
+                _embedRowId = _insertRes.data.id;
+                if (!STATE['gavel']) STATE['gavel'] = {};
+                STATE['gavel']._leaseId = _embedRowId;
+                console.log('leases row inserted (fallback):', _embedRowId);
               }
-            });
-          } catch(e) { console.warn('leases update failed:', e); }
+            }
+            // Fire-and-forget embedding after fields are written
+            if (_embedRowId) {
+              var _leEmbedUpdate = [_leaseUpdate.address, _leaseUpdate.tenant, _leaseUpdate.lease_type, outputText.slice(0, 2000)].filter(Boolean).join(' ');
+              _generateEmbedding(_leEmbedUpdate).then(async function(vec) {
+                if (vec && _sb) {
+                  try { await _sb.from('leases').update({ embedding: '[' + vec.join(',') + ']' }).eq('id', _embedRowId); }
+                  catch(e) { console.warn('Lease embedding update failed:', e.message); }
+                }
+              });
+            }
+          } catch(e) { console.warn('leases update/insert failed:', e); }
         }
       } catch(e) { console.warn('Supabase save failed:', e); }
     }
