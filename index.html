@@ -404,7 +404,7 @@ footer{border-top:1px solid var(--border);padding:20px 24px;text-align:center;co
     <select id="hist-filter-skill" onchange="renderHistoryList()">
       <option value="">All Skills</option>
     </select>
-    <input type="text" id="hist-filter-search" placeholder="Search address or output…" oninput="renderHistoryList()" />
+    <input type="text" id="hist-filter-search" placeholder="Filter loaded results…" oninput="renderHistoryList()" />
     <input type="date" id="hist-filter-from" onchange="renderHistoryList()" title="From date" />
     <input type="date" id="hist-filter-to" onchange="renderHistoryList()" title="To date" />
     <select id="hist-filter-loi" onchange="renderHistoryList()">
@@ -419,6 +419,11 @@ footer{border-top:1px solid var(--border);padding:20px 24px;text-align:center;co
       <option value="DFW">DFW</option>
       <option value="Houston">Houston</option>
     </select>
+  </div>
+  <div class="hist-filters" style="border-top:1px solid var(--border);padding-top:8px;gap:8px;">
+    <input type="text" id="hist-semantic-input" placeholder="Search all saved runs — address, tenant, provision, keyword, or plain-English question…" style="flex:1;min-width:200px;" onkeydown="if(event.key==='Enter')histSemanticSearch();" />
+    <button class="btn btn-p" id="hist-semantic-btn" onclick="histSemanticSearch()" style="font-size:11px;padding:5px 14px;white-space:nowrap;">🔍 Search All</button>
+    <button class="btn btn-o" onclick="showHistoryPanel()" style="font-size:11px;padding:5px 12px;white-space:nowrap;">↺ Recent 50</button>
   </div>
   <div class="hist-body" id="hist-body">
     <div class="hist-spinner">Loading…</div>
@@ -2784,6 +2789,7 @@ function runTool(toolId) {
   var prompt = buildTrigger(toolId, d);
   var skillName = tool ? tool.name : 'PIPELINE';
   _lastRunInputs = d;
+  _lastRunToolId  = toolId;
   runRidgeAPI(skillName, prompt);
 }
 
@@ -3236,6 +3242,7 @@ function buildTrigger(toolId, d) {
 var _sb = null;
 var _sbOk = false;
 var _lastRunInputs = null;
+var _lastRunToolId  = null;
 var _gavelRawOutput = '';
 var _isrRawOutput = '';
 
@@ -5286,6 +5293,51 @@ async function histDelete(id) {
   } catch(e) { console.warn('Delete failed:', e); }
 }
 
+async function histSemanticSearch() {
+  var query = (document.getElementById('hist-semantic-input').value || '').trim();
+  if (!query) { showToast('Enter a search query'); return; }
+  if (!_sbOk || !_sb) { showToast('Supabase not connected'); return; }
+  var btn = document.getElementById('hist-semantic-btn');
+  if (btn) btn.disabled = true;
+  document.getElementById('hist-body').innerHTML = '<div class="hist-spinner">Searching…</div>';
+  try {
+    var vec = _voyageKey ? await _generateEmbedding(query) : null;
+    if (vec) {
+      // Semantic search via pgvector
+      var res = await _sb.rpc('match_skill_outputs', {
+        query_embedding: '[' + vec.join(',') + ']',
+        match_threshold: 0.45,
+        match_count: 40
+      });
+      if (res.error) throw res.error;
+      var ids = (res.data || []).map(function(r) { return r.id; });
+      if (ids.length) {
+        var full = await _sb.from('skill_outputs')
+          .select('id,skill_name,output,address,market,tags,created_at,loi_generated,inputs')
+          .in('id', ids);
+        _historyRows = full.data || [];
+      } else {
+        _historyRows = [];
+      }
+    } else {
+      // FTS fallback (no Voyage key)
+      var tsq = query.trim().split(/\s+/).join(' & ');
+      var res = await _sb.from('skill_outputs')
+        .select('id,skill_name,output,address,market,tags,created_at,loi_generated,inputs')
+        .textSearch('fts', tsq)
+        .order('created_at', { ascending: false })
+        .limit(50);
+      if (res.error) throw res.error;
+      _historyRows = res.data || [];
+    }
+    renderHistoryList();
+  } catch(e) {
+    document.getElementById('hist-body').innerHTML = '<div class="hist-empty">Search failed: ' + _hEsc(e.message) + '</div>';
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+
 async function showPropertyMap(address) {
   if (!_mapsKey || !address) return;
   var container = document.getElementById('ridge-map-container');
@@ -5459,6 +5511,25 @@ async function runRidgeAPI(skillName, prompt) {
           _generateEmbedding(_embedText).then(function(vec) {
             if (vec && _sb) { try { _sb.from('skill_outputs').update({ embedding: '[' + vec.join(',') + ']' }).eq('id', _soId); } catch(e) {} }
           });
+          // Save raw document text to skill_output_documents (fire-and-forget)
+          (function(_sid, _tid) {
+            if (!_tid) return;
+            var _dTool = TOOLS.find(function(t) { return t.id === _tid; });
+            if (!_dTool || !_dTool.uploads || !STATE[_tid]) return;
+            var _docInserts = [];
+            _dTool.uploads.forEach(function(u) {
+              var rawText = STATE[_tid].files && STATE[_tid].files[u.id];
+              if (rawText && typeof rawText === 'string' && rawText.trim().length > 50
+                  && !rawText.startsWith('[PDF') && !rawText.startsWith('[XLSX') && !rawText.startsWith('[No ')) {
+                _docInserts.push({ skill_output_id: _sid, tool_id: _tid, upload_slot: u.id, extracted_text: rawText });
+              }
+            });
+            if (_docInserts.length) {
+              _sb.from('skill_output_documents').insert(_docInserts)
+                .then(function(r) { if (r.error) console.warn('skill_output_documents save failed:', r.error.message); })
+                .catch(function(e) { console.warn('skill_output_documents save failed:', e); });
+            }
+          })(_soId, _lastRunToolId);
         }
         // Auto-save to contacts table from SCOUT runs
         if (skillNameSaved.toLowerCase().includes('scout') && _lastRunInputs) {
