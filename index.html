@@ -4971,6 +4971,7 @@ async function runRidgeAPI(skillName, prompt) {
       }
     }
     copyBtn.disabled = false;
+    console.log('Stream complete — about to enter Supabase post-run block');
     document.getElementById('ridge-pdf-btn').disabled = false;
     document.getElementById('ridge-ppt-btn').disabled = false;
     document.getElementById('ridge-xls-btn').disabled = false;
