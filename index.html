@@ -1541,7 +1541,7 @@ function buildPanelHTML(tool) {
     </div>
     ${tool.id==='napkin'?'<div class="napkin-live" id="napkin-live"><div style="font-size:10px;font-weight:700;letter-spacing:1px;color:#4ade80;margin-bottom:6px;">LIVE MATH</div><div class="nl-grid" id="nl-grid"></div></div>':''}
     <div class="btn-row">
-      <button class="btn btn-p" id="run-btn-${tool.id}" onclick="runTool('${tool.id}')">↗ Run in Claude</button>
+      <button class="btn btn-p" id="run-btn-${tool.id}" onclick="runTool('${tool.id}')">↗ Run ${tool.name}</button>
       <button class="btn btn-o" onclick="clearTool('${tool.id}')">Clear</button>
       ${tool.id === 'daily-signal' ? exportSection : ''}
       ${tool.id==='loi'?'<button class="btn btn-g" onclick="generateLOI()" style="margin-left:8px;">⬇ Generate LOI</button>':''}
@@ -2456,6 +2456,10 @@ function handleFile(toolId, uploadId, input, type) {
           }
           Promise.all(pages).then(function(texts) {
             var fullText = texts.join('\n');
+            if (toolId === 'gavel') {
+              console.log('GAVEL PDF first 500 chars:', fullText.slice(0, 500));
+              console.log('GAVEL PDF chars 500-1000:', fullText.slice(500, 1000));
+            }
             STATE[toolId].files[uploadId] = fullText;
             uz.classList.add('loaded');
             st.textContent = '✓ ' + file.name + ' (' + total + ' pages extracted)';
