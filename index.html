@@ -7,8 +7,9 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/pptxgenjs@3.11.0/dist/pptxgen.bundle.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/mammoth@1.6.0/mammoth.browser.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <style>
 :root {
@@ -2442,7 +2443,7 @@ function handleFile(toolId, uploadId, input, type) {
       var arrBuf = e.target.result;
       // Use PDF.js to extract text
       if (window.pdfjsLib) {
-        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js';
         pdfjsLib.getDocument({ data: arrBuf }).promise.then(function(pdf) {
           var pages = [];
           var total = pdf.numPages;
@@ -2460,14 +2461,9 @@ function handleFile(toolId, uploadId, input, type) {
             st.textContent = '✓ ' + file.name + ' (' + total + ' pages extracted)';
           });
         }).catch(function(err) {
-          // Fallback: store as base64 if PDF.js fails
-          var b64reader = new FileReader();
-          b64reader.onload = function(e2) {
-            STATE[toolId].files[uploadId] = '[PDF: ' + file.name + ' — upload manually in Claude]';
-            uz.classList.add('loaded');
-            st.textContent = '✓ ' + file.name + ' (upload manually in Claude)';
-          };
-          b64reader.readAsDataURL(file);
+          STATE[toolId].files[uploadId] = '';
+          uz.classList.add('loaded');
+          st.textContent = '⚠ PDF parse failed — try a text-based PDF or DOCX version';
         });
       } else {
         STATE[toolId].files[uploadId] = '[PDF: ' + file.name + ' — upload manually in Claude]';
@@ -2478,6 +2474,22 @@ function handleFile(toolId, uploadId, input, type) {
     reader.readAsArrayBuffer(file);
   } else if (file.name.endsWith('.xlsx') || file.name.endsWith('.xls')) {
     handleXLSX(toolId, uploadId, input);
+  } else if (file.name.toLowerCase().endsWith('.docx') && window.mammoth) {
+    var reader = new FileReader();
+    reader.onload = function(e) {
+      mammoth.extractRawText({ arrayBuffer: e.target.result })
+        .then(function(result) {
+          STATE[toolId].files[uploadId] = result.value;
+          uz.classList.add('loaded');
+          st.textContent = '✓ ' + file.name + ' (DOCX extracted)';
+        })
+        .catch(function(err) {
+          STATE[toolId].files[uploadId] = '[DOCX parse failed: ' + err.message + ']';
+          uz.classList.add('loaded');
+          st.textContent = '⚠ DOCX parse failed';
+        });
+    };
+    reader.readAsArrayBuffer(file);
   } else {
     var reader2 = new FileReader();
     reader2.onload = function(e) {
