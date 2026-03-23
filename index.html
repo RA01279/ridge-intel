@@ -5001,9 +5001,10 @@ async function runRidgeAPI(skillName, prompt) {
     }
     // Auto-save to Supabase skill_outputs table
     if (_sbOk && _sb) {
+      var outputText = document.getElementById('ridge-panel-content').innerText;
+      var skillNameSaved = document.getElementById('ridge-panel-skill-name').textContent;
+      console.log('Supabase post-run block entered — skill:', skillNameSaved, '| _sbOk:', _sbOk, '| _sb:', !!_sb);
       try {
-        var outputText = document.getElementById('ridge-panel-content').innerText;
-        var skillNameSaved = document.getElementById('ridge-panel-skill-name').textContent;
         var autoTags = [skillNameSaved];
         if (skillNameSaved.toLowerCase().includes('loi')) {
           autoTags.push('loi-generated');
@@ -5050,8 +5051,10 @@ async function runRidgeAPI(skillName, prompt) {
             });
           } catch(e) { console.warn('signal_reports save failed:', e); }
         }
-        // Update/insert leases row after Gavel run
-        if (skillNameSaved.toLowerCase().includes('gavel')) {
+      } catch(e) { console.warn('Supabase skill_outputs save failed:', e); }
+      // Update/insert leases row after Gavel run — independent try so skill_outputs errors don't block it
+      if (skillNameSaved.toLowerCase().includes('gavel')) {
+      try {
           var _leaseId = STATE['gavel'] && STATE['gavel']._leaseId ? STATE['gavel']._leaseId : null;
           console.log('Gavel post-run firing — leaseId:', _leaseId ? _leaseId : 'MISSING — will INSERT');
           var _leaseUpdate = { extracted_data: {} };
@@ -5139,8 +5142,8 @@ async function runRidgeAPI(skillName, prompt) {
               });
             }
           } catch(e) { console.warn('leases update/insert failed:', e); }
-        }
-      } catch(e) { console.warn('Supabase save failed:', e); }
+      } catch(e) { console.warn('Gavel leases block failed:', e); }
+      }
     }
   } catch(e) {
     spinnerEl.style.display = 'none';
