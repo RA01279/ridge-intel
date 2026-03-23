@@ -2569,6 +2569,13 @@ function handleFile(toolId, uploadId, input, type) {
               console.log('GAVEL PDF first 500 chars:', fullText.slice(0, 500));
               console.log('GAVEL PDF chars 500-1000:', fullText.slice(500, 1000));
             }
+            if (toolId === 'legal') {
+              console.log('LEGAL PDF [' + uploadId + '] extracted — chars:', fullText.length, '| first 300:', fullText.slice(0, 300));
+            }
+            if (fullText.trim().length === 0) {
+              fullText = '[PDF uploaded: ' + file.name + ' — ' + total + ' pages — text extraction returned empty (possibly a scanned/image PDF). Ask the user to provide a text-based PDF or paste the document text directly.]';
+              console.warn(toolId + ' PDF [' + uploadId + ']: empty text after extraction — likely scanned/image PDF');
+            }
             STATE[toolId].files[uploadId] = fullText;
             uz.classList.add('loaded');
             st.textContent = '✓ ' + file.name + ' (' + total + ' pages extracted)';
@@ -2622,7 +2629,8 @@ function handleFile(toolId, uploadId, input, type) {
             }
           });
         }).catch(function(err) {
-          STATE[toolId].files[uploadId] = '';
+          console.error(toolId + ' PDF [' + uploadId + '] parse error:', err);
+          STATE[toolId].files[uploadId] = '[PDF parse failed: ' + file.name + ' — error: ' + (err && err.message ? err.message : String(err)) + '. Try a text-based PDF or paste the document text directly.]';
           uz.classList.add('loaded');
           st.textContent = '⚠ PDF parse failed — try a text-based PDF or DOCX version';
         });
@@ -2707,6 +2715,11 @@ function runTool(toolId) {
         d[uploadId + '_text'] = fd.length > 25000 ? fd.slice(0, 25000) + '\n[...truncated]' : fd;
       }
     });
+    if (toolId === 'legal') {
+      console.log('LEGAL runTool — STATE files keys:', Object.keys(STATE[toolId].files));
+      console.log('LEGAL runTool — doc1_text length:', d.doc1_text ? d.doc1_text.length : 'NOT SET');
+      console.log('LEGAL runTool — doc2_text length:', d.doc2_text ? d.doc2_text.length : 'NOT SET');
+    }
   } else {
     d.addr   = document.getElementById('pl-addr').value.trim();
     d.stage  = document.getElementById('pl-stage').value;
