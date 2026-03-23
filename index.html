@@ -2479,6 +2479,20 @@ function handleFile(toolId, uploadId, input, type) {
               if (tenantEl && !tenantEl.value && tenantMatch && tenantMatch[1]) {
                 tenantEl.value = tenantMatch[1].trim().slice(0,60);
               }
+              // Save to leases table on upload
+              if (_sbOk && _sb) {
+                _sb.from('leases').insert({
+                  address: addrEl ? addrEl.value || null : null,
+                  tenant: tenantEl ? tenantEl.value || null : null,
+                  full_text: fullText
+                }).select('id').single().then(function(res) {
+                  if (res.data) {
+                    if (!STATE['gavel']) STATE['gavel'] = {};
+                    STATE['gavel']._leaseId = res.data.id;
+                    console.log('leases row created:', res.data.id);
+                  }
+                }).catch(function(e) { console.warn('leases insert failed:', e); });
+              }
             }
           });
         }).catch(function(err) {
@@ -4766,6 +4780,42 @@ async function runRidgeAPI(skillName, prompt) {
             prospects: [],
             raw_data: { output: outputText.slice(0, 5000), inputs: _lastRunInputs }
           }).catch(function(e) { console.warn('signal_reports save failed:', e); });
+        }
+        // Update leases row after Gavel run
+        if (skillNameSaved.toLowerCase().includes('gavel') && STATE['gavel'] && STATE['gavel']._leaseId) {
+          var _leaseId = STATE['gavel']._leaseId;
+          var _extractedData = {};
+          var _leaseUpdate = { extracted_data: _extractedData };
+          // Parse structured fields from Claude output
+          var _sfMatch = outputText.match(/(?:rentable\s+)?(?:square\s+feet|sf|sq\s*ft)[:\s]+([0-9,]+)/i);
+          if (_sfMatch) _leaseUpdate.sf = parseFloat(_sfMatch[1].replace(/,/g,''));
+          var _rentMatch = outputText.match(/base\s+rent[^$\n]{0,30}\$([0-9.]+)\s*(?:psf|\/sf)/i);
+          if (_rentMatch) _leaseUpdate.base_rent_psf = parseFloat(_rentMatch[1]);
+          var _termMatch = outputText.match(/(?:lease\s+)?term[:\s]+([0-9]+)\s*months/i);
+          if (_termMatch) _leaseUpdate.lease_term_months = parseInt(_termMatch[1]);
+          var _commMatch = outputText.match(/commencement[:\s]+([A-Za-z]+ [0-9]{1,2},?\s*[0-9]{4}|[0-9]{1,2}\/[0-9]{1,2}\/[0-9]{4})/i);
+          if (_commMatch) { try { _leaseUpdate.commencement_date = new Date(_commMatch[1]).toISOString().slice(0,10); } catch(e) {} }
+          var _expMatch = outputText.match(/expir(?:ation|es)[:\s]+([A-Za-z]+ [0-9]{1,2},?\s*[0-9]{4}|[0-9]{1,2}\/[0-9]{1,2}\/[0-9]{4})/i);
+          if (_expMatch) { try { _leaseUpdate.expiration_date = new Date(_expMatch[1]).toISOString().slice(0,10); } catch(e) {} }
+          var _typeMatch = outputText.match(/lease\s+type[:\s]+(NNN|NN|Gross|Modified\s+Gross|Full\s+Service|Net)/i);
+          if (_typeMatch) _leaseUpdate.lease_type = _typeMatch[1];
+          var _llMatch = outputText.match(/landlord[:\s]+([^\n]{3,60})/i);
+          if (_llMatch) _leaseUpdate.landlord = _llMatch[1].trim().slice(0,100);
+          var _tiMatch = outputText.match(/(?:TI|tenant\s+improvement)[^$\n]{0,30}\$([0-9.]+)\s*(?:psf|\/sf)/i);
+          if (_tiMatch) _leaseUpdate.ti_psf = parseFloat(_tiMatch[1]);
+          var _escalMatch = outputText.match(/(?:escalation|increases?)[^%\n]{0,30}([0-9.]+)%/i);
+          if (_escalMatch) _leaseUpdate.rent_escalation_pct = parseFloat(_escalMatch[1]);
+          var _frMatch = outputText.match(/free\s+rent[:\s]+([0-9]+)\s*months/i);
+          if (_frMatch) _leaseUpdate.free_rent_months = parseInt(_frMatch[1]);
+          // Address/tenant from form fields (may have been auto-filled)
+          var _addrFinal = document.getElementById('f-gavel-addr');
+          var _tenantFinal = document.getElementById('f-gavel-tenant');
+          if (_addrFinal && _addrFinal.value) _leaseUpdate.address = _addrFinal.value;
+          if (_tenantFinal && _tenantFinal.value) _leaseUpdate.tenant = _tenantFinal.value;
+          if (_lastRunInputs && _lastRunInputs.notes) _leaseUpdate.notes = _lastRunInputs.notes;
+          _sb.from('leases').update(_leaseUpdate).eq('id', _leaseId)
+            .then(function() { console.log('leases row updated:', _leaseId); })
+            .catch(function(e) { console.warn('leases update failed:', e); });
         }
       } catch(e) { console.warn('Supabase save failed:', e); }
     }
