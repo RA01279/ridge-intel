@@ -1405,6 +1405,25 @@ var TOOLS = [
     steps:['Analyzing building specs...','Identifying demand signals...','Scanning target tenant types...','Building prospect list...','Generating outreach recommendations...'],
     system:`You are CANVAS, RIDGE's tenant sourcing engine. In Fill mode you find tenants for a specific building. In Hunt mode you find displaced or space-hungry businesses that could either lease RIDGE assets or signal acquisition targets. You know industrial and flex tenant profiles — 3PL, light manufacturing, e-commerce, tech, flex users. Be specific with company names and contact approaches.`,
     prompt:(d)=>`Run CANVAS ${d.mode||'Fill'} for: ${d.addr||'Subject Property'} | ${d.sf||'?'} SF available | ${d.dock||''} | Target rent: ${d.rent||'market'} | Submarket: ${d.sub||'?'}.\n${d.notes?'Ideal profile: '+d.notes+'\n':''}\n${d.data_text?'Property data:\n'+d.data_text+'\n\n':''}${d.vacancy_text?'CoStar vacancy data:\n'+d.vacancy_text+'\n\n':''}\nProduce:\n## DEMAND ANALYSIS\nWhat tenant types are actively looking in this submarket? What size requirements are most active?\n\n## TENANT PROSPECT TABLE\nTable: Company | Type | Est. SF Need | Likelihood | Why This Building | Outreach Approach\nProvide 8–12 specific prospects.\n\n## TOP 3 TARGETS\nFor each: company overview, why they need space, what to lead with in outreach, who to contact.\n\n## OUTREACH STRATEGY\nHow to position this building. What to lead with. What brokers are active with these tenant types.`
+  },
+  {
+    id:'lease-compare', num:'13', icon:'📑', name:'LEASE NEGOTIATION ANALYZER',
+    badge:'Compare · Negotiate · Abstract',
+    desc:'Upload 2–3 lease documents — proposals, counters, or executed leases. Get a full side-by-side economic comparison, risk flags by severity, and a prioritized negotiation strategy across all material terms.',
+    shortDesc:'Compare lease proposals or executed leases. Full term matrix + negotiation strategy.',
+    uploads:[
+      {id:'doc1',label:'Document 1 *',hint:'Lease proposal, LOI, counter, or executed lease',icon:'📑',accept:'.pdf,.docx',type:'pdf'},
+      {id:'doc2',label:'Document 2 *',hint:'Second lease, counter-proposal, or comp lease for comparison',icon:'📑',accept:'.pdf,.docx',type:'pdf'},
+      {id:'doc3',label:'Document 3',hint:'Optional: third scenario, prior executed lease, or market comp',icon:'📑',accept:'.pdf,.docx',type:'pdf'}
+    ],
+    fields:[
+      {row:[{id:'addr',label:'Property Address',ph:'e.g. 4200 Commerce Pkwy, Savannah, GA'},{id:'sf',label:'Rentable SF',ph:'e.g. 48,500'}]},
+      {row:[{id:'mkt_rent',label:'Market Rent PSF',ph:'e.g. $12.50 NNN'},{id:'mkt_ti',label:'Market TI PSF',ph:'e.g. $25–30 PSF'}]},
+      {row:[{id:'mode',label:'Comparison Mode',type:'select',opts:['Proposal vs Proposal (pick the better deal)','Proposal vs Executed Lease (is this standard?)','Two Executed Leases (acquisition DD)','Counter-Proposal Analysis','Single Document Deep Review']},{id:'role',label:'Entrada Role',type:'select',opts:['Landlord — maximize NOI and protect asset value','Buyer / Acquirer — evaluate inherited leases','Tenant — minimize cost and maximize flexibility']}]},
+      {row:[{id:'notes',label:'Context & Priority Issues',ph:'Tenant credit, deal urgency, specific concerns, prior negotiations...',type:'textarea'}]},
+    ],
+    steps:['Reading document 1...','Reading document 2...','Extracting all economic terms...','Building comparison matrix...','Flagging risk provisions...','Benchmarking to market...','Generating negotiation strategy...'],
+    system:`You are a senior CRE attorney and acquisitions officer at Entrada Partners. You specialize in industrial and flex lease negotiation across Atlanta, Savannah, DFW, and Houston. You know exactly what provisions protect landlord value at exit, what institutional buyers require in lease abstracts, and what is genuinely market-standard in Southeast and Sun Belt industrial markets. You are direct, specific, and quantify economic impacts whenever possible.`
   }
 ];
 
@@ -2967,6 +2986,103 @@ function buildTrigger(toolId, d) {
       p += 'Produce:\n## DEMAND ANALYSIS\nWho is actively looking for space in this submarket right now? What size ranges are in demand? What rent tolerance? Which tenant categories are expanding vs contracting?\n\n## TIER 1 PROSPECTS (Immediate)\n| Company | Industry | Est SF Need | Current Location | Why They Move | Contact Angle |\nMinimum 5 prospects. These are companies actively in the market or clearly need to move.\n\n## TIER 2 PROSPECTS (Cultivate)\nMinimum 5 prospects. Companies that should need this space within 12-24 months based on growth signals, lease expirations, or business conditions.\n\n## DISPLACEMENT PLAYS\nTenants currently in inferior space (older building, wrong configuration, below-market location) who would upgrade to this asset. Specific names and why.\n\n## LEASING STRATEGY\nRecommended deal structure to attract the highest-quality tenant: asking rent, term, TI package, free rent. What concessions are market and what is above market.\n\n## HIGHEST CONVICTION TARGET\nOne company. Why them specifically. How to get in front of the decision maker.';
       return p;
 
+    case 'lease-compare':
+      console.log('LEASE-COMPARE buildTrigger inputs:', {addr:d.addr, sf:d.sf, mode:d.mode, role:d.role, doc1:!!d.doc1_text, doc2:!!d.doc2_text, doc3:!!d.doc3_text});
+      p = 'You are a senior CRE attorney and acquisitions officer at Entrada Partners. You are conducting a lease analysis and negotiation review.\n\n';
+      p += 'PROPERTY: ' + (d.addr||'Subject Property') + '\n';
+      p += 'RENTABLE SF: ' + (d.sf||'') + '\n';
+      p += 'COMPARISON MODE: ' + (d.mode||'Proposal vs Proposal') + '\n';
+      p += 'ENTRADA ROLE: ' + (d.role||'Landlord — maximize NOI and protect asset value') + '\n';
+      p += 'MARKET RENT: ' + (d.mkt_rent||'[not provided — estimate from submarket data]') + '\n';
+      p += 'MARKET TI: ' + (d.mkt_ti||'[not provided — estimate from submarket data]') + '\n';
+      if (d.notes) p += 'CONTEXT: ' + d.notes + '\n';
+      p += '\n';
+      if (d.doc1_text) p += '=== DOCUMENT 1 ===\n' + d.doc1_text.slice(0, 18000) + '\n\n';
+      else p += '=== DOCUMENT 1 ===\n[Not uploaded — upload Document 1 to proceed]\n\n';
+      if (d.doc2_text) p += '=== DOCUMENT 2 ===\n' + d.doc2_text.slice(0, 18000) + '\n\n';
+      else p += '=== DOCUMENT 2 ===\n[Not uploaded]\n\n';
+      if (d.doc3_text) p += '=== DOCUMENT 3 ===\n' + d.doc3_text.slice(0, 10000) + '\n\n';
+      p += 'Produce a complete lease analysis at the level of institutional CRE counsel. Be specific — quote provisions, cite section numbers, and quantify economic impacts in dollars where possible.\n\n';
+
+      p += '## DOCUMENT IDENTIFICATION\n';
+      p += 'For each document: identify what it is (proposal, executed lease, counter, LOI), the parties, the property, and the key dates. One paragraph per document.\n\n';
+
+      p += '## ECONOMIC TERMS COMPARISON MATRIX\n';
+      p += 'Side-by-side table for every economic term. If only one document, use Document 1 vs Market Standard as the two columns.\n\n';
+      p += 'Table: Term | Document 1 | Document 2 | Document 3 (if applicable) | Market Standard | Better For (LL/Tenant)\n\n';
+      p += 'Include every row below — use "Not Stated" if a term is absent (that itself is a flag):\n';
+      p += '- Lease Term (start date, end date, months)\n';
+      p += '- Base Rent Year 1 ($/SF and $/month)\n';
+      p += '- Base Rent PSF by year (full schedule if available)\n';
+      p += '- Expense Structure (NNN / Modified Gross / Gross / Base Year Stop)\n';
+      p += '- Base Year / Expense Stop (if applicable — year, amount PSF)\n';
+      p += '- Operating Expense Cap (if any — % or $ cap on annual increases)\n';
+      p += '- Rental Escalations (fixed %, CPI, flat dollar steps — exact amount and frequency)\n';
+      p += '- TI Allowance ($/SF total, delivery conditions, landlord vs tenant work, completion deadline)\n';
+      p += '- Free Rent (months, which months, abatement vs deferral)\n';
+      p += '- Security Deposit (amount, burn-down provisions, return conditions)\n';
+      p += '- Renewal Options (number, term, rent — fixed, FMV, or capped FMV, notice period)\n';
+      p += '- Expansion Options (space, timing, rent basis, notice)\n';
+      p += '- ROFR / ROFO (scope, timing, matching rights)\n';
+      p += '- Termination Option (if any — fee, notice, effective date)\n';
+      p += '- HVAC Responsibility (who maintains, who replaces, cost cap if any)\n';
+      p += '- Roof / Structure Responsibility (landlord vs tenant, capital vs maintenance)\n';
+      p += '- CapEx Obligations (what landlord owes vs tenant owes over term)\n';
+      p += '- Assignment / Subletting (permitted without consent, conditions, recapture rights, profit sharing)\n';
+      p += '- Personal / Corporate Guaranty (required, amount, burn-down)\n';
+      p += '- Permitted Use (narrow vs broad, hazmat/regulated substances)\n';
+      p += '- Holdover Rent (% of base rent — 125%, 150%, 200%)\n';
+      p += '- Default Cure Periods (monetary, non-monetary)\n';
+      p += '- Co-tenancy / Kick Clause (if applicable)\n';
+      p += '- Signage Rights\n';
+      p += '- Parking (ratio, reserved, cost)\n';
+      p += '- SNDA / Estoppel Requirements\n\n';
+
+      p += '## NET EFFECTIVE RENT ANALYSIS\n';
+      p += 'Calculate and compare the net effective rent (NER) for each document over the full lease term, accounting for free rent, TI, and any landlord costs. Show the math. If market rent is provided, show the gap to market NER. For each document:\n';
+      p += '- Gross rent over term\n';
+      p += '- Less: free rent value\n';
+      p += '- Less: TI cost to landlord\n';
+      p += '- Less: other landlord concessions\n';
+      p += '- Net effective rent ($/SF/year)\n\n';
+
+      p += '## 🔴 HIGH PRIORITY FLAGS\n';
+      p += 'Provisions that materially harm Entrada\'s position, create significant liability, or would concern an institutional buyer at exit. For each:\n';
+      p += '**[Provision Name]** (Doc X, Section Y.Z): What it says → Why it\'s a problem → Dollar impact → Recommended redline\n\n';
+
+      p += '## 🟡 MODERATE FLAGS\n';
+      p += 'Above-market or tenant-favorable provisions that are negotiable. Same format. Include: aggressive TI asks, broad assignment rights, below-market renewal rents, soft holdover, aggressive termination options.\n\n';
+
+      p += '## 🟢 ACCEPTABLE PROVISIONS\n';
+      p += 'Provisions that are market-standard or landlord-favorable. Brief confirmation.\n\n';
+
+      p += '## ACQUISITION / EXIT IMPACT\n';
+      p += 'If Entrada is buying or selling this asset: how does this lease (or the better of the two) underwrite? Specifically:\n';
+      p += '- NOI contribution at in-place rent vs. at market\n';
+      p += '- Mark-to-market upside or downside\n';
+      p += '- WALT impact\n';
+      p += '- Provisions that institutional buyers will flag (co-tenancy, termination options, below-market renewal options, broad permitted use)\n';
+      p += '- Cap rate impact of any problematic provisions\n\n';
+
+      p += '## NEGOTIATION STRATEGY\n';
+      p += 'Prioritized redline list for Entrada\'s role (' + (d.role||'Landlord') + '):\n\n';
+      p += '**MUST-HAVE** (walk if not obtained):\n';
+      p += '[numbered list — these are non-negotiable for Entrada]\n\n';
+      p += '**SHOULD-HAVE** (push hard, can compromise on details):\n';
+      p += '[numbered list]\n\n';
+      p += '**NICE-TO-HAVE** (raise it, accept pushback):\n';
+      p += '[numbered list]\n\n';
+      p += '**GIVE THESE** (concessions Entrada can offer to get the must-haves):\n';
+      p += '[numbered list — what to trade away]\n\n';
+
+      p += '## VERDICT\n';
+      if (d.doc2_text) {
+        p += 'Which document is better for Entrada and why? Quantify the difference in NER, total landlord cost, and exit risk. Recommended next step in one paragraph.';
+      } else {
+        p += 'Is this document acceptable as written, acceptable with negotiation, or a non-starter? One paragraph with the specific redlines required before Entrada should proceed.';
+      }
+      return p;
+
     case 'pipeline':
       return '';
 
@@ -3891,6 +4007,7 @@ async function exportToolReport(toolId) {
       case 'loi':         _exportLOI(wb, toolId, dateStr, paste); break;
       case 'gavel':       _exportGavel(wb, toolId, dateStr, paste); break;
       case 'legal':       _exportLegal(wb, toolId, dateStr, paste); break;
+      case 'lease-compare': _exportLeaseCompare(wb, toolId, dateStr, paste); break;
       case 'canvas':      _exportCanvas(wb, toolId, dateStr, paste); break;
       default: showToast('No export configured'); return;
     }
@@ -4360,6 +4477,51 @@ function _exportLegal(wb, tid, dateStr, paste) {
     ['FIRPTA / Tax Provisions',              ''],
     ['Dispute Resolution / Arbitration',     ''],
   ], r);
+
+  r = rcAnalysis(ws, paste, r);
+}
+
+// ── LEASE NEGOTIATION ANALYZER ───────────────────────────
+function _exportLeaseCompare(wb, tid, dateStr, paste) {
+  var ws = wb.addWorksheet('Lease Comparison', { views:[{state:'frozen',xSplit:0,ySplit:3}] });
+  rcColWidths(ws, [28,22,22,22,16,14,12,12,12,12]);
+  var addr = rcGetField(tid,'addr');
+  var r = rcTitle(ws, 'LEASE NEGOTIATION ANALYZER', addr, dateStr);
+
+  rcSecHead(ws, r, 'DEAL PARAMETERS'); r++;
+  r = rcKV(ws, [
+    ['Property',          rcGetField(tid,'addr')],
+    ['Rentable SF',       rcGetField(tid,'sf')],
+    ['Comparison Mode',   rcGetField(tid,'mode')],
+    ['Entrada Role',      rcGetField(tid,'role')],
+    ['Market Rent PSF',   rcGetField(tid,'mkt_rent')],
+    ['Market TI PSF',     rcGetField(tid,'mkt_ti')],
+    ['Context / Notes',   rcGetField(tid,'notes')],
+  ], r);
+
+  rcSecHead(ws, r, 'KEY LEASE TERMS — COMPARISON MATRIX'); r++;
+  var termRows = [
+    ['Lease Term','','',''],['Base Rent Year 1 (PSF)','','',''],['Expense Structure','','',''],
+    ['Base Year / Expense Stop','','',''],['OpEx Cap','','',''],['Rental Escalation','','',''],
+    ['TI Allowance (PSF)','','',''],['Free Rent (months)','','',''],['Security Deposit','','',''],
+    ['Renewal Options','','',''],['Expansion Options','','',''],['ROFR / ROFO','','',''],
+    ['Termination Option','','',''],['HVAC Responsibility','','',''],['Roof / Structure','','',''],
+    ['CapEx Obligations','','',''],['Assignment / Subletting','','',''],['Guaranty','','',''],
+    ['Permitted Use','','',''],['Holdover Rent','','',''],['SNDA / Estoppel','','',''],
+  ];
+  var hdrRow = ws.getRow(r);
+  ['TERM','DOC 1','DOC 2','DOC 3','MARKET STD','BETTER FOR'].forEach(function(h,i){
+    hdrRow.getCell(i+1).value = h;
+    hdrRow.getCell(i+1).font = {bold:true,color:{argb:'FFFFFFFF'}};
+    hdrRow.getCell(i+1).fill = {type:'pattern',pattern:'solid',fgColor:{argb:'FF1E2761'}};
+  });
+  r++;
+  termRows.forEach(function(row) {
+    var wsRow = ws.getRow(r);
+    row.forEach(function(v,i){ wsRow.getCell(i+1).value = v; });
+    wsRow.getCell(1).font = {bold:true};
+    r++;
+  });
 
   r = rcAnalysis(ws, paste, r);
 }
