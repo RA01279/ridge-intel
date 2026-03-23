@@ -2536,6 +2536,12 @@ function handleFile(toolId, uploadId, input, type) {
               if (tenantEl && !tenantEl.value && tenantMatch && tenantMatch[1]) {
                 tenantEl.value = tenantMatch[1].trim().slice(0,60);
               }
+              // Try to append city/state if address doesn't already have it
+              var cityMatch = fullText.match(/([A-Za-z\s]+,\s*(?:GA|TX|FL|NC|SC|TN|AL|MS|VA|MD|DC|NY|CA|IL|OH|PA|MI|WA|OR|CO|AZ|NV|UT|MN|WI|MO|IN|KY|WV|OK|KS|NE|IA|AR|LA|ID|MT|WY|SD|ND|NM|HI|AK|ME|VT|NH|MA|RI|CT|NJ|DE)\s+[0-9]{5})/i);
+              if (cityMatch && addrEl && addrEl.value && !addrEl.value.includes(',')) {
+                var cityState = cityMatch[1].trim();
+                addrEl.value = addrEl.value + ', ' + cityState;
+              }
               // Save to leases table on upload
               if (_sbOk && _sb) {
                 _sb.from('leases').insert({
@@ -4866,7 +4872,12 @@ async function runRidgeAPI(skillName, prompt) {
   }
   openRidgePanel(skillName);
   if (_lastRunInputs && _lastRunInputs.addr) {
-    showPropertyMap(_lastRunInputs.addr);
+    var mapAddr = _lastRunInputs.addr;
+    var gavelAddrEl = document.getElementById('f-gavel-addr');
+    if (skillName.toLowerCase().includes('gavel') && gavelAddrEl && gavelAddrEl.value) {
+      mapAddr = gavelAddrEl.value;
+    }
+    showPropertyMap(mapAddr);
   }
   var contentEl = document.getElementById('ridge-panel-content');
   var spinnerEl = document.getElementById('ridge-spinner');
