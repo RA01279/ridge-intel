@@ -2549,8 +2549,11 @@ function handleFile(toolId, uploadId, input, type) {
                     console.log('leases row created:', res.data.id);
                     // Fire-and-forget embedding
                     var _leEmbedText = fullText.slice(0, 3500) + ' ' + (addrEl ? addrEl.value || '' : '') + ' ' + (tenantEl ? tenantEl.value || '' : '');
-                    _generateEmbedding(_leEmbedText).then(function(vec) {
-                      if (vec && _sb) { try { _sb.from('leases').update({ embedding: vec }).eq('id', res.data.id); } catch(e) {} }
+                    _generateEmbedding(_leEmbedText).then(async function(vec) {
+                      if (vec && _sb) {
+                        try { await _sb.from('leases').update({ embedding: vec }).eq('id', res.data.id); }
+                        catch(e) { console.warn('Lease embedding save failed:', e.message); }
+                      }
                     });
                   }
                 }).catch(function(e) { console.warn('leases insert failed:', e); });
@@ -5043,8 +5046,11 @@ async function runRidgeAPI(skillName, prompt) {
             console.log('leases row updated:', _leaseId);
             // Fire-and-forget embedding after structured fields are written
             var _leEmbedUpdate = [_leaseUpdate.address, _leaseUpdate.tenant, _leaseUpdate.lease_type, outputText.slice(0, 2000)].filter(Boolean).join(' ');
-            _generateEmbedding(_leEmbedUpdate).then(function(vec) {
-              if (vec && _sb) { try { _sb.from('leases').update({ embedding: vec }).eq('id', _leaseId); } catch(e) {} }
+            _generateEmbedding(_leEmbedUpdate).then(async function(vec) {
+              if (vec && _sb) {
+                try { await _sb.from('leases').update({ embedding: vec }).eq('id', _leaseId); }
+                catch(e) { console.warn('Lease embedding update failed:', e.message); }
+              }
             });
           } catch(e) { console.warn('leases update failed:', e); }
         }
