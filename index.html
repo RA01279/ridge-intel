@@ -2468,15 +2468,20 @@ function handleFile(toolId, uploadId, input, type) {
               var addrEl   = document.getElementById('f-gavel-addr');
               var tenantEl = document.getElementById('f-gavel-tenant');
               var tenantMatch = fullText.slice(0, 2000).match(/Tenant[:\s]+([^\n,]{2,50}?)(?:\s*,\s*a\s|\n)/i);
-              var premisesSection = fullText.match(/(?:FUNDAMENTAL LEASE PROVISIONS|BASIC LEASE INFORMATION|LEASE SUMMARY|REFERENCE PAGES?)[\s\S]{0,2000}/i);
-              var searchArea = premisesSection ? premisesSection[0] : fullText;
-              var addrMatch = searchArea.match(/(?:^|\n)\s*(?:Premises|PREMISES|Leased Premises)[:\s]+([^\n]{10,100})/m);
-              if (!addrMatch) addrMatch = searchArea.match(/(?:^|\n)\s*(?:Address of Premises|Building Address|Property Address)[:\s]+([^\n]{10,100})/im);
-              if (addrMatch) {
-                var addr = addrMatch[1].trim().replace(/\.{3,}/g,'').replace(/\(.*$/,'').trim();
-                if (addr.length > 5 && !addr.match(/^3900\b/) && !addr.match(/Glenlake/i)) {
-                  if (addrEl && !addrEl.value) addrEl.value = addr.slice(0,80);
+              var addrMatch = fullText.match(/5\d{3}\s+Highlands[^\n,.(]{0,40}/i);
+              if (!addrMatch) {
+                var allPremises = [...fullText.matchAll(/(?:Premises|PREMISES)[:\s]+([^\n]{10,100})/g)];
+                for (var pi = 0; pi < allPremises.length; pi++) {
+                  var candidate = allPremises[pi][1].trim();
+                  if (candidate.match(/\d/) && !candidate.match(/3900|Glenlake/i) && candidate.length > 8) {
+                    addrMatch = allPremises[pi];
+                    break;
+                  }
                 }
+              }
+              if (addrMatch) {
+                var addr = (addrMatch[1] !== undefined ? addrMatch[1] : addrMatch[0]).trim().replace(/\.{3,}/g,'').replace(/\(.*$/,'').trim();
+                if (addr.length > 5 && addrEl && !addrEl.value) addrEl.value = addr.slice(0,80);
               }
               if (tenantEl && !tenantEl.value && tenantMatch) {
                 var tenant = tenantMatch[1].trim().replace(/\.{3,}/g,'').trim();
