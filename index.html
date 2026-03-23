@@ -2675,7 +2675,8 @@ function showParsedKPIs(toolId, m) {
   preview.style.display = 'block';
   var items = [];
   if (m.price) items.push({l:'Purchase Price',v:'$'+Number(m.price).toLocaleString()});
-  if (m.psf) items.push({l:'Price PSF',v:'$'+Number(m.psf).toFixed(0)});
+  var _psf = (m.price && m.sf) ? (Number(m.price) / Number(m.sf)) : (m.psf ? Number(m.psf) : null);
+  if (_psf) items.push({l:'Price PSF',v:'$'+_psf.toFixed(2)});
   if (m.sf) items.push({l:'Building SF',v:Number(m.sf).toLocaleString()});
   if (m.noi) items.push({l:'Year 1 NOI',v:'$'+Number(m.noi).toLocaleString()});
   if (m.irr) items.push({l:'Levered IRR',v:(Number(m.irr)*100).toFixed(1)+'%'});
