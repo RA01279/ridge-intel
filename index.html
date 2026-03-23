@@ -2550,7 +2550,7 @@ function handleFile(toolId, uploadId, input, type) {
                     // Fire-and-forget embedding
                     var _leEmbedText = fullText.slice(0, 3500) + ' ' + (addrEl ? addrEl.value || '' : '') + ' ' + (tenantEl ? tenantEl.value || '' : '');
                     _generateEmbedding(_leEmbedText).then(function(vec) {
-                      if (vec && _sb) _sb.from('leases').update({ embedding: vec }).eq('id', res.data.id).catch(function(){});
+                      if (vec && _sb) { try { _sb.from('leases').update({ embedding: vec }).eq('id', res.data.id); } catch(e) {} }
                     });
                   }
                 }).catch(function(e) { console.warn('leases insert failed:', e); });
