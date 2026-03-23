@@ -277,6 +277,23 @@ footer{border-top:1px solid var(--border);padding:20px 24px;text-align:center;co
 .hist-meta{flex:1;min-width:0;}
 .hist-addr{font-size:13px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .hist-time{font-size:11px;color:var(--muted);margin-top:2px;}
+/* LEASE LIBRARY PANEL */
+.lease-panel-bg{display:none;position:fixed;inset:0;background:var(--bg);z-index:1050;flex-direction:column;}
+.lease-panel-bg.show{display:flex;}
+.lease-head{display:flex;align-items:center;gap:12px;padding:16px 24px;border-bottom:1px solid var(--border);background:var(--surface);flex-shrink:0;}
+.lease-head-title{font-family:var(--mono);font-size:14px;font-weight:700;letter-spacing:2px;color:var(--text);flex:1;}
+.lease-filters{display:flex;gap:10px;padding:14px 24px;border-bottom:1px solid var(--border);background:var(--surface);flex-shrink:0;flex-wrap:wrap;align-items:center;}
+.lease-filters input,.lease-filters select{background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:4px;padding:6px 10px;font-size:12px;font-family:var(--mono);}
+.lease-filters input{min-width:140px;}
+.lease-table-wrap{flex:1;overflow:auto;padding:20px 24px;}
+.lease-table{width:100%;border-collapse:collapse;font-size:12px;}
+.lease-table th{background:var(--navy);color:#fff;padding:9px 12px;text-align:left;font-weight:600;white-space:nowrap;position:sticky;top:0;}
+.lease-table td{padding:8px 12px;border-bottom:1px solid var(--border);vertical-align:top;}
+.lease-table tr:hover td{background:var(--surface2);}
+.lease-table .lease-addr{font-weight:600;color:var(--text);}
+.lease-table .lease-tenant{color:var(--blue);}
+.lease-empty{text-align:center;padding:60px;color:var(--muted);font-size:13px;}
+.lease-spinner{text-align:center;padding:40px;color:var(--muted);}
 .hist-preview{font-size:12px;color:var(--faint);margin-top:6px;line-height:1.5;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
 .hist-actions{display:flex;gap:6px;flex-shrink:0;align-items:flex-start;}
 .hist-empty{text-align:center;padding:60px 20px;color:var(--muted);font-size:13px;}
@@ -406,6 +423,36 @@ footer{border-top:1px solid var(--border);padding:20px 24px;text-align:center;co
   </div>
 </div>
 
+<!-- LEASE LIBRARY PANEL -->
+<div class="lease-panel-bg" id="lease-panel">
+  <div class="lease-head">
+    <span class="lease-head-title">📋 LEASE LIBRARY</span>
+    <button class="btn btn-o" onclick="closeLeaseLibrary()" style="font-size:11px;padding:5px 12px;">✕ Close</button>
+  </div>
+  <div class="lease-filters">
+    <input type="text" id="lease-search" placeholder="Search address or tenant…" oninput="renderLeaseTable()" />
+    <select id="lease-filter-type" onchange="renderLeaseTable()">
+      <option value="">All Types</option>
+      <option value="NNN">NNN</option>
+      <option value="Gross">Gross</option>
+      <option value="Modified Gross">Modified Gross</option>
+    </select>
+    <input type="number" id="lease-min-rent" placeholder="Min rent PSF" step="0.25" oninput="renderLeaseTable()" style="width:120px;" />
+    <input type="number" id="lease-max-rent" placeholder="Max rent PSF" step="0.25" oninput="renderLeaseTable()" style="width:120px;" />
+    <input type="number" id="lease-min-sf" placeholder="Min SF" oninput="renderLeaseTable()" style="width:100px;" />
+    <input type="number" id="lease-max-sf" placeholder="Max SF" oninput="renderLeaseTable()" style="width:100px;" />
+    <input type="number" id="lease-min-ti" placeholder="Min TI/SF" step="0.50" oninput="renderLeaseTable()" style="width:100px;" />
+    <select id="lease-has-free-rent" onchange="renderLeaseTable()">
+      <option value="">Free Rent: Any</option>
+      <option value="yes">Has Free Rent</option>
+      <option value="no">No Free Rent</option>
+    </select>
+  </div>
+  <div class="lease-table-wrap">
+    <div id="lease-table-body"><div class="lease-spinner">Loading…</div></div>
+  </div>
+</div>
+
 <!-- RESPONSE PANEL -->
 <div class="ridge-panel-bg" id="ridge-response-panel">
   <div class="ridge-panel-head">
@@ -442,6 +489,7 @@ footer{border-top:1px solid var(--border);padding:20px 24px;text-align:center;co
   </div>
   <div class="hdr-right">
     <button class="btn btn-o" onclick="showHistoryPanel()" style="font-size:11px;padding:5px 12px;border-radius:4px;">🕐 History</button>
+    <button class="btn btn-o" onclick="showLeaseLibrary()" style="font-size:11px;padding:5px 12px;border-radius:4px;">📋 Leases</button>
     <button class="btn btn-o" onclick="showApiKeyModal()" style="font-size:11px;padding:5px 12px;border-radius:4px;">API Key</button>
     <span id="sb-dot" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--faint);flex-shrink:0;" title="Supabase initializing…"></span>
     <span style="font-size:11px;color:var(--muted)">12 Skills Active · v5.2</span>
@@ -4490,6 +4538,79 @@ function closeHistoryPanel() {
   document.querySelectorAll('[onclick*="showHistoryPanel"]').forEach(function(btn) {
     btn.textContent = '🕐 History';
   });
+}
+
+var _leaseRows = [];
+
+async function showLeaseLibrary() {
+  document.getElementById('lease-panel').classList.add('show');
+  document.getElementById('lease-table-body').innerHTML = '<div class="lease-spinner">Loading…</div>';
+  if (!_sbOk || !_sb) {
+    document.getElementById('lease-table-body').innerHTML = '<div class="lease-empty">Supabase not connected.</div>';
+    return;
+  }
+  try {
+    var res = await _sb.from('leases').select('*').order('created_at', { ascending: false }).limit(200);
+    if (res.error) throw res.error;
+    _leaseRows = res.data || [];
+    renderLeaseTable();
+  } catch(e) {
+    document.getElementById('lease-table-body').innerHTML = '<div class="lease-empty">Failed to load: ' + _hEsc(e.message) + '</div>';
+  }
+}
+
+function closeLeaseLibrary() {
+  document.getElementById('lease-panel').classList.remove('show');
+}
+
+function renderLeaseTable() {
+  var search = (document.getElementById('lease-search').value || '').toLowerCase();
+  var typeFilter = document.getElementById('lease-filter-type').value;
+  var minRent = parseFloat(document.getElementById('lease-min-rent').value) || 0;
+  var maxRent = parseFloat(document.getElementById('lease-max-rent').value) || Infinity;
+  var minSF = parseFloat(document.getElementById('lease-min-sf').value) || 0;
+  var maxSF = parseFloat(document.getElementById('lease-max-sf').value) || Infinity;
+  var minTI = parseFloat(document.getElementById('lease-min-ti').value) || 0;
+  var freeRentFilter = document.getElementById('lease-has-free-rent').value;
+
+  var rows = _leaseRows.filter(function(r) {
+    if (search && !((r.address||'') + ' ' + (r.tenant||'')).toLowerCase().includes(search)) return false;
+    if (typeFilter && (r.lease_type||'') !== typeFilter) return false;
+    if (r.base_rent_psf && (r.base_rent_psf < minRent || r.base_rent_psf > maxRent)) return false;
+    if (r.sf && (r.sf < minSF || r.sf > maxSF)) return false;
+    if (minTI && (!r.ti_psf || r.ti_psf < minTI)) return false;
+    if (freeRentFilter === 'yes' && (!r.free_rent_months || r.free_rent_months <= 0)) return false;
+    if (freeRentFilter === 'no' && r.free_rent_months > 0) return false;
+    return true;
+  });
+
+  var body = document.getElementById('lease-table-body');
+  if (!rows.length) {
+    body.innerHTML = '<div class="lease-empty">No leases match your filters.</div>';
+    return;
+  }
+
+  body.innerHTML = '<table class="lease-table"><thead><tr>' +
+    '<th>Address</th><th>Tenant</th><th>SF</th><th>Base Rent PSF</th>' +
+    '<th>Type</th><th>Term (mo)</th><th>TI/SF</th><th>Free Rent (mo)</th>' +
+    '<th>Escalation</th><th>Commencement</th><th>Added</th>' +
+    '</tr></thead><tbody>' +
+    rows.map(function(r) {
+      return '<tr>' +
+        '<td class="lease-addr">' + _hEsc(r.address || '—') + '</td>' +
+        '<td class="lease-tenant">' + _hEsc(r.tenant || '—') + '</td>' +
+        '<td>' + (r.sf ? parseInt(r.sf).toLocaleString() : '—') + '</td>' +
+        '<td>' + (r.base_rent_psf ? '$' + parseFloat(r.base_rent_psf).toFixed(2) : '—') + '</td>' +
+        '<td>' + _hEsc(r.lease_type || '—') + '</td>' +
+        '<td>' + (r.lease_term_months || '—') + '</td>' +
+        '<td>' + (r.ti_psf ? '$' + parseFloat(r.ti_psf).toFixed(2) : '—') + '</td>' +
+        '<td>' + (r.free_rent_months || '—') + '</td>' +
+        '<td>' + (r.rent_escalation_pct ? parseFloat(r.rent_escalation_pct).toFixed(1) + '%' : '—') + '</td>' +
+        '<td>' + (r.commencement_date ? r.commencement_date.slice(0,7) : '—') + '</td>' +
+        '<td>' + _relTime(r.created_at) + '</td>' +
+        '</tr>';
+    }).join('') +
+    '</tbody></table>';
 }
 
 function _detectMarket(inputs) {
