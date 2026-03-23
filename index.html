@@ -5062,19 +5062,22 @@ async function runRidgeAPI(skillName, prompt) {
           var gavelOutput = outputText;
           console.log('Gavel output first 1000 chars:', outputText.slice(0, 1000));
           console.log('Gavel output chars 1000-2000:', outputText.slice(1000, 2000));
-          // SF — matches "Square Footage4,391 rentable SF" or "4,391 rentable SF"
-          var sfMatch = gavelOutput.match(/Square\s+Footage\s*([0-9,]+)/i);
-          if (!sfMatch) sfMatch = gavelOutput.match(/([0-9,]+)\s+rentable\s+SF/i);
+          // SF — matches "Square Footage4,391" (no space), "4,391 rentable SF", "Premises Size: 4,391"
+          var sfMatch = gavelOutput.match(/Square\s*Footage\s*([0-9,]+)/i);
+          if (!sfMatch) sfMatch = gavelOutput.match(/([0-9,]+)\s+rentable\s+(?:SF|square)/i);
+          if (!sfMatch) sfMatch = gavelOutput.match(/Premises\s+(?:Size|SF|Area)[:\s]+([0-9,]+)/i);
           if (sfMatch) _leaseUpdate.sf = parseFloat(sfMatch[1].replace(/,/g,''));
           console.log('SF match:', sfMatch ? sfMatch[1] : 'none');
-          // Base Rent PSF — matches "Base Rent Year 1$7.50 PSF"
-          var rentMatch = gavelOutput.match(/Base\s+Rent[^\n$]{0,30}\$([0-9]+\.?[0-9]*)\s*PSF/i);
-          if (!rentMatch) rentMatch = gavelOutput.match(/\$([0-9]+\.?[0-9]*)\s*PSF/i);
+          // Base Rent PSF — Year 1 rate preferred; fallback to any Base Rent line
+          var rentMatch = gavelOutput.match(/(?:Base\s+Rent\s+Year\s+1|Year\s+1[^$\n]{0,20})\$([0-9]+\.?[0-9]*)\s*PSF/i);
+          if (!rentMatch) rentMatch = gavelOutput.match(/1[-–]\s*12[^$\n]{0,20}\$([0-9]+\.?[0-9]*)/i);
+          if (!rentMatch) rentMatch = gavelOutput.match(/Base\s+Rent[^\n$]{0,40}\$([0-9]+\.?[0-9]*)\s*PSF/i);
           if (rentMatch) _leaseUpdate.base_rent_psf = parseFloat(rentMatch[1]);
           console.log('Rent match:', rentMatch ? rentMatch[1] : 'none');
-          // Lease term — matches "Expiration63 months from commencement" or "63 full calendar months"
+          // Lease term — months from commencement, full calendar months, or explicit months label
           var termMatch = gavelOutput.match(/Expiration\s*([0-9]+)\s*(?:full\s+calendar\s+)?months/i);
           if (!termMatch) termMatch = gavelOutput.match(/([0-9]+)\s*(?:full\s+calendar\s+)?months\s+from\s+commencement/i);
+          if (!termMatch) termMatch = gavelOutput.match(/Term[:\s|]+([0-9]+)\s*months/i);
           if (!termMatch) {
             var termYrMatch = gavelOutput.match(/Term[:\s]+([0-9]+)\s*years?/i);
             if (termYrMatch) termMatch = [null, String(parseInt(termYrMatch[1]) * 12)];
