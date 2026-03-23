@@ -2467,14 +2467,16 @@ function handleFile(toolId, uploadId, input, type) {
             if (toolId === 'gavel' && uploadId === 'lease') {
               var addrEl   = document.getElementById('f-gavel-addr');
               var tenantEl = document.getElementById('f-gavel-tenant');
-              var addrMatch = fullText.match(/(\d{3,5}\s+[A-Z][a-zA-Z\s]{5,40}(?:Street|St|Avenue|Ave|Boulevard|Blvd|Drive|Dr|Road|Rd|Parkway|Pkwy|Way|Court|Ct|Lane|Ln)[^\n]{0,30})/);
-              if (!addrMatch) addrMatch = fullText.match(/(?:located at|premises at|property at|situated at)[:\s]+([^\n]{10,80})/i);
+              var leaseBody = fullText.slice(300);
+              var addrMatch = leaseBody.match(/(?:Premises|Demised Premises|Leased Premises)["\s:]+(?:known as\s+|located at\s+|described as\s+)?([^\n]{10,100})/i);
+              if (!addrMatch) addrMatch = leaseBody.match(/(?:located at|situated at|street address)[:\s]+([^\n]{10,80})/i);
+              if (!addrMatch) addrMatch = leaseBody.match(/(\d{3,5}\s+[A-Z][a-zA-Z\s]{5,40}(?:Street|St\.|Avenue|Ave\.|Boulevard|Blvd|Drive|Dr\.|Road|Rd\.|Parkway|Pkwy|Way|Court|Ct\.|Lane|Ln\.|Overlook|Commons|Center|Circle))/i);
+              if (addrEl && !addrEl.value && addrMatch) {
+                var addr = addrMatch[1].trim().replace(/\.{3,}/g,'').trim();
+                if (addr.length > 5 && !addr.match(/^[\s.]+$/)) addrEl.value = addr.slice(0,80);
+              }
               var tenantMatch = fullText.match(/(?:^|\n)Tenant[:\s"]+([A-Z][a-z][^\n,]{2,50}(?:LLC|Inc|Corp|LP|LLP|Company|Co\.|Group|Partners)?)/m);
               if (!tenantMatch) tenantMatch = fullText.match(/(?:^|\n)Lessee[:\s"]+([A-Z][a-z][^\n,]{2,50})/m);
-              if (addrMatch && addrEl && !addrEl.value) {
-                var addr = addrMatch[1].trim().replace(/\.{3,}/g, '').trim();
-                if (addr.length > 8 && addr.match(/\d/)) addrEl.value = addr.slice(0, 80);
-              }
               if (tenantMatch && tenantEl && !tenantEl.value) {
                 var tenant = tenantMatch[1].trim().replace(/\.{3,}/g, '').trim();
                 if (tenant.length > 3 && tenant !== tenant.toUpperCase()) tenantEl.value = tenant.slice(0, 60);
