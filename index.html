@@ -888,7 +888,7 @@ footer{border-top:1px solid var(--border);padding:20px 24px;text-align:center;co
     <div class="btn-row">
       <button class="btn btn-p" id="run-btn-isr" onclick="runTool(&#39;isr&#39;)">⚡ Run ACQUISITION INVESTMENT REPORT</button>
       <button class="btn btn-o" onclick="clearTool(&#39;isr&#39;)">Clear</button>
-      <button class="btn btn-g" style="font-size:12px" id="pptx-btn-isr" onclick="buildPPTX()" disabled="">⬇ Download .pptx</button>
+      <button class="btn btn-g" style="font-size:12px" id="pptx-btn-isr" onclick="isrExportPPTX()" disabled="">⬇ Download .pptx</button>
     </div>
     <div class="loading" id="loading-isr">
       <div class="loading-lbl" id="llbl-isr">Working...</div>
@@ -3684,6 +3684,13 @@ function copyResult(toolId) {
 // ═══════════════════════════════════════════════════════════
 //  PPTX BUILD (ISR)
 // ═══════════════════════════════════════════════════════════
+function isrExportPPTX() {
+  // Force skill name so ridgeExportPPT routes to the 12-slide ISR builder
+  var el = document.getElementById('ridge-panel-skill-name');
+  if (el) el.textContent = 'ACQUISITION INVESTMENT REPORT';
+  ridgeExportPPT();
+}
+
 function buildPPTX() {
   var toolId = 'isr';
   var m = STATE[toolId].metrics;
@@ -5397,9 +5404,11 @@ async function runRidgeAPI(skillName, prompt) {
   var systemPrompts = {
     'RIDGE': 'You are RIDGE, a senior acquisitions officer at Entrada Partners. Target markets: Atlanta, Savannah, DFW, Houston. Deal criteria: $10M–$70M industrial and flex assets, 14.75%+ levered IRR, 7.5–8.0% YOC at Year 3/4, 95% off-market sourcing. Begin a live sourcing session. Ask which market to focus on, whether I have a CoStar export or want a cold sweep, then run SCOUT and deliver a ranked prospect list with owner intel, debt profile, and outreach angle.',
     'Pipeline Report': 'You are RIDGE. Analyze this pipeline data and deliver a concise report covering: deals closest to closing, overdue next steps, total potential acquisition volume, and recommended focus for this week. Be direct and actionable.',
+    'ACQUISITION INVESTMENT REPORT': 'You are a senior acquisitions officer at Entrada Partners preparing an institutional investment committee presentation. RIDGE underwriting criteria: IRR ≥14.75% levered, Equity Multiple ≥1.8x, YOC 7.5–8.0% at Year 3/4, max LTV 65%, 5-year hold, deal size $10M–$70M, markets: Atlanta, Savannah, DFW, Houston. Write at the level of a senior PE professional presenting to a sophisticated IC — specific, data-driven, no filler language. Format all output in clean markdown with ## section headers and pipe-delimited tables exactly as instructed. Never fabricate return metrics. Always complete every requested section.',
     'default': 'You are RIDGE, a senior acquisitions officer at Entrada Partners, an institutional private equity firm. You specialize in industrial and flex CRE acquisitions in Atlanta, Savannah, DFW, and Houston. You are running the ' + skillName + ' module. Be precise, data-driven, and direct. Write like a senior professional presenting to an investment committee. Format all output in clean markdown with tables where data warrants it. Never hedge excessively — state your conviction and defend it.'
   };
   var systemPrompt = systemPrompts[skillName] || systemPrompts['default'];
+  var isISRRun = skillName.toLowerCase().includes('acquisition investment');
   try {
     var resp = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
@@ -5410,8 +5419,8 @@ async function runRidgeAPI(skillName, prompt) {
         'x-api-key': _apiKey
       },
       body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 8000,
+        model: 'claude-sonnet-4-6',
+        max_tokens: isISRRun ? 16000 : 8000,
         stream: true,
         system: systemPrompt,
         messages: [{ role: 'user', content: prompt }]
@@ -5459,6 +5468,10 @@ async function runRidgeAPI(skillName, prompt) {
       }
     }
     copyBtn.disabled = false;
+    // Persist completed output so buildPPTX() and other exporters can access it
+    if (_lastRunToolId && STATE[_lastRunToolId]) {
+      STATE[_lastRunToolId].result = accumulated;
+    }
     console.log('Stream complete — about to enter Supabase post-run block');
     document.getElementById('ridge-pdf-btn').disabled = false;
     document.getElementById('ridge-ppt-btn').disabled = false;
@@ -6988,6 +7001,7 @@ async function ridgeExportPPT() {
 
   if (skillName.toLowerCase().includes('acquisition investment') || skillName.toLowerCase().includes('isr')) {
     var d = _lastRunInputs || {};
+    var m = (STATE && STATE['isr'] && STATE['isr'].metrics) || {};
     var panelText = _isrRawOutput || document.getElementById('ridge-panel-content').innerText;
 
     // Parse structured JSON from end of response
@@ -7007,6 +7021,8 @@ async function ridgeExportPPT() {
 
     var pptx = new PptxGenJS();
     pptx.layout = 'LAYOUT_WIDE';
+
+    try {
 
     // ── Subtle institutional palette ──────────────────────────
     var BG    = 'FFFFFF';
@@ -7261,6 +7277,12 @@ async function ridgeExportPPT() {
     ns12.slice(0,5).forEach(function(st,i){s12.addText((i+1)+'.  '+String(st).replace(/^\d+\.\s*/,'').replace(/^[-*]\s*/,''),{x:0.4,y:4.57+i*0.48,w:12.5,h:0.42,fontSize:11,color:TEXT2,wrap:true});});
     s12.addText('ENTRADA PARTNERS  ·  CONFIDENTIAL & PROPRIETARY  ·  '+dateStr.toUpperCase(),{x:0.4,y:7.28,w:12.5,h:0.18,fontSize:7.5,color:MUTED,align:'center'});
 
+    } catch(buildErr) {
+      console.error('ISR PPT slide build error:', buildErr);
+      alert('PPT build error: ' + buildErr.message + '\nCheck browser console for details.');
+      return;
+    }
+
     var fname = 'RIDGE_IC_Report_'+String(d.addr||'Deal').replace(/[^a-zA-Z0-9]/g,'_').slice(0,30)+'_'+new Date().toISOString().slice(0,10)+'.pptx';
     console.log('ISR PPT writing file...');
     try {
@@ -7268,6 +7290,7 @@ async function ridgeExportPPT() {
       console.log('ISR PPT write complete:', fname);
     } catch(err) {
       console.error('ISR PPT write failed:', err);
+      alert('PPT file write error: ' + err.message);
     }
     return;
   }
