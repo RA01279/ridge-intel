@@ -5239,7 +5239,7 @@ function renderLeaseTable() {
 function _detectMarket(inputs) {
   if (!inputs) return null;
   if (inputs.mkt) return inputs.mkt;
-  var addr = (inputs.addr || inputs.address || '').toLowerCase();
+  var addr = (inputs.addr || inputs.deal || inputs.address || '').toLowerCase();
   if (!addr) return null;
   if (/atlanta|smyrna|marietta|kennesaw|alpharetta|duluth|norcross|suwanee|roswell|sandy springs|decatur|acworth|woodstock|canton|cumming|johns creek/.test(addr)) return 'Atlanta';
   if (/savannah|pooler|richmond hill|rincon|hinesville/.test(addr)) return 'Savannah';
@@ -5641,11 +5641,19 @@ async function runRidgeAPI(skillName, prompt, runInputs, runToolId) {
         if (skillNameSaved.toLowerCase().includes('loi')) {
           autoTags.push('loi-generated');
         }
+        // Resolve address across all tools: most use d.addr, market-pulse uses d.deal,
+        // LOI splits address across d.addr (street) + d.city (city/state).
+        var _soAddr = null;
+        if (_lastRunInputs) {
+          var _rawAddr = (_lastRunInputs.addr || '').trim() || (_lastRunInputs.deal || '').trim();
+          if (_rawAddr && _lastRunInputs.city) _rawAddr = _rawAddr + ', ' + (_lastRunInputs.city || '').trim();
+          _soAddr = _rawAddr || null;
+        }
         var _soInsert = await _sb.from('skill_outputs').insert({
           skill_name: skillNameSaved,
           output: outputText,
           inputs: _lastRunInputs || {},
-          address: (_lastRunInputs && _lastRunInputs.addr) ? _lastRunInputs.addr : null,
+          address: _soAddr,
           market: _detectMarket(_lastRunInputs),
           tags: autoTags,
           loi_generated: skillNameSaved.toLowerCase().includes('loi')
@@ -5653,7 +5661,7 @@ async function runRidgeAPI(skillName, prompt, runInputs, runToolId) {
         var _soId = _soInsert.data && _soInsert.data.id;
         // Fire-and-forget embedding generation
         if (_soId) {
-          var _embedText = outputText.slice(0, 3000) + ' ' + skillNameSaved + ' ' + ((_lastRunInputs && _lastRunInputs.addr) || '');
+          var _embedText = outputText.slice(0, 3000) + ' ' + skillNameSaved + ' ' + (_soAddr || '');
           _generateEmbedding(_embedText).then(function(vec) {
             if (vec && _sb) { try { _sb.from('skill_outputs').update({ embedding: '[' + vec.join(',') + ']' }).eq('id', _soId); } catch(e) {} }
           });
