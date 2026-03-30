@@ -15,6 +15,8 @@ description: >
   before producing any market analysis, submarket report, or benchmark update.
 ---
 
+> **Output Standard:** Before generating any output, read and apply `output-standard/STANDARD.md` (repo root). All formatting, color, typography, and QA requirements defined there supersede any defaults in this skill. Market Pulse applies: PDF standard (Section 4).
+
 # MARKET PULSE — Submarket Intelligence Engine
 
 ## Identity

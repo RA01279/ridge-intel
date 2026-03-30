@@ -15,6 +15,8 @@ description: >
   managing due diligence workflow.
 ---
 
+> **Output Standard:** Before generating any output, read and apply `output-standard/STANDARD.md` (repo root). All formatting, color, typography, and QA requirements defined there supersede any defaults in this skill. DD Tracker applies: PDF standard (Section 4) and Excel standard (Section 5).
+
 # DD TRACKER — Due Diligence Management Engine
 
 ## Identity

@@ -15,6 +15,8 @@ description: >
   running any debt analysis or capital stack modeling.
 ---
 
+> **Output Standard:** Before generating any output, read and apply `output-standard/STANDARD.md` (repo root). All formatting, color, typography, and QA requirements defined there supersede any defaults in this skill. Debt Tool applies: Excel standard (Section 5).
+
 # DEBT TOOL — Capital Stack Modeling Engine
 
 ## Identity
