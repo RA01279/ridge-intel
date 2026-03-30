@@ -3368,8 +3368,8 @@ async function _sbUpsertDeal(deal) {
     id: deal.id,
     address: deal.addr || null,
     asset_type: deal.type || null,
-    asking_price: deal.price ? parseFloat(deal.price) : null,
-    sf: deal.sf ? parseFloat(deal.sf) : null,
+    asking_price: deal.price ? parseFloat(deal.price.toString().replace(/,/g, '')) : null,
+    sf: deal.sf ? parseFloat(deal.sf.toString().replace(/,/g, '')) : null,
     market: deal.mkt || null,
     stage: deal.stage || 'Initial Screen',
     conviction: deal.conv || null,
@@ -3399,9 +3399,8 @@ async function _sbUpsertDeal(deal) {
 
 async function _sbDeleteDeal(id) {
   if (!_sbOk || !_sb) return;
-  try {
-    await _sb.from('deals').delete().eq('id', id);
-  } catch(e) {}
+  var result = await _sb.from('deals').delete().eq('id', id);
+  if (result.error) console.warn('[RIDGE] deal delete failed:', JSON.stringify(result.error));
 }
 
 /* ═══════════════════════════════════
@@ -3490,7 +3489,8 @@ async function plAddDeal() {
   if (_sbOk && _sb) {
     console.log('[RIDGE] UPSERT PAYLOAD:', JSON.stringify(deal));
     sbSaved = await _sbUpsertDeal(deal);
-    if (!sbSaved) console.warn('[RIDGE] new deal saved to localStorage only:', deal.addr);
+    if (sbSaved) console.log('[RIDGE] new deal saved to Supabase + localStorage:', deal.addr);
+    else console.warn('[RIDGE] new deal saved to localStorage only:', deal.addr);
   }
   savePipelineDeals(deals);
   // Clear form
