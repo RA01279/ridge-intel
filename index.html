@@ -3343,16 +3343,16 @@ async function _sbLoadDeals() {
     var deals = data.map(function(r) {
       return {
         id: r.id,
-        addr: r.addr || '',
-        type: r.type || '',
-        price: r.price || '',
+        addr: r.address || '',
+        type: r.asset_type || '',
+        price: r.asking_price || '',
         sf: r.sf || '',
-        mkt: r.mkt || '',
+        mkt: r.market || '',
         stage: r.stage || 'Initial Screen',
-        conv: r.conv || '',
+        conv: r.conviction || '',
         broker: r.broker || '',
         notes: r.notes || '',
-        nextDate: r.next_date || '',
+        nextDate: r.data && r.data.nextDate || '',
         createdAt: r.created_at || new Date().toISOString(),
         updatedAt: r.updated_at || new Date().toISOString()
       };
@@ -3367,16 +3367,16 @@ async function _sbUpsertDeal(deal) {
   try {
     await _sb.from('deals').upsert({
       id: deal.id,
-      addr: deal.addr,
-      type: deal.type,
-      price: deal.price,
-      sf: deal.sf,
-      mkt: deal.mkt,
+      address: deal.addr,
+      asset_type: deal.type,
+      asking_price: deal.price || null,
+      sf: deal.sf || null,
+      market: deal.mkt,
       stage: deal.stage,
-      conv: deal.conv,
+      conviction: deal.conv,
       broker: deal.broker,
       notes: deal.notes,
-      next_date: deal.nextDate,
+      data: Object.assign(deal.data || {}, { nextDate: deal.nextDate }),
       created_at: deal.createdAt,
       updated_at: deal.updatedAt
     }, { onConflict: 'id' });
@@ -3476,7 +3476,7 @@ async function plAddDeal() {
   var fields = _getPipelineFormData('pla');
   var addr = fields.addr || '';
   if (!addr) { showToast('Enter a property address'); return; }
-  var deal = Object.assign({ id: Date.now(), createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }, fields);
+  var deal = Object.assign({ id: crypto.randomUUID(), createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }, fields);
   var deals = getPipelineDeals();
   deals.unshift(deal);
   if (_sbOk && _sb) {
