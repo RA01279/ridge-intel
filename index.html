@@ -3363,33 +3363,38 @@ async function _sbLoadDeals() {
 }
 
 async function _sbUpsertDeal(deal) {
-  if (!_sbOk || !_sb) return false;
+  if (!_sbOk || !_sb) return;
   var payload = {
     id: deal.id,
-    address: deal.addr,
+    address: deal.addr || null,
     asset_type: deal.type || null,
-    asking_price: deal.price || null,
-    sf: deal.sf || null,
+    asking_price: deal.price ? parseFloat(deal.price) : null,
+    sf: deal.sf ? parseFloat(deal.sf) : null,
     market: deal.mkt || null,
-    stage: deal.stage || null,
+    stage: deal.stage || 'Initial Screen',
     conviction: deal.conv || null,
     broker: deal.broker || null,
     notes: deal.notes || null,
-    data: Object.assign({}, deal.data || {}, { nextDate: deal.nextDate || null }),
+    data: { nextDate: deal.nextDate || null },
     created_at: deal.createdAt,
     updated_at: deal.updatedAt
   };
+  console.log('[RIDGE] DEALS PAYLOAD:', JSON.stringify(payload));
   var result = await _sb.from('deals').upsert(payload, { onConflict: 'id' });
+  console.log('[RIDGE] DEALS RESULT:', JSON.stringify(result));
   if (result.error) {
-    console.error('[RIDGE] DEALS UPSERT ERROR:', JSON.stringify(result.error));
-    return false;
+    console.error('[RIDGE] DEALS ERROR:', JSON.stringify(result.error));
+    return;
   }
-  // Fire-and-forget embedding
-  var _dealEmbedText = [deal.addr, deal.mkt, deal.stage, deal.type, deal.conv, deal.notes].filter(Boolean).join(' ');
-  _generateEmbedding(_dealEmbedText).then(function(vec) {
-    if (vec && _sb) { try { _sb.from('deals').update({ embedding: '[' + vec.join(',') + ']' }).eq('id', deal.id); } catch(e) {} }
+  // Only log activity AFTER successful deal upsert
+  var logResult = await _sb.from('activity_log').insert({
+    deal_id: deal.id,
+    action: 'Deal added',
+    notes: deal.addr
   });
-  return true;
+  if (logResult.error) {
+    console.warn('[RIDGE] activity_log failed:', JSON.stringify(logResult.error));
+  }
 }
 
 async function _sbDeleteDeal(id) {
