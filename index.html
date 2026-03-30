@@ -1897,10 +1897,41 @@ function handleMultiXLSX(toolId, uploadId, input) {
 }
 
 // ── Daily Signal sourced memory ──────────────────────────────
+// ── DAILY SIGNAL — UNIFIED STATE ─────────────────────────────
+// Single versioned key replaces ridge_daily_sourced (newline string)
+// and ridge_ds_tracker (bare JSON object).
+var DS_STATE_KEY = 'ridge_daily_state_v1';
+
+function getDailySignalState() {
+  try { return JSON.parse(localStorage.getItem(DS_STATE_KEY) || '{"sourced":[],"tracker":{}}'); }
+  catch(e) { return {sourced:[], tracker:{}}; }
+}
+
+function saveDailySignalState(state) {
+  localStorage.setItem(DS_STATE_KEY, JSON.stringify(state));
+}
+
+// Run once on load — migrates old keys into the unified schema without deleting them.
+function _migrateDSState() {
+  if (localStorage.getItem(DS_STATE_KEY)) return; // already migrated
+  var sourced = [];
+  var tracker = {};
+  try {
+    sourced = (localStorage.getItem('ridge_daily_sourced') || '').split('\n').map(function(s){ return s.trim(); }).filter(Boolean);
+  } catch(e) {}
+  try {
+    tracker = JSON.parse(localStorage.getItem('ridge_ds_tracker') || '{}');
+  } catch(e) {}
+  if (sourced.length || Object.keys(tracker).length) {
+    saveDailySignalState({sourced: sourced, tracker: tracker});
+    console.log('[RIDGE] DS state migrated — ' + sourced.length + ' sourced, ' + Object.keys(tracker).length + ' tracker entries');
+  }
+}
+
 function updateDSMemCount() {
   var el = document.getElementById('ds-mem-count');
   if (!el) return;
-  var lines = (localStorage.getItem('ridge_daily_sourced') || '').split('\n').map(s=>s.trim()).filter(Boolean);
+  var lines = getDailySignalState().sourced;
   el.textContent = lines.length + ' propert' + (lines.length === 1 ? 'y' : 'ies');
 }
 function toggleDSLog() {
@@ -1910,20 +1941,22 @@ function toggleDSLog() {
 function saveDailySourced() {
   var inp = document.getElementById('ds-log-input');
   if (!inp || !inp.value.trim()) return;
-  var existing = (localStorage.getItem('ridge_daily_sourced') || '').split('\n');
+  var state = getDailySignalState();
   var incoming = inp.value.split('\n');
-  var merged = [...new Set([...existing, ...incoming].map(s=>s.trim()).filter(Boolean))];
-  localStorage.setItem('ridge_daily_sourced', merged.join('\n'));
+  state.sourced = Array.from(new Set([...state.sourced, ...incoming].map(function(s){ return s.trim(); }).filter(Boolean)));
+  saveDailySignalState(state);
   inp.value = '';
   var box = document.getElementById('ds-log-box');
   if (box) box.style.display = 'none';
   updateDSMemCount();
-  showToast('✓ ' + merged.length + ' properties saved to sourced memory');
+  showToast('✓ ' + state.sourced.length + ' properties saved to sourced memory');
 }
 function clearDailySourced() {
-  var count = (localStorage.getItem('ridge_daily_sourced') || '').split('\n').filter(s=>s.trim()).length;
+  var count = getDailySignalState().sourced.length;
   if (!count || confirm('Clear ' + count + ' properties from sourced memory?')) {
-    localStorage.removeItem('ridge_daily_sourced');
+    var state = getDailySignalState();
+    state.sourced = [];
+    saveDailySignalState(state);
     updateDSMemCount();
     showToast('Sourced memory cleared');
   }
@@ -1934,8 +1967,12 @@ var _dsTKKeys = [];
 function normDSAddr(a){ return (a||'').toLowerCase().trim().replace(/\s+/g,' '); }
 
 function getDSTracker(){
-  try{ return JSON.parse(localStorage.getItem('ridge_ds_tracker')||'{}'); }
-  catch(e){ return {}; }
+  return getDailySignalState().tracker;
+}
+function _saveDSTracker(t){
+  var state = getDailySignalState();
+  state.tracker = t;
+  saveDailySignalState(state);
 }
 
 function setDSTrackerEntry(idx, updates){
@@ -1943,7 +1980,7 @@ function setDSTrackerEntry(idx, updates){
   if(!addr) return;
   var t = getDSTracker();
   t[addr] = Object.assign(t[addr]||{status:'',note:'',followUpDate:'',lastContact:'',score:0,addedDate:new Date().toISOString().slice(0,10)}, updates);
-  localStorage.setItem('ridge_ds_tracker', JSON.stringify(t));
+  _saveDSTracker(t);
   renderDSTracker();
 }
 
@@ -1953,7 +1990,7 @@ function deleteDSTrackerEntry(idx){
   if(!confirm('Remove "'+addr+'" from tracker?')) return;
   var t = getDSTracker();
   delete t[addr];
-  localStorage.setItem('ridge_ds_tracker', JSON.stringify(t));
+  _saveDSTracker(t);
   renderDSTracker();
 }
 
@@ -2052,7 +2089,7 @@ async function exportDailySignalXLSX() {
   var today = new Date();
   var dateStr = today.toLocaleDateString('en-US', { month:'long', day:'numeric', year:'numeric' });
   var fileDate = today.toISOString().slice(0,10);
-  var sourced = (localStorage.getItem('ridge_daily_sourced') || '').split('\n').map(function(s){ return s.trim().toLowerCase(); }).filter(Boolean);
+  var sourced = getDailySignalState().sourced.map(function(s){ return s.toLowerCase(); });
   var tracker = getDSTracker();
 
   function col(r, keys) {
@@ -2509,7 +2546,7 @@ async function exportDailySignalXLSX() {
       tNow[key].score = p.score; // update score each run
     }
   });
-  localStorage.setItem('ridge_ds_tracker', JSON.stringify(tNow));
+  _saveDSTracker(tNow);
   renderDSTracker();
   // Open tracker panel after export
   var tbody = document.getElementById('ds-tracker-body');
@@ -2789,9 +2826,7 @@ function runTool(toolId) {
 
   var prompt = buildTrigger(toolId, d);
   var skillName = tool ? tool.name : 'PIPELINE';
-  _lastRunInputs = d;
-  _lastRunToolId  = toolId;
-  runRidgeAPI(skillName, prompt);
+  runRidgeAPI(skillName, prompt, d, toolId);
 }
 
 function closeLaunch() {
@@ -2808,7 +2843,17 @@ function closeLaunch() {
   }
 }
 
-function copyAndLaunch() {} // kept for safety
+function copyAndLaunch() {
+  var ta = document.getElementById('launch-prompt');
+  if (ta && ta.value) {
+    navigator.clipboard.writeText(ta.value).then(function() {
+      showToast('Prompt copied — paste into Claude');
+    }).catch(function() {
+      showToast('Copy failed — select the prompt text manually');
+    });
+  }
+  window.open('https://claude.ai', '_blank');
+}
 
 function buildTrigger(toolId, d) {
   switch(toolId) {
@@ -2941,6 +2986,16 @@ function buildTrigger(toolId, d) {
       p = 'You are a senior acquisitions officer at Entrada Partners modeling the capital stack.\n\n';
       p += 'PROPERTY: ' + (d.addr||'') + '\nPURCHASE PRICE: $' + (d.price||'') + '\nYEAR 1 NOI: $' + (d.noi||'') + '\nTARGET LTV: ' + (d.ltv||'65') + '%\nSCENARIO: ' + (d.type||'Permanent') + '\nHOLD: ' + (d.hold||'5') + ' years\n\n';
       p += 'ENTRADA DEBT PARAMETERS: Max LTV 65% | Min DSCR 1.25x | Prefer fixed-rate for core-plus, bridge acceptable for value-add | 5-year term standard\n\n';
+      (function() {
+        var pre = _debtCalc(d.price, d.noi, d.ltv, d.rate);
+        if (pre && pre.length) {
+          p += 'PRE-COMPUTED SCENARIOS (verify against market terms):\n';
+          pre.forEach(function(s) {
+            p += s.label + ': LTV ' + s.ltv + ' | Loan ' + s.loan + ' | Rate ' + s.rate + ' | Ann DS ' + s.annualDS + ' | DSCR ' + s.dscr + ' | ' + s.dscrFlag + '\n';
+          });
+          p += '\n';
+        }
+      })();
       p += 'Produce:\n## CAPITAL STACK SUMMARY\nTable showing: Loan Amount | LTV | Rate | Term | IO Period | Amortization | Annual Debt Service | DSCR | Debt Yield\n\n## LENDER MATRIX\nFor each of: Agency (Fannie/Freddie) | CMBS | Life Company | Bank/Regional | Debt Fund/Bridge:\n- Indicative terms today (rate, LTV, DSCR requirement)\n- Best fit for this deal type\n- Timing to close\n- Key requirement or constraint\n\n## OPTIMAL STRUCTURE\nRecommended capital stack for this specific deal. Why this lender type. What to negotiate.\n\n## SENSITIVITY\nTable: DSCR and debt yield at 90% / 95% / 100% occupancy at in-place rents. Flag the breakeven occupancy for debt service.\n\n## MAX PROCEEDS ANALYSIS\nMaximum loan at 65% LTV vs maximum loan at 1.25x DSCR — which is the binding constraint? By how much?\n\n## RED FLAGS\nAnything in this deal that will cause lender pushback — lease rollover, single tenant, below-market rents, vintage, etc.';
       return p;
 
@@ -2948,7 +3003,8 @@ function buildTrigger(toolId, d) {
       console.log('ISR buildTrigger inputs:', {addr:d.addr, price:d.price, irr:d.irr, em:d.em, cap:d.cap, yoc:d.yoc, sf:d.sf});
       p = 'You are a senior acquisitions officer at Entrada Partners preparing an institutional investment committee presentation.\n\n';
       if (d.model_text) p += '=== ACQUISITION MODEL (rent roll, cash flows, assumptions) ===\n' + d.model_text.slice(0, 12000) + '\n\n';
-      p += 'PROPERTY: ' + (d.addr||'') + '\nASSET TYPE: ' + (d.type||'') + '\nSIZE: ' + (d.sf||'') + ' SF\nPURCHASE PRICE: $' + (d.price||'') + ' ($' + (d.psf||'') + ' PSF)\nLEVERED IRR: ' + (d.irr||'') + '\nEQUITY MULTIPLE: ' + (d.em||'') + '\nGOING-IN CAP: ' + (d.cap||'') + '\nYOC YR 3/4: ' + (d.yoc||'') + '\nLTV: ' + (d.ltv||'') + '\nHOLD: ' + (d.hold||'') + '\n\n';
+      var _cleanPrice = (d.price||'').replace(/[$,]/g,''), _cleanPSF = (d.psf||'').replace(/[$,]/g,'');
+      p += 'PROPERTY: ' + (d.addr||'') + '\nASSET TYPE: ' + (d.type||'') + '\nSIZE: ' + (d.sf||'') + ' SF\nPURCHASE PRICE: $' + _cleanPrice + ' ($' + _cleanPSF + ' PSF)\nLEVERED IRR: ' + (d.irr||'') + '\nEQUITY MULTIPLE: ' + (d.em||'') + '\nGOING-IN CAP: ' + (d.cap||'') + '\nYOC YR 3/4: ' + (d.yoc||'') + '\nLTV: ' + (d.ltv||'') + '\nHOLD: ' + (d.hold||'') + '\n\n';
       if (d.thesis) {
         p += 'ACQUISITION TEAM NOTES (use these directly in the Investment Thesis slide — do not override with generic content):\n' + d.thesis + '\n\n';
       }
@@ -3016,7 +3072,8 @@ function buildTrigger(toolId, d) {
       p = 'You are a senior acquisitions officer at Entrada Partners running the daily sourcing signal report.\n\n';
       p += 'REPORT DATE: ' + (d.date||new Date().toLocaleDateString()) + '\nFOCUS: ' + (d.notes||'All target markets') + '\n\n';
       if (d.costar_text) p += 'COSTAR EXPORT DATA:\n' + d.costar_text.slice(0, 15000) + '\n\n';
-      p += 'PREVIOUSLY SOURCED (exclude these):\n' + (localStorage.getItem('ridge_daily_sourced') || 'None') + '\n\n';
+      var _dsSourced = getDailySignalState().sourced;
+      p += 'PREVIOUSLY SOURCED (exclude these):\n' + (_dsSourced.length ? _dsSourced.join('\n') : 'None') + '\n\n';
       p += 'ENTRADA SIGNAL CRITERIA:\n- Private owner, 7-15yr hold, family LLC or local operating company (3 pts)\n- Vacancy above submarket average (2 pts)\n- No meaningful capex/permits in 5+ years (2 pts)\n- Debt maturity within 18 months or bridge loan stress (3 pts)\n- CMBS watchlist or special servicer (3 pts)\n- Below-market rents with near-term rollover (2 pts)\nMax score: 15 pts | Threshold for inclusion: 6+ pts\n\n';
       p += 'Produce:\n## SIGNAL REPORT — ' + (d.date||new Date().toLocaleDateString()) + '\n\n### TOP 15 PROSPECTS\n| Rank | Address | Market | Submarket | SF | Owner Entity | Hold (yrs) | Signal Score | Primary Signals | Conviction | Outreach Angle |\n\nFor each prospect: be specific about the owner entity name, estimated hold period, exactly which signals triggered and why, and the specific outreach angle that will resonate with this owner type.\n\n### PORTFOLIO CLUSTERS\nAny ownership clusters where the same entity owns multiple properties — flag as portfolio conversation opportunity.\n\n### DEBT STRESS WATCH\nProperties with loan maturities in the next 18 months. Lender name, estimated maturity, loan type.\n\n### MARKET OBSERVATIONS\nWhat the data is telling you about each submarket today — vacancy direction, rent trends, buyer activity.\n\nSOURCED THIS RUN:\n[List every property address included in the Top 15]';
       return p;
@@ -3246,8 +3303,8 @@ var _sb = null;
 var _sbOk = false;
 var _lastRunInputs = null;
 var _lastRunToolId  = null;
-var _gavelRawOutput = '';
-var _isrRawOutput = '';
+var _skillRawOutputs = {};   // keyed by tool id: 'napkin', 'gavel', 'isr', etc. — full response only, never compressed
+var _ridgeSessionLog  = [];  // bookkeeping audit trail — never sent to the Claude API
 
 function _sbSetIndicator(ok) {
   var el = document.getElementById('sb-dot');
@@ -3328,7 +3385,10 @@ async function _sbUpsertDeal(deal) {
     _generateEmbedding(_dealEmbedText).then(function(vec) {
       if (vec && _sb) { try { _sb.from('deals').update({ embedding: '[' + vec.join(',') + ']' }).eq('id', deal.id); } catch(e) {} }
     });
-  } catch(e) {}
+  } catch(e) {
+    console.warn('[RIDGE] _sbUpsertDeal failed for deal:', deal.addr || deal.id, e);
+    throw e;
+  }
 }
 
 async function _sbDeleteDeal(id) {
@@ -3352,14 +3412,17 @@ function getPipelineDeals() {
 function savePipelineDeals(arr) {
   localStorage.setItem('ridge_pipeline', JSON.stringify(arr));
 }
-function plUpdateDeal(id, updates) {
+async function plUpdateDeal(id, updates) {
   var deals = getPipelineDeals();
   var idx = deals.findIndex(function(d) { return d.id === id; });
   if (idx > -1) {
     Object.assign(deals[idx], updates);
     deals[idx].updatedAt = new Date().toISOString();
+    if (_sbOk && _sb) {
+      try { await _sbUpsertDeal(deals[idx]); }
+      catch(e) { console.warn('[RIDGE] Supabase unavailable — deal update kept in localStorage only:', deals[idx].addr); }
+    }
     savePipelineDeals(deals);
-    _sbUpsertDeal(deals[idx]);
     if (_sbOk && _sb && updates.stage) {
       _sb.from('activity_log').insert({
         deal_id: id,
@@ -3368,6 +3431,7 @@ function plUpdateDeal(id, updates) {
         user_name: 'Rhett'
       }).catch(function(e) { console.warn('activity_log failed:', e); });
     }
+    renderPipeline();
   }
 }
 function plDeleteDeal(id) {
@@ -3384,28 +3448,42 @@ function plToggleAddForm() {
   f.style.display = isOpen ? 'none' : 'block';
   if (!isOpen) document.getElementById('pla-addr') && document.getElementById('pla-addr').focus();
 }
-function plAddDeal() {
-  var addr = document.getElementById('pla-addr') ? document.getElementById('pla-addr').value.trim() : '';
+async // Reads pipeline form fields by prefix — only includes keys whose element exists in DOM.
+// Safe for both the Add form (pla-*) and the Edit form (ple-*) which has fewer fields.
+function _getPipelineFormData(prefix) {
+  function gv(id) { var el = document.getElementById(prefix + '-' + id); return el ? el.value : null; }
+  var out = {};
+  var fields = [
+    ['addr',     'addr',     true ],
+    ['type',     'type',     false],
+    ['price',    'price',    true ],
+    ['sf',       'sf',       true ],
+    ['mkt',      'mkt',      false],
+    ['stage',    'stage',    false],
+    ['conv',     'conv',     false],
+    ['broker',   'broker',   true ],
+    ['notes',    'notes',    true ],
+    ['nextDate', 'date',     false],
+  ];
+  fields.forEach(function(f) {
+    var raw = gv(f[1]);
+    if (raw !== null) out[f[0]] = f[2] ? raw.trim() : raw;
+  });
+  return out;
+}
+
+async function plAddDeal() {
+  var fields = _getPipelineFormData('pla');
+  var addr = fields.addr || '';
   if (!addr) { showToast('Enter a property address'); return; }
-  var deal = {
-    id: Date.now(),
-    addr: addr,
-    type: document.getElementById('pla-type').value,
-    price: document.getElementById('pla-price').value.trim(),
-    sf: document.getElementById('pla-sf').value.trim(),
-    mkt: document.getElementById('pla-mkt').value,
-    stage: document.getElementById('pla-stage').value,
-    conv: document.getElementById('pla-conv').value,
-    broker: document.getElementById('pla-broker').value.trim(),
-    notes: document.getElementById('pla-notes').value.trim(),
-    nextDate: document.getElementById('pla-date').value,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString()
-  };
+  var deal = Object.assign({ id: Date.now(), createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }, fields);
   var deals = getPipelineDeals();
   deals.unshift(deal);
+  if (_sbOk && _sb) {
+    try { await _sbUpsertDeal(deal); }
+    catch(e) { console.warn('[RIDGE] Supabase unavailable — new deal saved to localStorage only:', deal.addr); }
+  }
   savePipelineDeals(deals);
-  _sbUpsertDeal(deal);
   // Clear form
   ['pla-addr','pla-price','pla-sf','pla-broker','pla-notes','pla-date'].forEach(function(id) {
     var el = document.getElementById(id); if (el) el.value = '';
@@ -3543,7 +3621,7 @@ function renderPipeline() {
     // Actions row
     html += '<div class="pl-deal-actions">';
     if (!isEditing) {
-      html += '<select onchange="plUpdateDeal(' + d.id + ',{stage:this.value});renderPipeline();" style="background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:4px 8px;color:var(--text);font-size:11px;">' +
+      html += '<select onchange="plUpdateDeal(' + d.id + ',{stage:this.value});" style="background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:4px 8px;color:var(--text);font-size:11px;">' +
         PL_STAGES.map(function(s){ return '<option'+(d.stage===s?' selected':'')+'>'+s+'</option>'; }).join('') + '</select>';
       html += '<button class="btn btn-o" style="font-size:11px;padding:4px 10px;" onclick="_plEditId=' + d.id + ';renderPipeline();">✏ Edit</button>';
       html += '<button class="btn btn-o" style="font-size:11px;padding:4px 10px;color:#EF4444;border-color:#EF4444;" onclick="plDeleteDeal(' + d.id + ')">🗑</button>';
@@ -3554,19 +3632,10 @@ function renderPipeline() {
   }).join('');
 }
 
-function plSaveEdit(id) {
-  var updates = {
-    addr: document.getElementById('ple-addr') ? document.getElementById('ple-addr').value.trim() : '',
-    price: document.getElementById('ple-price') ? document.getElementById('ple-price').value.trim() : '',
-    stage: document.getElementById('ple-stage') ? document.getElementById('ple-stage').value : '',
-    conv: document.getElementById('ple-conv') ? document.getElementById('ple-conv').value : '',
-    broker: document.getElementById('ple-broker') ? document.getElementById('ple-broker').value.trim() : '',
-    notes: document.getElementById('ple-notes') ? document.getElementById('ple-notes').value.trim() : '',
-    nextDate: document.getElementById('ple-date') ? document.getElementById('ple-date').value : '',
-  };
-  plUpdateDeal(id, updates);
+async function plSaveEdit(id) {
+  var updates = _getPipelineFormData('ple'); // returns only fields present in the edit form
+  await plUpdateDeal(id, updates); // plUpdateDeal calls renderPipeline() internally
   _plEditId = null;
-  renderPipeline();
   showToast('Deal updated');
 }
 
@@ -3590,7 +3659,7 @@ function plLaunchReport() {
   });
   lines.push('---');
   lines.push('Summarize this pipeline. Highlight: (1) deals closest to closing, (2) any overdue next steps, (3) total potential acquisition volume, (4) recommended focus for this week.');
-  runRidgeAPI('Pipeline Report', lines.join('\n'));
+  runRidgeAPI('Pipeline Report', lines.join('\n'), null, null);
 }
 
 function showToast(msg) {
@@ -4341,38 +4410,7 @@ function _exportDebt(wb, tid, dateStr, paste) {
   var ltvPct = parseFloat((rcGetField(tid,'ltv')||'65').replace(/[^0-9.]/g,''))/100 || 0.65;
   var rateIn = parseFloat((rcGetField(tid,'rate')||'6.5').replace(/[^0-9.]/g,''))/100 || 0.065;
 
-  function pmt(r, n, pv) {
-    if (r === 0) return pv/n;
-    return (pv * (r/12)) / (1 - Math.pow(1 + r/12, -n));
-  }
-
-  function scenario(label, ltv, rate, amYrs) {
-    var loan = price * ltv;
-    var equity = price - loan;
-    var annualDS = pmt(rate, amYrs*12, loan) * 12;
-    var dscr = noi && annualDS ? (noi / annualDS) : 0;
-    var yoc  = noi && price ? (noi / price * 100) : 0;
-    var capRate = noi && price ? (noi / price * 100) : 0;
-    return {
-      label, ltv: (ltv*100).toFixed(0)+'%',
-      loan: loan ? '$'+Math.round(loan).toLocaleString() : '—',
-      equity: equity ? '$'+Math.round(equity).toLocaleString() : '—',
-      rate: (rate*100).toFixed(2)+'%',
-      annualDS: annualDS ? '$'+Math.round(annualDS).toLocaleString() : '—',
-      monthly: annualDS ? '$'+Math.round(annualDS/12).toLocaleString() : '—',
-      dscr: dscr ? dscr.toFixed(2)+'x' : '—',
-      dscrFlag: dscr < 1.25 ? '⚠ Below 1.25x' : '✓',
-      yoc: yoc ? yoc.toFixed(2)+'%' : '—',
-      amYrs: amYrs + ' yr',
-    };
-  }
-
-  var scenarios = [
-    scenario('Base (Target)',        ltvPct,       rateIn,       30),
-    scenario('Conservative',        Math.max(ltvPct-0.05,0.5), rateIn+0.005, 25),
-    scenario('Stretch',             Math.min(ltvPct+0.05,0.70), Math.max(rateIn-0.003,0.04), 30),
-    scenario('Bridge (Short-term)', Math.min(ltvPct+0.07,0.75), rateIn+0.015, 3),
-  ];
+  var scenarios = _debtCalc(price, noi, ltvPct * 100, rateIn * 100);
 
   var r = rcTitle(ws, 'DEBT TOOL — CAPITAL STACK SCENARIOS', addr, dateStr);
 
@@ -4782,12 +4820,19 @@ function _exportLeaseStack(wb, tid, dateStr, paste) {
 //  END EXPORT SYSTEM
 // ═══════════════════════════════════════════════════════════
 
+// Shared field-value getter used by updateNapkinLive, generateLOI, and Napkin exports
+function getFieldValue(id, numericOnly) {
+  var el = document.getElementById(id);
+  if (!el) return '';
+  var val = el.value || '';
+  return numericOnly ? val.replace(/[^0-9.]/g, '') : val.trim();
+}
+
 function updateNapkinLive(){
-  function fv(id){var el=document.getElementById(id);return el?(el.value||'').replace(/[^0-9.]/g,''):''}
-  var ask=parseFloat(fv('f-napkin-ask'))||0;
-  var sf=parseFloat(fv('f-napkin-sf'))||0;
-  var noi=parseFloat(fv('f-napkin-noi'))||0;
-  var mkt=parseFloat(fv('f-napkin-mktrent'))||0;
+  var ask=parseFloat(getFieldValue('f-napkin-ask', true))||0;
+  var sf=parseFloat(getFieldValue('f-napkin-sf', true))||0;
+  var noi=parseFloat(getFieldValue('f-napkin-noi', true))||0;
+  var mkt=parseFloat(getFieldValue('f-napkin-mktrent', true))||0;
   var live=document.getElementById('napkin-live');
   if(!live) return;
   if(!ask&&!sf&&!noi&&!mkt){live.classList.remove('show');return;}
@@ -4808,16 +4853,15 @@ function updateNapkinLive(){
 
 function generateLOI(){
   if(typeof docx==='undefined'){alert('docx library not loaded. Check your connection and refresh.');return;}
-  function fv(id){var el=document.getElementById(id);return el?(el.value||'').trim():'';}
-  var date=fv('f-loi-date')||'[DATE]';
-  var broker=fv('f-loi-broker')||'[BROKER NAME AND FIRM]';
-  var addr=fv('f-loi-addr')||'[PROPERTY ADDRESS]';
-  var city=fv('f-loi-city')||'[CITY, STATE]';
-  var sf=fv('f-loi-sf')||'[TOTAL SF]';
-  var price=fv('f-loi-price')||'[PURCHASE PRICE]';
-  var deposit=fv('f-loi-deposit')||'[DEPOSIT AMOUNT]';
-  var ext=fv('f-loi-ext')||'$100,000';
-  var exp=fv('f-loi-exp')||'[EXPIRATION DATE]';
+  var date=getFieldValue('f-loi-date')||'[DATE]';
+  var broker=getFieldValue('f-loi-broker')||'[BROKER NAME AND FIRM]';
+  var addr=getFieldValue('f-loi-addr')||'[PROPERTY ADDRESS]';
+  var city=getFieldValue('f-loi-city')||'[CITY, STATE]';
+  var sf=getFieldValue('f-loi-sf')||'[TOTAL SF]';
+  var price=getFieldValue('f-loi-price')||'[PURCHASE PRICE]';
+  var deposit=getFieldValue('f-loi-deposit')||'[DEPOSIT AMOUNT]';
+  var ext=getFieldValue('f-loi-ext')||'$100,000';
+  var exp=getFieldValue('f-loi-exp')||'[EXPIRATION DATE]';
   var D=docx;
   function p(text,opts){
     opts=opts||{};
@@ -4981,15 +5025,18 @@ async function saveApiKey() {
   showToast('API key' + (vval ? 's' : '') + ' saved');
 }
 
+function _showModal(id) { var el = document.getElementById(id); if (el) el.classList.add('show'); }
+function _hideModal(id) { var el = document.getElementById(id); if (el) el.classList.remove('show'); }
+
 function showApiKeyModal() {
   document.getElementById('apikey-input').value = '';
   document.getElementById('voyage-input').value = '';
-  document.getElementById('apikey-modal').classList.add('show');
+  _showModal('apikey-modal');
   setTimeout(function() { document.getElementById('apikey-input').focus(); }, 100);
 }
 
 function closeApiKeyModal() {
-  document.getElementById('apikey-modal').classList.remove('show');
+  _hideModal('apikey-modal');
 }
 
 // ── VOYAGE AI EMBEDDINGS ───────────────────────────────────────
@@ -5052,7 +5099,7 @@ async function leaseSemanticSearch() {
 var _historyRows = [];
 
 async function showHistoryPanel() {
-  document.getElementById('hist-panel').classList.add('show');
+  _showModal('hist-panel');
   document.getElementById('hist-body').innerHTML = '<div class="hist-spinner">Loading…</div>';
   _historyRows = [];
   if (!_sbOk || !_sb) {
@@ -5080,7 +5127,7 @@ async function showHistoryPanel() {
 }
 
 function closeHistoryPanel() {
-  document.getElementById('hist-panel').classList.remove('show');
+  _hideModal('hist-panel');
   document.querySelectorAll('[onclick*="showHistoryPanel"]').forEach(function(btn) {
     btn.textContent = '🕐 History';
   });
@@ -5089,7 +5136,7 @@ function closeHistoryPanel() {
 var _leaseRows = [];
 
 async function showLeaseLibrary() {
-  document.getElementById('lease-panel').classList.add('show');
+  _showModal('lease-panel');
   document.getElementById('lease-table-body').innerHTML = '<div class="lease-spinner">Loading…</div>';
   if (!_sbOk || !_sb) {
     document.getElementById('lease-table-body').innerHTML = '<div class="lease-empty">Supabase not connected.</div>';
@@ -5106,7 +5153,7 @@ async function showLeaseLibrary() {
 }
 
 function closeLeaseLibrary() {
-  document.getElementById('lease-panel').classList.remove('show');
+  _hideModal('lease-panel');
 }
 
 async function deduplicateLeases() {
@@ -5370,12 +5417,12 @@ function openRidgePanel(skillName) {
   document.getElementById('ridge-pdf-btn').disabled = true;
   document.getElementById('ridge-ppt-btn').disabled = true;
   document.getElementById('ridge-xls-btn').disabled = true;
-  document.getElementById('ridge-response-panel').classList.add('show');
+  _showModal('ridge-response-panel');
   hidePropertyMap();
 }
 
 function closeRidgePanel() {
-  document.getElementById('ridge-response-panel').classList.remove('show');
+  _hideModal('ridge-response-panel');
 }
 
 function ridgeCopyResponse() {
@@ -5383,7 +5430,66 @@ function ridgeCopyResponse() {
   navigator.clipboard.writeText(text).then(function() { showToast('Copied to clipboard'); });
 }
 
-async function runRidgeAPI(skillName, prompt) {
+// ── SESSION LOG HELPERS ───────────────────────────────────────
+// Compress one tool response into a compact memory block via Haiku.
+// Falls back to a local truncation if the API call fails for any reason.
+// NOTE: headers must match the main fetch — x-api-key required for direct browser access.
+async function _compressToMemoryBlock(response, tool) {
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true',
+        'x-api-key': _apiKey
+      },
+      body: JSON.stringify({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 120,
+        messages: [{
+          role: 'user',
+          content: 'Compress this RIDGE tool output into a single memory block.\nReturn ONLY this format, no other text:\n[TOOL: ' + tool + '] [ADDR: {address or N/A}] [VERDICT: {conviction/pass/pursue/result}] [METRICS: {IRR, YOC, SF, price — only if present}] [KEY: {one line, most critical finding}]\n\nOutput to compress:\n' + response.slice(0, 3000)
+        }]
+      })
+    });
+    const data = await res.json();
+    return (data.content && data.content[0] && data.content[0].text) || _fallbackCompress(response, tool);
+  } catch(e) {
+    return _fallbackCompress(response, tool);
+  }
+}
+
+function _fallbackCompress(response, tool) {
+  const preview = response.replace(/[#*`]/g, '').trim().slice(0, 200);
+  return '[TOOL: ' + tool + '] [KEY: ' + preview + '...]';
+}
+
+// Prune the session log once it exceeds maxEntries.
+// Always keeps the last 10 entries; collapses older entries into a single archive block.
+function _pruneSessionLog(maxEntries) {
+  maxEntries = maxEntries || 20;
+  if (_ridgeSessionLog.length <= maxEntries) return;
+  const tail     = _ridgeSessionLog.slice(-10);
+  const archived = _ridgeSessionLog.slice(0, -10);
+  const archiveBlock = {
+    role: 'archive',
+    timestamp: Date.now(),
+    entryCount: archived.length,
+    tools: Array.from(new Set(archived.map(function(e) { return e.tool; }).filter(Boolean))),
+    summary: archived
+      .filter(function(e) { return e.memoryBlock; })
+      .map(function(e) { return e.memoryBlock; })
+      .join(' | ')
+      .slice(0, 500)
+  };
+  _ridgeSessionLog = [archiveBlock].concat(tail);
+}
+
+async function runRidgeAPI(skillName, prompt, runInputs, runToolId) {
+  // Reset per-run state at the boundary so no prior tool's data bleeds in
+  _lastRunInputs = runInputs || null;
+  _lastRunToolId = runToolId || null;
   if (!_apiKey) {
     showApiKeyModal();
     return;
@@ -5409,6 +5515,14 @@ async function runRidgeAPI(skillName, prompt) {
   };
   var systemPrompt = systemPrompts[skillName] || systemPrompts['default'];
   var isISRRun = skillName.toLowerCase().includes('acquisition investment');
+  // ── SESSION LOG: user turn ────────────────────────────────────
+  _ridgeSessionLog.push({
+    role: 'user',
+    tool: skillName,
+    timestamp: Date.now(),
+    promptTokenEst: Math.round(prompt.length / 4)
+  });
+  // ─────────────────────────────────────────────────────────────
   try {
     var resp = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
@@ -5455,10 +5569,10 @@ async function runRidgeAPI(skillName, prompt) {
             accumulated += evt.delta.text;
             var _sn = document.getElementById('ridge-panel-skill-name').textContent.toLowerCase();
             if (_sn.includes('gavel')) {
-              _gavelRawOutput = accumulated;
+              _skillRawOutputs['gavel'] = accumulated;
             }
             if (_sn.includes('acquisition investment') || _sn.includes('isr')) {
-              _isrRawOutput = accumulated;
+              _skillRawOutputs['isr'] = accumulated;
             }
             contentEl.innerHTML = parseMarkdown(accumulated);
             var panelBody = document.getElementById('ridge-response-panel').querySelector('.ridge-panel-body');
@@ -5501,6 +5615,22 @@ async function runRidgeAPI(skillName, prompt) {
         document.getElementById('ridge-panel-content').appendChild(wfBtn);
       }
     }
+    // ── SESSION LOG: assistant turn ───────────────────────────────
+    // Write fullResponse to _skillRawOutputs FIRST — export functions depend on this.
+    var _toolKey = _lastRunToolId || skillName.toLowerCase().replace(/\s+/g, '-');
+    _skillRawOutputs[_toolKey] = accumulated;
+    // Compress async (Haiku); falls back to local truncation on any failure.
+    // UI is already rendered — this await only affects the Supabase save timing (< 1s).
+    var _memBlock = await _compressToMemoryBlock(accumulated, skillName);
+    _ridgeSessionLog.push({
+      role: 'assistant',
+      tool: skillName,
+      timestamp: Date.now(),
+      memoryBlock: _memBlock,
+      responseTokenEst: Math.round(accumulated.length / 4)
+    });
+    _pruneSessionLog();
+    // ─────────────────────────────────────────────────────────────
     // Auto-save to Supabase skill_outputs table
     if (_sbOk && _sb) {
       var outputText = document.getElementById('ridge-panel-content').innerText;
@@ -5579,7 +5709,7 @@ async function runRidgeAPI(skillName, prompt) {
           var _leaseId = STATE['gavel'] && STATE['gavel']._leaseId ? STATE['gavel']._leaseId : null;
           console.log('Gavel post-run firing — leaseId:', _leaseId ? _leaseId : 'MISSING — will INSERT');
           var _leaseUpdate = { extracted_data: {} };
-          var gavelOutput = _gavelRawOutput || document.getElementById('ridge-panel-content').innerText;
+          var gavelOutput = _skillRawOutputs['gavel'] || document.getElementById('ridge-panel-content').innerText;
           // Parse structured JSON block emitted by Claude at end of response
           var jsonMatch = gavelOutput.match(/```json\s*(\{[\s\S]+?\})\s*```/);
           if (jsonMatch) {
@@ -5757,6 +5887,48 @@ function parseMarkdown(text) {
 
 // ── RESPONSE PANEL EXPORTS ───────────────────────────────────
 // ── NAPKIN PRE-CALCULATOR ─────────────────────────────────────
+// ── SHARED DEBT HELPERS ───────────────────────────────────────
+// Standard monthly PMT — used by _napkinCalc, _buildCFs, and _debtCalc
+function _pmt(annualRate, amortYrs, loanAmt) {
+  var r = annualRate / 12;
+  var n = amortYrs * 12;
+  if (r === 0) return loanAmt / n;
+  return (loanAmt * r) / (1 - Math.pow(1 + r, -n));
+}
+
+// Compute 4 standard debt scenarios — used by buildTrigger('debt') and _exportDebt
+function _debtCalc(price, noi, baseLTV, baseRate) {
+  price    = parseFloat((price||'0').toString().replace(/[^0-9.]/g,''));
+  noi      = parseFloat((noi||'0').toString().replace(/[^0-9.]/g,''));
+  baseLTV  = parseFloat((baseLTV||'65').toString().replace(/[^0-9.]/g,'')) / 100;
+  baseRate = parseFloat((baseRate||'6.75').toString().replace(/[^0-9.]/g,'')) / 100;
+  function scen(label, ltv, rate, amYrs) {
+    var loan     = price * ltv;
+    var equity   = price - loan;
+    var annualDS = _pmt(rate, amYrs, loan) * 12;
+    var dscr     = noi && annualDS ? noi / annualDS : 0;
+    return {
+      label,
+      ltv:      (ltv*100).toFixed(0) + '%',
+      loan:     loan     ? '$' + Math.round(loan).toLocaleString()      : '—',
+      equity:   equity   ? '$' + Math.round(equity).toLocaleString()    : '—',
+      rate:     (rate*100).toFixed(2) + '%',
+      annualDS: annualDS ? '$' + Math.round(annualDS).toLocaleString()  : '—',
+      monthly:  annualDS ? '$' + Math.round(annualDS/12).toLocaleString(): '—',
+      dscr:     dscr     ? dscr.toFixed(2) + 'x'                        : '—',
+      dscrFlag: dscr < 1.25 ? '⚠ Below 1.25x' : '✓',
+      yoc:      noi && price ? (noi/price*100).toFixed(2) + '%'         : '—',
+      amYrs:    amYrs + ' yr',
+    };
+  }
+  return [
+    scen('Base (Target)',        baseLTV,                            baseRate,              30),
+    scen('Conservative',         Math.max(baseLTV - 0.05, 0.50),    baseRate + 0.005,      25),
+    scen('Stretch',              Math.min(baseLTV + 0.05, 0.70),    Math.max(baseRate - 0.003, 0.04), 30),
+    scen('Bridge (Short-term)',  Math.min(baseLTV + 0.07, 0.75),    baseRate + 0.015,       3),
+  ];
+}
+
 function _napkinCalc(d) {
   var ask = parseFloat((d.ask||'0').toString().replace(/[^0-9.]/g,''));
   var sf = parseFloat((d.sf||'0').toString().replace(/[^0-9.]/g,''));
@@ -5783,7 +5955,7 @@ function _napkinCalc(d) {
   var equity = ask - loanAmt;
   var monthlyRate = rate / 12;
   var amortMonths = amortYrs * 12;
-  var monthlyPmt = loanAmt * (monthlyRate * Math.pow(1+monthlyRate,amortMonths)) / (Math.pow(1+monthlyRate,amortMonths)-1);
+  var monthlyPmt = _pmt(rate, amortYrs, loanAmt);
   var annualDS = monthlyPmt * 12;
   var annualIO = loanAmt * rate;
 
@@ -5794,7 +5966,7 @@ function _napkinCalc(d) {
   function _buildCFs(askPrice) {
     var ln = askPrice * ltv;
     var eq = askPrice * (1-ltv);
-    var mPmt = ln * (monthlyRate * Math.pow(1+monthlyRate,amortMonths)) / (Math.pow(1+monthlyRate,amortMonths)-1);
+    var mPmt = _pmt(rate, amortYrs, ln);
     var ds = mPmt * 12;
     var io = ln * rate;
     var cfs = [-eq];
@@ -6155,8 +6327,7 @@ function ridgeExportPDF() {
 
 function _napkinExportPDF() {
   var el = document.getElementById('ridge-panel-content');
-  var fv = function(id){ var e=document.getElementById(id); return e?e.value.trim():''; };
-  var addr = fv('f-napkin-addr') || 'Subject Property';
+  var addr = getFieldValue('f-napkin-addr') || 'Subject Property';
   var dateStr = new Date().toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'});
   var h2s = el.querySelectorAll('h2');
 
@@ -6173,10 +6344,10 @@ function _napkinExportPDF() {
   });
 
   var snap = [
-    ['Property Address', fv('f-napkin-addr')],['Asset Type', fv('f-napkin-type')],
-    ['Building SF', fv('f-napkin-sf')],['Asking Price', fv('f-napkin-ask')],
-    ['Current Occupancy', fv('f-napkin-occ')],['In-Place NOI', fv('f-napkin-noi')],
-    ['Market Rent PSF', fv('f-napkin-mktrent')],['In-Place Rent PSF', fv('f-napkin-inplace')],
+    ['Property Address', getFieldValue('f-napkin-addr')],['Asset Type', getFieldValue('f-napkin-type')],
+    ['Building SF', getFieldValue('f-napkin-sf')],['Asking Price', getFieldValue('f-napkin-ask')],
+    ['Current Occupancy', getFieldValue('f-napkin-occ')],['In-Place NOI', getFieldValue('f-napkin-noi')],
+    ['Market Rent PSF', getFieldValue('f-napkin-mktrent')],['In-Place Rent PSF', getFieldValue('f-napkin-inplace')],
   ].filter(function(r){ return r[1]; });
 
   var css = [
@@ -6521,10 +6692,9 @@ async function ridgeExportXLS() {
 
 async function _napkinExportXLS() {
   var el = document.getElementById('ridge-panel-content');
-  var fv = function(id){ var e=document.getElementById(id); return e?e.value.trim():''; };
-  var addr    = fv('f-napkin-addr') || 'Subject Property';
-  var askRaw  = fv('f-napkin-ask');
-  var sfRaw   = fv('f-napkin-sf');
+  var addr    = getFieldValue('f-napkin-addr') || 'Subject Property';
+  var askRaw  = getFieldValue('f-napkin-ask');
+  var sfRaw   = getFieldValue('f-napkin-sf');
   var askNum  = parseFloat(askRaw.replace(/[^0-9.]/g,'')) || 0;
   var sfNum   = parseFloat(sfRaw.replace(/[^0-9.]/g,'')) || 0;
   var psf     = (askNum && sfNum) ? '$' + (askNum/sfNum).toFixed(2) : '—';
@@ -6572,7 +6742,7 @@ async function _napkinExportXLS() {
   ws.addRow([]).height = 8;
 
   // Rows 4-8 — property snapshot
-  [['Property Address', fv('f-napkin-addr')||'—'],['Asset Type', fv('f-napkin-type')||'—'],
+  [['Property Address', getFieldValue('f-napkin-addr')||'—'],['Asset Type', getFieldValue('f-napkin-type')||'—'],
    ['Size (SF)', sfRaw||'—'],['Asking Price', askRaw||'—'],['Price PSF', psf]
   ].forEach(function(item) {
     var r = ws.addRow(item);
@@ -7002,7 +7172,16 @@ async function ridgeExportPPT() {
   if (skillName.toLowerCase().includes('acquisition investment') || skillName.toLowerCase().includes('isr')) {
     var d = _lastRunInputs || {};
     var m = (STATE && STATE['isr'] && STATE['isr'].metrics) || {};
-    var panelText = _isrRawOutput || document.getElementById('ridge-panel-content').innerText;
+    var panelText = _skillRawOutputs['isr'] || document.getElementById('ridge-panel-content').innerText;
+
+    // Strip any leading $ / commas before re-applying currency formatting with proper comma separators
+    function fmtUSD(v) {
+      if (!v || v === '—') return '—';
+      var raw = String(v).replace(/[$,\s]/g,'');
+      var n = parseFloat(raw);
+      return isNaN(n) ? '$' + raw : '$' + n.toLocaleString();
+    }
+    function cleanNum(v) { return String(v||'').replace(/[$,\s]/g,''); }
 
     // Parse structured JSON from end of response
     var jd = null;
@@ -7073,7 +7252,7 @@ async function ridgeExportPPT() {
     s1.addText(addr,{x:0.5,y:1.6,w:12.3,h:1.35,fontSize:38,bold:true,color:WHITE,wrap:true});
     s1.addText((d.type||'Industrial / Flex').toUpperCase()+'  ·  '+dateStr,{x:0.5,y:3.05,w:10,h:0.32,fontSize:11,color:MUTED,charSpacing:1.5});
     s1.addShape(pptx.ShapeType.rect,{x:0.5,y:3.47,w:5,h:0.012,fill:{color:GOLD},line:{color:GOLD}});
-    [{v:'$'+(d.price||'—'),l:'PURCHASE PRICE'},{v:(d.sf||'—')+' SF',l:'BUILDING SIZE'},{v:(d.cap||'—'),l:'GOING-IN CAP'}].forEach(function(st,i){
+    [{v:fmtUSD(d.price),l:'PURCHASE PRICE'},{v:(d.sf||'—')+' SF',l:'BUILDING SIZE'},{v:(d.cap||'—'),l:'GOING-IN CAP'}].forEach(function(st,i){
       s1.addText(st.v,{x:0.5+i*4.1,y:3.65,w:3.9,h:0.62,fontSize:26,color:WHITE,bold:true,align:'center'});
       s1.addText(st.l,{x:0.5+i*4.1,y:4.27,w:3.9,h:0.24,fontSize:8.5,color:GOLD,align:'center',charSpacing:2});
     });
@@ -7085,7 +7264,7 @@ async function ridgeExportPPT() {
 
     // ── SLIDE 2 — Deal Snapshot ───────────────────────────────
     var s2=pptx.addSlide(); s2.background={color:BG}; addHdr(s2,'Deal Snapshot',2);
-    [{v:'$'+(d.price||'—'),l:'PURCHASE PRICE'},{v:'$'+(d.psf||'—')+' PSF',l:'PRICE PER SF'},{v:(d.cap||'—'),l:'GOING-IN CAP RATE'},
+    [{v:fmtUSD(d.price),l:'PURCHASE PRICE'},{v:fmtUSD(d.psf)+' PSF',l:'PRICE PER SF'},{v:(d.cap||'—'),l:'GOING-IN CAP RATE'},
      {v:(d.irr||'—'),l:'LEVERED IRR'},{v:(d.em||'—'),l:'EQUITY MULTIPLE'},{v:(d.ltv||'—'),l:'LTV'}].forEach(function(k,i){
       kpiCard(s2,0.22+(i%3)*4.36,0.85+Math.floor(i/3)*1.62,4.15,1.52,k.v,k.l);
     });
@@ -7326,6 +7505,7 @@ async function ridgeExportPPT() {
 }
 
 
+_migrateDSState(); // one-time migration of ridge_daily_sourced + ridge_ds_tracker → ridge_daily_state_v1
 _sbInit().then(async function() {
   await loadApiKey();
   await loadMapsKey();

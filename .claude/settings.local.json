@@ -7,7 +7,15 @@
       "Read(//c/Users/RhettAnderson/**)",
       "Read(//c/Users/RhettAnderson/.claude/plugins/marketplaces/**)",
       "Bash(xargs grep:*)",
-      "Bash(/dev/null -i)"
+      "Bash(/dev/null -i)",
+      "Bash(wc -l /c/Users/RhettAnderson/OneDrive - Entrada Management Services/Desktop/Claude/ridge-intel/*.skill)",
+      "Bash(ls -lh /c/Users/RhettAnderson/OneDrive - Entrada Management Services/Desktop/Claude/ridge-intel/*.html /c/Users/RhettAnderson/OneDrive - Entrada Management Services/Desktop/Claude/ridge-intel/*.skill)",
+      "Bash(ls -lh /c/Users/RhettAnderson/OneDrive - Entrada Management Services/Desktop/Claude/ridge-intel/*.skill /c/Users/RhettAnderson/OneDrive - Entrada Management Services/Desktop/Claude/ridge-intel/*.html)",
+      "Bash(file /c/Users/RhettAnderson/OneDrive - Entrada Management Services/Desktop/Claude/ridge-intel/*.skill)",
+      "Bash(node -e \":*)",
+      "Bash(grep -n \"id:''daily-signal''\\\\|id: ''daily-signal''\\\\|id:\"\"daily-signal\"\"\\\\|id: \"\"daily-signal\"\"\" index.html)",
+      "Bash(grep -n \"id:''''napkin''''\\\\|id: ''''napkin''''\\\\|case ''''napkin''''\\\\|case ''''waterfall''''\\\\|copyBtn.disabled\\\\|copyBtn\\\\.disabled\\\\|ridge-pdf-btn\\\\|ridge-xls-btn\" index.html)",
+      "Bash(curl:*)"
     ]
   }
 }
