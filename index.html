@@ -3448,7 +3448,7 @@ function plToggleAddForm() {
   f.style.display = isOpen ? 'none' : 'block';
   if (!isOpen) document.getElementById('pla-addr') && document.getElementById('pla-addr').focus();
 }
-async // Reads pipeline form fields by prefix — only includes keys whose element exists in DOM.
+// Reads pipeline form fields by prefix — only includes keys whose element exists in DOM.
 // Safe for both the Add form (pla-*) and the Edit form (ple-*) which has fewer fields.
 function _getPipelineFormData(prefix) {
   function gv(id) { var el = document.getElementById(prefix + '-' + id); return el ? el.value : null; }
