@@ -9,7 +9,10 @@
       "Bash(git config:*)",
       "Bash(git -C \"/c/Users/RhettAnderson/OneDrive - Entrada Management Services/Desktop/Claude/pga-tur\" add index.html)",
       "Bash(git -C \"/c/Users/RhettAnderson/OneDrive - Entrada Management Services/Desktop/Claude/pga-tur\" commit -m \"TIGER VISION v3: fully standalone — no Claude, PWA mobile, RANGE drill library, DEBRIEF auto-analysis, LOOP course notebook\")",
-      "Bash(git -C \"/c/Users/RhettAnderson/OneDrive - Entrada Management Services/Desktop/Claude/pga-tur\" push)"
+      "Bash(git -C \"/c/Users/RhettAnderson/OneDrive - Entrada Management Services/Desktop/Claude/pga-tur\" push)",
+      "Bash(npx @supabase/mcp-server-supabase --help)",
+      "Bash(node -e \":*)",
+      "Bash(dir \"C:\\\\Users\\\\RhettAnderson\\\\OneDrive - Entrada Management Services\\\\Desktop\\\\Claude\" /b)"
     ],
     "additionalDirectories": [
       "c:\\Users\\RhettAnderson\\OneDrive - Entrada Management Services\\Desktop\\Claude",
