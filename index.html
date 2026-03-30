@@ -3440,12 +3440,19 @@ async function plUpdateDeal(id, updates) {
     renderPipeline();
   }
 }
-function plDeleteDeal(id) {
+async function plDeleteDeal(id) {
   if (!confirm('Remove this deal from the pipeline?')) return;
-  var remaining = getPipelineDeals().filter(function(d) { return d.id !== id; });
-  localStorage.setItem('ridge_pipeline', JSON.stringify(remaining));
-  _sbDeleteDeal(id);
+  var deals = getPipelineDeals().filter(function(d) { return d.id !== id; });
+  savePipelineDeals(deals);
   renderPipeline();
+  if (_sbOk && _sb) {
+    console.log('[RIDGE] DELETE id:', id);
+    var result = await _sb.from('deals').delete().eq('id', id);
+    console.log('[RIDGE] DELETE RESULT:', JSON.stringify(result));
+    if (result.error) {
+      console.error('[RIDGE] DELETE ERROR:', JSON.stringify(result.error));
+    }
+  }
 }
 function plToggleAddForm() {
   var f = document.getElementById('pl-add-form');
@@ -3599,7 +3606,7 @@ function renderPipeline() {
       html += '<div class="fg"><label class="fl">Broker</label><input id="ple-broker" type="text" value="' + (d.broker||'').replace(/"/g,'&quot;') + '" style="background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:7px 10px;color:var(--text);font-size:12px;width:100%;outline:none;"></div></div>';
       html += '<div style="margin-bottom:8px;"><label class="fl" style="font-size:11px;color:var(--muted);font-weight:600;display:block;margin-bottom:4px;">Notes</label><textarea id="ple-notes" style="background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:8px 10px;color:var(--text);font-size:12px;width:100%;min-height:60px;resize:vertical;outline:none;">' + (d.notes||'') + '</textarea></div>';
       html += '<div style="margin-bottom:10px;"><label class="fl" style="font-size:11px;color:var(--muted);font-weight:600;display:block;margin-bottom:4px;">Next Step Date</label><input id="ple-date" type="date" value="' + (d.nextDate||'') + '" style="background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:7px 10px;color:var(--text);font-size:12px;outline:none;"></div>';
-      html += '<div style="display:flex;gap:8px;"><button class="btn btn-p" style="font-size:11px;padding:6px 12px;" onclick="plSaveEdit(' + d.id + ')">💾 Save</button>';
+      html += '<div style="display:flex;gap:8px;"><button class="btn btn-p" style="font-size:11px;padding:6px 12px;" onclick="plSaveEdit(\'' + d.id + '\')">💾 Save</button>';
       html += '<button class="btn btn-o" style="font-size:11px;padding:6px 12px;" onclick="_plEditId=null;renderPipeline();">✕ Cancel</button></div>';
       html += '</div>';
     } else {
@@ -3630,10 +3637,10 @@ function renderPipeline() {
     // Actions row
     html += '<div class="pl-deal-actions">';
     if (!isEditing) {
-      html += '<select onchange="plUpdateDeal(' + d.id + ',{stage:this.value});" style="background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:4px 8px;color:var(--text);font-size:11px;">' +
+      html += '<select onchange="plUpdateDeal(\'' + d.id + '\',{stage:this.value});" style="background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:4px 8px;color:var(--text);font-size:11px;">' +
         PL_STAGES.map(function(s){ return '<option'+(d.stage===s?' selected':'')+'>'+s+'</option>'; }).join('') + '</select>';
-      html += '<button class="btn btn-o" style="font-size:11px;padding:4px 10px;" onclick="_plEditId=' + d.id + ';renderPipeline();">✏ Edit</button>';
-      html += '<button class="btn btn-o" style="font-size:11px;padding:4px 10px;color:#EF4444;border-color:#EF4444;" onclick="plDeleteDeal(' + d.id + ')">🗑</button>';
+      html += '<button class="btn btn-o" style="font-size:11px;padding:4px 10px;" onclick="_plEditId=\'' + d.id + '\';renderPipeline();">✏ Edit</button>';
+      html += '<button class="btn btn-o" style="font-size:11px;padding:4px 10px;color:#EF4444;border-color:#EF4444;" onclick="plDeleteDeal(\'' + d.id + '\')">🗑</button>';
     }
     html += '</div>';
     html += '</div>';
