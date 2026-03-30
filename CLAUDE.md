@@ -24,26 +24,30 @@ All dependencies are loaded via CDN:
 `index.html` (240KB) is monolithic — all CSS, JavaScript, and HTML are embedded. It contains the full UI, skill panel logic, file parsers, export functions, and the deal pipeline CRM.
 
 ### Skill System
-Each analytical module is a "skill." Skills come in two forms:
-1. **`.skill` files** (zip archives containing a markdown config) — loadable by Claude Code directly as context
-2. **Subdirectory `SKILL.md` files** — documentation for skills that have their own folder (e.g., `pipeline/SKILL.md`, `daily-signal/SKILL.md`)
+Each analytical module is a "skill." All active skills live as `SKILL.md` files inside subdirectories of `ridge-intel/`, or as flat `.md` files in the repo root for legacy skills.
 
-Active skills and their roles:
+> **Note:** `Desktop/Claude/RIDGE/` is a stale directory and should not be used. All active skills live in `ridge-intel/`.
+
+Active skills and their paths:
 | Skill | File | Purpose |
 |---|---|---|
 | RIDGE | `RIDGE_SKILL.md` | Core deal analysis engine, conviction framework |
+| Canvas | `Canvas_SKILL.md` | Tenant intelligence, displacement scoring |
 | Pipeline | `pipeline/SKILL.md` | Deal CRM, kanban stages, outreach logging |
-| Canvas | `Canvas_SKILL.md` / `canvas.skill` | Tenant intelligence, displacement scoring |
-| Scout | `scout.skill` | Submarket sweep, owner enrichment |
 | Daily Signal | `daily-signal/SKILL.md` | CoStar XLSX parsing, prospect scoring (0–15 pts) |
-| The Gavel | `the-gavel.skill` | Lease abstraction, rent roll analysis |
-| CRE Legal Reviewer | `cre-legal-reviewer.skill` | PSA/JV document review |
-| Acq Investment Report | `acq-investment-report.skill` | IC deck generation |
-| Lease Comp Map | `lease-comp-map.skill` | Comp mapping (HTML + PDF) |
-| Lens | `lens.skill` | Market analysis |
-| LOI Generator | `loi-generator/` | Letter of intent automation |
-| Debt Tool | `debt-tool/` | Loan analysis |
 | Waterfall | `waterfall/SKILL.md` | GP/LP distribution waterfall, IRR tiers, LP assessment |
+| LOI Generator | `loi-generator/SKILL.md` | Letter of intent automation |
+| Napkin | `napkin/SKILL.md` | 60-second deal screen, back-of-envelope underwriting |
+| Debt Tool | `debt-tool/SKILL.md` | Capital stack modeling, debt scenarios |
+| Market Pulse | `market-pulse/SKILL.md` | Submarket intelligence, vacancy/rent benchmarks |
+| DD Tracker | `dd-tracker/SKILL.md` | Due diligence checklist and tracking |
+| Deal Memory | `deal-memory/SKILL.md` | Session memory, pipeline context |
+| Acq Investment Report | `acq-investment-report/SKILL.md` | IC deck generation (PPTX) |
+| The Gavel | `the-gavel/SKILL.md` | Lease abstraction, rent roll analysis |
+| CRE Legal Reviewer | `cre-legal-reviewer/SKILL.md` | PSA/JV/loan document review |
+| LENS | `lens/SKILL.md` | Broker OM teardown, re-underwrite at RIDGE criteria |
+| SCOUT | `scout/SKILL.md` | Off-market sourcing, owner enrichment, submarket sweep |
+| Lease Comp Map | `lease-comp-map/SKILL.md` | Comp analysis, rent benchmarking (HTML + PDF) |
 
 ### Data Persistence
 localStorage is the current persistence layer (migration to Supabase Postgres underway). Target state: all deal pipeline, session state, and user data persisted to Supabase with real-time sync across devices.
@@ -68,6 +72,14 @@ These thresholds are referenced throughout the skills and should not be changed 
 - **Year 3/4 YOC target:** 7.5%–8.0%
 - **Sourcing:** 95% non-marketed / off-market
 
+## Output Quality Standard
+
+All output-producing skills reference `output-standard/STANDARD.md`.
+
+This file defines formatting, color palette (Midnight Executive), typography, data integrity rules, and QA protocol for all PPTX, PDF, and Excel deliverables. It supersedes any defaults in individual skill files.
+
+Skills covered: acq-investment-report, the-gavel, cre-legal-reviewer, lens, scout, lease-comp-map, canvas, napkin, market-pulse, dd-tracker, debt-tool.
+
 ## Key Files
 
 - `index.html` — entire application
@@ -77,6 +89,7 @@ These thresholds are referenced throughout the skills and should not be changed 
 - `pipeline/SKILL.md` — pipeline stage definitions, deal record schema, command parsing
 - `daily-signal/SKILL.md` — CoStar scoring rules, re-signal logic
 - `waterfall/SKILL.md` — GP/LP waterfall structure, tier calculations, LP/GP assessment framework
+- `output-standard/STANDARD.md` — universal output quality standard (PPTX, PDF, Excel)
 - `.claude/settings.json` — project-level Claude Code permissions
 
 ## Pipeline Stage Sequence
