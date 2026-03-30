@@ -3363,32 +3363,33 @@ async function _sbLoadDeals() {
 }
 
 async function _sbUpsertDeal(deal) {
-  if (!_sbOk || !_sb) return;
-  try {
-    await _sb.from('deals').upsert({
-      id: deal.id,
-      address: deal.addr,
-      asset_type: deal.type,
-      asking_price: deal.price || null,
-      sf: deal.sf || null,
-      market: deal.mkt,
-      stage: deal.stage,
-      conviction: deal.conv,
-      broker: deal.broker,
-      notes: deal.notes,
-      data: Object.assign(deal.data || {}, { nextDate: deal.nextDate }),
-      created_at: deal.createdAt,
-      updated_at: deal.updatedAt
-    }, { onConflict: 'id' });
-    // Fire-and-forget embedding
-    var _dealEmbedText = [deal.addr, deal.mkt, deal.stage, deal.type, deal.conv, deal.notes].filter(Boolean).join(' ');
-    _generateEmbedding(_dealEmbedText).then(function(vec) {
-      if (vec && _sb) { try { _sb.from('deals').update({ embedding: '[' + vec.join(',') + ']' }).eq('id', deal.id); } catch(e) {} }
-    });
-  } catch(e) {
-    console.warn('[RIDGE] _sbUpsertDeal failed for deal:', deal.addr || deal.id, e);
-    throw e;
+  if (!_sbOk || !_sb) return false;
+  var payload = {
+    id: deal.id,
+    address: deal.addr,
+    asset_type: deal.type || null,
+    asking_price: deal.price || null,
+    sf: deal.sf || null,
+    market: deal.mkt || null,
+    stage: deal.stage || null,
+    conviction: deal.conv || null,
+    broker: deal.broker || null,
+    notes: deal.notes || null,
+    data: Object.assign({}, deal.data || {}, { nextDate: deal.nextDate || null }),
+    created_at: deal.createdAt,
+    updated_at: deal.updatedAt
+  };
+  var result = await _sb.from('deals').upsert(payload, { onConflict: 'id' });
+  if (result.error) {
+    console.error('[RIDGE] DEALS UPSERT ERROR:', JSON.stringify(result.error));
+    return false;
   }
+  // Fire-and-forget embedding
+  var _dealEmbedText = [deal.addr, deal.mkt, deal.stage, deal.type, deal.conv, deal.notes].filter(Boolean).join(' ');
+  _generateEmbedding(_dealEmbedText).then(function(vec) {
+    if (vec && _sb) { try { _sb.from('deals').update({ embedding: '[' + vec.join(',') + ']' }).eq('id', deal.id); } catch(e) {} }
+  });
+  return true;
 }
 
 async function _sbDeleteDeal(id) {
@@ -3418,12 +3419,13 @@ async function plUpdateDeal(id, updates) {
   if (idx > -1) {
     Object.assign(deals[idx], updates);
     deals[idx].updatedAt = new Date().toISOString();
+    var sbSaved = false;
     if (_sbOk && _sb) {
-      try { await _sbUpsertDeal(deals[idx]); }
-      catch(e) { console.warn('[RIDGE] Supabase unavailable — deal update kept in localStorage only:', deals[idx].addr); }
+      sbSaved = await _sbUpsertDeal(deals[idx]);
+      if (!sbSaved) console.warn('[RIDGE] deal update kept in localStorage only:', deals[idx].addr);
     }
     savePipelineDeals(deals);
-    if (_sbOk && _sb && updates.stage) {
+    if (sbSaved && updates.stage) {
       _sb.from('activity_log').insert({
         deal_id: id,
         action: 'STAGE_CHANGE',
@@ -3479,9 +3481,11 @@ async function plAddDeal() {
   var deal = Object.assign({ id: crypto.randomUUID(), createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }, fields);
   var deals = getPipelineDeals();
   deals.unshift(deal);
+  var sbSaved = false;
   if (_sbOk && _sb) {
-    try { await _sbUpsertDeal(deal); }
-    catch(e) { console.warn('[RIDGE] Supabase unavailable — new deal saved to localStorage only:', deal.addr); }
+    console.log('[RIDGE] UPSERT PAYLOAD:', JSON.stringify(deal));
+    sbSaved = await _sbUpsertDeal(deal);
+    if (!sbSaved) console.warn('[RIDGE] new deal saved to localStorage only:', deal.addr);
   }
   savePipelineDeals(deals);
   // Clear form
@@ -3489,7 +3493,7 @@ async function plAddDeal() {
     var el = document.getElementById(id); if (el) el.value = '';
   });
   plToggleAddForm();
-  if (_sbOk && _sb) {
+  if (sbSaved) {
     _sb.from('activity_log').insert({
       deal_id: deal.id,
       action: 'DEAL_ADDED',
