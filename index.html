@@ -3429,7 +3429,7 @@ async function plUpdateDeal(id, updates) {
         action: 'STAGE_CHANGE',
         notes: 'Moved to ' + updates.stage,
         user_name: 'Rhett'
-      }).catch(function(e) { console.warn('activity_log failed:', e); });
+      }).then(function(r) { if (r && r.error) console.warn('activity_log failed:', r.error); });
     }
     renderPipeline();
   }
@@ -3495,7 +3495,7 @@ async function plAddDeal() {
       action: 'DEAL_ADDED',
       notes: 'Added to pipeline at ' + deal.stage,
       user_name: 'Rhett'
-    }).catch(function(e) { console.warn('activity_log failed:', e); });
+    }).then(function(r) { if (r && r.error) console.warn('activity_log failed:', r.error); });
   }
   _plFilter = 'All';
   renderPipeline();
