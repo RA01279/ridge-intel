@@ -3727,6 +3727,12 @@ async function plSaveEdit(id) {
   var idx = deals.findIndex(function(d) { return d.id === id; });
   if (idx === -1) { showToast('Deal not found'); return; }
   var updates = _getPipelineFormData('ple');
+  ['price', 'sf'].forEach(function(k) {
+    if (updates[k] != null && updates[k] !== '') {
+      var n = parseFloat(String(updates[k]).replace(/,/g, ''));
+      if (!isNaN(n)) updates[k] = n;
+    }
+  });
   Object.assign(deals[idx], updates);
   deals[idx].updatedAt = new Date().toISOString();
   savePipelineDeals(deals);
