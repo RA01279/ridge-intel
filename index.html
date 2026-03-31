@@ -3403,6 +3403,80 @@ async function _sbDeleteDeal(id) {
   if (result.error) console.warn('[RIDGE] deal delete failed:', JSON.stringify(result.error));
 }
 
+// ── LEASE TABLE PARSER ───────────────────────────────────────
+// Parses pipe-delimited rent roll / comp tables from Claude output.
+// Handles: TENANT|SF|LEASE EXP|IN-PLACE RENT|MARKET RENT|DELTA
+//      and: ADDRESS|TENANT|SF|EFF. RATE PSF|FREE RENT|TI PSF|TYPE
+// Returns [] (never throws) if no table found.
+function _parseLeaseTable(text) {
+  if (!text) return [];
+  try {
+    var lines = text.split('\n');
+    var headerIdx = -1;
+    var headers = [];
+    for (var i = 0; i < lines.length; i++) {
+      if (/TENANT|Tenant/i.test(lines[i]) && /\|/.test(lines[i])) {
+        headerIdx = i;
+        headers = lines[i].split('|').map(function(h) { return h.trim().toUpperCase().replace(/[\s\-./]+/g, '_'); });
+        break;
+      }
+    }
+    if (headerIdx === -1) return [];
+    var col = function(keys) {
+      for (var k = 0; k < keys.length; k++) {
+        for (var hi = 0; hi < headers.length; hi++) {
+          if (headers[hi].indexOf(keys[k]) !== -1) return hi;
+        }
+      }
+      return -1;
+    };
+    var cTenant = col(['TENANT', 'ADDRESS']);
+    var cSF     = col(['SF', 'SQ', 'SIZE']);
+    var cExp    = col(['EXP', 'EXPIR']);
+    var cRent   = col(['IN-PLACE', 'BASE_RENT', 'EFF', 'RENT_PSF', 'RENT']);
+    var cTI     = col(['TI_PSF', 'TI', 'TENANT_I']);
+    var cFree   = col(['FREE_RENT', 'FREE']);
+    var cType   = col(['LEASE_TYPE', 'TYPE']);
+    if (cTenant === -1) return [];
+    var startIdx = headerIdx + 1;
+    if (startIdx < lines.length && /^[\s\-|]+$/.test(lines[startIdx])) startIdx++;
+    var rows = [];
+    for (var j = startIdx; j < lines.length; j++) {
+      var row = lines[j];
+      if (!row.trim() || !/\|/.test(row)) break;
+      var cells = row.split('|').map(function(c) { return c.trim(); });
+      var tenant = cTenant >= 0 ? (cells[cTenant] || '') : '';
+      if (!tenant || /^(TOTAL|WTD\.?\s*AVG|WEIGHTED|\u2014+|-{2,})$/i.test(tenant)) continue;
+      var num = function(ci) {
+        if (ci < 0 || !cells[ci]) return null;
+        var v = parseFloat((cells[ci] || '').replace(/[$,\s]/g, ''));
+        return isNaN(v) ? null : v;
+      };
+      var obj = { tenant: tenant };
+      var sfv = num(cSF);       if (sfv)           obj.sf = sfv;
+      var rv  = num(cRent);     if (rv)            obj.base_rent_psf = rv;
+      var tiv = num(cTI);       if (tiv)           obj.ti_psf = tiv;
+      var frv = num(cFree);     if (frv)           obj.free_rent_months = frv;
+      if (cExp >= 0  && cells[cExp])  obj.expiration_date = cells[cExp];
+      if (cType >= 0 && cells[cType]) obj.lease_type = cells[cType];
+      rows.push(obj);
+    }
+    return rows;
+  } catch(e) { return []; }
+}
+
+// Upserts parsed lease rows to Supabase, deduplicating on address+tenant.
+// Never throws — wraps all errors as console.warn.
+async function _writeLeaseRows(rows, address, source) {
+  if (!rows || !rows.length || !_sbOk || !_sb) return;
+  try {
+    var inserts = rows.map(function(r) { return Object.assign({ address: address || null }, r); });
+    var res = await _sb.from('leases').upsert(inserts, { onConflict: 'address,tenant', ignoreDuplicates: false });
+    if (res.error) console.warn('[RIDGE] ' + source + ' leases write failed:', JSON.stringify(res.error));
+    else console.log('[RIDGE] ' + source + ' wrote ' + rows.length + ' leases to DB');
+  } catch(e) { console.warn('[RIDGE] ' + source + ' leases exception:', e.message); }
+}
+
 /* ═══════════════════════════════════
    PIPELINE — STANDALONE DEAL BOARD
 ═══════════════════════════════════ */
@@ -3649,9 +3723,36 @@ function renderPipeline() {
 }
 
 async function plSaveEdit(id) {
-  var updates = _getPipelineFormData('ple'); // returns only fields present in the edit form
-  await plUpdateDeal(id, updates); // plUpdateDeal calls renderPipeline() internally
+  var deals = getPipelineDeals();
+  var idx = deals.findIndex(function(d) { return d.id === id; });
+  if (idx === -1) { showToast('Deal not found'); return; }
+  var updates = _getPipelineFormData('ple');
+  Object.assign(deals[idx], updates);
+  deals[idx].updatedAt = new Date().toISOString();
+  savePipelineDeals(deals);
+  if (_sbOk && _sb) {
+    var d = deals[idx];
+    var payload = {
+      id: d.id,
+      address: d.addr || null,
+      asset_type: d.type || null,
+      asking_price: d.price ? parseFloat(d.price.toString().replace(/,/g, '')) : null,
+      sf: d.sf ? parseFloat(d.sf.toString().replace(/,/g, '')) : null,
+      market: d.mkt || null,
+      stage: d.stage || null,
+      conviction: d.conv || null,
+      broker: d.broker || null,
+      notes: d.notes || null,
+      data: { nextDate: d.nextDate || null },
+      updated_at: d.updatedAt
+    };
+    console.log('[RIDGE] EDIT PAYLOAD:', JSON.stringify(payload));
+    var result = await _sb.from('deals').upsert(payload, { onConflict: 'id' });
+    console.log('[RIDGE] EDIT RESULT:', JSON.stringify(result));
+    if (result.error) console.error('[RIDGE] EDIT ERROR:', JSON.stringify(result.error));
+  }
   _plEditId = null;
+  renderPipeline();
   showToast('Deal updated');
 }
 
@@ -5661,7 +5762,7 @@ async function runRidgeAPI(skillName, prompt, runInputs, runToolId) {
         // LOI splits address across d.addr (street) + d.city (city/state).
         var _soAddr = null;
         if (_lastRunInputs) {
-          var _rawAddr = (_lastRunInputs.addr || '').trim() || (_lastRunInputs.deal || '').trim();
+          var _rawAddr = (_lastRunInputs.addr || _lastRunInputs.address || _lastRunInputs.subject || '').trim() || (_lastRunInputs.deal || _lastRunInputs.property || '').trim();
           if (_rawAddr && _lastRunInputs.city) _rawAddr = _rawAddr + ', ' + (_lastRunInputs.city || '').trim();
           _soAddr = _rawAddr || null;
         }
@@ -5779,7 +5880,7 @@ async function runRidgeAPI(skillName, prompt, runInputs, runToolId) {
               await _sb.from('leases').update(_leaseUpdate).eq('id', _leaseId);
               console.log('leases row updated:', _leaseId);
             } else {
-              var _insertRes = await _sb.from('leases').insert(_leaseUpdate).select('id').single();
+              var _insertRes = await _sb.from('leases').upsert(_leaseUpdate, { onConflict: 'address,tenant' }).select('id').single();
               if (_insertRes.data) {
                 _embedRowId = _insertRes.data.id;
                 if (!STATE['gavel']) STATE['gavel'] = {};
@@ -5799,6 +5900,62 @@ async function runRidgeAPI(skillName, prompt, runInputs, runToolId) {
             }
           } catch(e) { console.warn('leases update/insert failed:', e); }
       } catch(e) { console.warn('Gavel leases block failed:', e); }
+      }
+      // ── LEASE DB: post-run wiring for lens, isr, lease-comp, lease-stack, lease-compare, legal ──
+      if (_lastRunToolId && ['lens','isr','lease-comp','lease-stack','lease-compare','legal'].indexOf(_lastRunToolId) !== -1) {
+        try {
+          var _lAddr = _soAddr || (_lastRunInputs && (_lastRunInputs.addr || _lastRunInputs.address || _lastRunInputs.deal)) || null;
+          var _lRows = [];
+          if (_lastRunToolId === 'lens' || _lastRunToolId === 'isr') {
+            _lRows = _parseLeaseTable(accumulated);
+            // Fallback: parse extracted PDF text from skill_output_documents
+            if (!_lRows.length && _soId) {
+              try {
+                var _dRes = await _sb.from('skill_output_documents').select('extracted_text').eq('skill_output_id', _soId).limit(5);
+                (_dRes.data || []).forEach(function(doc) {
+                  if (!_lRows.length) _lRows = _parseLeaseTable(doc.extracted_text || '');
+                });
+              } catch(e) {}
+            }
+            await _writeLeaseRows(_lRows, _lAddr, _lastRunToolId.toUpperCase());
+          } else if (_lastRunToolId === 'lease-comp') {
+            _lRows = _parseLeaseTable(accumulated);
+            await _writeLeaseRows(_lRows, _lAddr, 'LEASE_COMP_MAP');
+          } else if (_lastRunToolId === 'lease-stack') {
+            _lRows = _parseLeaseTable(accumulated);
+            await _writeLeaseRows(_lRows, _lAddr, 'LEASE_STACK');
+          } else if (_lastRunToolId === 'lease-compare') {
+            _lRows = _parseLeaseTable(accumulated);
+            if (_lRows.length) {
+              var _opts = ['A','B','C','D','E'];
+              _lRows = _lRows.map(function(r, i) {
+                return Object.assign({}, r, { tenant: r.tenant + ' \u2014 Option ' + (_opts[i] || (i + 1)) });
+              });
+            }
+            await _writeLeaseRows(_lRows, _lAddr, 'LEASE_COMPARE');
+          } else if (_lastRunToolId === 'legal') {
+            _lRows = _parseLeaseTable(accumulated);
+            if (!_lRows.length) {
+              // Fallback: extract core terms from Executive Summary section
+              var _exM = accumulated.match(/executive\s+summary[\s\S]{0,2000}/i);
+              if (_exM) {
+                var _exT = _exM[0];
+                var _tM = _exT.match(/tenant[:\s]+([^\n]{3,60})/i);
+                var _sM = _exT.match(/(\d[\d,]+)\s*(?:sf|sq\.?\s*ft)/i);
+                var _rM = _exT.match(/\$(\d[\d,.]+)\s*(?:psf|per\s+sq)/i);
+                var _mT = _exT.match(/(\d+)[- ]month/i);
+                if (_tM) {
+                  var _fb = { tenant: _tM[1].trim() };
+                  if (_sM) _fb.sf = parseFloat(_sM[1].replace(/,/g, ''));
+                  if (_rM) _fb.base_rent_psf = parseFloat(_rM[1].replace(/,/g, ''));
+                  if (_mT) _fb.lease_term_months = parseInt(_mT[1]);
+                  _lRows = [_fb];
+                }
+              }
+            }
+            await _writeLeaseRows(_lRows, _lAddr, 'LEGAL_REVIEW');
+          }
+        } catch(e) { console.warn('[RIDGE] lease post-run failed:', e.message); }
       }
     }
   } catch(e) {
