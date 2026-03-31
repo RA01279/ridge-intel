@@ -6031,7 +6031,7 @@ function histView(id) {
   spinnerEl.style.display = 'none';
   contentEl.style.display = 'block';
   contentEl.innerHTML = parseMarkdown(row.output || '');
-  if (row.address) showPropertyMap(row.address);
+  if (row.address) showPropertyMap(row.address, row.skill_name || '');
   else hidePropertyMap();
   document.getElementById('ridge-copy-btn').disabled = false;
   document.getElementById('ridge-pdf-btn').disabled = false;
@@ -6095,12 +6095,49 @@ async function histSemanticSearch() {
   }
 }
 
-async function showPropertyMap(address) {
-  if (!_mapsKey || !address) return;
+async function showPropertyMap(address, skillName) {
   var container = document.getElementById('ridge-map-container');
   if (!container) return;
+  var isISR = skillName && skillName.toUpperCase().includes('ACQUISITION');
+  var enc = encodeURIComponent(address || '');
+
+  if (isISR) {
+    // ISR — dual map: aerial left, street view right
+    var aerialSrc = _mapsKey
+      ? 'https://www.google.com/maps/embed/v1/place?key=' + _mapsKey + '&q=' + enc + '&zoom=16&maptype=satellite'
+      : null;
+    var svSrc = _mapsKey
+      ? 'https://www.google.com/maps/embed/v1/streetview?key=' + _mapsKey + '&location=' + enc + '&fov=90&heading=235&pitch=10'
+      : null;
+    var mapStyle = 'width:50%;height:340px;border-radius:6px;border:0;display:block;';
+    var phStyle  = 'width:50%;height:340px;border-radius:6px;background:#1E2761;display:flex;align-items:center;justify-content:center;flex-shrink:0;';
+    var lblStyle = 'font-size:10px;font-variant:small-caps;color:#1E2761;text-align:center;margin-top:4px;letter-spacing:.08em;font-weight:600;';
+
+    function mapBlock(src, label, placeholder) {
+      if (src) {
+        return '<div style="width:50%;display:flex;flex-direction:column;">'
+          + '<iframe src="' + src + '" style="' + mapStyle + '" frameborder="0" allowfullscreen></iframe>'
+          + '<div style="' + lblStyle + '">' + label + '</div>'
+          + '</div>';
+      }
+      return '<div style="' + phStyle + 'flex-direction:column;">'
+        + '<span style="color:#CADCFC;font-size:11px;font-variant:small-caps;text-align:center;padding:0 12px;">' + placeholder + '</span>'
+        + '<div style="' + lblStyle.replace('#1E2761','#CADCFC') + 'margin-top:10px;">' + label + '</div>'
+        + '</div>';
+    }
+
+    container.style.display = 'block';
+    container.innerHTML = '<div style="display:flex;flex-direction:row;gap:8px;">'
+      + mapBlock(aerialSrc, 'AERIAL VIEW', 'Maps API key required')
+      + mapBlock(svSrc, 'STREET VIEW', 'Maps API key required')
+      + '</div>';
+    return;
+  }
+
+  // All other skills — original single satellite embed
+  if (!_mapsKey || !address) return;
   container.style.display = 'block';
-  container.innerHTML = '<iframe width="100%" height="280" frameborder="0" style="border:0" allowfullscreen src="https://www.google.com/maps/embed/v1/place?key=' + _mapsKey + '&q=' + encodeURIComponent(address) + '&zoom=15&maptype=satellite"></iframe>';
+  container.innerHTML = '<iframe width="100%" height="280" frameborder="0" style="border:0" allowfullscreen src="https://www.google.com/maps/embed/v1/place?key=' + _mapsKey + '&q=' + enc + '&zoom=15&maptype=satellite"></iframe>';
 }
 
 function hidePropertyMap() {
@@ -6201,7 +6238,7 @@ async function runRidgeAPI(skillName, prompt, runInputs, runToolId) {
     if (skillName.toLowerCase().includes('gavel') && gavelAddrEl && gavelAddrEl.value) {
       mapAddr = gavelAddrEl.value;
     }
-    showPropertyMap(mapAddr);
+    showPropertyMap(mapAddr, skillName);
   }
   var contentEl = document.getElementById('ridge-panel-content');
   var spinnerEl = document.getElementById('ridge-spinner');
