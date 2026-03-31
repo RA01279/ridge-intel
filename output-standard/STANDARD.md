@@ -24,20 +24,59 @@ All skills that produce a deliverable must reference and apply this document.
 
 These rules apply to every output type — PPTX, PDF, and Excel.
 
-### 2.1 Data Integrity (Non-Negotiable)
+### 2.1 Data Integrity — Non-Negotiable
 
-- Every number must be sourced directly from the uploaded model, OM, or CoStar export — **never estimated or fabricated**
-- If a value cannot be confirmed from source: use `[VERIFY]` — never guess
-- After generation, cross-check every KPI against source using markitdown (PPTX/DOCX) or read_excel (XLSX) — verify values match
-- **Number formatting is mandatory and consistent:**
+Every number in every RIDGE output traces to one of three verified sources:
+1. Uploaded acquisition model (.xlsx) — primary for all return metrics
+2. Uploaded broker OM (.pdf) — primary for rent roll, market data, property details
+3. CoStar export provided by user — primary for comp data
 
-| Type | Format | Never |
+RIDGE never fabricates, estimates, or interpolates a number without explicitly flagging it as [ESTIMATE] or [VERIFY].
+
+**Number formatting is mandatory, consistent, and non-negotiable across all output types:**
+
+| Type | Format | Example | Never |
+|---|---|---|---|
+| IRR | XX.XX% | 14.75% | 14.8% or 15% |
+| YOC | X.XX% | 7.50% | 7.5% or 8% |
+| Cap Rate | X.XX% | 6.25% | 6.3% or 6% |
+| Equity Multiple | X.XXx | 1.77x | 1.8x |
+| DSCR | X.XXx | 1.47x | 1.5x |
+| Currency | $X,XXX,XXX | $26,499,352 | $26.5M |
+| PSF | $XXX.XX PSF | $172.00 PSF | $172 PSF |
+| SF | XXX,XXX SF | 154,066 SF | 154K SF |
+| All percentages | X.XX% minimum | 5.50% | 5.5% or 6% |
+| All multiples | X.XXx | 1.77x | 1.8x |
+
+Two decimal places are required on ALL financial metrics without exception. This applies to PPTX slides, PDF reports, Excel workbooks, and inline Claude responses.
+
+**Hurdle rates are fixed and must appear correctly on every output that references them:**
+
+| Metric | Hurdle | Notes |
 |---|---|---|
-| Currency | $X,XXX,XXX | $X.XXm or shorthand |
-| PSF | $XXX PSF (always include unit) | $XXX without unit |
-| Percentages | X.X% (one decimal) | Rounding to whole number |
-| Multiples | X.XXx (two decimals) | X.Xx |
-| Square feet | XXX,XXX SF (comma-formatted) | 62k SF or abbreviation |
+| Levered IRR | ≥ 14.75% | Hard floor — 14.75% is a stretch requiring justification, not a comfortable pass |
+| Equity Multiple | ≥ 1.70x floor / 1.80x–2.20x target | Floor is minimum; target range is the goal |
+| YOC Year 3/4 | 7.50%–8.00% | Primary underwriting anchor |
+| LTV | ≤ 65.00% | Hard ceiling |
+| DSCR | ≥ 1.25x | Minimum coverage |
+| Hold Period | 3–7 years | Value-add primary |
+| Deal Size | $10M–$70M | Sweet spot $25M–$35M |
+
+**Blank hurdle fields are a data integrity failure.**
+Any output showing a hurdle as blank, "—", "N/A", or "TBD" where a known hurdle exists must be corrected before delivery.
+
+Where no hard hurdle exists, use these contextual benchmark labels instead of blank or "—":
+
+| Metric | Benchmark Label |
+|---|---|
+| Going-In Cap Rate | Market context only |
+| Exit Cap Rate | Conservative vs. market comps |
+| Unlevered IRR | Reference — project-level return |
+| Unlevered Equity Multiple | Reference only |
+| YOC Year 1 | Building to 7.50–8.00% hurdle |
+| YOC Year 2 | Building to 7.50–8.00% hurdle |
+| YOC Year 5 | Stabilized target range |
+| Unlevered Cash-on-Cash | Reference only |
 
 ### 2.2 Zero-Tolerance Errors
 

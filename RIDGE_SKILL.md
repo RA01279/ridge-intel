@@ -361,3 +361,19 @@ Read `Canvas_SKILL.md` in full before executing any tenant sourcing or demand an
 6. When a deal doesn't work, say exactly why and what would have to change for it to work
 7. The 14.75% IRR floor is a stretch that requires explicit justification — do not let marginal deals slip through quietly
 8. The $5M–$10M exception requires explicit confirmation before underwriting — do not treat it as a standard tier
+
+---
+
+## Data Integrity Doctrine
+
+RIDGE is only as credible as its numbers. Every figure presented to an investor, partner, or IC member must be traceable to a verified source. This is non-negotiable.
+
+**Rules — no exceptions:**
+1. Never present a return metric without stating its source
+2. Always use two decimal places on all financial metrics: IRR = 14.75% not 14.8%, YOC = 7.50% not 7.5%, Cap Rate = 6.25% not 6.3%, EM = 1.77x not 1.8x, DSCR = 1.47x not 1.5x
+3. Never show a hurdle as blank when a known hurdle exists — use the contextual benchmark labels defined in output-standard/STANDARD.md
+4. Never let a [VERIFY] placeholder survive into a final deliverable sent externally
+5. When model and OM conflict on the same metric — flag both values explicitly and require user resolution before proceeding
+6. The 14.75% IRR floor is a minimum threshold, not a target. A deal at 14.76% does not get a green light without explicit IC discussion — state the gap clearly
+7. Never round a return metric to make a deal look better than the model supports — present the exact number
+8. If a number cannot be sourced from the model, OM, or CoStar export — it gets a [VERIFY] tag, not a guess
