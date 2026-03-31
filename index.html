@@ -3466,12 +3466,29 @@ function _parseLeaseTable(text) {
   } catch(e) { return []; }
 }
 
+function _parseLeaseDate(str) {
+  if (!str) return null;
+  var months = {Jan:1,Feb:2,Mar:3,Apr:4,May:5,Jun:6,
+                Jul:7,Aug:8,Sep:9,Oct:10,Nov:11,Dec:12};
+  var m = str.match(/^([A-Za-z]{3})[- ](\d{4})$/);
+  if (m) {
+    var mo = months[m[1]];
+    if (mo) return m[2] + '-' + String(mo).padStart(2,'0') + '-01';
+  }
+  // Already ISO format or unparseable
+  return str.length === 10 ? str : null;
+}
+
 // Upserts parsed lease rows to Supabase, deduplicating on address+tenant.
 // Never throws — wraps all errors as console.warn.
 async function _writeLeaseRows(rows, address, source) {
   if (!rows || !rows.length || !_sbOk || !_sb) return;
   try {
-    var inserts = rows.map(function(r) { return Object.assign({ address: address || null }, r); });
+    var inserts = rows.map(function(r) {
+      var row = Object.assign({ address: address || null }, r);
+      if (row.expiration_date) row.expiration_date = _parseLeaseDate(row.expiration_date);
+      return row;
+    });
     var res = await _sb.from('leases').upsert(inserts, { onConflict: 'address,tenant', ignoreDuplicates: false });
     if (res.error) console.warn('[RIDGE] ' + source + ' leases write failed:', JSON.stringify(res.error));
     else console.log('[RIDGE] ' + source + ' wrote ' + rows.length + ' leases to DB');
@@ -5713,18 +5730,18 @@ async function runRidgeAPI(skillName, prompt, runInputs, runToolId) {
     if (_lastRunToolId && STATE[_lastRunToolId]) {
       STATE[_lastRunToolId].result = accumulated;
     }
-    /* DISABLED FOR DIAGNOSIS — JSON strip block (re-enable after root cause confirmed)
     if (_lastRunToolId === 'isr' || _lastRunToolId === 'gavel') {
-      var _jClean = accumulated.replace(/\n*```json[^`]*```\s*$/, '');
-      if (_jClean.length < accumulated.length) {
+      var _fenceIdx = accumulated.lastIndexOf('\n```json');
+      if (_fenceIdx > -1) {
+        var _jClean = accumulated.substring(0, _fenceIdx);
         contentEl.innerHTML = parseMarkdown(_jClean);
         if (_lastRunToolId === 'isr') {
-          var _jm2 = accumulated.match(/```json([^`]*)```\s*$/);
+          var _jRaw = accumulated.substring(_fenceIdx);
+          var _jm2 = _jRaw.match(/```json\s*([\s\S]*?)```/);
           if (_jm2) { try { _isrParsedData = JSON.parse(_jm2[1]); } catch(e) {} }
         }
       }
     }
-    */
     console.log('Stream complete — about to enter Supabase post-run block');
     document.getElementById('ridge-pdf-btn').disabled = false;
     document.getElementById('ridge-ppt-btn').disabled = false;
