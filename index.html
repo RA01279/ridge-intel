@@ -5717,11 +5717,11 @@ async function runRidgeAPI(skillName, prompt, runInputs, runToolId) {
     // data extraction only and must never be shown to the user. _skillRawOutputs keeps
     // the full text (with JSON) so the PPTX builder and Gavel lease-DB wiring still work.
     if (_lastRunToolId === 'isr' || _lastRunToolId === 'gavel') {
-      var _jClean = accumulated.replace(/\n*```json[\s\S]*?```\s*$/, '');
+      var _jClean = accumulated.replace(/\n*```json[^`]*```\s*$/, '');
       if (_jClean.length < accumulated.length) {
         contentEl.innerHTML = parseMarkdown(_jClean);
         if (_lastRunToolId === 'isr') {
-          var _jm2 = accumulated.match(/```json\s*([\s\S]*?)```\s*$/);
+          var _jm2 = accumulated.match(/```json([^`]*)```\s*$/);
           if (_jm2) { try { _isrParsedData = JSON.parse(_jm2[1]); } catch(e) {} }
         }
       }
