@@ -357,10 +357,78 @@ footer{border-top:1px solid var(--border);padding:20px 24px;text-align:center;co
   /* 6. Hero title — reduce size */
   .hero-title{font-size:28px;letter-spacing:2px;}
 }
+
+/* ── RIDGE AUTH GATE ─────────────────────────────── */
+@keyframes ridge-gate-shake {
+  0%,100%{transform:translateX(0)}
+  20%,60%{transform:translateX(-9px)}
+  40%,80%{transform:translateX(9px)}
+}
+#ridge-gate {
+  display:none;
+  position:fixed;top:0;left:0;width:100%;height:100%;
+  background:#0B0F1A;
+  z-index:99999;
+  align-items:center;justify-content:center;
+}
+#ridge-gate.active{display:flex;}
+#ridge-gate-card{
+  display:flex;flex-direction:column;align-items:center;gap:20px;
+}
+#ridge-gate-logo{
+  font-family:var(--mono);font-size:38px;font-weight:700;
+  letter-spacing:10px;color:#FFFFFF;
+}
+#ridge-gate-sub{
+  font-family:var(--mono);font-size:11px;letter-spacing:3px;
+  color:#3A5A9A;text-transform:uppercase;margin-top:-12px;
+}
+#ridge-gate-input{
+  background:#0F1827;
+  border:1px solid #243558;
+  border-radius:4px;
+  color:#FFFFFF;
+  font-family:var(--mono);font-size:14px;letter-spacing:5px;
+  padding:13px 24px;text-align:center;text-transform:uppercase;
+  outline:none;width:220px;
+  transition:border-color 0.2s;
+}
+#ridge-gate-input::placeholder{letter-spacing:3px;color:#2A3F60;font-size:12px;}
+#ridge-gate-input:focus{border-color:#3A5A9A;}
+#ridge-gate-input.shake{animation:ridge-gate-shake 0.38s ease;}
+#ridge-gate-btn{
+  background:#1E2761;border:1px solid #2A3A70;border-radius:4px;
+  color:#FFFFFF;cursor:pointer;
+  font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:2px;
+  padding:10px 40px;text-transform:uppercase;transition:background 0.2s;
+}
+#ridge-gate-btn:hover{background:#263380;}
 </style>
 </head>
 <body>
 
+<!-- RIDGE AUTH GATE — hides app until correct access code entered -->
+<style id="ridge-auth-hide">#ridge-app{display:none!important}</style>
+<div id="ridge-gate">
+  <div id="ridge-gate-card">
+    <div id="ridge-gate-logo">RIDGE</div>
+    <div id="ridge-gate-sub">Acquisitions Intelligence</div>
+    <input type="password" id="ridge-gate-input" placeholder="ACCESS CODE"
+      autocomplete="off" maxlength="32"
+      onkeydown="if(event.key==='Enter')ridgeGateSubmit()" />
+    <button id="ridge-gate-btn" onclick="ridgeGateSubmit()">ENTER</button>
+  </div>
+</div>
+<script>
+(function(){
+  if(sessionStorage.getItem('ridge_auth')==='true'){
+    var s=document.getElementById('ridge-auth-hide');
+    if(s)s.parentNode.removeChild(s);
+  } else {
+    document.getElementById('ridge-gate').classList.add('active');
+  }
+})();
+</script>
 
 <!-- LAUNCH MODAL -->
 <div class="modal-bg" id="launch-modal">
@@ -496,6 +564,7 @@ footer{border-top:1px solid var(--border);padding:20px 24px;text-align:center;co
   </div>
 </div>
 
+<div id="ridge-app">
 <!-- HEADER -->
 <header>
   <div class="hdr-left">
@@ -1203,6 +1272,7 @@ footer{border-top:1px solid var(--border);padding:20px 24px;text-align:center;co
 
 </main>
 <footer>RIDGE Intelligence Platform · Entrada Partners · 14 Skills Active · ATL · SAV · DFW · HOU</footer>
+</div><!-- /#ridge-app -->
 
 <script>
 // ═══════════════════════════════════════════════════════════
@@ -5731,7 +5801,8 @@ async function runRidgeAPI(skillName, prompt, runInputs, runToolId) {
       STATE[_lastRunToolId].result = accumulated;
     }
     if (_lastRunToolId === 'isr' || _lastRunToolId === 'gavel') {
-      var _fenceIdx = accumulated.lastIndexOf('\n```json');
+      var _fenceIdx = accumulated.lastIndexOf('```json');
+      console.log('[RIDGE] JSON strip: fenceIdx=', _fenceIdx, 'accumulated length=', accumulated.length);
       if (_fenceIdx > -1) {
         var _jClean = accumulated.substring(0, _fenceIdx);
         contentEl.innerHTML = parseMarkdown(_jClean);
@@ -7724,6 +7795,24 @@ async function ridgeExportPPT() {
   await pptx.writeFile({fileName:fname});
 }
 
+
+function ridgeGateSubmit() {
+  var inp = document.getElementById('ridge-gate-input');
+  if (!inp) return;
+  if (inp.value === 'GATA') {
+    sessionStorage.setItem('ridge_auth', 'true');
+    document.getElementById('ridge-gate').classList.remove('active');
+    var s = document.getElementById('ridge-auth-hide');
+    if (s) s.parentNode.removeChild(s);
+    window.scrollTo(0, 0);
+  } else {
+    inp.classList.remove('shake');
+    void inp.offsetWidth; // force reflow to restart animation
+    inp.classList.add('shake');
+    inp.value = '';
+    inp.focus();
+  }
+}
 
 _migrateDSState(); // one-time migration of ridge_daily_sourced + ridge_ds_tracker → ridge_daily_state_v1
 _sbInit().then(async function() {
