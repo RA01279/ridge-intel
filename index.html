@@ -6102,6 +6102,12 @@ async function showPropertyMap(address, skillName) {
   var enc = encodeURIComponent(address || '');
 
   if (isISR) {
+    // ISR — always read f-isr-addr directly so we get the full address the user
+    // has in the form, not the potentially-truncated value captured at run-time.
+    var isrAddrEl = document.getElementById('f-isr-addr');
+    var isrAddr = (isrAddrEl && isrAddrEl.value.trim()) || address || '';
+    var enc = encodeURIComponent(isrAddr);
+
     // ISR — dual map: aerial left, street view right
     var aerialSrc = _mapsKey
       ? 'https://www.google.com/maps/embed/v1/place?key=' + _mapsKey + '&q=' + enc + '&zoom=16&maptype=satellite'
