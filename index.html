@@ -3003,7 +3003,7 @@ function buildTrigger(toolId, d) {
       console.log('ISR buildTrigger inputs:', {addr:d.addr, price:d.price, irr:d.irr, em:d.em, cap:d.cap, yoc:d.yoc, sf:d.sf});
       p = 'You are a senior acquisitions officer at Entrada Partners preparing an institutional investment committee presentation.\n\n';
       if (d.model_text) p += '=== ACQUISITION MODEL (rent roll, cash flows, assumptions) ===\n' + d.model_text.slice(0, 12000) + '\n\n';
-      var _cleanPrice = (d.price||'').replace(/[$,]/g,''), _cleanPSF = (d.psf||'').replace(/[$,]/g,'');
+      var _cleanPrice = String(d.price||'').replace(/[$,]/g,''), _cleanPSF = String(d.psf||'').replace(/[$,]/g,'');
       p += 'PROPERTY: ' + (d.addr||'') + '\nASSET TYPE: ' + (d.type||'') + '\nSIZE: ' + (d.sf||'') + ' SF\nPURCHASE PRICE: $' + _cleanPrice + ' ($' + _cleanPSF + ' PSF)\nLEVERED IRR: ' + (d.irr||'') + '\nEQUITY MULTIPLE: ' + (d.em||'') + '\nGOING-IN CAP: ' + (d.cap||'') + '\nYOC YR 3/4: ' + (d.yoc||'') + '\nLTV: ' + (d.ltv||'') + '\nHOLD: ' + (d.hold||'') + '\n\n';
       if (d.thesis) {
         p += 'ACQUISITION TEAM NOTES (use these directly in the Investment Thesis slide — do not override with generic content):\n' + d.thesis + '\n\n';
@@ -3673,7 +3673,7 @@ function renderPipeline() {
       html += '<div class="pl-edit-overlay">';
       html += '<div style="font-size:10px;font-weight:700;letter-spacing:1.5px;color:var(--blue);margin-bottom:10px;">EDIT DEAL</div>';
       html += '<div class="fr two" style="margin-bottom:8px;"><div class="fg"><label class="fl">Address</label><input id="ple-addr" type="text" value="' + d.addr.replace(/"/g,'&quot;') + '" style="background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:7px 10px;color:var(--text);font-size:12px;width:100%;outline:none;"></div>';
-      html += '<div class="fg"><label class="fl">Ask Price</label><input id="ple-price" type="text" value="' + (d.price||'').replace(/"/g,'&quot;') + '" style="background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:7px 10px;color:var(--text);font-size:12px;width:100%;outline:none;"></div></div>';
+      html += '<div class="fg"><label class="fl">Ask Price</label><input id="ple-price" type="text" value="' + String(d.price||'').replace(/"/g,'&quot;') + '" style="background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:7px 10px;color:var(--text);font-size:12px;width:100%;outline:none;"></div></div>';
       html += '<div class="fr three" style="margin-bottom:8px;"><div class="fg"><label class="fl">Stage</label><select id="ple-stage" style="background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:7px 10px;color:var(--text);font-size:12px;width:100%;">' +
         PL_STAGES.map(function(s){ return '<option value="'+s+'"'+(d.stage===s?' selected':'')+'>'+s+'</option>'; }).join('') + '</select></div>';
       html += '<div class="fg"><label class="fl">Conviction</label><select id="ple-conv" style="background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:7px 10px;color:var(--text);font-size:12px;width:100%;"><option'+(d.conv==='High Conviction'?' selected':'')+'>High Conviction</option><option'+(d.conv==='Needs More Data'?' selected':'')+'>Needs More Data</option><option'+(d.conv==='Watch List'?' selected':'')+'>Watch List</option></select></div>';
