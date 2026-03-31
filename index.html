@@ -6108,35 +6108,86 @@ async function showPropertyMap(address, skillName) {
     var isrAddr = (isrAddrEl && isrAddrEl.value.trim()) || address || '';
     var enc = encodeURIComponent(isrAddr);
 
-    // ISR — dual map: aerial left, street view right
+    var mapStyle = 'width:100%;height:340px;border-radius:6px;border:0;display:block;';
+    var phStyle  = 'width:100%;height:340px;border-radius:6px;background:#1E2761;display:flex;align-items:center;justify-content:center;flex-direction:column;';
+    var lblStyle = 'font-size:10px;font-variant:small-caps;color:#1E2761;text-align:center;margin-top:4px;letter-spacing:.08em;font-weight:600;';
+
+    // Aerial embed works fine with address string
     var aerialSrc = _mapsKey
       ? 'https://www.google.com/maps/embed/v1/place?key=' + _mapsKey + '&q=' + enc + '&zoom=16&maptype=satellite'
       : null;
-    var svSrc = _mapsKey
-      ? 'https://www.google.com/maps/embed/v1/streetview?key=' + _mapsKey + '&location=' + enc + '&fov=90&heading=235&pitch=10'
-      : null;
-    var mapStyle = 'width:50%;height:340px;border-radius:6px;border:0;display:block;';
-    var phStyle  = 'width:50%;height:340px;border-radius:6px;background:#1E2761;display:flex;align-items:center;justify-content:center;flex-shrink:0;';
-    var lblStyle = 'font-size:10px;font-variant:small-caps;color:#1E2761;text-align:center;margin-top:4px;letter-spacing:.08em;font-weight:600;';
 
-    function mapBlock(src, label, placeholder) {
-      if (src) {
+    function aerialBlock() {
+      if (aerialSrc) {
         return '<div style="width:50%;display:flex;flex-direction:column;">'
-          + '<iframe src="' + src + '" style="' + mapStyle + '" frameborder="0" allowfullscreen></iframe>'
-          + '<div style="' + lblStyle + '">' + label + '</div>'
+          + '<iframe src="' + aerialSrc + '" style="' + mapStyle + '" frameborder="0" allowfullscreen></iframe>'
+          + '<div style="' + lblStyle + '">AERIAL VIEW</div>'
           + '</div>';
       }
-      return '<div style="' + phStyle + 'flex-direction:column;">'
-        + '<span style="color:#CADCFC;font-size:11px;font-variant:small-caps;text-align:center;padding:0 12px;">' + placeholder + '</span>'
-        + '<div style="' + lblStyle.replace('#1E2761','#CADCFC') + 'margin-top:10px;">' + label + '</div>'
+      return '<div style="width:50%;display:flex;flex-direction:column;">'
+        + '<div style="' + phStyle + '">'
+        + '<span style="color:#CADCFC;font-size:11px;font-variant:small-caps;text-align:center;padding:0 12px;">Maps API key required</span>'
+        + '</div>'
+        + '<div style="' + lblStyle + '">AERIAL VIEW</div>'
         + '</div>';
     }
 
+    function svPlaceholder(msg) {
+      return '<div style="width:50%;display:flex;flex-direction:column;">'
+        + '<div style="' + phStyle + '">'
+        + '<span style="color:#CADCFC;font-size:11px;font-variant:small-caps;text-align:center;padding:0 12px;">' + msg + '</span>'
+        + '</div>'
+        + '<div style="' + lblStyle + '">STREET VIEW</div>'
+        + '</div>';
+    }
+
+    // Render immediately with aerial + loading placeholder for street view
     container.style.display = 'block';
     container.innerHTML = '<div style="display:flex;flex-direction:row;gap:8px;">'
-      + mapBlock(aerialSrc, 'AERIAL VIEW', 'Maps API key required')
-      + mapBlock(svSrc, 'STREET VIEW', 'Maps API key required')
+      + aerialBlock()
+      + svPlaceholder(_mapsKey ? 'Loading street view…' : 'Maps API key required')
       + '</div>';
+
+    if (!_mapsKey) return;
+
+    // Step 1 — geocode address to lat/lng (Street View embed requires coordinates)
+    try {
+      var geoResp = await fetch(
+        'https://maps.googleapis.com/maps/api/geocode/json?address=' + enc + '&key=' + _mapsKey
+      );
+      var geoJson = await geoResp.json();
+      var svBlock;
+      if (geoJson.results && geoJson.results.length > 0) {
+        var loc = geoJson.results[0].geometry.location;
+        var latLng = loc.lat + ',' + loc.lng;
+        // Step 2 — build Street View embed URL with lat/lng
+        var svSrc = 'https://www.google.com/maps/embed/v1/streetview?key=' + _mapsKey
+          + '&location=' + latLng + '&fov=90&heading=235&pitch=10';
+        svBlock = '<div style="width:50%;display:flex;flex-direction:column;">'
+          + '<iframe src="' + svSrc + '" style="' + mapStyle + '" frameborder="0" allowfullscreen></iframe>'
+          + '<div style="' + lblStyle + '">STREET VIEW</div>'
+          + '</div>';
+      } else {
+        svBlock = svPlaceholder('Street view — address not found');
+      }
+      // Swap in the resolved street view block
+      var wrapper = container.querySelector('div[style*="flex-direction:row"]');
+      if (wrapper) {
+        var children = wrapper.children;
+        if (children.length >= 2) wrapper.replaceChild(
+          (function(){ var d = document.createElement('div'); d.innerHTML = svBlock; return d.firstChild; })(),
+          children[1]
+        );
+      }
+    } catch(e) {
+      // Geocoding failed — swap in error placeholder
+      var wrapper2 = container.querySelector('div[style*="flex-direction:row"]');
+      if (wrapper2 && wrapper2.children.length >= 2) {
+        var errDiv = document.createElement('div');
+        errDiv.innerHTML = svPlaceholder('Street view — geocoding failed');
+        wrapper2.replaceChild(errDiv.firstChild, wrapper2.children[1]);
+      }
+    }
     return;
   }
 
