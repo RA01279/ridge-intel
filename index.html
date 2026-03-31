@@ -4204,6 +4204,8 @@ document.addEventListener('drop', e => {
 //  INIT
 // ═══════════════════════════════════════════════════════════
 renderTools();
+if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
+window.scrollTo(0, 0);
 // Open LENS by default (per user preference — near top)
 // no default panel open
 
