@@ -5713,9 +5713,7 @@ async function runRidgeAPI(skillName, prompt, runInputs, runToolId) {
     if (_lastRunToolId && STATE[_lastRunToolId]) {
       STATE[_lastRunToolId].result = accumulated;
     }
-    // Strip trailing JSON blocks from the visible panel — ISR and Gavel embed these for
-    // data extraction only and must never be shown to the user. _skillRawOutputs keeps
-    // the full text (with JSON) so the PPTX builder and Gavel lease-DB wiring still work.
+    /* DISABLED FOR DIAGNOSIS — JSON strip block (re-enable after root cause confirmed)
     if (_lastRunToolId === 'isr' || _lastRunToolId === 'gavel') {
       var _jClean = accumulated.replace(/\n*```json[^`]*```\s*$/, '');
       if (_jClean.length < accumulated.length) {
@@ -5726,6 +5724,7 @@ async function runRidgeAPI(skillName, prompt, runInputs, runToolId) {
         }
       }
     }
+    */
     console.log('Stream complete — about to enter Supabase post-run block');
     document.getElementById('ridge-pdf-btn').disabled = false;
     document.getElementById('ridge-ppt-btn').disabled = false;
