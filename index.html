@@ -403,6 +403,9 @@ footer{border-top:1px solid var(--border);padding:20px 24px;text-align:center;co
   padding:10px 40px;text-transform:uppercase;transition:background 0.2s;
 }
 #ridge-gate-btn:hover{background:#263380;}
+/* LEASE LIBRARY */
+.ll-section{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:16px 20px;}
+.ll-sec-title{font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--blue);margin-bottom:12px;}
 </style>
 </head>
 <body>
@@ -630,6 +633,9 @@ footer{border-top:1px solid var(--border);padding:20px 24px;text-align:center;co
     </div><div class="tool-card" id="card-canvas">
       <div class="tc-row"><span class="tc-num">11</span><span class="tc-name">CANVAS</span></div>
       <div class="tc-desc">Tenant sourcing. Fill a building or hunt acquisition targets.</div>
+    </div><div class="tool-card" id="card-lease-library" onclick="togglePanel('lease-library')">
+      <div class="tc-row"><span class="tc-num">13</span><span class="tc-name">LEASE LIBRARY</span></div>
+      <div class="tc-desc">Proprietary lease comp database — import, search, manage.</div>
     </div></div>
 <div id="panels-container"><div class="tool-panel open" id="panel-lens">
   <div class="panel-head">
@@ -850,7 +856,7 @@ footer{border-top:1px solid var(--border);padding:20px 24px;text-align:center;co
       <span style="color:var(--faint);font-size:11px;margin-left:4px">— auto-filled from upload where available</span>
     </div>
     <div class="manual-body" id="mbody-lease-comp">
-      <div class="fr two"><div class="fg"><label class="fl">Subject Property Address *</label><input type="text" id="f-lease-comp-addr" placeholder="18 Patton Road, Savannah, GA"></div><div class="fg"><label class="fl">Submarket</label><input type="text" id="f-lease-comp-sub" placeholder="Savannah Industrial"></div></div><div class="fr two"><div class="fg"><label class="fl">Building SF</label><input type="text" id="f-lease-comp-sf" placeholder="45,500"></div><div class="fg"><label class="fl">Current In-Place Rent PSF</label><input type="text" id="f-lease-comp-rent" placeholder="$11.00"></div></div>
+      <div class="fr two"><div class="fg"><label class="fl">Market</label><select id="f-lease-comp-market"><option>Atlanta, GA</option><option>Savannah, GA</option><option>Dallas–Fort Worth, TX</option><option>Houston, TX</option><option>Austin, TX (Watch)</option></select></div><div class="fg"><label class="fl">Submarket</label><input type="text" id="f-lease-comp-sub" placeholder="Savannah Industrial"></div></div><div class="fr two"><div class="fg"><label class="fl">Subject Property Address *</label><input type="text" id="f-lease-comp-addr" placeholder="18 Patton Road, Savannah, GA"></div><div class="fg"><label class="fl">Current In-Place Rent PSF</label><input type="text" id="f-lease-comp-rent" placeholder="$11.00"></div></div><div class="fr two"><div class="fg"><label class="fl">Building SF</label><input type="text" id="f-lease-comp-sf" placeholder="45,500"></div></div>
     </div>
     <div class="btn-row">
       <button class="btn btn-p" id="run-btn-lease-comp" onclick="runTool(&#39;lease-comp&#39;)">⚡ Run LEASE COMP MAP</button>
@@ -952,7 +958,7 @@ footer{border-top:1px solid var(--border);padding:20px 24px;text-align:center;co
       <span style="color:var(--faint);font-size:11px;margin-left:4px">— auto-filled from upload where available</span>
     </div>
     <div class="manual-body" id="mbody-isr">
-      <div class="fr two"><div class="fg"><label class="fl">Property Address</label><input type="text" id="f-isr-addr" placeholder="18 Patton Road, Savannah, GA"></div><div class="fg"><label class="fl">Asset Type</label><select id="f-isr-type"><option>Flex Industrial</option><option>Industrial / Warehouse</option><option>Single-Story Office Conversion</option><option>Multi-Tenant Industrial</option></select></div></div><div class="fr three"><div class="fg"><label class="fl">Building SF</label><input type="text" id="f-isr-sf" placeholder="45,500"></div><div class="fg"><label class="fl">Purchase Price</label><input type="text" id="f-isr-price" placeholder="$7,962,500"></div><div class="fg"><label class="fl">Price PSF</label><input type="text" id="f-isr-psf" placeholder="$175"></div></div><div class="fr three"><div class="fg"><label class="fl">Levered IRR</label><input type="text" id="f-isr-irr" placeholder="15.2%"></div><div class="fg"><label class="fl">Equity Multiple</label><input type="text" id="f-isr-em" placeholder="1.98x"></div><div class="fg"><label class="fl">Going-In Cap</label><input type="text" id="f-isr-cap" placeholder="5.1%"></div></div><div class="fr three"><div class="fg"><label class="fl">YOC (Yr 3/4)</label><input type="text" id="f-isr-yoc" placeholder="8.2%"></div><div class="fg"><label class="fl">LTV</label><input type="text" id="f-isr-ltv" placeholder="65%"></div><div class="fg"><label class="fl">Hold Period</label><input type="text" id="f-isr-hold" placeholder="5 years"></div></div><div class="fr one"><div class="fg"><label class="fl">Investment Thesis</label><textarea id="f-isr-thesis" placeholder="Value-add flex play with near-term lease-up upside..."></textarea></div></div>
+      <div class="fr two"><div class="fg"><label class="fl">Property Address</label><input type="text" id="f-isr-addr" placeholder="Full property address (e.g. 5000 Highlands Parkway SE, Smyrna, GA 30082)"><span id="isr-addr-status" style="font-size:11px;vertical-align:middle;display:inline-block;margin-top:4px;"></span></div><div class="fg"><label class="fl">Asset Type</label><select id="f-isr-type"><option>Flex Industrial</option><option>Industrial / Warehouse</option><option>Single-Story Office Conversion</option><option>Multi-Tenant Industrial</option></select></div></div><div class="fr three"><div class="fg"><label class="fl">Building SF</label><input type="text" id="f-isr-sf" placeholder="45,500"></div><div class="fg"><label class="fl">Purchase Price</label><input type="text" id="f-isr-price" placeholder="$7,962,500"></div><div class="fg"><label class="fl">Price PSF</label><input type="text" id="f-isr-psf" placeholder="$175"></div></div><div class="fr three"><div class="fg"><label class="fl">Levered IRR</label><input type="text" id="f-isr-irr" placeholder="15.2%"></div><div class="fg"><label class="fl">Equity Multiple</label><input type="text" id="f-isr-em" placeholder="1.98x"></div><div class="fg"><label class="fl">Going-In Cap</label><input type="text" id="f-isr-cap" placeholder="5.1%"></div></div><div class="fr three"><div class="fg"><label class="fl">YOC (Yr 3/4)</label><input type="text" id="f-isr-yoc" placeholder="8.2%"></div><div class="fg"><label class="fl">LTV</label><input type="text" id="f-isr-ltv" placeholder="65%"></div><div class="fg"><label class="fl">Hold Period</label><input type="text" id="f-isr-hold" placeholder="5 years"></div></div><div class="fr one"><div class="fg"><label class="fl">Investment Thesis</label><textarea id="f-isr-thesis" placeholder="Value-add flex play with near-term lease-up upside..."></textarea></div></div>
     </div>
     <div class="btn-row">
       <button class="btn btn-p" id="run-btn-isr" onclick="runTool(&#39;isr&#39;)">⚡ Run ACQUISITION INVESTMENT REPORT</button>
@@ -1177,7 +1183,86 @@ footer{border-top:1px solid var(--border);padding:20px 24px;text-align:center;co
       </div>
       <div class="res-body" id="rout-canvas"></div>
     </div>
-  </div></div></div>
+  </div></div><div class="tool-panel" id="panel-lease-library">
+  <div class="panel-head">
+    <span class="panel-head-icon">🗄</span>
+    <span class="panel-head-title">LEASE LIBRARY</span>
+    <span class="panel-head-sub">Proprietary Comp Database</span>
+    <button class="panel-close" onclick="togglePanel('lease-library')">✕ Close</button>
+  </div>
+  <div class="panel-body">
+
+    <!-- ── SECTION 1: IMPORT ────────────────────────────────── -->
+    <div class="ll-section">
+      <div class="ll-sec-title">IMPORT RENT ROLL</div>
+      <div class="fr two">
+        <div class="fg"><label class="fl">Property Address</label><input type="text" id="ll-address" placeholder="6480 Chupp Road, Stonecrest, GA"></div>
+        <div class="fg"><label class="fl">Market</label><select id="ll-market"><option>Atlanta, GA</option><option>Savannah, GA</option><option>Dallas–Fort Worth, TX</option><option>Houston, TX</option><option>Austin, TX (Watch)</option></select></div>
+      </div>
+      <div class="upload-group" style="margin-top:10px;">
+        <label>Argus / Excel Rent Roll or CSV <span>XLSX · XLS · CSV — Argus export or generic rent roll</span></label>
+        <div class="uz" id="uz-ll-file" onclick="document.getElementById('ll-file').click()">
+          <input type="file" id="ll-file" accept=".xlsx,.xls,.csv">
+          <div class="uz-ico">📊</div>
+          <div class="uz-t">Click or drag to upload</div>
+          <div class="uz-s">XLSX · XLS · CSV</div>
+          <div class="uz-st" id="uzst-ll-file"></div>
+        </div>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-p" id="ll-import-btn" onclick="_llImportClick()">📥 IMPORT RENT ROLL</button>
+      </div>
+      <div id="ll-preview-section" style="display:none;margin-top:16px;">
+        <div class="ll-sec-title">IMPORT PREVIEW</div>
+        <div id="ll-preview-info" style="font-size:12px;color:#1E2761;margin-bottom:8px;padding:6px 10px;background:#F0F4FF;border-radius:4px;"></div>
+        <div id="ll-preview-table" style="overflow-x:auto;max-height:300px;overflow-y:auto;border:1px solid #e0e4ef;border-radius:4px;"></div>
+        <div class="btn-row" style="margin-top:10px;">
+          <button class="btn btn-p" id="ll-confirm-btn" onclick="_llConfirmImport()">✅ Confirm Import</button>
+          <button class="btn btn-o" onclick="document.getElementById('ll-preview-section').style.display='none'">Cancel</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── SECTION 2+3: DATABASE + STATS ─────────────────────── -->
+    <div class="ll-section" style="margin-top:24px;">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px;">
+        <div class="ll-sec-title" style="margin:0;">LEASE DATABASE</div>
+        <span id="ll-row-count" style="background:#1E2761;color:#CADCFC;font-size:10px;font-weight:700;padding:2px 9px;border-radius:10px;letter-spacing:.04em;">0 comps</span>
+        <button class="btn btn-o" onclick="_llLoadLeases()" style="font-size:11px;padding:3px 10px;margin-left:auto;">↺ Refresh</button>
+      </div>
+      <div id="ll-stats" style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px;"></div>
+      <!-- Search + Filters -->
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;align-items:center;">
+        <input type="text" id="ll-search" placeholder="Search by tenant, address, market, submarket..." style="flex:2;min-width:220px;padding:6px 10px;border:1px solid #d1d9ef;border-radius:4px;font-size:12px;" onkeydown="if(event.key==='Enter')_llSearch()">
+        <select id="ll-filter-market" style="font-size:12px;padding:5px 8px;border:1px solid #d1d9ef;border-radius:4px;">
+          <option value="">All Markets</option>
+          <option>Atlanta, GA</option><option>Savannah, GA</option>
+          <option>Dallas–Fort Worth, TX</option><option>Houston, TX</option><option>Austin, TX (Watch)</option>
+        </select>
+        <select id="ll-filter-type" style="font-size:12px;padding:5px 8px;border:1px solid #d1d9ef;border-radius:4px;">
+          <option value="">All Types</option>
+          <option>Flex Industrial</option><option>Industrial / Warehouse</option>
+          <option>NNN</option><option>Gross</option><option>Modified Gross</option>
+        </select>
+        <select id="ll-filter-status" style="font-size:12px;padding:5px 8px;border:1px solid #d1d9ef;border-radius:4px;">
+          <option value="">All Status</option><option>Occupied</option><option>Vacant</option>
+        </select>
+        <input type="text" id="ll-filter-psf-min" placeholder="Min PSF" style="width:72px;padding:5px 8px;border:1px solid #d1d9ef;border-radius:4px;font-size:12px;">
+        <input type="text" id="ll-filter-psf-max" placeholder="Max PSF" style="width:72px;padding:5px 8px;border:1px solid #d1d9ef;border-radius:4px;font-size:12px;">
+        <button class="btn btn-p" onclick="_llSearch()" style="font-size:12px;padding:5px 14px;">Search</button>
+      </div>
+      <!-- Table -->
+      <div id="ll-table-wrap" style="overflow-x:auto;border:1px solid #e0e4ef;border-radius:4px;min-height:80px;"></div>
+      <!-- Pagination -->
+      <div id="ll-pagination" style="display:flex;align-items:center;gap:10px;margin-top:8px;font-size:12px;"></div>
+      <!-- Export -->
+      <div class="btn-row" style="margin-top:14px;">
+        <button class="btn btn-g" onclick="_llExportLeases()" style="font-size:12px;">⬇ EXPORT TO EXCEL</button>
+      </div>
+    </div>
+
+  </div>
+</div></div>
 
 <!-- ═══ PIPELINE ═══ -->
 <div class="pipeline-section">
@@ -1360,8 +1445,9 @@ var TOOLS = [
     shortDesc:'Comp data in, interactive map + analysis out.',
     uploads:[{id:'comps',label:'Comp Data',hint:'Excel, CSV, or PDF with lease comp data',icon:'📊',accept:'.xlsx,.csv,.pdf',type:'mixed'},{id:'om',label:'Subject Property / OM',hint:'Optional: PDF of OM or deal summary for context',icon:'📄',accept:'.pdf',type:'pdf'}],
     fields:[
-      {row:[{id:'addr',label:'Subject Property Address *',ph:'e.g. 4200 Commerce Pkwy, Savannah, GA'},{id:'sub',label:'Submarket',ph:'e.g. Savannah Industrial'}]},
-      {row:[{id:'sf',label:'Building SF',ph:'e.g. 58,000'},{id:'rent',label:'Current In-Place Rent PSF',ph:'e.g. $10.25'}]},
+      {row:[{id:'market',label:'Market',type:'select',opts:['Atlanta, GA','Savannah, GA','Dallas–Fort Worth, TX','Houston, TX','Austin, TX (Watch)']},{id:'sub',label:'Submarket',ph:'e.g. Savannah Industrial'}]},
+      {row:[{id:'addr',label:'Subject Property Address *',ph:'e.g. 4200 Commerce Pkwy, Savannah, GA'},{id:'rent',label:'Current In-Place Rent PSF',ph:'e.g. $10.25'}]},
+      {row:[{id:'sf',label:'Building SF',ph:'e.g. 58,000'}]},
     ],
     steps:['Reading comp data...','Geocoding locations...','Benchmarking in-place rents...','Analyzing lease structures...','Generating comp analysis...'],
     system:`You are LEASE COMP MAP, RIDGE's lease comp analysis engine. You analyze lease comparables against a subject property to benchmark rents, identify roll risk, and support underwriting assumptions. Be specific with numbers. Flag any comps that are outliers.`,
@@ -1783,6 +1869,7 @@ function togglePanel(id) {
     setTimeout(() => panel.scrollIntoView({ behavior:'smooth', block:'start' }), 50);
     if (id === 'daily-signal') updateDSMemCount();
     if (id === 'pipeline') renderPipeline();
+    if (id === 'lease-library') _llLoadLeases();
   }
 }
 
@@ -1911,12 +1998,22 @@ function handleXLSX(toolId, uploadId, input) {
           var ltvEl   = document.getElementById('f-isr-ltv');
           var holdEl  = document.getElementById('f-isr-hold');
           if (addrEl && !addrEl.value) {
+            var _candidateAddr = '';
             if (addr && addr !== 0) {
-              addrEl.value = cityState && cityState !== 0 ? addr + ', ' + cityState : String(addr);
+              _candidateAddr = cityState && cityState !== 0 ? String(addr) + ', ' + String(cityState) : String(addr);
             } else if (propName && propName !== 0) {
-              addrEl.value = String(propName).replace(/\s*-\s*Updated.*$/i,'').trim();
+              _candidateAddr = String(propName).replace(/\s*-\s*Updated.*$/i,'').trim();
             } else {
-              addrEl.value = input.files[0].name.replace(/\.xlsx?$/i,'').replace(/[_-]/g,' ').trim();
+              _candidateAddr = input.files[0].name.replace(/\.xlsx?$/i,'').replace(/[_-]/g,' ').trim();
+            }
+            // Quality gate: must start with street number, have comma, be >15 chars, and contain a word
+            var _addrOk = /^\d/.test(_candidateAddr) && _candidateAddr.includes(',') && _candidateAddr.length > 15 && /[a-zA-Z]{2,}/.test(_candidateAddr);
+            var _addrStatusEl = document.getElementById('isr-addr-status');
+            if (_addrOk) {
+              addrEl.value = _candidateAddr;
+              if (_addrStatusEl) _addrStatusEl.innerHTML = '<span style="color:#4CAF50;margin-left:6px;font-size:14px" title="Address looks complete">&#10003;</span>';
+            } else {
+              if (_addrStatusEl) _addrStatusEl.innerHTML = '<span style="color:#FFC107;margin-left:6px;font-size:11px" title="Address may be incomplete">&#9888; Address may be incomplete — verify before running</span>';
             }
           }
           if (sfEl && !sfEl.value && sfNum) sfEl.value = parseInt(sfNum).toLocaleString();
@@ -2863,7 +2960,7 @@ function showParsedKPIs(toolId, m) {
 // ═══════════════════════════════════════════════════════════
 //  RUN TOOL
 // ═══════════════════════════════════════════════════════════
-function runTool(toolId) {
+async function runTool(toolId) {
   var tool = TOOLS.find(t => t.id === toolId);
 
   // Gather field values
@@ -2894,7 +2991,7 @@ function runTool(toolId) {
     d.notes  = document.getElementById('pl-notes').value.trim();
   }
 
-  var prompt = buildTrigger(toolId, d);
+  var prompt = await buildTrigger(toolId, d);
   var skillName = tool ? tool.name : 'PIPELINE';
   runRidgeAPI(skillName, prompt, d, toolId);
 }
@@ -2925,7 +3022,7 @@ function copyAndLaunch() {
   window.open('https://claude.ai', '_blank');
 }
 
-function buildTrigger(toolId, d) {
+async function buildTrigger(toolId, d) {
   switch(toolId) {
     case 'lens':
       p = 'You are a senior acquisitions officer at Entrada Partners reviewing a broker OM. Your job is to strip the narrative, stress-test every assumption, and tell the IC whether this deal is real.\n\n';
@@ -3047,6 +3144,31 @@ function buildTrigger(toolId, d) {
       if (d.sub)  p += ' in ' + d.sub;
       if (d.sf)   p += '. Building SF: ' + d.sf;
       if (d.rent) p += '. Current in-place rent: ' + d.rent + ' PSF';
+      // Enrich with Lease Library historical comps for the selected market
+      if (_sbOk && _sb && d.market) {
+        try {
+          var libRes = await _sb.from('leases')
+            .select('address,suite,tenant,sf,base_rent_psf,expiration_date,lease_type,market,vacant')
+            .eq('market', d.market)
+            .eq('vacant', false)
+            .order('created_at', { ascending: false })
+            .limit(20);
+          if (libRes.data && libRes.data.length > 0) {
+            var libTable = '\nRIDGE LEASE DATABASE — Historical Comps for ' + d.market + ':\n';
+            libTable += '| Address | Suite | Tenant | SF | Rent PSF | Expiration | Type |\n';
+            libTable += '|---|---|---|---|---|---|---|\n';
+            libRes.data.forEach(function(r) {
+              libTable += '| ' + (r.address||'—').slice(0,35) + ' | ' + (r.suite||'—') + ' | '
+                + (r.tenant||'—').slice(0,30) + ' | '
+                + (r.sf ? Number(r.sf).toLocaleString() : '—') + ' | '
+                + (r.base_rent_psf ? '$'+Number(r.base_rent_psf).toFixed(2)+' PSF' : '—') + ' | '
+                + (r.expiration_date ? r.expiration_date.slice(0,7) : '—') + ' | '
+                + (r.lease_type||'—') + ' |\n';
+            });
+            d.comps_text = libTable + (d.comps_text ? '\n\nUPLOADED COMP DATA:\n' + d.comps_text : '');
+          }
+        } catch(e) { /* enrichment failed — continue without */ }
+      }
       if (d.comps_text) p += '\n\nComp data:\n' + d.comps_text;
       if (d.om_text)    p += '\n\nOM/property context:\n' + d.om_text;
       if (!d.comps_text && !d.om_text) p += '. Comp data is attached — analyze and benchmark.';
@@ -3557,6 +3679,23 @@ async function _writeLeaseRows(rows, address, source) {
     var inserts = rows.map(function(r) {
       var row = Object.assign({ address: address || null }, r);
       if (row.expiration_date) row.expiration_date = _parseLeaseDate(row.expiration_date);
+      return row;
+    });
+    // Deduplicate address+tenant before upsert — the same tenant in multiple suites
+    // would hit the unique constraint twice in one batch, causing a Postgres conflict error.
+    var _seen = {};
+    inserts = inserts.map(function(row) {
+      var key = (row.address || '') + '||' + (row.tenant || '');
+      if (_seen[key] !== undefined) {
+        _seen[key]++;
+        var _suite = row.suite;
+        var _newTenant = _suite
+          ? row.tenant + ' (' + _suite + ')'
+          : row.tenant + ' (' + (_seen[key] + 1) + ')';
+        row = Object.assign({}, row, { tenant: _newTenant });
+      } else {
+        _seen[key] = 0;
+      }
       return row;
     });
     var res = await _sb.from('leases').upsert(inserts, { onConflict: 'address,tenant', ignoreDuplicates: false });
@@ -6150,25 +6289,45 @@ async function showPropertyMap(address, skillName) {
 
     if (!_mapsKey) return;
 
-    // Step 1 — geocode address to lat/lng (Street View embed requires coordinates)
+    // Geocode with three-step fallback chain — Street View embed requires lat/lng
     try {
-      var geoResp = await fetch(
-        'https://maps.googleapis.com/maps/api/geocode/json?address=' + enc + '&key=' + _mapsKey
-      );
-      var geoJson = await geoResp.json();
+      var _svLoc = null;
+      // Step 1: full address
+      var _gr1 = await fetch('https://maps.googleapis.com/maps/api/geocode/json?address=' + encodeURIComponent(isrAddr) + '&key=' + _mapsKey);
+      var _gj1 = await _gr1.json();
+      if (_gj1.status === 'OK' && _gj1.results && _gj1.results.length > 0) {
+        _svLoc = _gj1.results[0].geometry.location;
+      }
+      // Step 2: append ", USA"
+      if (!_svLoc) {
+        var _gr2 = await fetch('https://maps.googleapis.com/maps/api/geocode/json?address=' + encodeURIComponent(isrAddr + ', USA') + '&key=' + _mapsKey);
+        var _gj2 = await _gr2.json();
+        if (_gj2.status === 'OK' && _gj2.results && _gj2.results.length > 0) {
+          _svLoc = _gj2.results[0].geometry.location;
+        }
+      }
+      // Step 3: city+state only (everything after first comma)
+      if (!_svLoc) {
+        var _commaIdx = isrAddr.indexOf(',');
+        if (_commaIdx !== -1) {
+          var _cityStateStr = isrAddr.slice(_commaIdx + 1).trim();
+          var _gr3 = await fetch('https://maps.googleapis.com/maps/api/geocode/json?address=' + encodeURIComponent(_cityStateStr) + '&key=' + _mapsKey);
+          var _gj3 = await _gr3.json();
+          if (_gj3.status === 'OK' && _gj3.results && _gj3.results.length > 0) {
+            _svLoc = _gj3.results[0].geometry.location;
+          }
+        }
+      }
       var svBlock;
-      if (geoJson.results && geoJson.results.length > 0) {
-        var loc = geoJson.results[0].geometry.location;
-        var latLng = loc.lat + ',' + loc.lng;
-        // Step 2 — build Street View embed URL with lat/lng
+      if (_svLoc) {
         var svSrc = 'https://www.google.com/maps/embed/v1/streetview?key=' + _mapsKey
-          + '&location=' + latLng + '&fov=90&heading=235&pitch=10';
+          + '&location=' + _svLoc.lat + ',' + _svLoc.lng + '&fov=90&heading=235&pitch=10';
         svBlock = '<div style="width:50%;display:flex;flex-direction:column;">'
           + '<iframe src="' + svSrc + '" style="' + mapStyle + '" frameborder="0" allowfullscreen></iframe>'
           + '<div style="' + lblStyle + '">STREET VIEW</div>'
           + '</div>';
       } else {
-        svBlock = svPlaceholder('Street view — address not found');
+        svBlock = svPlaceholder('STREET VIEW — address not found');
       }
       // Swap in the resolved street view block
       var wrapper = container.querySelector('div[style*="flex-direction:row"]');
@@ -6184,7 +6343,7 @@ async function showPropertyMap(address, skillName) {
       var wrapper2 = container.querySelector('div[style*="flex-direction:row"]');
       if (wrapper2 && wrapper2.children.length >= 2) {
         var errDiv = document.createElement('div');
-        errDiv.innerHTML = svPlaceholder('Street view — geocoding failed');
+        errDiv.innerHTML = svPlaceholder('STREET VIEW — geocoding failed');
         wrapper2.replaceChild(errDiv.firstChild, wrapper2.children[1]);
       }
     }
@@ -8392,6 +8551,471 @@ function ridgeGateSubmit() {
     inp.value = '';
     inp.focus();
   }
+}
+
+// ═══════════════════════════════════════════════════════════
+//  LEASE LIBRARY
+// ═══════════════════════════════════════════════════════════
+var _llParsedRows = [];
+var _llPage = 0;
+var _llPageSize = 25;
+var _llTotal = 0;
+
+// Initialize STATE entry for lease-library
+STATE['lease-library'] = { files:{}, metrics:{}, result:null };
+
+// ── FILE UPLOAD DISPLAY ──────────────────────────────────
+document.addEventListener('DOMContentLoaded', function() {
+  var llFile = document.getElementById('ll-file');
+  if (llFile) llFile.addEventListener('change', function() {
+    var st = document.getElementById('uzst-ll-file');
+    if (st && llFile.files[0]) st.textContent = '✓ ' + llFile.files[0].name;
+  });
+  // Load library on panel open (handled via togglePanel → _llLoadLeases)
+});
+
+// ── IMPORT ───────────────────────────────────────────────
+async function _llImportClick() {
+  var addrEl = document.getElementById('ll-address');
+  var mktEl  = document.getElementById('ll-market');
+  var fileEl = document.getElementById('ll-file');
+  var address = addrEl ? addrEl.value.trim() : '';
+  var market  = mktEl  ? mktEl.value.trim() : '';
+  if (!address) { showToast('Enter property address first'); return; }
+  var file = fileEl && fileEl.files[0];
+  if (!file) { showToast('Select a file to import'); return; }
+  var btn = document.getElementById('ll-import-btn');
+  btn.textContent = '⏳ Parsing...'; btn.disabled = true;
+  try {
+    var name = file.name.toLowerCase();
+    var rows;
+    if (name.endsWith('.csv')) {
+      rows = await _llParseCSV(file, address, market);
+    } else if (name.endsWith('.xlsx') || name.endsWith('.xls')) {
+      rows = await _llParseArgusExcel(file, address, market);
+    } else {
+      showToast('Unsupported file type. Use XLSX, XLS, or CSV.');
+      btn.textContent = '📥 IMPORT RENT ROLL'; btn.disabled = false; return;
+    }
+    if (!rows || !rows.length) {
+      showToast('No rows parsed — check file format');
+      btn.textContent = '📥 IMPORT RENT ROLL'; btn.disabled = false; return;
+    }
+    _llParsedRows = rows;
+    _llRenderPreview(rows);
+    document.getElementById('ll-preview-section').style.display = 'block';
+  } catch(e) {
+    showToast('Parse error: ' + e.message);
+    console.error('[LL] parse error:', e);
+  }
+  btn.textContent = '📥 IMPORT RENT ROLL'; btn.disabled = false;
+}
+
+// ── ARGUS EXCEL PARSER ───────────────────────────────────
+async function _llParseArgusExcel(file, address, market) {
+  return new Promise(function(resolve, reject) {
+    var reader = new FileReader();
+    reader.onload = function(e) {
+      try {
+        var wb = XLSX.read(e.target.result, { type: 'array', cellDates: false, raw: false });
+        var ws = wb.Sheets[wb.SheetNames[0]];
+        var raw = XLSX.utils.sheet_to_json(ws, { header: 1, defval: null, raw: false });
+        if (!raw || raw.length < 8) { resolve(_llParseGeneric(raw, address, market)); return; }
+        // Row index 6 = primary header row in Argus format
+        var hdrRow = raw[6] || [];
+        var h0 = String(hdrRow[0]||'').toLowerCase();
+        var isArgus = h0.includes('tenant') || h0.includes('suite') ||
+                      String(hdrRow[5]||'').toLowerCase().includes('area');
+        var rows = [];
+        if (isArgus) {
+          for (var i = 7; i < raw.length; i++) {
+            var r = raw[i];
+            if (!r) continue;
+            var tenantName = String(r[0]||'').trim();
+            if (!tenantName || tenantName.toLowerCase() === 'total') continue;
+            var sfRaw = parseFloat(String(r[5]||'').replace(/[^0-9.]/g,''));
+            if (!sfRaw || sfRaw === 0) continue;
+            var scheduledRent = parseFloat(String(r[11]||'').replace(/[^0-9.]/g,'')) || 0;
+            var rentPSF = sfRaw > 0 ? scheduledRent / sfRaw : 0;
+            var leaseStatus = String(r[3]||'').trim();
+            var isVacant = tenantName.startsWith('*Vacant') || leaseStatus === 'Speculative';
+            rows.push({
+              address:          address,
+              market:           market,
+              tenant:           tenantName,
+              suite:            String(r[1]||'').trim() || null,
+              lease_type:       String(r[2]||'').trim() || 'Industrial',
+              lease_status:     leaseStatus,
+              sf:               sfRaw,
+              commencement_date: r[6] ? _parseLeaseDate(String(r[6])) : null,
+              expiration_date:   r[7] ? _parseLeaseDate(String(r[7])) : null,
+              base_rent_psf:    rentPSF > 0 ? parseFloat(rentPSF.toFixed(4)) : null,
+              vacant:           isVacant,
+              source:           'ARGUS_IMPORT',
+              extracted_data: {
+                annual_rent:   scheduledRent || null,
+                ti_total:      parseFloat(String(r[17]||'').replace(/[^0-9.]/g,'')) || null,
+                lc_total:      parseFloat(String(r[18]||'').replace(/[^0-9.]/g,'')) || null,
+                net_cash_flow: parseFloat(String(r[20]||'').replace(/[^0-9.]/g,'')) || null,
+                lease_start_raw: r[6] || null,
+                lease_end_raw:   r[7] || null,
+              },
+              notes: isVacant ? 'Vacant / Speculative' : null,
+            });
+          }
+        } else {
+          rows = _llParseGeneric(raw, address, market);
+        }
+        resolve(rows);
+      } catch(err) { reject(err); }
+    };
+    reader.onerror = function() { reject(new Error('File read error')); };
+    reader.readAsArrayBuffer(file);
+  });
+}
+
+// ── GENERIC EXCEL PARSER ─────────────────────────────────
+function _llParseGeneric(raw, address, market) {
+  if (!raw || !raw.length) return [];
+  var hdrIdx = -1;
+  for (var i = 0; i < Math.min(raw.length, 10); i++) {
+    var cnt = (raw[i]||[]).filter(function(c){ return c != null && String(c).trim()!==''; }).length;
+    if (cnt >= 3) { hdrIdx = i; break; }
+  }
+  if (hdrIdx === -1) return [];
+  var hdr = (raw[hdrIdx]||[]).map(function(h){ return String(h||'').toLowerCase().trim(); });
+  function fc(terms) {
+    for (var ti=0;ti<terms.length;ti++) for (var ci=0;ci<hdr.length;ci++) if (hdr[ci].includes(terms[ti])) return ci;
+    return -1;
+  }
+  var cols = {
+    tenant: fc(['tenant','name','lessee']),
+    suite:  fc(['suite','unit','space']),
+    sf:     fc(['sf','sqft','sq ft','size','area','rsf']),
+    psf:    fc(['psf','rent psf','$/sf','rate','rent/sf']),
+    start:  fc(['start','commence','begin']),
+    expire: fc(['end','expir','expire','term']),
+    type:   fc(['type','lease type','nnn','gross']),
+    status: fc(['status','occupied','vacant']),
+  };
+  if (cols.tenant === -1 && cols.sf === -1) {
+    throw new Error('Could not detect rent roll format. Expected Argus export or columns: Tenant, SF, Rent PSF, Expiration.');
+  }
+  var rows = [];
+  for (var i = hdrIdx+1; i < raw.length; i++) {
+    var r = raw[i]; if (!r) continue;
+    var tenantName = cols.tenant>=0 ? String(r[cols.tenant]||'').trim() : '';
+    if (!tenantName || tenantName.toLowerCase()==='total') continue;
+    var sfRaw = cols.sf>=0 ? parseFloat(String(r[cols.sf]||'').replace(/[^0-9.]/g,'')) : 0;
+    if (!sfRaw) continue;
+    var psf = cols.psf>=0 ? parseFloat(String(r[cols.psf]||'').replace(/[^0-9.]/g,'')) || null : null;
+    var expiry = cols.expire>=0 && r[cols.expire] ? String(r[cols.expire]) : null;
+    var start  = cols.start>=0  && r[cols.start]  ? String(r[cols.start])  : null;
+    var statusRaw = cols.status>=0 ? String(r[cols.status]||'') : '';
+    var isVacant = tenantName.toLowerCase().includes('vacant') || statusRaw.toLowerCase().includes('vacant');
+    rows.push({
+      address: address, market: market,
+      tenant: tenantName,
+      suite:  cols.suite>=0 ? String(r[cols.suite]||'').trim()||null : null,
+      sf: sfRaw, base_rent_psf: psf,
+      commencement_date: start  ? _parseLeaseDate(start)  : null,
+      expiration_date:   expiry ? _parseLeaseDate(expiry) : null,
+      lease_type:   cols.type>=0 ? String(r[cols.type]||'Industrial').trim() : 'Industrial',
+      lease_status: statusRaw || null,
+      vacant: isVacant, source: 'ARGUS_IMPORT', extracted_data: {},
+    });
+  }
+  return rows;
+}
+
+// ── CSV PARSER ───────────────────────────────────────────
+async function _llParseCSV(file, address, market) {
+  return new Promise(function(resolve, reject) {
+    var reader = new FileReader();
+    reader.onload = function(e) {
+      try {
+        var lines = e.target.result.split('\n').filter(function(l){ return l.trim(); });
+        var raw = lines.map(function(l){
+          return l.split(',').map(function(c){ return c.replace(/^"|"$/g,'').trim() || null; });
+        });
+        resolve(_llParseGeneric(raw, address, market));
+      } catch(err) { reject(err); }
+    };
+    reader.onerror = function(){ reject(new Error('CSV read error')); };
+    reader.readAsText(file);
+  });
+}
+
+// ── PREVIEW ──────────────────────────────────────────────
+function _llRenderPreview(rows) {
+  var occupied = rows.filter(function(r){ return !r.vacant; }).length;
+  var vacant   = rows.filter(function(r){ return  r.vacant; }).length;
+  document.getElementById('ll-preview-info').innerHTML =
+    '<strong>' + rows.length + ' rows parsed</strong> — ' + occupied + ' occupied · ' + vacant + ' vacant/speculative';
+  document.getElementById('ll-confirm-btn').textContent = '✅ Confirm Import (' + rows.length + ' leases)';
+  var cols = ['Tenant','Suite','SF','Rent PSF','Expiration','Type','Status'];
+  var html = '<table style="width:100%;border-collapse:collapse;font-size:11px;">'
+    + '<thead><tr>' + cols.map(function(c){
+        return '<th style="background:#1E2761;color:#fff;padding:5px 8px;text-align:left;white-space:nowrap;">' + c + '</th>';
+      }).join('') + '</tr></thead><tbody>';
+  rows.forEach(function(r, i) {
+    var bg = i%2===1 ? '#F0F4FF' : '#fff';
+    var sc = r.vacant ? '#E67E22' : '#1B5E20';
+    html += '<tr style="background:' + bg + ';">'
+      + '<td style="padding:4px 8px;">' + (r.tenant||'—').slice(0,40) + '</td>'
+      + '<td style="padding:4px 8px;">' + (r.suite||'—') + '</td>'
+      + '<td style="padding:4px 8px;text-align:right;">' + (r.sf ? Number(r.sf).toLocaleString() : '—') + '</td>'
+      + '<td style="padding:4px 8px;text-align:right;">' + (r.base_rent_psf ? '$'+Number(r.base_rent_psf).toFixed(2) : '—') + '</td>'
+      + '<td style="padding:4px 8px;">' + (r.expiration_date||'—') + '</td>'
+      + '<td style="padding:4px 8px;">' + (r.lease_type||'—') + '</td>'
+      + '<td style="padding:4px 8px;color:'+sc+';font-weight:600;">' + (r.vacant?'Vacant':'Occupied') + '</td>'
+      + '</tr>';
+  });
+  html += '</tbody></table>';
+  document.getElementById('ll-preview-table').innerHTML = html;
+}
+
+// ── CONFIRM IMPORT ───────────────────────────────────────
+async function _llConfirmImport() {
+  var rows = _llParsedRows;
+  if (!rows || !rows.length) return;
+  var btn = document.getElementById('ll-confirm-btn');
+  btn.textContent = '⏳ Importing...'; btn.disabled = true;
+  var address = (document.getElementById('ll-address')||{}).value || '';
+  try {
+    await _writeLeaseRows(rows, address, 'LEASE_LIBRARY');
+    showToast('✅ Imported ' + rows.length + ' leases for ' + address);
+    document.getElementById('ll-preview-section').style.display = 'none';
+    _llParsedRows = [];
+    _llPage = 0;
+    await _llLoadLeases();
+  } catch(e) {
+    showToast('Import failed: ' + e.message);
+    console.error('[LL] import error:', e);
+  }
+  btn.textContent = '✅ Confirm Import'; btn.disabled = false;
+}
+
+// ── LOAD & RENDER DATABASE ───────────────────────────────
+async function _llLoadLeases() {
+  var wrap = document.getElementById('ll-table-wrap');
+  if (!wrap) return;
+  if (!_sbOk || !_sb) {
+    wrap.innerHTML = '<div style="color:var(--faint);font-size:12px;padding:16px;">Supabase not connected.</div>';
+    return;
+  }
+  var search  = (document.getElementById('ll-search')||{}).value || '';
+  var mkt     = (document.getElementById('ll-filter-market')||{}).value || '';
+  var atype   = (document.getElementById('ll-filter-type')||{}).value || '';
+  var status  = (document.getElementById('ll-filter-status')||{}).value || '';
+  var psfMin  = parseFloat((document.getElementById('ll-filter-psf-min')||{}).value) || null;
+  var psfMax  = parseFloat((document.getElementById('ll-filter-psf-max')||{}).value) || null;
+
+  var q = _sb.from('leases').select('*', { count: 'exact' });
+  if (mkt)    q = q.eq('market', mkt);
+  if (atype)  q = q.eq('lease_type', atype);
+  if (status === 'Occupied') q = q.eq('vacant', false);
+  if (status === 'Vacant')   q = q.eq('vacant', true);
+  if (psfMin !== null) q = q.gte('base_rent_psf', psfMin);
+  if (psfMax !== null) q = q.lte('base_rent_psf', psfMax);
+  if (search) q = q.or('address.ilike.%' + search + '%,tenant.ilike.%' + search + '%,market.ilike.%' + search + '%,suite.ilike.%' + search + '%');
+  q = q.order('created_at', { ascending: false })
+       .range(_llPage * _llPageSize, (_llPage+1) * _llPageSize - 1);
+
+  var res = await q;
+  if (res.error) {
+    wrap.innerHTML = '<div style="color:#C0392B;font-size:12px;padding:16px;">Query error: ' + res.error.message + '</div>';
+    return;
+  }
+  _llTotal = res.count || 0;
+  _llRenderTable(res.data || []);
+  _llRenderStats();
+}
+
+function _llRenderTable(rows) {
+  var rcEl = document.getElementById('ll-row-count');
+  if (rcEl) rcEl.textContent = _llTotal + ' comps';
+  var wrap = document.getElementById('ll-table-wrap');
+  if (!rows.length) {
+    wrap.innerHTML = '<div style="color:var(--faint);font-size:12px;padding:16px;">No leases found. Import a rent roll to get started.</div>';
+    _llRenderPagination(); return;
+  }
+  var cols = ['Address','Suite','Tenant','SF','Rent PSF','Expiration','Type','Status','Market','Actions'];
+  var html = '<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:11px;min-width:900px;">'
+    + '<thead><tr>' + cols.map(function(c){
+        return '<th style="background:#1E2761;color:#fff;padding:6px 8px;text-align:left;white-space:nowrap;position:sticky;top:0;z-index:1;">' + c + '</th>';
+      }).join('') + '</tr></thead><tbody>';
+  rows.forEach(function(r, i) {
+    var bg = i%2===1 ? '#F0F4FF' : '#fff';
+    var sc = r.vacant ? '#E67E22' : '#1B5E20';
+    var sl = r.vacant ? 'Vacant' : 'Occupied';
+    var tid = r.id.replace(/'/g,"\\'");
+    var tname = (r.tenant||'').replace(/'/g,"\\'").replace(/"/g,'&quot;');
+    var taddr = (r.address||'').replace(/'/g,"\\'").replace(/"/g,'&quot;');
+    html += '<tr id="ll-row-' + r.id + '" style="background:' + bg + ';">'
+      + '<td style="padding:5px 8px;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="'+(r.address||'')+'">' + (r.address||'—').slice(0,28) + '</td>'
+      + '<td style="padding:5px 8px;">' + (r.suite||'—') + '</td>'
+      + '<td style="padding:5px 8px;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="'+(r.tenant||'')+'">' + (r.tenant||'—').slice(0,28) + '</td>'
+      + '<td style="padding:5px 8px;text-align:right;">' + (r.sf ? Number(r.sf).toLocaleString() : '—') + '</td>'
+      + '<td style="padding:5px 8px;text-align:right;">' + (r.base_rent_psf ? '$'+Number(r.base_rent_psf).toFixed(2) : '—') + '</td>'
+      + '<td style="padding:5px 8px;">' + (r.expiration_date ? String(r.expiration_date).slice(0,10) : '—') + '</td>'
+      + '<td style="padding:5px 8px;">' + (r.lease_type||'—') + '</td>'
+      + '<td style="padding:5px 8px;color:'+sc+';font-weight:600;">' + sl + '</td>'
+      + '<td style="padding:5px 8px;">' + (r.market||'—') + '</td>'
+      + '<td style="padding:5px 8px;white-space:nowrap;">'
+      + '<button onclick="_llEditLease(\''+tid+'\')" style="background:#2196F3;color:#fff;border:none;border-radius:3px;padding:2px 7px;font-size:10px;cursor:pointer;margin-right:4px;">Edit</button>'
+      + '<button onclick="_llDeleteLease(\''+tid+'\',\''+tname+'\',\''+taddr+'\')" style="background:#C0392B;color:#fff;border:none;border-radius:3px;padding:2px 7px;font-size:10px;cursor:pointer;">Del</button>'
+      + '</td></tr>';
+  });
+  html += '</tbody></table></div>';
+  wrap.innerHTML = html;
+  _llRenderPagination();
+}
+
+function _llRenderPagination() {
+  var pg = document.getElementById('ll-pagination');
+  if (!pg) return;
+  var totalPages = Math.ceil(_llTotal / _llPageSize);
+  if (totalPages <= 1) { pg.innerHTML = ''; return; }
+  pg.innerHTML = ''
+    + '<button class="btn btn-o" style="font-size:11px;padding:4px 10px;" onclick="_llChangePage(-1)"'
+    + (_llPage===0?' disabled':'') + '>← Prev</button>'
+    + '<span style="color:var(--faint);">Page ' + (_llPage+1) + ' of ' + totalPages + '</span>'
+    + '<button class="btn btn-o" style="font-size:11px;padding:4px 10px;" onclick="_llChangePage(1)"'
+    + (_llPage>=totalPages-1?' disabled':'') + '>Next →</button>';
+}
+
+function _llChangePage(dir) {
+  _llPage = Math.max(0, _llPage + dir);
+  _llLoadLeases();
+}
+
+function _llSearch() { _llPage = 0; _llLoadLeases(); }
+
+async function _llRenderStats() {
+  if (!_sbOk || !_sb) return;
+  try {
+    var res = await _sb.from('leases').select('sf,base_rent_psf,market,vacant');
+    if (res.error || !res.data) return;
+    var all = res.data;
+    var occ = all.filter(function(r){ return !r.vacant; });
+    var totalSF = all.reduce(function(s,r){ return s+(parseFloat(r.sf)||0); }, 0);
+    var avgPSF  = occ.length ? occ.reduce(function(s,r){ return s+(parseFloat(r.base_rent_psf)||0); },0)/occ.length : 0;
+    var mkts = [];
+    all.forEach(function(r){ if(r.market && mkts.indexOf(r.market)<0) mkts.push(r.market); });
+    var statsEl = document.getElementById('ll-stats');
+    if (!statsEl) return;
+    statsEl.innerHTML = [
+      { label:'Total Comps',      val: all.length },
+      { label:'Avg Rent PSF',     val: occ.length ? '$'+avgPSF.toFixed(2) : '—' },
+      { label:'Total SF Tracked', val: totalSF>0 ? Number(totalSF).toLocaleString()+' SF' : '—' },
+      { label:'Markets',          val: mkts.length ? mkts.join(', ') : '—' },
+    ].map(function(s){
+      return '<div style="background:#F0F4FF;border-radius:6px;padding:8px 14px;min-width:130px;">'
+        + '<div style="font-size:18px;font-weight:700;color:#1E2761;">' + s.val + '</div>'
+        + '<div style="font-size:10px;color:#4A5568;letter-spacing:.06em;text-transform:uppercase;margin-top:2px;">' + s.label + '</div>'
+        + '</div>';
+    }).join('');
+  } catch(e) {}
+}
+
+// ── DELETE ───────────────────────────────────────────────
+async function _llDeleteLease(id, tenant, addr) {
+  if (!confirm('Delete lease for ' + tenant + ' at ' + addr + '?')) return;
+  if (!_sbOk || !_sb) return;
+  var res = await _sb.from('leases').delete().eq('id', id);
+  if (res.error) { showToast('Delete failed: ' + res.error.message); return; }
+  showToast('Deleted lease for ' + tenant);
+  _llLoadLeases();
+}
+
+// ── EDIT ─────────────────────────────────────────────────
+function _llEditLease(id) {
+  var row = document.getElementById('ll-row-' + id);
+  if (!row) return;
+  var cells = row.querySelectorAll('td');
+  var cur = {
+    tenant: cells[2] ? (cells[2].title || cells[2].textContent).trim() : '',
+    sf:     cells[3] ? cells[3].textContent.replace(/,/g,'').trim() : '',
+    psf:    cells[4] ? cells[4].textContent.replace('$','').trim() : '',
+    exp:    cells[5] ? cells[5].textContent.trim() : '',
+    type:   cells[6] ? cells[6].textContent.trim() : '',
+  };
+  row.innerHTML = '<td colspan="10" style="padding:6px 8px;">'
+    + '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">'
+    + '<input id="lle-tenant" value="'+cur.tenant.replace(/"/g,'&quot;')+'" placeholder="Tenant" style="flex:2;min-width:120px;padding:4px 8px;border:1px solid #d1d9ef;border-radius:3px;font-size:12px;">'
+    + '<input id="lle-sf"     value="'+cur.sf+'"     placeholder="SF"          style="width:80px;padding:4px 8px;border:1px solid #d1d9ef;border-radius:3px;font-size:12px;">'
+    + '<input id="lle-psf"    value="'+cur.psf+'"    placeholder="Rent PSF"    style="width:80px;padding:4px 8px;border:1px solid #d1d9ef;border-radius:3px;font-size:12px;">'
+    + '<input id="lle-exp"    value="'+cur.exp+'"    placeholder="Expiration"  style="width:105px;padding:4px 8px;border:1px solid #d1d9ef;border-radius:3px;font-size:12px;">'
+    + '<input id="lle-type"   value="'+cur.type+'"   placeholder="Lease Type"  style="width:120px;padding:4px 8px;border:1px solid #d1d9ef;border-radius:3px;font-size:12px;">'
+    + '<button class="btn btn-p" onclick="_llSaveEdit(\''+id+'\')" style="font-size:11px;padding:4px 10px;">Save</button>'
+    + '<button class="btn btn-o" onclick="_llLoadLeases()" style="font-size:11px;padding:4px 10px;">Cancel</button>'
+    + '</div></td>';
+}
+
+async function _llSaveEdit(id) {
+  var tenant = (document.getElementById('lle-tenant')||{}).value || '';
+  var sf     = parseFloat((document.getElementById('lle-sf')||{}).value)  || null;
+  var psf    = parseFloat((document.getElementById('lle-psf')||{}).value) || null;
+  var exp    = (document.getElementById('lle-exp')||{}).value  || '';
+  var type   = (document.getElementById('lle-type')||{}).value || '';
+  if (!_sbOk || !_sb) return;
+  var payload = { id: id, tenant: tenant, sf: sf, base_rent_psf: psf,
+    expiration_date: exp ? _parseLeaseDate(exp) : null, lease_type: type };
+  var res = await _sb.from('leases').upsert([payload], { onConflict: 'id' });
+  if (res.error) { showToast('Save failed: ' + res.error.message); return; }
+  showToast('Updated');
+  _llLoadLeases();
+}
+
+// ── EXPORT ───────────────────────────────────────────────
+async function _llExportLeases() {
+  if (!_sbOk || !_sb) { showToast('Supabase not connected'); return; }
+  var search = (document.getElementById('ll-search')||{}).value || '';
+  var mkt    = (document.getElementById('ll-filter-market')||{}).value || '';
+  var status = (document.getElementById('ll-filter-status')||{}).value || '';
+  var psfMin = parseFloat((document.getElementById('ll-filter-psf-min')||{}).value) || null;
+  var psfMax = parseFloat((document.getElementById('ll-filter-psf-max')||{}).value) || null;
+  var q = _sb.from('leases').select('*');
+  if (mkt)    q = q.eq('market', mkt);
+  if (status==='Occupied') q = q.eq('vacant', false);
+  if (status==='Vacant')   q = q.eq('vacant', true);
+  if (psfMin!==null) q = q.gte('base_rent_psf', psfMin);
+  if (psfMax!==null) q = q.lte('base_rent_psf', psfMax);
+  if (search) q = q.or('address.ilike.%'+search+'%,tenant.ilike.%'+search+'%,market.ilike.%'+search+'%');
+  q = q.order('created_at',{ascending:false}).limit(2000);
+  var res = await q;
+  if (res.error || !res.data) { showToast('Export failed'); return; }
+  var all = res.data;
+  var occ = all.filter(function(r){ return !r.vacant; });
+  var vac = all.filter(function(r){ return  r.vacant; });
+  function toRows(data) {
+    var hdr = ['Address','Suite','Tenant','SF','Rent PSF','Commencement','Expiration','Lease Type','Status','Market','Notes','Source'];
+    var rows = [hdr];
+    data.forEach(function(r){ rows.push([r.address||'',r.suite||'',r.tenant||'',
+      r.sf?Number(r.sf):'',r.base_rent_psf?Number(r.base_rent_psf):'',
+      r.commencement_date||'',r.expiration_date||'',r.lease_type||'',
+      r.vacant?'Vacant':'Occupied',r.market||'',r.notes||'',r.source||'']); });
+    return rows;
+  }
+  var avgPSF = occ.length ? occ.reduce(function(s,r){ return s+(parseFloat(r.base_rent_psf)||0);},0)/occ.length : 0;
+  var totalSF= all.reduce(function(s,r){ return s+(parseFloat(r.sf)||0);},0);
+  var mkts   = []; all.forEach(function(r){ if(r.market&&mkts.indexOf(r.market)<0) mkts.push(r.market); });
+  var sumData = [
+    ['RIDGE Lease Library Export'],['Date',new Date().toLocaleDateString()],
+    ['Total Comps',all.length],['Occupied',occ.length],['Vacant',vac.length],
+    ['Avg Rent PSF (Occupied)',occ.length?'$'+avgPSF.toFixed(2):'—'],
+    ['Total SF Tracked',totalSF>0?Number(totalSF).toLocaleString()+' SF':'—'],
+    ['Markets',mkts.join(', ')],
+  ];
+  var wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(sumData), 'Summary');
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(toRows(all)),  'All Comps');
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(toRows(occ)),  'Occupied Only');
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(toRows(vac)),  'Vacant');
+  var dateStr = new Date().toISOString().slice(0,10);
+  XLSX.writeFile(wb, 'RIDGE_Lease_Library_' + dateStr + '.xlsx');
+  showToast('✅ Exported ' + all.length + ' leases');
 }
 
 _migrateDSState(); // one-time migration of ridge_daily_sourced + ridge_ds_tracker → ridge_daily_state_v1
