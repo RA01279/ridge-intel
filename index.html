@@ -3303,6 +3303,7 @@ var _sb = null;
 var _sbOk = false;
 var _lastRunInputs = null;
 var _lastRunToolId  = null;
+var _isrParsedData  = null;  // structured JSON extracted from ISR response — used by PPTX builder
 var _skillRawOutputs = {};   // keyed by tool id: 'napkin', 'gavel', 'isr', etc. — full response only, never compressed
 var _ridgeSessionLog  = [];  // bookkeeping audit trail — never sent to the Claude API
 
@@ -5709,6 +5710,19 @@ async function runRidgeAPI(skillName, prompt, runInputs, runToolId) {
     // Persist completed output so buildPPTX() and other exporters can access it
     if (_lastRunToolId && STATE[_lastRunToolId]) {
       STATE[_lastRunToolId].result = accumulated;
+    }
+    // Strip trailing JSON blocks from the visible panel — ISR and Gavel embed these for
+    // data extraction only and must never be shown to the user. _skillRawOutputs keeps
+    // the full text (with JSON) so the PPTX builder and Gavel lease-DB wiring still work.
+    if (_lastRunToolId === 'isr' || _lastRunToolId === 'gavel') {
+      var _jClean = accumulated.replace(/\n*```json[\s\S]*?```\s*$/, '');
+      if (_jClean.length < accumulated.length) {
+        contentEl.innerHTML = parseMarkdown(_jClean);
+        if (_lastRunToolId === 'isr') {
+          var _jm2 = accumulated.match(/```json\s*([\s\S]*?)```\s*$/);
+          if (_jm2) { try { _isrParsedData = JSON.parse(_jm2[1]); } catch(e) {} }
+        }
+      }
     }
     console.log('Stream complete — about to enter Supabase post-run block');
     document.getElementById('ridge-pdf-btn').disabled = false;
