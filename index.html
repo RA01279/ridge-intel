@@ -8185,6 +8185,78 @@ async function _extractCashFlows() {
   }
 }
 
+async function _extractSensitivity() {
+  var modelBuffer = STATE['isr'] &&
+    STATE['isr'].files &&
+    STATE['isr'].files['model'];
+  if (!modelBuffer) return null;
+
+  try {
+    var wb = XLSX.read(modelBuffer, {type:'array'});
+    var ws = wb.Sheets['General Inputs'];
+    if (!ws) return null;
+
+    function cv(cell) {
+      var c = ws[cell];
+      return c ? String(c.v || '') : '';
+    }
+
+    function parseIRR(str) {
+      if (!str) return null;
+      var m = String(str).match(/([\d.]+)%/);
+      return m ? parseFloat(m[1]) : null;
+    }
+
+    function parseEM(str) {
+      if (!str) return null;
+      var m = String(str).match(/([\d.]+)x/i);
+      return m ? m[1]+'x' : null;
+    }
+
+    var priceCols  = ['O','P','Q','R','S'];
+    var holdRows   = [19, 20, 21, 22, 23];
+    var holdLabels = ['3 yr','4 yr','5 yr','6 yr','7 yr'];
+
+    var priceHeaders = priceCols.map(function(col) {
+      var v = cv(col+'17');
+      return v ? '$'+parseFloat(v).toFixed(0)+' PSF' : col;
+    });
+
+    var holdSensitivity = holdRows.map(function(row, ri) {
+      var rowData = { label: holdLabels[ri], isBase: ri === 2 };
+      priceCols.forEach(function(col, ci) {
+        var raw = cv(col+row);
+        rowData['col_'+ci] = { raw: raw, irr: parseIRR(raw), em: parseEM(raw), isBaseCol: ci === 2 };
+      });
+      return rowData;
+    });
+
+    var capCols = ['P','Q','R'];
+    var capHeaders = capCols.map(function(col) {
+      var v = cv(col+'28');
+      if (!v) return col;
+      var n = parseFloat(String(v));
+      return isNaN(n) ? String(v) : (n*100).toFixed(2)+'%';
+    });
+
+    var exitCapSensitivity = capCols.map(function(col, ci) {
+      var raw = cv(col+'29');
+      return { cap: capHeaders[ci], raw: raw, irr: parseIRR(raw), em: parseEM(raw), isBase: ci === 1 };
+    });
+
+    return {
+      priceHeaders: priceHeaders,
+      holdSensitivity: holdSensitivity,
+      capHeaders: capHeaders,
+      exitCapSensitivity: exitCapSensitivity
+    };
+
+  } catch(e) {
+    console.warn('[RIDGE] Sensitivity extraction failed:', e.message);
+    return null;
+  }
+}
+
 async function ridgeExportPPT() {
   console.log('ridgeExportPPT fired — skillName:', document.getElementById('ridge-panel-skill-name').textContent, '| _lastRunInputs:', _lastRunInputs ? 'present' : 'null', '| PptxGenJS:', typeof PptxGenJS);
   if (typeof PptxGenJS === 'undefined') {
@@ -8838,30 +8910,146 @@ async function ridgeExportPPT() {
     addFtr(s11);
 
     // ── SLIDE 12 — Sensitivity Analysis ──────────────────────
+    var sensFromModel = await _extractSensitivity();
     var s12=pptx.addSlide(); s12.background={color:BG}; addHdr(s12,'Sensitivity Analysis',12);
-    s12.addText('IRR by Purchase Price × Hold Period',{x:0.4,y:0.82,w:6.2,h:0.28,fontSize:11,color:BLUE,bold:true});
-    s12.addText('IRR by Purchase Price × Exit Cap Rate',{x:7.1,y:0.82,w:6.2,h:0.28,fontSize:11,color:BLUE,bold:true});
-    if(jd&&jd.sensitivity){
-      var sens12=jd.sensitivity;
-      // ISSUE 7: color-coded cells via sensCell(); read irr_36/irr_48/irr_60 correctly
-      if(sens12.hold_rows&&sens12.hold_rows.length){
-        s12.addTable(
-          [tblH(['PRICE','3-YR IRR','4-YR IRR','5-YR IRR'])].concat(
-            sens12.hold_rows.map(function(r){return [tblR([r.price||''],false)[0],sensCell(r.irr_36||r.irr_3yr||r['3yr']||''),sensCell(r.irr_48||r.irr_4yr||r['4yr']||''),sensCell(r.irr_60||r.irr_5yr||r['5yr']||'')];})
-          ),{x:0.4,y:1.15,w:6.2,colW:[2.0,1.4,1.4,1.4],border:{type:'solid',color:MGREY,w:0.5},fontSize:10}
-        );
-      }
-      if(sens12.cap_rows&&sens12.cap_rows.length){
-        s12.addTable(
-          [tblH(['PRICE','6.00% CAP','6.25% CAP','6.50% CAP'])].concat(
-            sens12.cap_rows.map(function(r){return [tblR([r.price||''],false)[0],sensCell(r.irr_600||r.irr_6_00||r['6.00%']||''),sensCell(r.irr_625||r.irr_6_25||r['6.25%']||''),sensCell(r.irr_650||r.irr_6_50||r['6.50%']||'')];})
-          ),{x:7.1,y:1.15,w:6.2,colW:[2.0,1.4,1.4,1.4],border:{type:'solid',color:MGREY,w:0.5},fontSize:10}
-        );
-      }
-    } else {
-      s12.addText(extractSection(panelText,'SENSITIVITY').slice(0,1400),{x:0.4,y:1.15,w:12.5,h:5.5,fontSize:11,color:TEXT2,wrap:true});
+    s12.addText('IRR by Purchase Price × Hold Period',{x:0.4,y:0.82,w:6.5,h:0.28,fontSize:11,color:BLUE,bold:true});
+    s12.addText('IRR by Purchase Price × Exit Cap Rate',{x:7.2,y:0.82,w:6.0,h:0.28,fontSize:11,color:BLUE,bold:true});
+
+    // 4-tier IRR color helper
+    function irrColors(irr) {
+      if (irr === null || irr === undefined) return {bg:BG, tc:TEXT2};
+      if (irr >= 14.75) return {bg:'1B5E20', tc:WHITE};
+      if (irr >= 13.50) return {bg:'F9A825', tc:'1A1A1A'};
+      if (irr >= 12.00) return {bg:'E67E22', tc:WHITE};
+      return {bg:'C0392B', tc:WHITE};
     }
-    s12.addText('Green ≥ 14%  ·  Yellow 12–13.99%  ·  Red < 12%',{x:0.4,y:6.85,w:12.5,h:0.25,fontSize:8.5,color:MUTED});
+
+    // Two-line cell: IRR (bold large) + EM (small), with optional bold gold border for base highlight
+    function sens2Cell(irr, em, highlight) {
+      var col = irrColors(irr);
+      var irrTxt = (irr !== null && irr !== undefined) ? irr.toFixed(2)+'%' : '—';
+      var emTxt  = em || '—';
+      var bdr = highlight
+        ? {type:'solid', color:'A07E35', pt:2}
+        : {type:'solid', color:MGREY,   pt:0.5};
+      return {
+        text: [{text:irrTxt, options:{bold:true, fontSize:11}},
+               {text:'\n'+emTxt, options:{bold:false, fontSize:8.5}}],
+        options: {fill:{color:col.bg}, color:col.tc, align:'center', valign:'middle', border:bdr}
+      };
+    }
+
+    if (sensFromModel) {
+      var ph12 = sensFromModel.priceHeaders;
+      var hs12 = sensFromModel.holdSensitivity;
+      var cs12 = sensFromModel.exitCapSensitivity;
+
+      // ── Table 1: Hold Period × Purchase Price ───────────────
+      var hdr1 = [{text:'HOLD', options:{fill:{color:HDR}, color:WHITE, bold:true, fontSize:9.5, align:'center', border:{type:'solid',color:MGREY,pt:0.5}}}];
+      ph12.forEach(function(h, ci) {
+        var isBaseCol = ci === 2;
+        hdr1.push({
+          text: (isBaseCol ? '\u2605 ' : '') + h,
+          options: {
+            fill:   {color: isBaseCol ? '1A3525' : HDR},
+            color:  isBaseCol ? 'A07E35' : WHITE,
+            bold:   true,
+            fontSize: 9.5,
+            align: 'center',
+            border: {type:'solid', color: isBaseCol ? 'A07E35' : MGREY, pt: isBaseCol ? 2 : 0.5}
+          }
+        });
+      });
+
+      var tbl1 = [hdr1];
+      hs12.forEach(function(row) {
+        var isBaseRow = row.isBase;
+        var labelCell = {
+          text: (isBaseRow ? '\u2605 ' : '') + row.label,
+          options: {
+            fill:   {color: isBaseRow ? '1A3525' : LGREY},
+            color:  isBaseRow ? 'A07E35' : TEXT2,
+            bold:   isBaseRow,
+            fontSize: 10,
+            align: 'center',
+            border: {type:'solid', color: isBaseRow ? 'A07E35' : MGREY, pt: isBaseRow ? 2 : 0.5}
+          }
+        };
+        var dataRow = [labelCell];
+        for (var ci12 = 0; ci12 < 5; ci12++) {
+          var cell12 = row['col_'+ci12];
+          var isBaseCell = isBaseRow && ci12 === 2;
+          var highlight12 = isBaseRow || ci12 === 2;
+          var c12 = sens2Cell(cell12.irr, cell12.em, highlight12);
+          if (isBaseCell) {
+            // Star on the intersection cell
+            var irrTxtStar = (cell12.irr !== null && cell12.irr !== undefined) ? cell12.irr.toFixed(2)+'%' : '—';
+            var emTxtStar  = cell12.em || '—';
+            var colStar = irrColors(cell12.irr);
+            c12 = {
+              text: [{text:'\u2605 '+irrTxtStar, options:{bold:true, fontSize:11}},
+                     {text:'\n'+emTxtStar,        options:{bold:false, fontSize:8.5}}],
+              options: {fill:{color:colStar.bg}, color:colStar.tc, align:'center', valign:'middle', border:{type:'solid',color:'A07E35',pt:2}}
+            };
+          }
+          dataRow.push(c12);
+        }
+        tbl1.push(dataRow);
+      });
+
+      s12.addTable(tbl1, {x:0.35, y:1.15, w:6.6, colW:[0.9,1.14,1.14,1.14,1.14,1.14], rowH:0.9, border:{type:'solid',color:MGREY,pt:0.5}});
+
+      // ── Table 2: Exit Cap Rate ──────────────────────────────
+      var hdr2 = [{text:'METRIC', options:{fill:{color:HDR}, color:WHITE, bold:true, fontSize:9.5, align:'center', border:{type:'solid',color:MGREY,pt:0.5}}}];
+      cs12.forEach(function(c) {
+        hdr2.push({
+          text: (c.isBase ? '\u2605 ' : '') + c.cap,
+          options: {
+            fill:   {color: c.isBase ? '1A3525' : HDR},
+            color:  c.isBase ? 'A07E35' : WHITE,
+            bold:   true,
+            fontSize: 9.5,
+            align: 'center',
+            border: {type:'solid', color: c.isBase ? 'A07E35' : MGREY, pt: c.isBase ? 2 : 0.5}
+          }
+        });
+      });
+
+      var dataRow2 = [{text:'PROJ RETURNS', options:{fill:{color:LGREY}, color:TEXT2, bold:true, fontSize:9.5, align:'center', border:{type:'solid',color:MGREY,pt:0.5}}}];
+      cs12.forEach(function(c) {
+        var c2 = sens2Cell(c.irr, c.em, c.isBase);
+        if (c.isBase) {
+          var irrTxt2 = (c.irr !== null && c.irr !== undefined) ? c.irr.toFixed(2)+'%' : '—';
+          var emTxt2  = c.em || '—';
+          var colBase2 = irrColors(c.irr);
+          c2 = {
+            text: [{text:'\u2605 '+irrTxt2, options:{bold:true, fontSize:11}},
+                   {text:'\n'+emTxt2,        options:{bold:false, fontSize:8.5}}],
+            options: {fill:{color:colBase2.bg}, color:colBase2.tc, align:'center', valign:'middle', border:{type:'solid',color:'A07E35',pt:2}}
+          };
+        }
+        dataRow2.push(c2);
+      });
+
+      s12.addTable([hdr2, dataRow2], {x:7.2, y:1.15, w:6.0, colW:[1.5,1.5,1.5,1.5], rowH:0.9, border:{type:'solid',color:MGREY,pt:0.5}});
+
+    } else {
+      s12.addText('Upload acquisition model (.xlsx) to populate sensitivity tables',{x:0.4,y:2.8,w:12.5,h:1.5,fontSize:14,color:MUTED,align:'center',valign:'middle',italic:true,wrap:true});
+    }
+
+    // Legend
+    var lgnd = [
+      {color:'1B5E20', label:'\u25a0  \u2265 14.75%  VALUE-ADD HURDLE'},
+      {color:'F9A825', label:'\u25a0  13.50\u201314.74%  CORE+/STABILIZED RANGE'},
+      {color:'E67E22', label:'\u25a0  12.00\u201313.49%  APPROACHING FLOOR'},
+      {color:'C0392B', label:'\u25a0  < 12.00%  FAILS ALL HURDLES'}
+    ];
+    var lx12 = 0.35;
+    lgnd.forEach(function(li) {
+      s12.addShape(pptx.ShapeType.rect,{x:lx12,y:6.75,w:0.22,h:0.22,fill:{color:li.color},line:{color:li.color}});
+      s12.addText(li.label.replace(/^\S+\s+/,''),{x:lx12+0.27,y:6.74,w:3.0,h:0.25,fontSize:7.5,color:MUTED,valign:'middle'});
+      lx12 += 3.3;
+    });
     addFtr(s12);
 
     // ── SLIDE 13 — Risk Matrix ────────────────────────────────
