@@ -4246,6 +4246,15 @@ function copyResult(toolId) {
 // ═══════════════════════════════════════════════════════════
 //  ISR CALL 2 — JSON EXTRACTION (Haiku, non-streaming)
 // ═══════════════════════════════════════════════════════════
+function _extractKeySection(text, header) {
+  var idx = text.indexOf('## ' + header);
+  if (idx === -1) idx = text.indexOf('# ' + header);
+  if (idx === -1) return '';
+  var next = text.indexOf('\n## ', idx + 4);
+  if (next === -1) next = text.indexOf('\n# ', idx + 4);
+  return next > -1 ? text.slice(idx, next) : text.slice(idx, idx + 3000);
+}
+
 async function _isrExtractJSON(memoText) {
   var _isrBtn = document.getElementById('pptx-btn-isr');
   try {
@@ -4259,7 +4268,7 @@ async function _isrExtractJSON(memoText) {
       },
       body: JSON.stringify({
         model: 'claude-haiku-4-5-20251001',
-        max_tokens: 2000,
+        max_tokens: 4000,
         system: 'You are a data extraction assistant. Return ONLY valid JSON, no other text.',
         messages: [{
           role: 'user',
@@ -4272,7 +4281,7 @@ async function _isrExtractJSON(memoText) {
               sensitivity: '{hold_rows: [{price, irr_36, irr_48, irr_60}], cap_rows: [{price, irr_600, irr_625, irr_650}]}',
               risks: 'array of {factor, severity, mitigant}',
               recommendation: '{verdict, summary, next_steps}'
-            }) + '\n\nMemo:\n' + memoText.slice(0, 12000)
+            }) + '\n\nMemo:\n' + memoText
         }]
       })
     });
@@ -6742,7 +6751,9 @@ async function runRidgeAPI(skillName, prompt, runInputs, runToolId) {
     if (_lastRunToolId === 'isr') {
       var _isrBtn2 = document.getElementById('pptx-btn-isr');
       if (_isrBtn2) { _isrBtn2.disabled = true; _isrBtn2.textContent = '⏳ Extracting data...'; }
-      _isrExtractJSON(accumulated);
+      var _isrSections = ['RENT ROLL ANALYSIS','LEASE COMP ANALYSIS','SENSITIVITY ANALYSIS','RISK MATRIX','IC RECOMMENDATION','ENTRADA HURDLE CONFIRMATION'];
+      var _trimmedMemo = _isrSections.map(function(s){ return _extractKeySection(accumulated, s); }).filter(Boolean).join('\n\n').slice(0, 8000);
+      _isrExtractJSON(_trimmedMemo);
     }
     console.log('Stream complete — about to enter Supabase post-run block');
     document.getElementById('ridge-pdf-btn').disabled = false;
