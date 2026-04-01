@@ -601,7 +601,7 @@ footer{border-top:1px solid var(--border);padding:20px 24px;text-align:center;co
 </div>
 
 <!-- ═══ SUPPORT SKILLS ═══ -->
-<div class="sec-hdr" style="margin-top:32px"><span class="sec-title">Support Skills</span><span style="font-size:11px;color:var(--faint)">11 Active · Click any tile to expand</span></div>
+<div class="sec-hdr" style="margin-top:32px"><span class="sec-title">Support Skills</span><span id="skill-count-label" style="font-size:11px;color:var(--faint)">15 Active · Click any tile to expand</span></div>
 <div class="tool-grid" id="tool-grid"><div class="tool-card open" id="card-lens">
       <div class="tc-row"><span class="tc-num">01</span><span class="tc-name">LENS</span></div>
       <div class="tc-desc">Broker OM teardown. Bear / Base / Bull · max entry price.</div>
@@ -635,6 +635,9 @@ footer{border-top:1px solid var(--border);padding:20px 24px;text-align:center;co
     </div><div class="tool-card" id="card-canvas">
       <div class="tc-row"><span class="tc-num">11</span><span class="tc-name">CANVAS</span></div>
       <div class="tc-desc">Tenant sourcing. Fill a building or hunt acquisition targets.</div>
+    </div><div class="tool-card" id="card-lease-library" onclick="togglePanel('lease-library')">
+      <div class="tc-row"><span class="tc-num">15</span><span class="tc-name">LEASE LIBRARY</span></div>
+      <div class="tc-desc">Proprietary lease comp database — import, search, manage.</div>
     </div></div>
 <div id="panels-container"><div class="tool-panel open" id="panel-lens">
   <div class="panel-head">
@@ -1540,7 +1543,7 @@ var TOOLS = [
     system:`You are a senior CRE attorney and acquisitions officer at Entrada Partners. You specialize in reconstructing the effective current terms of industrial and flex leases from a master lease and a chain of amendments. You understand what long-tenured tenants negotiate over time, how amendment history reveals tenant leverage, and what provisions will concern institutional buyers at exit. Be specific — quote provisions, cite amendment numbers, and quantify economic impacts.`
   },
   {
-    id:'lease-library', num:'14', icon:'🗄', name:'LEASE LIBRARY',
+    id:'lease-library', num:'15', icon:'🗄', name:'LEASE LIBRARY',
     badge:'Comp Database',
     desc:'Proprietary lease comp database — import, search, manage.',
     shortDesc:'Proprietary lease comp database — import, search, manage.',
@@ -1563,6 +1566,9 @@ function renderTools() {
   var panels = document.getElementById('panels-container');
   grid.innerHTML = '';
   panels.innerHTML = '';
+  // Update section header count to reflect actual TOOLS array length
+  var countLabel = document.getElementById('skill-count-label');
+  if (countLabel) countLabel.textContent = TOOLS.length + ' Active · Click any tile to expand';
 
   TOOLS.forEach(tool => {
     // Card
@@ -1594,10 +1600,10 @@ function renderTools() {
       var llFileInp = document.getElementById('ll-file');
       var llZone    = document.getElementById('uz-ll-file');
       // Zone click → open native file picker
-      if (llZone) {
-        llZone.addEventListener('click', function() {
-          var inp = document.getElementById('ll-file');
-          if (inp) inp.click();
+      if (llZone && llFileInp) {
+        llZone.addEventListener('click', function(e) {
+          e.stopPropagation();
+          llFileInp.click();
         });
         // Drag-and-drop support
         llZone.addEventListener('dragover', function(e) {
@@ -1702,7 +1708,7 @@ function _buildStandalonePanelHTML(id) {
       <div class="upload-group" style="margin-top:10px;">
         <label>Argus / Excel Rent Roll or CSV <span>XLSX · XLS · CSV — Argus export or generic rent roll</span></label>
         <div class="uz" id="uz-ll-file">
-          <input type="file" id="ll-file" accept=".xlsx,.xls,.csv" style="display:none">
+          <input type="file" id="ll-file" accept=".xlsx,.xls,.csv" style="position:absolute;opacity:0;width:0;height:0;">
           <div class="uz-ico">📊</div>
           <div class="uz-t">Click or drag to upload</div>
           <div class="uz-s">XLSX · XLS · CSV</div>
@@ -8714,51 +8720,68 @@ async function _llParseArgusExcel(file, address, market) {
         var wb = XLSX.read(e.target.result, { type: 'array', cellDates: false, raw: false });
         var ws = wb.Sheets[wb.SheetNames[0]];
         var raw = XLSX.utils.sheet_to_json(ws, { header: 1, defval: null, raw: false });
-        if (!raw || raw.length < 8) { resolve(_llParseGeneric(raw, address, market)); return; }
-        // Row index 6 = primary header row in Argus format
-        var hdrRow = raw[6] || [];
+        console.log('[RIDGE] Argus rows found:', raw ? raw.length : 0);
+        if (!raw || raw.length < 3) { resolve([]); return; }
+
+        // Dynamically find header row: scan rows 0–14 for "tenant" or "suite" in first column
+        var hdrIdx = 6; // fallback
+        for (var s = 0; s < Math.min(raw.length, 15); s++) {
+          var firstCell = String((raw[s] && raw[s][0]) || '').toLowerCase().trim();
+          if (firstCell.includes('tenant') || firstCell.includes('suite') || firstCell.includes('space')) {
+            hdrIdx = s;
+            break;
+          }
+        }
+        console.log('[RIDGE] Header row at index:', hdrIdx);
+
+        var hdrRow = raw[hdrIdx] || [];
         var h0 = String(hdrRow[0]||'').toLowerCase();
         var isArgus = h0.includes('tenant') || h0.includes('suite') ||
-                      String(hdrRow[5]||'').toLowerCase().includes('area');
+                      String(hdrRow[5]||'').toLowerCase().includes('area') ||
+                      String(hdrRow[5]||'').toLowerCase().includes('sf') ||
+                      String(hdrRow[5]||'').toLowerCase().includes('size');
+
         var rows = [];
         if (isArgus) {
-          for (var i = 7; i < raw.length; i++) {
+          for (var i = hdrIdx + 1; i < raw.length; i++) {
             var r = raw[i];
             if (!r) continue;
             var tenantName = String(r[0]||'').trim();
-            if (!tenantName || tenantName.toLowerCase() === 'total') continue;
+            if (!tenantName || /^total\b/i.test(tenantName)) continue;
             var sfRaw = parseFloat(String(r[5]||'').replace(/[^0-9.]/g,''));
             if (!sfRaw || sfRaw === 0) continue;
             var scheduledRent = parseFloat(String(r[11]||'').replace(/[^0-9.]/g,'')) || 0;
             var rentPSF = sfRaw > 0 ? scheduledRent / sfRaw : 0;
             var leaseStatus = String(r[3]||'').trim();
-            var isVacant = tenantName.startsWith('*Vacant') || leaseStatus === 'Speculative';
+            var isVacant = /^\*?vacant/i.test(tenantName) || leaseStatus === 'Speculative' || leaseStatus === 'Vacant';
             rows.push({
-              address:          address,
-              market:           market,
-              tenant:           tenantName,
-              suite:            String(r[1]||'').trim() || null,
-              lease_type:       String(r[2]||'').trim() || 'Industrial',
-              lease_status:     leaseStatus,
-              sf:               sfRaw,
-              commencement_date: r[6] ? _parseLeaseDate(String(r[6])) : null,
-              expiration_date:   r[7] ? _parseLeaseDate(String(r[7])) : null,
-              base_rent_psf:    rentPSF > 0 ? parseFloat(rentPSF.toFixed(4)) : null,
-              vacant:           isVacant,
-              source:           'ARGUS_IMPORT',
+              address:           address,
+              market:            market,
+              tenant:            _normalizeTenant(tenantName),
+              suite:             String(r[1]||'').trim() || null,
+              lease_type:        String(r[2]||'').trim() || 'Industrial',
+              lease_status:      leaseStatus || null,
+              sf:                sfRaw,
+              commencement_date: r[6] ? _parseLeaseDateFull(String(r[6])) : null,
+              expiration_date:   r[7] ? _parseLeaseDateFull(String(r[7])) : null,
+              base_rent_psf:     rentPSF > 0 ? parseFloat(rentPSF.toFixed(4)) : null,
+              vacant:            isVacant,
+              source:            'ARGUS_IMPORT',
               extracted_data: {
-                annual_rent:   scheduledRent || null,
-                ti_total:      parseFloat(String(r[17]||'').replace(/[^0-9.]/g,'')) || null,
-                lc_total:      parseFloat(String(r[18]||'').replace(/[^0-9.]/g,'')) || null,
-                net_cash_flow: parseFloat(String(r[20]||'').replace(/[^0-9.]/g,'')) || null,
+                annual_rent:    scheduledRent || null,
+                ti_total:       parseFloat(String(r[17]||'').replace(/[^0-9.]/g,'')) || null,
+                lc_total:       parseFloat(String(r[18]||'').replace(/[^0-9.]/g,'')) || null,
+                net_cash_flow:  parseFloat(String(r[20]||'').replace(/[^0-9.]/g,'')) || null,
                 lease_start_raw: r[6] || null,
                 lease_end_raw:   r[7] || null,
               },
               notes: isVacant ? 'Vacant / Speculative' : null,
             });
           }
+          console.log('[RIDGE] Argus parsed rows:', rows.length);
         } else {
           rows = _llParseGeneric(raw, address, market);
+          console.log('[RIDGE] Fell back to generic parser, rows:', rows.length);
         }
         resolve(rows);
       } catch(err) { reject(err); }
@@ -8766,6 +8789,15 @@ async function _llParseArgusExcel(file, address, market) {
     reader.onerror = function() { reject(new Error('File read error')); };
     reader.readAsArrayBuffer(file);
   });
+}
+
+// Parses M/D/YYYY, MM/DD/YYYY, and delegates Mon-YYYY / ISO to _parseLeaseDate.
+function _parseLeaseDateFull(str) {
+  if (!str) return null;
+  str = str.trim();
+  var mdy = str.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (mdy) return mdy[3] + '-' + String(mdy[1]).padStart(2,'0') + '-' + String(mdy[2]).padStart(2,'0');
+  return _parseLeaseDate(str);
 }
 
 // ── GENERIC EXCEL PARSER ─────────────────────────────────
