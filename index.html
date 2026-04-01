@@ -3619,7 +3619,7 @@ async function _sbUpsertDeal(deal) {
     id: deal.id,
     address: deal.addr || null,
     asset_type: deal.type || null,
-    asking_price: deal.price ? parseFloat(deal.price.toString().replace(/,/g, '')) : null,
+    asking_price: deal.price ? parseFloat(String(deal.price).replace(/[$,]/g, '')) : null,
     sf: deal.sf ? parseFloat(deal.sf.toString().replace(/,/g, '')) : null,
     market: deal.mkt || null,
     stage: deal.stage || 'Initial Screen',
