@@ -8346,7 +8346,7 @@ async function ridgeExportPPT() {
     // ISSUE 8: always two decimal places
     function pct2(v) { var n=parseFloat(String(v||'').replace(/[%\s]/g,'')); return isNaN(n)?(String(v||'')||'—'):n.toFixed(2)+'%'; }
     function mult2(v) { var n=parseFloat(String(v||'').replace(/[x×\s]/g,'')); return isNaN(n)?(String(v||'')||'—'):n.toFixed(2)+'×'; }
-    function stripMd(s) { return String(s||'').replace(/\*\*/g,'').replace(/\*/g,'').replace(/#{1,6}\s/g,'').trim(); }
+    function stripMd(s) { return String(s||'').replace(/\*\*(.*?)\*\*/g,'$1').replace(/\*(.*?)\*/g,'$1').replace(/#{1,6}\s/g,'').replace(/`/g,'').trim(); }
 
     // Parse structured JSON — prefer already-extracted _isrParsedData, then re-parse raw output
     var jd = _isrParsedData || null;
@@ -8420,13 +8420,11 @@ async function ridgeExportPPT() {
       var bg=alt?LGREY:BG;
       return cells.map(function(c){return {text:String(c||'—'),options:{fontSize:10,color:TEXT2,fill:{color:bg}}};});
     }
-    // ISSUE 7: color-coded sensitivity cells
     function sensCell(v){
       var n=parseFloat(String(v||'').replace(/[%\s]/g,''));
-      if(isNaN(n)) return {text:String(v||'—'),options:{fontSize:10,color:TEXT2,fill:{color:BG},align:'center'}};
-      var bg=n>=14.75?GRNG:(n>=12?YELG:REDG);
-      var tc=n>=14.75?'4ADE80':(n>=12?'FDE68A':'FCA5A5');
-      return {text:pct2(n),options:{fontSize:10,color:tc,bold:true,fill:{color:bg},align:'center'}};
+      if(isNaN(n)||v===undefined||v===null||v==='') return {text:'—',options:{fontSize:10,color:TEXT2,fill:{color:BG},align:'center'}};
+      var bg=n>=14?'1B5E20':(n>=12?'E65100':'B71C1C');
+      return {text:pct2(n),options:{fontSize:10,color:WHITE,bold:true,fill:{color:bg},align:'center'}};
     }
 
     // ── SLIDE 1 — Cover ───────────────────────────────────────
@@ -8449,10 +8447,11 @@ async function ridgeExportPPT() {
 
     // ── SLIDE 2 — Deal Snapshot ───────────────────────────────
     var s2=pptx.addSlide(); s2.background={color:BG}; addHdr(s2,'Deal Snapshot',2);
-    // ISSUE 3: top row navy, bottom row dark green
-    [{v:fmtUSD(d.price),l:'PURCHASE PRICE'},{v:fmtUSD(d.psf)+' PSF',l:'PRICE PER SF'},{v:pct2(d.cap),l:'GOING-IN CAP RATE'},
-     {v:pct2(d.irr),l:'LEVERED IRR'},{v:mult2(d.em),l:'EQUITY MULTIPLE'},{v:pct2(d.ltv),l:'LTV'}].forEach(function(k,i){
-      kpiCard(s2,0.22+(i%3)*4.36,0.85+Math.floor(i/3)*1.62,4.15,1.52,k.v,k.l,i<3?NAVY:DKGRN,WHITE);
+    [{v:fmtUSD(d.price),l:'PURCHASE PRICE'},{v:fmtUSD(d.psf)+' PSF',l:'PRICE PER SF'},{v:pct2(d.cap),l:'GOING-IN CAP RATE'}].forEach(function(k,i){
+      kpiCard(s2,0.22+i*4.36,0.85,4.15,1.52,k.v,k.l,'1E2761','FFFFFF');
+    });
+    [{v:pct2(d.irr),l:'LEVERED IRR'},{v:mult2(d.em),l:'EQUITY MULTIPLE'},{v:pct2(d.ltv),l:'LTV'}].forEach(function(k,i){
+      kpiCard(s2,0.22+i*4.36,2.47,4.15,1.52,k.v,k.l,'1B5E20','FFFFFF');
     });
     s2.addShape(pptx.ShapeType.rect,{x:0.22,y:4.15,w:12.9,h:0.012,fill:{color:MGREY},line:{color:MGREY}});
     [{l:'YOC Yr 3/4',v:pct2(d.yoc)},{l:'NOI Yr 1',v:m.noi?'$'+Number(m.noi).toLocaleString():'—'},{l:'Hold Period',v:(d.hold||'—')},{l:'Asset Type',v:(d.type||'—')}].forEach(function(ss,i){
@@ -8565,16 +8564,28 @@ async function ridgeExportPPT() {
     addFtr(s7);
 
     // ── SLIDE 8 — Cash Flow Summary ───────────────────────────
-    // ISSUE 5: pull from CASH FLOW section, not CAPITAL STACK/RETURN STACK
     var s8=pptx.addSlide(); s8.background={color:BG}; addHdr(s8,'Cash Flow Summary',8);
-    var cfSec8=extractSection(panelText,'CASH FLOW')||extractSection(panelText,'CASH FLOWS');
-    var cfLines8=cfSec8.split('\n').filter(function(l){return l.includes('|')&&!l.match(/^[\s|-]+$/);});
-    if(cfLines8.length>1){
-      var cfRows8=cfLines8.slice(0,18).map(function(l,ri){var cs=l.split('|').filter(function(c){return c.trim();});return ri===0?tblH(cs.map(function(c){return c.trim();})):tblR(cs.map(function(c){return c.trim();}),ri%2===1);});
+    var cfRows8=[];
+    if(jd&&jd.cash_flow&&jd.cash_flow.length){
+      cfRows8=[tblH(['YEAR','EGR','NOI','DEBT SERVICE','LEVERED CF','YOC','CoC'])].concat(
+        jd.cash_flow.map(function(r,ri){return tblR([r.year||'Yr '+(ri+1),r.egr||r.egi||'—',r.noi||'—',r.debt_service||r.ds||'—',r.levered_cf||r.lcf||'—',r.yoc?pct2(r.yoc):'—',r.coc?pct2(r.coc):'—'],ri%2===1);}));
+    } else {
+      var cfSec8=extractSection(panelText,'CASH FLOW')||extractSection(panelText,'CASH FLOWS');
+      var cfLines8=cfSec8.split('\n').filter(function(l){return l.includes('|')&&!l.match(/^[\s|-]+$/);});
+      if(cfLines8.length>1){
+        cfRows8=cfLines8.slice(0,8).map(function(l,ri){var cs=l.split('|').filter(function(c){return c.trim();});return ri===0?tblH(cs.map(function(c){return c.trim();})):tblR(cs.map(function(c){return c.trim();}),ri%2===1);});
+      } else {
+        var yrLines8=cfSec8.split('\n').filter(function(l){return /year\s*[1-5]/i.test(l);}).slice(0,5);
+        if(yrLines8.length){
+          cfRows8=[tblH(['YEAR','EGR','NOI','DEBT SERVICE','LEVERED CF','YOC','CoC'])].concat(
+            yrLines8.map(function(l,ri){var parts=l.replace(/[|]/g,'  ').split(/\s{2,}|\t/).map(function(p){return p.trim();}).filter(Boolean);var row=parts.concat(['—','—','—','—','—','—','—']).slice(0,7);return tblR(row,ri%2===1);}));
+        }
+      }
+    }
+    if(cfRows8.length>1){
       s8.addTable(cfRows8,{x:0.4,y:0.82,w:12.5,border:{type:'solid',color:MGREY,w:0.5},fontSize:10});
     } else {
-      var cfFallback8=[tblH(['YEAR','NOI','DEBT SERVICE','LEVERED CF','YOC','CoC RETURN']),tblR(['Year 1','—','—','—',pct2(d.yoc),'—'],false),tblR(['Year 2','—','—','—','—','—'],true),tblR(['Year 3','—','—','—','—','—'],false),tblR(['Year 4','—','—','—','—','—'],true),tblR(['Year 5 (Exit)','—','—','—','—','—'],false)];
-      s8.addTable(cfFallback8,{x:0.4,y:0.82,w:12.5,border:{type:'solid',color:MGREY,w:0.5},fontSize:10});
+      s8.addTable([tblH(['YEAR','EGR','NOI','DEBT SERVICE','LEVERED CF','YOC','CoC']),tblR(['Year 1','—','—','—','—',pct2(d.yoc),'—'],false),tblR(['Year 2','—','—','—','—','—','—'],true),tblR(['Year 3','—','—','—','—','—','—'],false),tblR(['Year 4','—','—','—','—','—','—'],true),tblR(['Year 5 (Exit)','—','—','—','—','—','—'],false)],{x:0.4,y:0.82,w:12.5,border:{type:'solid',color:MGREY,w:0.5},fontSize:10});
       s8.addText('Upload acquisition model (.xlsx) for detailed year-by-year cash flows.',{x:0.4,y:3.8,w:12.5,h:0.5,fontSize:11,color:MUTED,wrap:true});
     }
     addFtr(s8);
@@ -8603,70 +8614,84 @@ async function ridgeExportPPT() {
     var s10=pptx.addSlide(); s10.background={color:BG}; addHdr(s10,'Market & Lease Comps',10);
     if(jd&&jd.market){
       var mkt10=jd.market;
-      // ISSUE 6: truncate long KPI values
       function mktKPIVal(raw,max){var s=String(raw||'—');return s.length>max?s.slice(0,max-1)+'…':s;}
       [{v:mktKPIVal(mkt10.vacancy,12),l:'VACANCY RATE'},{v:mktKPIVal(mkt10.avg_rent,12),l:'AVG ASKING RENT'},{v:mktKPIVal(mkt10.new_supply,10),l:'NEW SUPPLY'},{v:mktKPIVal(mkt10.replacement_cost,12),l:'REPLACEMENT COST'}].forEach(function(kp,i){kpiCard(s10,0.4+i*3.25,0.82,3.1,1.0,kp.v,kp.l);});
     }
+    // Lease comps — always show section; placeholder if empty
     var lcRows10=[];
     if(jd&&jd.lease_comps&&jd.lease_comps.length){
       lcRows10=[tblH(['PROPERTY','SIZE (SF)','DATE','TERM','RATE PSF','TYPE'])].concat(
-        jd.lease_comps.slice(0,10).map(function(c,ri){return tblR([c.property||'',c.sf||'',c.date||'',c.term||'',c.rate||'',c.type||''],ri%2===1);}));
+        jd.lease_comps.slice(0,5).map(function(c,ri){return tblR([c.property||'',c.sf||'',c.date||'',c.term||'',c.rate||'',c.type||''],ri%2===1);}));
     } else {
       var lcSec10=extractSection(panelText,'LEASE COMP');
       var lcLines10=lcSec10.split('\n').filter(function(l){return l.includes('|')&&!l.match(/^[\s|-]+$/);});
-      if(lcLines10.length>1){lcRows10=lcLines10.slice(0,11).map(function(l,ri){var cs=l.split('|').filter(function(c){return c.trim();});return ri===0?tblH(cs.map(function(c){return c.trim();})):tblR(cs.map(function(c){return c.trim();}),ri%2===1);});}
+      if(lcLines10.length>1){lcRows10=lcLines10.slice(0,6).map(function(l,ri){var cs=l.split('|').filter(function(c){return c.trim();});return ri===0?tblH(cs.map(function(c){return c.trim();})):tblR(cs.map(function(c){return c.trim();}),ri%2===1);});}
     }
+    s10.addText('LEASE COMPARABLES',{x:0.4,y:2.02,w:12.5,h:0.28,fontSize:9.5,color:BLUE,bold:true,charSpacing:2});
     if(lcRows10.length>1){
-      s10.addText('LEASE COMPARABLES',{x:0.4,y:2.05,w:12.5,h:0.28,fontSize:9.5,color:BLUE,bold:true,charSpacing:2});
-      s10.addTable(lcRows10,{x:0.4,y:2.38,w:12.5,colW:[3.8,1.6,1.5,1.3,1.6,1.8],border:{type:'solid',color:MGREY,w:0.5},fontSize:9.5});
-    } else if(jd&&jd.market&&jd.market.comps){
-      var saleCmps10=jd.market.comps||[];
-      if(saleCmps10.length){
-        s10.addText('SALE COMPARABLES',{x:0.4,y:2.05,w:12.5,h:0.28,fontSize:9.5,color:BLUE,bold:true,charSpacing:2});
-        var scRows10=[tblH(['COMPARABLE PROPERTY','SF','PSF','CAP RATE','DATE'])].concat(saleCmps10.slice(0,7).map(function(c,ri){return tblR([c.name||'',c.sf||'',c.psf||'',c.cap||'',c.date||''],ri%2===1);}));
-        s10.addTable(scRows10,{x:0.4,y:2.38,w:12.5,colW:[4.8,1.8,1.8,1.8,2.3],border:{type:'solid',color:MGREY,w:0.5},fontSize:10});
-      }
+      s10.addTable(lcRows10,{x:0.4,y:2.35,w:12.5,colW:[3.8,1.6,1.5,1.3,1.6,1.8],border:{type:'solid',color:MGREY,w:0.5},fontSize:9.5});
     } else {
-      s10.addText(extractSection(panelText,'LEASE COMP').slice(0,1500)||extractSection(panelText,'MARKET').slice(0,1500)||'Upload OM or lease comp data for market analysis.',{x:0.4,y:2.1,w:12.5,h:5.0,fontSize:11,color:TEXT2,wrap:true,valign:'top'});
+      s10.addText('Upload OM to populate lease comps.',{x:0.4,y:2.35,w:12.5,h:0.38,fontSize:10,color:MUTED});
+    }
+    // Sale comps — show below lease comps if jd.sale_comps[] or jd.market.comps[] available
+    var saleCmps10=(jd&&jd.sale_comps&&jd.sale_comps.length)?jd.sale_comps:((jd&&jd.market&&jd.market.comps&&jd.market.comps.length)?jd.market.comps:null);
+    if(saleCmps10){
+      s10.addText('SALE COMPARABLES',{x:0.4,y:4.72,w:12.5,h:0.28,fontSize:9.5,color:BLUE,bold:true,charSpacing:2});
+      var scRows10=[tblH(['COMPARABLE PROPERTY','SF','PSF','CAP RATE','DATE'])].concat(saleCmps10.slice(0,4).map(function(c,ri){return tblR([c.name||c.property||'',c.sf||'',c.psf||'',c.cap||'',c.date||''],ri%2===1);}));
+      s10.addTable(scRows10,{x:0.4,y:5.05,w:12.5,colW:[4.8,1.8,1.8,1.8,2.3],border:{type:'solid',color:MGREY,w:0.5},fontSize:10});
+    } else if(!lcRows10.length){
+      s10.addText(extractSection(panelText,'LEASE COMP').slice(0,800)||extractSection(panelText,'MARKET').slice(0,800)||'Upload OM or lease comp data for market analysis.',{x:0.4,y:2.78,w:12.5,h:2.5,fontSize:11,color:TEXT2,wrap:true,valign:'top'});
     }
     addFtr(s10);
 
     // ── SLIDE 11 — Lease Expiration Waterfall ─────────────────
-    // ISSUE 1: new slide
     var s11=pptx.addSlide(); s11.background={color:BG}; addHdr(s11,'Lease Expiration Waterfall',11);
     var rr11=(jd&&jd.rent_roll)||[];
     var curYr=new Date().getFullYear();
-    var expByYr={};
+    var barPalette11=['2E5FA3','A07E35','1B5E20','C0392B','6B21A8','0E7490','92400E','276749'];
+    var tenantColorMap11={}, tcIdx11=0;
+    rr11.forEach(function(r){var t=String(r.tenant||'Unknown').trim();if(!tenantColorMap11[t]){tenantColorMap11[t]=barPalette11[tcIdx11++%8];}});
+    var expByYrTenant={};
     rr11.forEach(function(r){
       var exp=String(r.expiration||'');
       var yr=parseInt(exp.slice(-4))||parseInt(exp.slice(0,4));
       if(!isNaN(yr)&&yr>=curYr&&yr<=curYr+10){
         var sfn=parseFloat(String(r.sf||'0').replace(/[^0-9.]/g,''))||0;
-        expByYr[yr]=(expByYr[yr]||0)+sfn;
+        var t=String(r.tenant||'Unknown').trim();
+        if(!expByYrTenant[yr]) expByYrTenant[yr]=[];
+        expByYrTenant[yr].push({tenant:t,sf:sfn,color:tenantColorMap11[t]});
       }
     });
     var expYrs=[];
     for(var ey=curYr;ey<=curYr+7;ey++) expYrs.push(ey);
+    var expByYr={};
+    expYrs.forEach(function(y){expByYr[y]=(expByYrTenant[y]||[]).reduce(function(a,b){return a+b.sf;},0);});
     var maxSF11=Math.max.apply(null,[0].concat(expYrs.map(function(y){return expByYr[y]||0;})));
     var totalSF11=rr11.reduce(function(acc,r){return acc+parseFloat(String(r.sf||'0').replace(/[^0-9.]/g,''));},0)||1;
     if(maxSF11>0){
       s11.addText('SF EXPIRING BY YEAR',{x:0.4,y:0.75,w:6,h:0.28,fontSize:9.5,color:BLUE,bold:true,charSpacing:2});
-      var barW=0.85, barX=0.5, maxBarH=4.8, barY0=5.85;
-      var barColors=['2E5FA3','A07E35','1B5E20','C0392B','6B21A8','0E7490','92400E','276749'];
+      var barW=0.85,barX=0.5,maxBarH=4.6,barY0=5.7;
       expYrs.slice(0,8).forEach(function(yr,i){
-        var sf=expByYr[yr]||0;
-        var bh=maxSF11>0?(sf/maxSF11)*maxBarH:0;
-        if(bh>0.05){
-          s11.addShape(pptx.ShapeType.rect,{x:barX+i*(barW+0.08),y:barY0-bh,w:barW,h:bh,fill:{color:barColors[i%8]},line:{color:barColors[i%8]}});
-          s11.addText(sf>=1000?Math.round(sf/1000)+'K':sf+'',{x:barX+i*(barW+0.08),y:barY0-bh-0.3,w:barW,h:0.28,fontSize:8.5,color:TEXT,align:'center',bold:true});
-        }
-        s11.addText(String(yr),{x:barX+i*(barW+0.08),y:barY0+0.05,w:barW,h:0.28,fontSize:8.5,color:TEXT2,align:'center'});
+        var tenants=expByYrTenant[yr]||[];
+        var totalYrSF=expByYr[yr]||0;
+        var totalBarH=maxSF11>0?(totalYrSF/maxSF11)*maxBarH:0;
+        var stackTop=barY0;
+        tenants.forEach(function(t){
+          var th=totalYrSF>0?(t.sf/totalYrSF)*totalBarH:0;
+          if(th>0.02){stackTop-=th;s11.addShape(pptx.ShapeType.rect,{x:barX+i*(barW+0.08),y:stackTop,w:barW,h:th,fill:{type:'solid',color:t.color},line:{color:t.color}});}
+        });
+        if(totalBarH>0.05){s11.addText(totalYrSF>=1000?Math.round(totalYrSF/1000)+'K SF':totalYrSF+'',{x:barX+i*(barW+0.08),y:barY0-totalBarH-0.32,w:barW,h:0.28,fontSize:8,color:TEXT,align:'center',bold:true});}
+        s11.addText(String(yr),{x:barX+i*(barW+0.08),y:barY0+0.06,w:barW,h:0.28,fontSize:8.5,color:TEXT2,align:'center'});
+      });
+      // Tenant legend
+      var lgTenants=Object.keys(tenantColorMap11).slice(0,8);
+      lgTenants.forEach(function(t,i){
+        var lx=barX+i*(barW+0.08), ly=6.18;
+        s11.addShape(pptx.ShapeType.rect,{x:lx,y:ly,w:0.14,h:0.14,fill:{type:'solid',color:tenantColorMap11[t]},line:{color:tenantColorMap11[t]}});
+        s11.addText(t.slice(0,13),{x:lx+0.17,y:ly,w:barW-0.2,h:0.16,fontSize:7,color:TEXT2});
       });
       var expTbl11=[tblH(['YEAR','SF EXPIRING','% OF NRA'])];
-      expYrs.slice(0,8).forEach(function(yr,ri){
-        var sf=expByYr[yr]||0;
-        expTbl11.push(tblR([String(yr),sf>0?sf.toLocaleString()+' SF':'—',sf>0?((sf/totalSF11*100).toFixed(1)+'%'):'—'],ri%2===1));
-      });
+      expYrs.slice(0,8).forEach(function(yr,ri){var sf=expByYr[yr]||0;expTbl11.push(tblR([String(yr),sf>0?sf.toLocaleString()+' SF':'—',sf>0?((sf/totalSF11*100).toFixed(1)+'%'):'—'],ri%2===1));});
       s11.addTable(expTbl11,{x:8.2,y:0.82,w:4.8,border:{type:'solid',color:MGREY,w:0.5},fontSize:10});
     } else {
       s11.addText('Lease expiration waterfall will populate from rent roll data in your uploaded acquisition model or OM.',{x:0.4,y:0.82,w:12.5,h:1.5,fontSize:11,color:MUTED,wrap:true});
@@ -8686,21 +8711,21 @@ async function ridgeExportPPT() {
       if(sens12.hold_rows&&sens12.hold_rows.length){
         s12.addTable(
           [tblH(['PRICE','3-YR IRR','4-YR IRR','5-YR IRR'])].concat(
-            sens12.hold_rows.map(function(r){return [tblR([r.price||''],false)[0],sensCell(r.irr_36),sensCell(r.irr_48),sensCell(r.irr_60)];})
+            sens12.hold_rows.map(function(r){return [tblR([r.price||''],false)[0],sensCell(r.irr_36||r.irr_3yr||r['3yr']||''),sensCell(r.irr_48||r.irr_4yr||r['4yr']||''),sensCell(r.irr_60||r.irr_5yr||r['5yr']||'')];})
           ),{x:0.4,y:1.15,w:6.2,colW:[2.0,1.4,1.4,1.4],border:{type:'solid',color:MGREY,w:0.5},fontSize:10}
         );
       }
       if(sens12.cap_rows&&sens12.cap_rows.length){
         s12.addTable(
           [tblH(['PRICE','6.00% CAP','6.25% CAP','6.50% CAP'])].concat(
-            sens12.cap_rows.map(function(r){return [tblR([r.price||''],false)[0],sensCell(r.irr_600),sensCell(r.irr_625),sensCell(r.irr_650)];})
+            sens12.cap_rows.map(function(r){return [tblR([r.price||''],false)[0],sensCell(r.irr_600||r.irr_6_00||r['6.00%']||''),sensCell(r.irr_625||r.irr_6_25||r['6.25%']||''),sensCell(r.irr_650||r.irr_6_50||r['6.50%']||'')];})
           ),{x:7.1,y:1.15,w:6.2,colW:[2.0,1.4,1.4,1.4],border:{type:'solid',color:MGREY,w:0.5},fontSize:10}
         );
       }
     } else {
       s12.addText(extractSection(panelText,'SENSITIVITY').slice(0,1400),{x:0.4,y:1.15,w:12.5,h:5.5,fontSize:11,color:TEXT2,wrap:true});
     }
-    s12.addText('Green ≥ 14.75%  ·  Yellow 12–14.74%  ·  Red < 12%',{x:0.4,y:6.85,w:12.5,h:0.25,fontSize:8.5,color:MUTED});
+    s12.addText('Green ≥ 14%  ·  Yellow 12–13.99%  ·  Red < 12%',{x:0.4,y:6.85,w:12.5,h:0.25,fontSize:8.5,color:MUTED});
     addFtr(s12);
 
     // ── SLIDE 13 — Risk Matrix ────────────────────────────────
