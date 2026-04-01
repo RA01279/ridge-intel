@@ -3687,15 +3687,40 @@ function _parseLeaseDate(str) {
   return str.length === 10 ? str : null;
 }
 
+// Normalize tenant name: trim, remove trailing punctuation/asterisks,
+// standardize common legal suffix variations so dedup works correctly.
+function _normalizeTenant(name) {
+  if (!name) return name;
+  return name
+    .trim()
+    .replace(/\*+$/, '')                          // strip trailing asterisks (Argus vacant marker)
+    .trim()
+    .replace(/\bCorporation\b/gi, 'Corp')          // Corporation → Corp
+    .replace(/\bIncorporated\b/gi, 'Inc')          // Incorporated → Inc
+    .replace(/\bL\.L\.C\.\b/gi, 'LLC')            // L.L.C. → LLC
+    .replace(/\bL\.L\.C\b/gi, 'LLC')
+    .replace(/\bLimited\b/gi, 'Ltd')
+    .replace(/[.,]+$/, '')                         // strip trailing . or ,
+    .trim();
+}
+
 // Upserts parsed lease rows to Supabase, deduplicating on address+tenant.
-// Never throws — wraps all errors as console.warn.
+// Skips rows missing address or tenant. Never throws — wraps all errors as console.warn.
 async function _writeLeaseRows(rows, address, source) {
   if (!rows || !rows.length || !_sbOk || !_sb) return;
   try {
     var inserts = rows.map(function(r) {
       var row = Object.assign({ address: address || null }, r);
       if (row.expiration_date) row.expiration_date = _parseLeaseDate(row.expiration_date);
+      // Normalize tenant name for consistent dedup
+      if (row.tenant) row.tenant = _normalizeTenant(row.tenant);
       return row;
+    });
+    // Skip rows missing both address and tenant
+    inserts = inserts.filter(function(row) {
+      var ok = row.address && row.address.trim() && row.tenant && row.tenant.trim();
+      if (!ok) console.warn('[RIDGE] Skipping incomplete lease row (missing address or tenant):', row);
+      return ok;
     });
     // Deduplicate address+tenant before upsert — the same tenant in multiple suites
     // would hit the unique constraint twice in one batch, causing a Postgres conflict error.
@@ -8764,11 +8789,17 @@ function _llRenderPreview(rows) {
         return '<th style="background:#1E2761;color:#fff;padding:5px 8px;text-align:left;white-space:nowrap;">' + c + '</th>';
       }).join('') + '</tr></thead><tbody>';
   var PTD = 'padding:4px 8px;color:#1A1A2E;';
+  var incomplete = rows.filter(function(r){ return !r.tenant || !r.tenant.trim(); }).length;
+  if (incomplete) {
+    document.getElementById('ll-preview-info').innerHTML +=
+      ' <span style="color:#C0392B;font-weight:700;">⚠ ' + incomplete + ' row(s) missing tenant name — will be skipped</span>';
+  }
   rows.forEach(function(r, i) {
-    var bg = i%2===1 ? '#F0F4FF' : '#FFFFFF';
+    var isIncomplete = !r.tenant || !r.tenant.trim();
+    var bg = isIncomplete ? '#FFF0EE' : (i%2===1 ? '#F0F4FF' : '#FFFFFF');
     var sc = r.vacant ? '#C0560A' : '#1B5E20';
-    html += '<tr style="background:' + bg + ';">'
-      + '<td style="'+PTD+'">' + (r.tenant||'—').slice(0,40) + '</td>'
+    html += '<tr style="background:' + bg + (isIncomplete ? ';border-left:3px solid #C0392B' : '') + ';">'
+      + '<td style="'+PTD+(isIncomplete?'color:#C0392B;font-style:italic;':'')+'">' + (r.tenant||'⚠ MISSING').slice(0,40) + '</td>'
       + '<td style="'+PTD+'">' + (r.suite||'—') + '</td>'
       + '<td style="'+PTD+'text-align:right;">' + (r.sf ? Number(r.sf).toLocaleString() : '—') + '</td>'
       + '<td style="'+PTD+'text-align:right;">' + (r.base_rent_psf ? '$'+Number(r.base_rent_psf).toFixed(2) : '—') + '</td>'
