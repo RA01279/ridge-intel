@@ -6516,34 +6516,13 @@ async function showPropertyMap(address, skillName) {
       }
       var svBlock;
       if (_svLoc) {
-        // Step 2: fetch pano_id from Street View metadata API
-        var svSrc = null;
-        try {
-          var _metaR = await fetch('https://maps.googleapis.com/maps/api/streetview/metadata?location='
-            + _svLoc.lat + ',' + _svLoc.lng + '&key=' + _mapsKey);
-          var _metaJ = await _metaR.json();
-          if (_metaJ.status === 'OK' && _metaJ.pano_id) {
-            // Step 3: embed via pano_id — fixes wrong camera angle from lat/lng
-            svSrc = 'https://www.google.com/maps/embed/v1/streetview?key=' + _mapsKey
-              + '&pano=' + _metaJ.pano_id + '&heading=235&pitch=10&fov=90';
-          } else if (_metaJ.status === 'ZERO_RESULTS' || _metaJ.status === 'NOT_FOUND') {
-            svSrc = null; // no coverage — show placeholder
-          } else {
-            // Unknown status or request error — fall back to location URL
-            svSrc = 'https://www.google.com/maps/embed/v1/streetview?key=' + _mapsKey
-              + '&location=' + _svLoc.lat + ',' + _svLoc.lng + '&fov=90&heading=235&pitch=10';
-          }
-        } catch(_me) {
-          // Metadata fetch failed — fall back to location URL
-          svSrc = 'https://www.google.com/maps/embed/v1/streetview?key=' + _mapsKey
-            + '&location=' + _svLoc.lat + ',' + _svLoc.lng + '&fov=90&heading=235&pitch=10';
-        }
-        svBlock = svSrc
-          ? '<div style="width:50%;display:flex;flex-direction:column;">'
-              + '<iframe src="' + svSrc + '" style="' + mapStyle + '" frameborder="0" allowfullscreen></iframe>'
-              + '<div style="' + lblStyle + '">STREET VIEW</div>'
-              + '</div>'
-          : svPlaceholder('Street View unavailable for this location');
+        var svSrc = 'https://www.google.com/maps/embed/v1/streetview?key=' + _mapsKey
+          + '&location=' + _svLoc.lat + ',' + _svLoc.lng
+          + '&radius=500&heading=235&pitch=10&fov=90&source=outdoor';
+        svBlock = '<div style="width:50%;display:flex;flex-direction:column;">'
+          + '<iframe src="' + svSrc + '" style="' + mapStyle + '" frameborder="0" allowfullscreen></iframe>'
+          + '<div style="' + lblStyle + '">STREET VIEW</div>'
+          + '</div>';
       } else {
         svBlock = svPlaceholder('STREET VIEW — address not found');
       }
