@@ -6615,17 +6615,35 @@ async function runRidgeAPI(skillName, prompt, runInputs, runToolId) {
     if (_lastRunToolId && STATE[_lastRunToolId]) {
       STATE[_lastRunToolId].result = accumulated;
     }
+    // Strip trailing JSON block from panel display
     if (_lastRunToolId === 'isr' || _lastRunToolId === 'gavel') {
-      var _fenceIdx = accumulated.lastIndexOf('```json');
-      console.log('[RIDGE] JSON strip: fenceIdx=', _fenceIdx, 'accumulated length=', accumulated.length);
-      if (_fenceIdx > -1) {
-        var _jClean = accumulated.substring(0, _fenceIdx);
-        contentEl.innerHTML = parseMarkdown(_jClean);
+      // Find the LAST occurrence of any json code fence variant
+      var _stripIdx = -1;
+      var _patterns = ['```json', '``` json', '`\`\`json'];
+      for (var _pi = 0; _pi < _patterns.length; _pi++) {
+        var _idx = accumulated.lastIndexOf(_patterns[_pi]);
+        if (_idx > _stripIdx) _stripIdx = _idx;
+      }
+      console.log('[RIDGE] JSON strip: _stripIdx=', _stripIdx, 'accumulated length=', accumulated.length);
+
+      if (_stripIdx > -1) {
+        var _clean = accumulated.substring(0, _stripIdx).trimEnd();
+        contentEl.innerHTML = parseMarkdown(_clean);
+
+        // Extract and parse the JSON
         if (_lastRunToolId === 'isr') {
-          var _jRaw = accumulated.substring(_fenceIdx);
-          var _jm2 = _jRaw.match(/```json\s*([\s\S]*?)```/);
-          if (_jm2) { try { _isrParsedData = JSON.parse(_jm2[1]); } catch(e) { console.warn('[RIDGE] _isrParsedData JSON parse error:', e.message, 'raw:', _jm2[1].slice(0,200)); } }
-          console.log('[RIDGE] _isrParsedData keys:', _isrParsedData ? Object.keys(_isrParsedData) : 'NULL', 'fenceIdx:', _fenceIdx, 'accumulated length:', accumulated.length);
+          var _jsonRaw = accumulated.substring(_stripIdx);
+          var _jsonMatch = _jsonRaw.match(/```\s*json\s*([\s\S]*?)```/i);
+          if (_jsonMatch) {
+            try {
+              _isrParsedData = JSON.parse(_jsonMatch[1].trim());
+              console.log('[RIDGE] _isrParsedData keys:', Object.keys(_isrParsedData));
+            } catch(e) {
+              console.warn('[RIDGE] JSON parse error:', e.message, _jsonMatch[1].slice(0,200));
+            }
+          } else {
+            console.warn('[RIDGE] JSON fence found at', _stripIdx, 'but inner match failed');
+          }
         }
       }
     }
