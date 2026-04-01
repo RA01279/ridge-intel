@@ -8600,7 +8600,7 @@ async function ridgeExportPPT() {
     var REDG  = '2D0A0A';
 
     var addr  = d.addr || 'Subject Property';
-    var TOTAL = 15;
+    var TOTAL = 14;
     var dateStr = new Date().toLocaleDateString('en-US',{month:'long',year:'numeric'});
 
     function addHdr(sl,title,n){
@@ -8774,8 +8774,8 @@ async function ridgeExportPPT() {
     var cfModelRows = await _extractCashFlows();
     if(cfModelRows && cfModelRows.length){
       function fmtDollar(v){ return '$'+Math.round(v).toLocaleString('en-US'); }
-      function yocCell(v){
-        var tc = v>=7.5?'276749':(v>=6.0?'92400E':'C0392B');
+      function yocCell8(v){
+        var tc = v>=7.5?'1B5E20':(v>=6.0?'D97706':'C0392B');
         return {text:v.toFixed(2)+'%',options:{fontSize:10,color:tc,bold:true,fill:{color:'F0F4FF'},align:'center'}};
       }
       var cfHdr = tblH(['YEAR','EGR','NOI','DEBT SERVICE','LEVERED CF','YOC','CoC']);
@@ -8787,14 +8787,15 @@ async function ridgeExportPPT() {
           {text:fmtDollar(r.egr),options:baseOpts},
           {text:fmtDollar(r.noi),options:baseOpts},
           {text:fmtDollar(r.ds),options:baseOpts},
-          {text:fmtDollar(r.levCF),options:Object.assign({},baseOpts,{fill:{color:altBg}})},
-          yocCell(r.yoc),
+          {text:fmtDollar(r.levCF),options:baseOpts},
+          yocCell8(r.yoc),
           {text:r.coc.toFixed(2)+'%',options:baseOpts}
         ];
       });
-      s8.addTable([cfHdr].concat(cfDataRows),{x:0.4,y:0.82,w:12.5,colW:[2.0,2.0,2.0,2.0,2.0,1.25,1.25],border:{type:'solid',color:MGREY,w:0.5},fontSize:10});
+      var cfRowH = Math.max(0.88, (6.3 / cfModelRows.length));
+      s8.addTable([cfHdr].concat(cfDataRows),{x:0.25,y:0.82,w:12.83,rowH:cfRowH,colW:[2.1,2.0,2.0,2.0,2.0,1.3,1.43],border:{type:'solid',color:MGREY,w:0.5},fontSize:10});
     } else {
-      s8.addText('Upload acquisition model (.xlsx) to populate cash flow data.',{x:0.4,y:2.5,w:12.5,h:1.0,fontSize:13,color:MUTED,align:'center',valign:'middle',wrap:true});
+      s8.addText('Upload acquisition model (.xlsx) to populate cash flow data.',{x:0.25,y:2.5,w:12.83,h:1.0,fontSize:13,color:MUTED,align:'center',valign:'middle',wrap:true});
     }
     addFtr(s8);
 
@@ -8855,57 +8856,94 @@ async function ridgeExportPPT() {
     // ── SLIDE 11 — Lease Expiration Waterfall ─────────────────
     var s11=pptx.addSlide(); s11.background={color:BG}; addHdr(s11,'Lease Expiration Waterfall',11);
     var rr11=(jd&&jd.rent_roll)||[];
-    var curYr=new Date().getFullYear();
-    var barPalette11=['2E5FA3','A07E35','1B5E20','C0392B','6B21A8','0E7490','92400E','276749'];
-    var tenantColorMap11={}, tcIdx11=0;
-    rr11.forEach(function(r){var t=String(r.tenant||'Unknown').trim();if(!tenantColorMap11[t]){tenantColorMap11[t]=barPalette11[tcIdx11++%8];}});
-    var expByYrTenant={};
+    var curYr11=new Date().getFullYear();
+    var pal11=['1E2761','1B5E20','2196F3','E67E22','C0392B','8E44AD','16A085','D97706'];
+    var tenantColor11={}, tcIdx11=0;
+    rr11.forEach(function(r){var t=String(r.tenant||'Unknown').trim();if(!tenantColor11[t]){tenantColor11[t]=pal11[tcIdx11++%8];}});
+
+    // Parse "Mon-YYYY" (e.g. "Aug-2028") or any 4-digit year in the string
+    function parseExpYr(exp){
+      var s=String(exp||'');
+      var m=s.match(/(\d{4})/);
+      return m?parseInt(m[1]):NaN;
+    }
+
+    var expByYrTenant11={};
     rr11.forEach(function(r){
-      var exp=String(r.expiration||'');
-      var yr=parseInt(exp.slice(-4))||parseInt(exp.slice(0,4));
-      if(!isNaN(yr)&&yr>=curYr&&yr<=curYr+10){
+      var yr=parseExpYr(r.expiration);
+      if(!isNaN(yr)&&yr>=curYr11&&yr<=curYr11+10){
         var sfn=parseFloat(String(r.sf||'0').replace(/[^0-9.]/g,''))||0;
         var t=String(r.tenant||'Unknown').trim();
-        if(!expByYrTenant[yr]) expByYrTenant[yr]=[];
-        expByYrTenant[yr].push({tenant:t,sf:sfn,color:tenantColorMap11[t]});
+        if(!expByYrTenant11[yr]) expByYrTenant11[yr]=[];
+        expByYrTenant11[yr].push({tenant:t,sf:sfn,color:tenantColor11[t]});
       }
     });
-    var expYrs=[];
-    for(var ey=curYr;ey<=curYr+7;ey++) expYrs.push(ey);
-    var expByYr={};
-    expYrs.forEach(function(y){expByYr[y]=(expByYrTenant[y]||[]).reduce(function(a,b){return a+b.sf;},0);});
-    var maxSF11=Math.max.apply(null,[0].concat(expYrs.map(function(y){return expByYr[y]||0;})));
+
+    var allYrs11=Object.keys(expByYrTenant11).map(Number).sort(function(a,b){return a-b;});
     var totalSF11=rr11.reduce(function(acc,r){return acc+parseFloat(String(r.sf||'0').replace(/[^0-9.]/g,''));},0)||1;
-    if(maxSF11>0){
-      s11.addText('SF EXPIRING BY YEAR',{x:0.4,y:0.75,w:6,h:0.28,fontSize:9.5,color:BLUE,bold:true,charSpacing:2});
-      var barW=0.85,barX=0.5,maxBarH=4.6,barY0=5.7;
-      expYrs.slice(0,8).forEach(function(yr,i){
-        var tenants=expByYrTenant[yr]||[];
-        var totalYrSF=expByYr[yr]||0;
-        var totalBarH=maxSF11>0?(totalYrSF/maxSF11)*maxBarH:0;
-        var stackTop=barY0;
+
+    function yrTotalSF11(yr){return (expByYrTenant11[yr]||[]).reduce(function(a,b){return a+b.sf;},0);}
+
+    if(allYrs11.length>0){
+      // Peak rollover year
+      var peakYr11=allYrs11.reduce(function(a,b){return yrTotalSF11(a)>=yrTotalSF11(b)?a:b;});
+      var peakSF11=yrTotalSF11(peakYr11);
+      var peakPct11=(peakSF11/totalSF11*100).toFixed(1);
+
+      // ── Left: peak callout + summary table (x:0.25, w:5.0) ──
+      s11.addShape(pptx.ShapeType.rect,{x:0.25,y:0.82,w:5.0,h:0.55,fill:{color:'1E2761'},line:{color:'1E2761'}});
+      s11.addText('PEAK ROLLOVER  '+peakYr11+': '+(peakSF11>=1000?(peakSF11/1000).toFixed(0)+'K':peakSF11)+' SF  ('+peakPct11+'% NRA) — highest single-year exposure',
+        {x:0.25,y:0.82,w:5.0,h:0.55,fontSize:8.5,color:'FFFFFF',bold:false,wrap:true,valign:'middle',align:'center'});
+
+      var expTbl11=[tblH(['YEAR','SF EXPIRING','% NRA','TENANTS'])];
+      allYrs11.slice(0,10).forEach(function(yr,ri){
+        var sf=yrTotalSF11(yr);
+        var tenantNames=(expByYrTenant11[yr]||[]).map(function(t){return t.tenant;}).join(', ').slice(0,28);
+        expTbl11.push(tblR([String(yr),sf>=1000?(sf/1000).toFixed(0)+'K SF':sf+' SF',(sf/totalSF11*100).toFixed(1)+'%',tenantNames],ri%2===1));
+      });
+      var tblRowH11=Math.max(0.42, (5.55/Math.min(allYrs11.length,10)));
+      s11.addTable(expTbl11,{x:0.25,y:1.42,w:5.0,rowH:tblRowH11,colW:[0.9,1.25,0.95,1.9],border:{type:'solid',color:MGREY,w:0.5},fontSize:9});
+
+      // ── Right: bar chart (x:5.5, w:7.58) ──
+      var chartYrs11=allYrs11.slice(0,8);
+      var maxSF11=Math.max.apply(null,chartYrs11.map(function(y){return yrTotalSF11(y);}));
+      var barX11=5.55,barW11=0.78,barGap11=0.14,maxBarH11=4.6,barY011=6.0;
+      var nBars=chartYrs11.length;
+      if(nBars>0){
+        barW11=Math.min(0.9,(7.0-(nBars-1)*0.12)/nBars);
+        barGap11=nBars>1?(7.0-nBars*barW11)/(nBars-1):0;
+      }
+      chartYrs11.forEach(function(yr,i){
+        var tenants=expByYrTenant11[yr]||[];
+        var totalYrSF=yrTotalSF11(yr);
+        var totalBarH=maxSF11>0?(totalYrSF/maxSF11)*maxBarH11:0;
+        var stackTop=barY011;
         tenants.forEach(function(t){
           var th=totalYrSF>0?(t.sf/totalYrSF)*totalBarH:0;
-          if(th>0.02){stackTop-=th;s11.addShape(pptx.ShapeType.rect,{x:barX+i*(barW+0.08),y:stackTop,w:barW,h:th,fill:{type:'solid',color:t.color},line:{color:t.color}});}
+          if(th>0.02){
+            stackTop-=th;
+            s11.addShape(pptx.ShapeType.rect,{x:barX11+i*(barW11+barGap11),y:stackTop,w:barW11,h:th,fill:{type:'solid',color:t.color},line:{color:t.color}});
+          }
         });
-        if(totalBarH>0.05){s11.addText(totalYrSF>=1000?Math.round(totalYrSF/1000)+'K SF':totalYrSF+'',{x:barX+i*(barW+0.08),y:barY0-totalBarH-0.32,w:barW,h:0.28,fontSize:8,color:TEXT,align:'center',bold:true});}
-        s11.addText(String(yr),{x:barX+i*(barW+0.08),y:barY0+0.06,w:barW,h:0.28,fontSize:8.5,color:TEXT2,align:'center'});
+        if(totalBarH>0.05){
+          s11.addText(totalYrSF>=1000?Math.round(totalYrSF/1000)+'K':String(Math.round(totalYrSF)),
+            {x:barX11+i*(barW11+barGap11),y:barY011-totalBarH-0.3,w:barW11,h:0.26,fontSize:7.5,color:TEXT,align:'center',bold:true});
+        }
+        s11.addText(String(yr),{x:barX11+i*(barW11+barGap11),y:barY011+0.06,w:barW11,h:0.26,fontSize:8,color:TEXT2,align:'center'});
       });
+
       // Tenant legend
-      var lgTenants=Object.keys(tenantColorMap11).slice(0,8);
-      lgTenants.forEach(function(t,i){
-        var lx=barX+i*(barW+0.08), ly=6.18;
-        s11.addShape(pptx.ShapeType.rect,{x:lx,y:ly,w:0.14,h:0.14,fill:{type:'solid',color:tenantColorMap11[t]},line:{color:tenantColorMap11[t]}});
-        s11.addText(t.slice(0,13),{x:lx+0.17,y:ly,w:barW-0.2,h:0.16,fontSize:7,color:TEXT2});
+      var lgKeys11=Object.keys(tenantColor11).slice(0,8);
+      var lgCols11=Math.min(lgKeys11.length,4), lgRows11=Math.ceil(lgKeys11.length/lgCols11);
+      lgKeys11.forEach(function(t,i){
+        var lc=Math.floor(i/lgRows11), lr=i%lgRows11;
+        var lx=barX11+lc*1.88, ly=6.35+lr*0.22;
+        s11.addShape(pptx.ShapeType.rect,{x:lx,y:ly,w:0.13,h:0.13,fill:{type:'solid',color:tenantColor11[t]},line:{color:tenantColor11[t]}});
+        s11.addText(t.slice(0,16),{x:lx+0.17,y:ly-0.01,w:1.65,h:0.16,fontSize:7,color:TEXT2});
       });
-      var expTbl11=[tblH(['YEAR','SF EXPIRING','% OF NRA'])];
-      expYrs.slice(0,8).forEach(function(yr,ri){var sf=expByYr[yr]||0;expTbl11.push(tblR([String(yr),sf>0?sf.toLocaleString()+' SF':'—',sf>0?((sf/totalSF11*100).toFixed(1)+'%'):'—'],ri%2===1));});
-      s11.addTable(expTbl11,{x:8.2,y:0.82,w:4.8,border:{type:'solid',color:MGREY,w:0.5},fontSize:10});
+
     } else {
-      s11.addText('Lease expiration waterfall will populate from rent roll data in your uploaded acquisition model or OM.',{x:0.4,y:0.82,w:12.5,h:1.5,fontSize:11,color:MUTED,wrap:true});
-      var expEmpty=[tblH(['YEAR','SF EXPIRING','% OF NRA'])];
-      for(var ey2=curYr;ey2<=curYr+5;ey2++) expEmpty.push(tblR([String(ey2),'—','—'],(ey2-curYr)%2===1));
-      s11.addTable(expEmpty,{x:0.4,y:2.0,w:6.0,border:{type:'solid',color:MGREY,w:0.5},fontSize:10});
+      s11.addText('Lease expiration waterfall will populate from rent roll data in your uploaded acquisition model or OM.',{x:0.25,y:1.5,w:12.83,h:1.5,fontSize:11,color:MUTED,wrap:true,align:'center'});
     }
     addFtr(s11);
 
@@ -9073,33 +9111,65 @@ async function ridgeExportPPT() {
     }
     addFtr(s13);
 
-    // ── SLIDE 14 — IC Recommendation ─────────────────────────
+    // ── SLIDE 14 — IC Recommendation + Next Steps (merged) ────
     var s14=pptx.addSlide(); s14.background={color:BG}; addHdr(s14,'IC Recommendation',14);
+
+    // 1. Verdict
     var verd14;
     if(jd&&jd.recommendation){verd14=(jd.recommendation.verdict||'CONDITIONAL').toUpperCase();}
     else{var rec14=extractSection(panelText,'IC RECOMMENDATION');verd14=(rec14.match(/\bPURSUE\b|\bCONDITIONAL\b|\bPASS\b/i)||['CONDITIONAL'])[0].toUpperCase();}
     var vLbl14=verd14==='PURSUE'?'✓  RECOMMEND FOR INVESTMENT':verd14==='PASS'?'✗  PASS — DOES NOT MEET HURDLES':'⚠  CONDITIONAL APPROVAL — SUBJECT TO VERIFICATION';
-    var vBg14=verd14==='PURSUE'?'EDF7EE':verd14==='PASS'?RBGX:YBGX;
-    var vTxt14=verd14==='PURSUE'?'276749':verd14==='PASS'?'C0392B':'92400E';
-    s14.addShape(pptx.ShapeType.rect,{x:0.4,y:0.82,w:12.5,h:0.82,fill:{color:vBg14},line:{color:MGREY,w:0.5}});
-    s14.addText(vLbl14,{x:0.4,y:0.82,w:12.5,h:0.82,fontSize:18,color:vTxt14,bold:true,align:'center',valign:'middle'});
-    [{l:'LEVERED IRR',v:pct2(d.irr)},{l:'EQUITY MULTIPLE',v:mult2(d.em)},{l:'YOC YR 3/4',v:pct2(d.yoc)},{l:'LTV',v:pct2(d.ltv)}].forEach(function(k,i){kpiCard(s14,0.4+i*3.28,1.82,3.12,1.12,k.v,k.l);});
-    if(jd&&jd.recommendation&&jd.recommendation.summary){s14.addText(stripMd(jd.recommendation.summary.slice(0,450)),{x:0.4,y:3.12,w:12.5,h:0.85,fontSize:11,color:TEXT2,wrap:true});}
-    addFtr(s14);
+    var vBg14=verd14==='PURSUE'?'1B5E20':verd14==='PASS'?'C0392B':'E67E22';
+    s14.addShape(pptx.ShapeType.rect,{x:0.25,y:0.82,w:12.83,h:0.65,fill:{color:vBg14},line:{color:vBg14}});
+    s14.addText(vLbl14,{x:0.25,y:0.82,w:12.83,h:0.65,fontSize:17,color:WHITE,bold:true,align:'center',valign:'middle'});
 
-    // ── SLIDE 15 — Next Steps ─────────────────────────────────
-    var s15=pptx.addSlide(); s15.background={color:BG}; addHdr(s15,'Next Steps',15);
-    var ns15=(jd&&jd.recommendation&&jd.recommendation.next_steps)?jd.recommendation.next_steps:[];
-    if(!ns15.length){ns15=extractSection(panelText,'NEXT STEPS').split('\n').filter(function(l){return l.trim()&&!l.match(/^##/);}).slice(0,6);}
-    if(!ns15.length){ns15=extractSection(panelText,'IC RECOMMENDATION').split('\n').filter(function(l){return l.trim()&&!l.match(/^##/);}).slice(0,6);}
-    ns15.slice(0,6).forEach(function(st,i){
-      s15.addShape(pptx.ShapeType.rect,{x:0.4,y:0.9+i*1.0,w:0.55,h:0.55,fill:{color:NAVY},line:{color:NAVY}});
-      s15.addText(String(i+1),{x:0.4,y:0.9+i*1.0,w:0.55,h:0.55,fontSize:18,color:WHITE,bold:true,align:'center',valign:'middle'});
-      s15.addText(stripMd(String(st).replace(/^\d+\.\s*/,'').replace(/^[-*]\s*/,'')),{x:1.1,y:0.9+i*1.0,w:11.8,h:0.55,fontSize:12,color:TEXT2,wrap:true,valign:'middle'});
+    // 2. KPI boxes — fixed YOC label
+    [{l:'LEVERED IRR',v:pct2(d.irr)},{l:'EQUITY MULTIPLE',v:mult2(d.em)},{l:'YOC YR 3',v:pct2(d.yoc)},{l:'LTV',v:pct2(d.ltv)}].forEach(function(k,i){
+      kpiCard(s14,0.25+i*3.23,1.55,3.12,0.95,k.v,k.l);
     });
-    if(!ns15.length){s15.addText('Run ISR with a complete OM upload to generate actionable next steps.',{x:0.4,y:0.9,w:12.5,h:2,fontSize:11,color:MUTED,wrap:true});}
-    s15.addShape(pptx.ShapeType.rect,{x:0.4,y:7.05,w:12.5,h:0.012,fill:{color:MGREY},line:{color:MGREY}});
-    s15.addText('ENTRADA PARTNERS  ·  CONFIDENTIAL & PROPRIETARY  ·  '+dateStr.toUpperCase(),{x:0.4,y:7.1,w:12.5,h:0.18,fontSize:7.5,color:MUTED,align:'center'});
+
+    // 3. Recommendation summary
+    var sumTxt14='';
+    if(jd&&jd.recommendation&&jd.recommendation.summary){sumTxt14=stripMd(jd.recommendation.summary.slice(0,380));}
+    else{sumTxt14=stripMd(extractSection(panelText,'IC RECOMMENDATION').replace(/^##[^\n]*/,'').trim().slice(0,380));}
+    if(sumTxt14){s14.addText(sumTxt14,{x:0.25,y:2.58,w:12.83,h:0.65,fontSize:10.5,color:TEXT2,wrap:true,valign:'top'});}
+
+    // 4. Entrada Hurdle Confirmation
+    var hurdleTxt14=extractSection(panelText,'ENTRADA HURDLE CONFIRMATION').replace(/^##[^\n]*/,'').trim();
+    s14.addShape(pptx.ShapeType.rect,{x:0.25,y:3.32,w:0.06,h:1.35,fill:{color:NAVY},line:{color:NAVY}});
+    s14.addText('ENTRADA HURDLE CONFIRMATION',{x:0.38,y:3.32,w:12.7,h:0.26,fontSize:9,color:NAVY,bold:true,charSpacing:1.5});
+    if(hurdleTxt14){
+      var hurdleLines14=hurdleTxt14.split('\n').filter(function(l){return l.trim();}).slice(0,6);
+      hurdleLines14.forEach(function(line,li){
+        var passes=line.match(/PASS/i), fails=line.match(/FAIL/i);
+        var tc=passes?'1B5E20':fails?'C0392B':TEXT2;
+        s14.addText(stripMd(line),{x:0.42,y:3.62+li*0.18,w:12.5,h:0.18,fontSize:9,color:tc,wrap:false});
+      });
+    } else {
+      s14.addText('Run ISR with OM upload to populate hurdle confirmation.',{x:0.42,y:3.62,w:12.5,h:0.35,fontSize:9,color:MUTED});
+    }
+
+    // 5. Next Steps
+    var ns14=(jd&&jd.recommendation&&jd.recommendation.next_steps)?jd.recommendation.next_steps:[];
+    if(!ns14.length){ns14=extractSection(panelText,'IC RECOMMENDATION').split('\n').filter(function(l){return l.match(/^\d+\./);}).slice(0,6);}
+    if(!ns14.length){ns14=extractSection(panelText,'NEXT STEPS').split('\n').filter(function(l){return l.trim()&&!l.match(/^##/);}).slice(0,6);}
+    s14.addShape(pptx.ShapeType.rect,{x:0.25,y:4.72,w:0.06,h:Math.min(ns14.length||1,6)*0.42+0.1,fill:{color:NAVY},line:{color:NAVY}});
+    s14.addText('NEXT STEPS',{x:0.38,y:4.72,w:12.7,h:0.26,fontSize:9,color:NAVY,bold:true,charSpacing:1.5});
+    if(ns14.length){
+      var nsFontSz14=ns14.length>4?9:10;
+      var nsGap14=ns14.length>4?0.38:0.43;
+      ns14.slice(0,6).forEach(function(st,i){
+        var stTxt=stripMd(String(st).replace(/^\d+\.\s*/,'').replace(/^[-*]\s*/,''));
+        s14.addShape(pptx.ShapeType.rect,{x:0.38,y:5.02+i*nsGap14,w:0.28,h:0.28,fill:{color:NAVY},line:{color:NAVY}});
+        s14.addText(String(i+1),{x:0.38,y:5.02+i*nsGap14,w:0.28,h:0.28,fontSize:9,color:WHITE,bold:true,align:'center',valign:'middle'});
+        s14.addText(stTxt,{x:0.72,y:5.02+i*nsGap14,w:12.36,h:0.3,fontSize:nsFontSz14,color:TEXT2,wrap:true,valign:'middle'});
+      });
+    } else {
+      s14.addText('Run ISR with a complete OM upload to generate actionable next steps.',{x:0.38,y:5.02,w:12.5,h:0.5,fontSize:10,color:MUTED,wrap:true});
+    }
+
+    s14.addShape(pptx.ShapeType.rect,{x:0.25,y:7.05,w:12.83,h:0.012,fill:{color:MGREY},line:{color:MGREY}});
+    s14.addText('ENTRADA PARTNERS  ·  CONFIDENTIAL & PROPRIETARY  ·  '+dateStr.toUpperCase(),{x:0.25,y:7.08,w:12.83,h:0.18,fontSize:7.5,color:MUTED,align:'center'});
 
     } catch(buildErr) {
       console.error('ISR PPT slide build error:', buildErr);
