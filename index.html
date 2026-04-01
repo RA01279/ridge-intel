@@ -3258,10 +3258,37 @@ async function buildTrigger(toolId, d) {
       if (d.thesis) {
         p += 'ACQUISITION TEAM NOTES (use these directly in the Investment Thesis slide — do not override with generic content):\n' + d.thesis + '\n\n';
       }
-      p += 'ENTRADA HURDLES: 14.75%+ levered IRR | 7.5-8.0% YOC Yr3/4 | 1.75x+ EM | Max 65% LTV\n\n';
+      p += 'DEAL TYPE CLASSIFICATION
+';
+      p += 'Classify this deal as one of three types before applying any hurdle thresholds:
+';
+      p += '- CORE+/STABILIZED: Institutional quality asset, strong location, creditworthy tenants, functional building, newer construction or well-maintained vintage
+';
+      p += '- VALUE-ADD: Near-term rollover, below-market rents, deferred capex, execution risk present
+';
+      p += '- DISTRESSED/REPOSITIONING: Busted cap stack, significant vacancy, full repositioning required
+
+';
+      p += 'ENTRADA HURDLE THRESHOLDS BY DEAL TYPE:
+';
+      p += 'Levered IRR: Core+/Stabilized 13.50%-14.00% acceptable | Value-Add 14.75% floor -- no exceptions | Distressed 14.75% floor, 17.00%+ target
+';
+      p += 'Equity Multiple: 1.50x universal floor | 1.70x-2.20x target | Between 1.50x-1.70x: evaluated on hold period, exit cap conservatism, and business plan execution -- not automatic rejection
+';
+      p += 'YOC: 7.50%-8.00% target at Year 3, Year 4, AND Year 5 (consistent across all deal types)
+';
+      p += 'LTV: 65% universal ceiling | 60% ceiling if occupancy at close is below 50%
+';
+      p += 'DSCR: 1.25x minimum by end of Year 1 (consistent across all deal types)
+';
+      p += 'Hold Period: Evaluated on absolute IRR -- no IRR premium required for shorter holds
+';
+      p += 'Geography: Criteria applied universally across all markets -- no market-tier adjustments
+
+';
       if (d.om_text) p += 'OFFERING MEMORANDUM:\n' + d.om_text.slice(0, 16000) + '\n\n';
       if (d.comps_text) p += 'LEASE COMP DATA:\n' + d.comps_text.slice(0, 10000) + '\n\n';
-      p += 'Produce a complete IC memo in the following structure. Write at the level of a senior PE professional presenting to an investment committee — specific, data-driven, no filler language.\n\n## DEAL SUMMARY\nTwo paragraphs: what the asset is, why we are buying it, and the return profile. Include all key metrics.\n\n## INVESTMENT THESIS\nFour numbered thesis points in the format used by institutional PE firms:\n1. [Compelling headline] — detailed paragraph with specific data\n2. [Compelling headline] — detailed paragraph with specific data\n3. [Compelling headline] — detailed paragraph with specific data\n4. [Compelling headline] — detailed paragraph with specific data\n\n## RETURN STACK\nTable: Metric | Value | vs Entrada Hurdle\nAll returns at purchase price. IRR, EM, YOC Yr1/Yr3/Yr4, Going-in Cap, Exit Cap, DSCR, Equity Required, Total Capitalization.\n\n## CAPITAL STACK\nSources and uses table. Debt terms. Equity required. LTV. DSCR.\n\n## MARKET & SUBMARKET\nSubmarket fundamentals: vacancy, rents, absorption, new supply. Recent comparable sale transactions (minimum 3) with address, SF, price, PSF, cap rate, buyer, date. Why this submarket now.\n\n## RENT ROLL ANALYSIS\nIMPORTANT: Extract the actual tenant rent roll from the OM or model. Output as a pipe-delimited table with this exact header row first:\nTenant | SF | % NRA | Expiration | Rent PSF | Mkt PSF | Delta\nThen one row per tenant with real data from the uploaded documents. After the table: WALT (calculated), rollover schedule summary, mark-to-market upside commentary.\n\n## LEASE COMP ANALYSIS\nIMPORTANT: Extract all lease comps from the OM or uploaded comp data. Output as a pipe-delimited table with this exact header row first:\nProperty | Size (SF) | Lease Date | Term | Rate PSF | Type | Tenant\nThen one row per comp with real data. After the table: brief commentary on how subject property compares to market, rent spread vs. in-place rents, and underwriting support.\n\n## SENSITIVITY ANALYSIS\nTable 1: IRR by Purchase Price × Hold Period\nTable 2: IRR by Purchase Price × Exit Cap Rate\nColor commentary: green = clears hurdle, yellow = borderline, red = fails\n\n## RISK MATRIX\nTable: Risk Factor | Severity (High/Medium/Low) | Mitigant\nMinimum 6 risks. Be specific — name the tenants, the dates, the dollar amounts.\n\n## IC RECOMMENDATION\nPURSUE | CONDITIONAL | PASS\nIf PURSUE: state the conviction and next steps\nIf CONDITIONAL: state exactly what must be verified before proceeding\n5 specific next steps numbered and actionable\n\n## ENTRADA HURDLE CONFIRMATION\nThis section is MANDATORY and must appear in every memo regardless of whether the deal passes or fails.\nCalculate and state each hurdle explicitly:\nLevered IRR: [X.XX]% vs 14.75% hurdle — [PASSES / FAILS by X bps]\nEquity Multiple: [X.XX]x vs 1.70x floor / 1.80x target — [PASSES / FAILS]\nYOC Year 3/4: [X.XX]% vs 7.50–8.00% target — [PASSES / FAILS]\nLTV: [X.XX]% vs 65.00% max — [PASSES / FAILS]\nDSCR: [X.XX]x vs 1.25x minimum — [PASSES / FAILS]\nOverall: [CLEARS ALL HURDLES / FAILS X OF 5 HURDLES — requires IC exception]';
+      p += 'Produce a complete IC memo in the following structure. Write at the level of a senior PE professional presenting to an investment committee — specific, data-driven, no filler language.\n\n## DEAL SUMMARY\nTwo paragraphs: what the asset is, why we are buying it, and the return profile. Include all key metrics.\n\n## INVESTMENT THESIS\nFour numbered thesis points in the format used by institutional PE firms:\n1. [Compelling headline] — detailed paragraph with specific data\n2. [Compelling headline] — detailed paragraph with specific data\n3. [Compelling headline] — detailed paragraph with specific data\n4. [Compelling headline] — detailed paragraph with specific data\n\n## RETURN STACK\nTable: Metric | Value | Deal-Type Hurdle | Status\nAll returns at purchase price. IRR, EM, YOC Yr1/Yr3/Yr4/Yr5, Going-in Cap, Exit Cap, DSCR, Equity Required, Total Capitalization. In the Deal-Type Hurdle column, state the threshold applicable to this deal's classified type (Core+/Stabilized: IRR 13.50%-14.00% | Value-Add: IRR 14.75% floor | Distressed: IRR 14.75% floor, 17.00%+ target). In the Status column, state PASSES or FAILS with basis-point or percentage-point delta where applicable.\n\n## CAPITAL STACK\nSources and uses table. Debt terms. Equity required. LTV. DSCR.\n\n## MARKET & SUBMARKET\nSubmarket fundamentals: vacancy, rents, absorption, new supply. Recent comparable sale transactions (minimum 3) with address, SF, price, PSF, cap rate, buyer, date. Why this submarket now.\n\n## RENT ROLL ANALYSIS\nIMPORTANT: Extract the actual tenant rent roll from the OM or model. Output as a pipe-delimited table with this exact header row first:\nTenant | SF | % NRA | Expiration | Rent PSF | Mkt PSF | Delta\nThen one row per tenant with real data from the uploaded documents. After the table: WALT (calculated), rollover schedule summary, mark-to-market upside commentary.\n\n## LEASE COMP ANALYSIS\nIMPORTANT: Extract all lease comps from the OM or uploaded comp data. Output as a pipe-delimited table with this exact header row first:\nProperty | Size (SF) | Lease Date | Term | Rate PSF | Type | Tenant\nThen one row per comp with real data. After the table: brief commentary on how subject property compares to market, rent spread vs. in-place rents, and underwriting support.\n\n## SENSITIVITY ANALYSIS\nTable 1: IRR by Purchase Price × Hold Period\nTable 2: IRR by Purchase Price × Exit Cap Rate\nColor commentary: green = clears hurdle, yellow = borderline, red = fails\n\n## RISK MATRIX\nTable: Risk Factor | Severity (High/Medium/Low) | Mitigant\nMinimum 6 risks. Be specific — name the tenants, the dates, the dollar amounts.\n\n## IC RECOMMENDATION\nPURSUE | CONDITIONAL | PASS\nIf PURSUE: state the conviction and next steps\nIf CONDITIONAL: state exactly what must be verified before proceeding\n5 specific next steps numbered and actionable\n\n## ENTRADA HURDLE CONFIRMATION\nThis section is MANDATORY and must appear in every memo regardless of whether the deal passes or fails.\n\nDeal Type: [CORE+/STABILIZED | VALUE-ADD | DISTRESSED/REPOSITIONING]\nClassification Basis: [one sentence — why this deal is classified as above, based on functionality, year built, tenant quality, and location]\n\nIRR Hurdle ([state the applicable threshold: Core+ 13.50%-14.00% | Value-Add 14.75% | Distressed 14.75%/17.00%+]):\n  Underwritten: [X.XX]% — [PASSES / FAILS by X bps]\n\nEquity Multiple (1.50x universal floor / 1.70x-2.20x target):\n  Underwritten: [X.XX]x — [PASSES FLOOR / BELOW TARGET / FAILS FLOOR]\n  If between 1.50x-1.70x: note what is driving the compression (hold period, exit cap conservatism, business plan execution)\n\nYOC Year 3/4/5 (7.50%-8.00% target):\n  Year 3: [X.XX]% | Year 4: [X.XX]% | Year 5: [X.XX]% — [ALL PASS / YEAR X FAILS]\n\nLTV ([65% ceiling standard | 60% ceiling if occupancy at close below 50%]):\n  At Close Occupancy: [X]% — Applicable Ceiling: [65% or 60%]\n  Underwritten: [X.XX]% — [PASSES / FAILS]\n\nDSCR (1.25x minimum by Year 1):\n  Year 1: [X.XX]x — [PASSES / FAILS]\n\nIC Recommendation Logic:\n  PURSUE: All hurdles clear for the classified deal type\n  CONDITIONAL: Hurdles near threshold — state specifically which hurdles are short and by how much; state what verification or price adjustment would close the gap; location quality and asset functionality drive the risk assessment\n  PASS: Fundamental return gap that cannot be closed by reasonable price adjustment or assumption refinement\n\nOverall: [CLEARS ALL HURDLES — PURSUE / FAILS X OF 5 — CONDITIONAL based on location/functionality / PASS — fundamental return gap]';
       return p;
 
     case 'loi':
@@ -8123,6 +8150,41 @@ async function _napkinExportXLS() {
   var a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=fname; a.click(); URL.revokeObjectURL(a.href);
 }
 
+async function _extractCashFlows() {
+  var modelBuffer = STATE['isr'] && STATE['isr'].files && STATE['isr'].files['model'];
+  if (!modelBuffer) return null;
+  try {
+    var wb = XLSX.read(modelBuffer, {type:'array'});
+    var ws = wb.Sheets['DCF Model-Year'];
+    if (!ws) return null;
+    var cols = ['E','F','G','H','I'];
+    var years = ['Year 1','Year 2','Year 3','Year 4','Year 5 (Exit)'];
+    function cv(cell) {
+      var c = ws[cell];
+      if (!c || c.v === null || c.v === undefined) return 0;
+      return typeof c.v === 'number' ? c.v : parseFloat(String(c.v).replace(/[^0-9.-]/g,'')) || 0;
+    }
+    var rows = [];
+    cols.forEach(function(col, i) {
+      var interest = Math.abs(cv(col+'205'));
+      var principal = Math.abs(cv(col+'206'));
+      rows.push({
+        year: years[i],
+        egr: cv(col+'54'),
+        noi: cv(col+'123'),
+        ds: interest + principal,
+        levCF: cv(col+'215'),
+        yoc: cv(col+'243') * 100,
+        coc: cv(col+'244') * 100
+      });
+    });
+    return rows;
+  } catch(e) {
+    console.warn('[RIDGE] Cash flow extraction failed:', e.message);
+    return null;
+  }
+}
+
 async function ridgeExportPPT() {
   console.log('ridgeExportPPT fired — skillName:', document.getElementById('ridge-panel-skill-name').textContent, '| _lastRunInputs:', _lastRunInputs ? 'present' : 'null', '| PptxGenJS:', typeof PptxGenJS);
   if (typeof PptxGenJS === 'undefined') {
@@ -8637,28 +8699,30 @@ async function ridgeExportPPT() {
 
     // ── SLIDE 8 — Cash Flow Summary ───────────────────────────
     var s8=pptx.addSlide(); s8.background={color:BG}; addHdr(s8,'Cash Flow Summary',8);
-    var cfRows8=[];
-    if(jd&&jd.cash_flow&&jd.cash_flow.length){
-      cfRows8=[tblH(['YEAR','EGR','NOI','DEBT SERVICE','LEVERED CF','YOC','CoC'])].concat(
-        jd.cash_flow.map(function(r,ri){return tblR([r.year||'Yr '+(ri+1),r.egr||r.egi||'—',r.noi||'—',r.debt_service||r.ds||'—',r.levered_cf||r.lcf||'—',r.yoc?pct2(r.yoc):'—',r.coc?pct2(r.coc):'—'],ri%2===1);}));
-    } else {
-      var cfSec8=extractSection(panelText,'CASH FLOW')||extractSection(panelText,'CASH FLOWS');
-      var cfLines8=cfSec8.split('\n').filter(function(l){return l.includes('|')&&!l.match(/^[\s|-]+$/);});
-      if(cfLines8.length>1){
-        cfRows8=cfLines8.slice(0,8).map(function(l,ri){var cs=l.split('|').filter(function(c){return c.trim();});return ri===0?tblH(cs.map(function(c){return c.trim();})):tblR(cs.map(function(c){return c.trim();}),ri%2===1);});
-      } else {
-        var yrLines8=cfSec8.split('\n').filter(function(l){return /year\s*[1-5]/i.test(l);}).slice(0,5);
-        if(yrLines8.length){
-          cfRows8=[tblH(['YEAR','EGR','NOI','DEBT SERVICE','LEVERED CF','YOC','CoC'])].concat(
-            yrLines8.map(function(l,ri){var parts=l.replace(/[|]/g,'  ').split(/\s{2,}|\t/).map(function(p){return p.trim();}).filter(Boolean);var row=parts.concat(['—','—','—','—','—','—','—']).slice(0,7);return tblR(row,ri%2===1);}));
-        }
+    var cfModelRows = await _extractCashFlows();
+    if(cfModelRows && cfModelRows.length){
+      function fmtDollar(v){ return '$'+Math.round(v).toLocaleString('en-US'); }
+      function yocCell(v){
+        var tc = v>=7.5?'276749':(v>=6.0?'92400E':'C0392B');
+        return {text:v.toFixed(2)+'%',options:{fontSize:10,color:tc,bold:true,fill:{color:'F0F4FF'},align:'center'}};
       }
-    }
-    if(cfRows8.length>1){
-      s8.addTable(cfRows8,{x:0.4,y:0.82,w:12.5,border:{type:'solid',color:MGREY,w:0.5},fontSize:10});
+      var cfHdr = tblH(['YEAR','EGR','NOI','DEBT SERVICE','LEVERED CF','YOC','CoC']);
+      var cfDataRows = cfModelRows.map(function(r,ri){
+        var altBg = ri%2===1?'F0F4FF':BG;
+        var baseOpts = {fontSize:10,color:TEXT2,fill:{color:altBg}};
+        return [
+          {text:r.year,options:{fontSize:10,color:TEXT,bold:true,fill:{color:altBg}}},
+          {text:fmtDollar(r.egr),options:baseOpts},
+          {text:fmtDollar(r.noi),options:baseOpts},
+          {text:fmtDollar(r.ds),options:baseOpts},
+          {text:fmtDollar(r.levCF),options:Object.assign({},baseOpts,{fill:{color:altBg}})},
+          yocCell(r.yoc),
+          {text:r.coc.toFixed(2)+'%',options:baseOpts}
+        ];
+      });
+      s8.addTable([cfHdr].concat(cfDataRows),{x:0.4,y:0.82,w:12.5,colW:[2.0,2.0,2.0,2.0,2.0,1.25,1.25],border:{type:'solid',color:MGREY,w:0.5},fontSize:10});
     } else {
-      s8.addTable([tblH(['YEAR','EGR','NOI','DEBT SERVICE','LEVERED CF','YOC','CoC']),tblR(['Year 1','—','—','—','—',pct2(d.yoc),'—'],false),tblR(['Year 2','—','—','—','—','—','—'],true),tblR(['Year 3','—','—','—','—','—','—'],false),tblR(['Year 4','—','—','—','—','—','—'],true),tblR(['Year 5 (Exit)','—','—','—','—','—','—'],false)],{x:0.4,y:0.82,w:12.5,border:{type:'solid',color:MGREY,w:0.5},fontSize:10});
-      s8.addText('Upload acquisition model (.xlsx) for detailed year-by-year cash flows.',{x:0.4,y:3.8,w:12.5,h:0.5,fontSize:11,color:MUTED,wrap:true});
+      s8.addText('Upload acquisition model (.xlsx) to populate cash flow data.',{x:0.4,y:2.5,w:12.5,h:1.0,fontSize:13,color:MUTED,align:'center',valign:'middle',wrap:true});
     }
     addFtr(s8);
 
