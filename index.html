@@ -3261,8 +3261,7 @@ async function buildTrigger(toolId, d) {
       p += 'ENTRADA HURDLES: 14.75%+ levered IRR | 7.5-8.0% YOC Yr3/4 | 1.75x+ EM | Max 65% LTV\n\n';
       if (d.om_text) p += 'OFFERING MEMORANDUM:\n' + d.om_text.slice(0, 16000) + '\n\n';
       if (d.comps_text) p += 'LEASE COMP DATA:\n' + d.comps_text.slice(0, 10000) + '\n\n';
-      p += 'Produce a complete IC memo in the following structure. Write at the level of a senior PE professional presenting to an investment committee — specific, data-driven, no filler language.\n\n## DEAL SUMMARY\nTwo paragraphs: what the asset is, why we are buying it, and the return profile. Include all key metrics.\n\n## INVESTMENT THESIS\nFour numbered thesis points in the format used by institutional PE firms:\n1. [Compelling headline] — detailed paragraph with specific data\n2. [Compelling headline] — detailed paragraph with specific data\n3. [Compelling headline] — detailed paragraph with specific data\n4. [Compelling headline] — detailed paragraph with specific data\n\n## RETURN STACK\nTable: Metric | Value | vs Entrada Hurdle\nAll returns at purchase price. IRR, EM, YOC Yr1/Yr3/Yr4, Going-in Cap, Exit Cap, DSCR, Equity Required, Total Capitalization.\n\n## CAPITAL STACK\nSources and uses table. Debt terms. Equity required. LTV. DSCR.\n\n## MARKET & SUBMARKET\nSubmarket fundamentals: vacancy, rents, absorption, new supply. Recent comparable sale transactions (minimum 3) with address, SF, price, PSF, cap rate, buyer, date. Why this submarket now.\n\n## RENT ROLL ANALYSIS\nIMPORTANT: Extract the actual tenant rent roll from the OM or model. Output as a pipe-delimited table with this exact header row first:\nTenant | SF | % NRA | Expiration | Rent PSF | Mkt PSF | Delta\nThen one row per tenant with real data from the uploaded documents. After the table: WALT (calculated), rollover schedule summary, mark-to-market upside commentary.\n\n## LEASE COMP ANALYSIS\nIMPORTANT: Extract all lease comps from the OM or uploaded comp data. Output as a pipe-delimited table with this exact header row first:\nProperty | Size (SF) | Lease Date | Term | Rate PSF | Type | Tenant\nThen one row per comp with real data. After the table: brief commentary on how subject property compares to market, rent spread vs. in-place rents, and underwriting support.\n\n## SENSITIVITY ANALYSIS\nTable 1: IRR by Purchase Price × Hold Period\nTable 2: IRR by Purchase Price × Exit Cap Rate\nColor commentary: green = clears hurdle, yellow = borderline, red = fails\n\n## RISK MATRIX\nTable: Risk Factor | Severity (High/Medium/Low) | Mitigant\nMinimum 6 risks. Be specific — name the tenants, the dates, the dollar amounts.\n\n## IC RECOMMENDATION\nPURSUE | CONDITIONAL | PASS\nIf PURSUE: state the conviction and next steps\nIf CONDITIONAL: state exactly what must be verified before proceeding\n5 specific next steps numbered and actionable';
-      p += '\n\nIMPORTANT: At the very end of your response, after all analysis, output a JSON block in this exact format for the PPT builder:\n\n```json\n{"thesis":[{"headline":"","body":""},{"headline":"","body":""},{"headline":"","body":""},{"headline":"","body":""}],"market":{"vacancy":"","avg_rent":"","new_supply":"","replacement_cost":"","comps":[{"name":"","sf":"","psf":"","cap":"","date":""}]},"lease_comps":[{"property":"","sf":"","date":"","term":"","rate":"","type":""}],"rent_roll":[{"tenant":"","sf":"","pct_nra":"","expiration":"","rent_psf":"","mkt_psf":""}],"sensitivity":{"hold_rows":[{"price":"","irr_36":"","irr_48":"","irr_60":""}],"cap_rows":[{"price":"","irr_600":"","irr_625":"","irr_650":""}]},"risks":[{"factor":"","severity":"","mitigant":""}],"recommendation":{"verdict":"","summary":"","next_steps":[""]}}\n```\n\nFill in ALL fields with real data from the uploaded documents. thesis must have exactly 4 items. lease_comps must have at least 3 items from the OM or comp upload. rent_roll must list every tenant found. sensitivity must have at least 4 price rows each. risks must have at least 5 items. Do not leave any field empty. Do not add text after the JSON block.';
+      p += 'Produce a complete IC memo in the following structure. Write at the level of a senior PE professional presenting to an investment committee — specific, data-driven, no filler language.\n\n## DEAL SUMMARY\nTwo paragraphs: what the asset is, why we are buying it, and the return profile. Include all key metrics.\n\n## INVESTMENT THESIS\nFour numbered thesis points in the format used by institutional PE firms:\n1. [Compelling headline] — detailed paragraph with specific data\n2. [Compelling headline] — detailed paragraph with specific data\n3. [Compelling headline] — detailed paragraph with specific data\n4. [Compelling headline] — detailed paragraph with specific data\n\n## RETURN STACK\nTable: Metric | Value | vs Entrada Hurdle\nAll returns at purchase price. IRR, EM, YOC Yr1/Yr3/Yr4, Going-in Cap, Exit Cap, DSCR, Equity Required, Total Capitalization.\n\n## CAPITAL STACK\nSources and uses table. Debt terms. Equity required. LTV. DSCR.\n\n## MARKET & SUBMARKET\nSubmarket fundamentals: vacancy, rents, absorption, new supply. Recent comparable sale transactions (minimum 3) with address, SF, price, PSF, cap rate, buyer, date. Why this submarket now.\n\n## RENT ROLL ANALYSIS\nIMPORTANT: Extract the actual tenant rent roll from the OM or model. Output as a pipe-delimited table with this exact header row first:\nTenant | SF | % NRA | Expiration | Rent PSF | Mkt PSF | Delta\nThen one row per tenant with real data from the uploaded documents. After the table: WALT (calculated), rollover schedule summary, mark-to-market upside commentary.\n\n## LEASE COMP ANALYSIS\nIMPORTANT: Extract all lease comps from the OM or uploaded comp data. Output as a pipe-delimited table with this exact header row first:\nProperty | Size (SF) | Lease Date | Term | Rate PSF | Type | Tenant\nThen one row per comp with real data. After the table: brief commentary on how subject property compares to market, rent spread vs. in-place rents, and underwriting support.\n\n## SENSITIVITY ANALYSIS\nTable 1: IRR by Purchase Price × Hold Period\nTable 2: IRR by Purchase Price × Exit Cap Rate\nColor commentary: green = clears hurdle, yellow = borderline, red = fails\n\n## RISK MATRIX\nTable: Risk Factor | Severity (High/Medium/Low) | Mitigant\nMinimum 6 risks. Be specific — name the tenants, the dates, the dollar amounts.\n\n## IC RECOMMENDATION\nPURSUE | CONDITIONAL | PASS\nIf PURSUE: state the conviction and next steps\nIf CONDITIONAL: state exactly what must be verified before proceeding\n5 specific next steps numbered and actionable\n\n## ENTRADA HURDLE CONFIRMATION\nThis section is MANDATORY and must appear in every memo regardless of whether the deal passes or fails.\nCalculate and state each hurdle explicitly:\nLevered IRR: [X.XX]% vs 14.75% hurdle — [PASSES / FAILS by X bps]\nEquity Multiple: [X.XX]x vs 1.70x floor / 1.80x target — [PASSES / FAILS]\nYOC Year 3/4: [X.XX]% vs 7.50–8.00% target — [PASSES / FAILS]\nLTV: [X.XX]% vs 65.00% max — [PASSES / FAILS]\nDSCR: [X.XX]x vs 1.25x minimum — [PASSES / FAILS]\nOverall: [CLEARS ALL HURDLES / FAILS X OF 5 HURDLES — requires IC exception]';
       return p;
 
     case 'loi':
@@ -4182,6 +4181,51 @@ function copyResult(toolId) {
     var btn = document.querySelector(`[onclick="copyResult('${toolId}')"]`);
     if(btn){btn.textContent='✓ Copied'; setTimeout(()=>btn.textContent='📋 Copy',1500);}
   });
+}
+
+// ═══════════════════════════════════════════════════════════
+//  ISR CALL 2 — JSON EXTRACTION (Haiku, non-streaming)
+// ═══════════════════════════════════════════════════════════
+async function _isrExtractJSON(memoText) {
+  var _isrBtn = document.getElementById('pptx-btn-isr');
+  try {
+    var resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': _apiKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 2000,
+        system: 'You are a data extraction assistant. Return ONLY valid JSON, no other text.',
+        messages: [{
+          role: 'user',
+          content: 'Extract structured data from this IC memo and return as JSON only:\n\n' +
+            JSON.stringify({
+              thesis: 'array of {headline, body}',
+              market: '{vacancy, avg_rent, new_supply, replacement_cost, narrative}',
+              lease_comps: 'array of {property, sf, rate, term, type, date}',
+              rent_roll: 'array of {tenant, sf, pct_nra, expiration, rent_psf, mkt_psf}',
+              sensitivity: '{hold_rows: [{price, irr_36, irr_48, irr_60}], cap_rows: [{price, irr_600, irr_625, irr_650}]}',
+              risks: 'array of {factor, severity, mitigant}',
+              recommendation: '{verdict, summary, next_steps}'
+            }) + '\n\nMemo:\n' + memoText.slice(0, 12000)
+        }]
+      })
+    });
+    var data = await resp.json();
+    var raw = data.content[0].text;
+    var clean = raw.replace(/```json|```/g, '').trim();
+    _isrParsedData = JSON.parse(clean);
+    console.log('[RIDGE] Call 2 extraction complete:', Object.keys(_isrParsedData));
+  } catch(e) {
+    console.warn('[RIDGE] Call 2 extraction failed:', e.message);
+  } finally {
+    if (_isrBtn) { _isrBtn.disabled = false; _isrBtn.textContent = '⬇ Download .pptx'; }
+  }
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -6570,7 +6614,7 @@ async function runRidgeAPI(skillName, prompt, runInputs, runToolId) {
       },
       body: JSON.stringify({
         model: 'claude-sonnet-4-6',
-        max_tokens: isISRRun ? 16000 : 8000,
+        max_tokens: 8000,
         stream: true,
         system: systemPrompt,
         messages: [{ role: 'user', content: prompt }]
@@ -6622,37 +6666,23 @@ async function runRidgeAPI(skillName, prompt, runInputs, runToolId) {
     if (_lastRunToolId && STATE[_lastRunToolId]) {
       STATE[_lastRunToolId].result = accumulated;
     }
-    // Strip trailing JSON block from panel display
-    if (_lastRunToolId === 'isr' || _lastRunToolId === 'gavel') {
-      // Find the LAST occurrence of any json code fence variant
-      var _stripIdx = -1;
-      var _patterns = ['```json', '``` json', '`\`\`json'];
-      for (var _pi = 0; _pi < _patterns.length; _pi++) {
-        var _idx = accumulated.lastIndexOf(_patterns[_pi]);
-        if (_idx > _stripIdx) _stripIdx = _idx;
+    // Strip trailing JSON block from Gavel panel display
+    if (_lastRunToolId === 'gavel') {
+      var _gavelStripIdx = -1;
+      var _gavelPatterns = ['```json', '``` json', '`\`\`json'];
+      for (var _gpi = 0; _gpi < _gavelPatterns.length; _gpi++) {
+        var _gidx = accumulated.lastIndexOf(_gavelPatterns[_gpi]);
+        if (_gidx > _gavelStripIdx) _gavelStripIdx = _gidx;
       }
-      console.log('[RIDGE] JSON strip: _stripIdx=', _stripIdx, 'accumulated length=', accumulated.length);
-
-      if (_stripIdx > -1) {
-        var _clean = accumulated.substring(0, _stripIdx).trimEnd();
-        contentEl.innerHTML = parseMarkdown(_clean);
-
-        // Extract and parse the JSON
-        if (_lastRunToolId === 'isr') {
-          var _jsonRaw = accumulated.substring(_stripIdx);
-          var _jsonMatch = _jsonRaw.match(/```\s*json\s*([\s\S]*?)```/i);
-          if (_jsonMatch) {
-            try {
-              _isrParsedData = JSON.parse(_jsonMatch[1].trim());
-              console.log('[RIDGE] _isrParsedData keys:', Object.keys(_isrParsedData));
-            } catch(e) {
-              console.warn('[RIDGE] JSON parse error:', e.message, _jsonMatch[1].slice(0,200));
-            }
-          } else {
-            console.warn('[RIDGE] JSON fence found at', _stripIdx, 'but inner match failed');
-          }
-        }
+      if (_gavelStripIdx > -1) {
+        contentEl.innerHTML = parseMarkdown(accumulated.substring(0, _gavelStripIdx).trimEnd());
       }
+    }
+    // ISR — fire Call 2 JSON extraction in background; button enabled when it completes
+    if (_lastRunToolId === 'isr') {
+      var _isrBtn2 = document.getElementById('pptx-btn-isr');
+      if (_isrBtn2) { _isrBtn2.disabled = true; _isrBtn2.textContent = '⏳ Extracting data...'; }
+      _isrExtractJSON(accumulated);
     }
     console.log('Stream complete — about to enter Supabase post-run block');
     document.getElementById('ridge-pdf-btn').disabled = false;
