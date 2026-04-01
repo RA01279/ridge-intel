@@ -1592,10 +1592,45 @@ function renderTools() {
     // Wire standalone tool inputs
     if (tool.id === 'lease-library') {
       var llFileInp = document.getElementById('ll-file');
-      if (llFileInp) llFileInp.addEventListener('change', function() {
-        var st = document.getElementById('uzst-ll-file');
-        if (st && llFileInp.files[0]) st.textContent = '✓ ' + llFileInp.files[0].name;
-      });
+      var llZone    = document.getElementById('uz-ll-file');
+      // Zone click → open native file picker
+      if (llZone) {
+        llZone.addEventListener('click', function() {
+          var inp = document.getElementById('ll-file');
+          if (inp) inp.click();
+        });
+        // Drag-and-drop support
+        llZone.addEventListener('dragover', function(e) {
+          e.preventDefault();
+          llZone.style.borderColor = '#2196F3';
+        });
+        llZone.addEventListener('dragleave', function() {
+          llZone.style.borderColor = '';
+        });
+        llZone.addEventListener('drop', function(e) {
+          e.preventDefault();
+          llZone.style.borderColor = '';
+          var file = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+          if (file) {
+            _llSelectedFile = file;
+            var st = document.getElementById('uzst-ll-file');
+            if (st) st.textContent = '✓ ' + file.name;
+            llZone.classList.add('loaded');
+          }
+        });
+      }
+      // File input change → store reference
+      if (llFileInp) {
+        llFileInp.addEventListener('change', function() {
+          var file = llFileInp.files && llFileInp.files[0];
+          if (file) {
+            _llSelectedFile = file;
+            var st = document.getElementById('uzst-ll-file');
+            if (st) st.textContent = '✓ ' + file.name;
+            llZone && llZone.classList.add('loaded');
+          }
+        });
+      }
     }
 
     // Wire upload inputs after DOM insertion
@@ -1666,8 +1701,8 @@ function _buildStandalonePanelHTML(id) {
       </div>
       <div class="upload-group" style="margin-top:10px;">
         <label>Argus / Excel Rent Roll or CSV <span>XLSX · XLS · CSV — Argus export or generic rent roll</span></label>
-        <div class="uz" id="uz-ll-file" onclick="document.getElementById('ll-file').click()">
-          <input type="file" id="ll-file" accept=".xlsx,.xls,.csv">
+        <div class="uz" id="uz-ll-file">
+          <input type="file" id="ll-file" accept=".xlsx,.xls,.csv" style="display:none">
           <div class="uz-ico">📊</div>
           <div class="uz-t">Click or drag to upload</div>
           <div class="uz-s">XLSX · XLS · CSV</div>
@@ -8608,6 +8643,7 @@ var _llParsedRows = [];
 var _llPage = 0;
 var _llPageSize = 25;
 var _llTotal = 0;
+var _llSelectedFile = null; // persists file ref across async import
 
 // STATE for lease-library is initialized by the TOOLS.forEach loop above
 
@@ -8615,11 +8651,14 @@ var _llTotal = 0;
 async function _llImportClick() {
   var addrEl = document.getElementById('ll-address');
   var mktEl  = document.getElementById('ll-market');
-  var fileEl = document.getElementById('ll-file');
   var address = addrEl ? addrEl.value.trim() : '';
   var market  = mktEl  ? mktEl.value.trim() : '';
   if (!address) { showToast('Enter property address first'); return; }
-  var file = fileEl && fileEl.files[0];
+  // Use persisted file reference (set by change/drop listener in renderTools)
+  var file = _llSelectedFile || (function(){
+    var el = document.getElementById('ll-file');
+    return el && el.files && el.files[0];
+  }());
   if (!file) { showToast('Select a file to import'); return; }
   var btn = document.getElementById('ll-import-btn');
   btn.textContent = '⏳ Parsing...'; btn.disabled = true;
@@ -8831,6 +8870,7 @@ async function _llConfirmImport() {
     showToast('✅ Imported ' + rows.length + ' leases for ' + address);
     document.getElementById('ll-preview-section').style.display = 'none';
     _llParsedRows = [];
+    _llSelectedFile = null;
     _llPage = 0;
     await _llLoadLeases();
   } catch(e) {
