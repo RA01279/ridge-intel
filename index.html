@@ -8761,17 +8761,18 @@ function _llRenderPreview(rows) {
     + '<thead><tr>' + cols.map(function(c){
         return '<th style="background:#1E2761;color:#fff;padding:5px 8px;text-align:left;white-space:nowrap;">' + c + '</th>';
       }).join('') + '</tr></thead><tbody>';
+  var PTD = 'padding:4px 8px;color:#1A1A2E;';
   rows.forEach(function(r, i) {
-    var bg = i%2===1 ? '#F0F4FF' : '#fff';
-    var sc = r.vacant ? '#E67E22' : '#1B5E20';
+    var bg = i%2===1 ? '#F0F4FF' : '#FFFFFF';
+    var sc = r.vacant ? '#C0560A' : '#1B5E20';
     html += '<tr style="background:' + bg + ';">'
-      + '<td style="padding:4px 8px;">' + (r.tenant||'—').slice(0,40) + '</td>'
-      + '<td style="padding:4px 8px;">' + (r.suite||'—') + '</td>'
-      + '<td style="padding:4px 8px;text-align:right;">' + (r.sf ? Number(r.sf).toLocaleString() : '—') + '</td>'
-      + '<td style="padding:4px 8px;text-align:right;">' + (r.base_rent_psf ? '$'+Number(r.base_rent_psf).toFixed(2) : '—') + '</td>'
-      + '<td style="padding:4px 8px;">' + (r.expiration_date||'—') + '</td>'
-      + '<td style="padding:4px 8px;">' + (r.lease_type||'—') + '</td>'
-      + '<td style="padding:4px 8px;color:'+sc+';font-weight:600;">' + (r.vacant?'Vacant':'Occupied') + '</td>'
+      + '<td style="'+PTD+'">' + (r.tenant||'—').slice(0,40) + '</td>'
+      + '<td style="'+PTD+'">' + (r.suite||'—') + '</td>'
+      + '<td style="'+PTD+'text-align:right;">' + (r.sf ? Number(r.sf).toLocaleString() : '—') + '</td>'
+      + '<td style="'+PTD+'text-align:right;">' + (r.base_rent_psf ? '$'+Number(r.base_rent_psf).toFixed(2) : '—') + '</td>'
+      + '<td style="'+PTD+'">' + (r.expiration_date||'—') + '</td>'
+      + '<td style="'+PTD+'">' + (r.lease_type||'—') + '</td>'
+      + '<td style="'+PTD+'color:'+sc+';font-weight:600;">' + (r.vacant?'Vacant':'Occupied') + '</td>'
       + '</tr>';
   });
   html += '</tbody></table>';
@@ -8848,24 +8849,25 @@ function _llRenderTable(rows) {
     + '<thead><tr>' + cols.map(function(c){
         return '<th style="background:#1E2761;color:#fff;padding:6px 8px;text-align:left;white-space:nowrap;position:sticky;top:0;z-index:1;">' + c + '</th>';
       }).join('') + '</tr></thead><tbody>';
+  var TD = 'padding:5px 8px;color:#1A1A2E;';
   rows.forEach(function(r, i) {
-    var bg = i%2===1 ? '#F0F4FF' : '#fff';
-    var sc = r.vacant ? '#E67E22' : '#1B5E20';
+    var bg = i%2===1 ? '#F0F4FF' : '#FFFFFF';
+    var sc = r.vacant ? '#C0560A' : '#1B5E20';
     var sl = r.vacant ? 'Vacant' : 'Occupied';
     var tid = r.id.replace(/'/g,"\\'");
     var tname = (r.tenant||'').replace(/'/g,"\\'").replace(/"/g,'&quot;');
     var taddr = (r.address||'').replace(/'/g,"\\'").replace(/"/g,'&quot;');
     html += '<tr id="ll-row-' + r.id + '" style="background:' + bg + ';">'
-      + '<td style="padding:5px 8px;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="'+(r.address||'')+'">' + (r.address||'—').slice(0,28) + '</td>'
-      + '<td style="padding:5px 8px;">' + (r.suite||'—') + '</td>'
-      + '<td style="padding:5px 8px;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="'+(r.tenant||'')+'">' + (r.tenant||'—').slice(0,28) + '</td>'
-      + '<td style="padding:5px 8px;text-align:right;">' + (r.sf ? Number(r.sf).toLocaleString() : '—') + '</td>'
-      + '<td style="padding:5px 8px;text-align:right;">' + (r.base_rent_psf ? '$'+Number(r.base_rent_psf).toFixed(2) : '—') + '</td>'
-      + '<td style="padding:5px 8px;">' + (r.expiration_date ? String(r.expiration_date).slice(0,10) : '—') + '</td>'
-      + '<td style="padding:5px 8px;">' + (r.lease_type||'—') + '</td>'
-      + '<td style="padding:5px 8px;color:'+sc+';font-weight:600;">' + sl + '</td>'
-      + '<td style="padding:5px 8px;">' + (r.market||'—') + '</td>'
-      + '<td style="padding:5px 8px;white-space:nowrap;">'
+      + '<td style="'+TD+'max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="'+(r.address||'')+'">' + (r.address||'—').slice(0,28) + '</td>'
+      + '<td style="'+TD+'">' + (r.suite||'—') + '</td>'
+      + '<td style="'+TD+'max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="'+(r.tenant||'')+'">' + (r.tenant||'—').slice(0,28) + '</td>'
+      + '<td style="'+TD+'text-align:right;">' + (r.sf ? Number(r.sf).toLocaleString() : '—') + '</td>'
+      + '<td style="'+TD+'text-align:right;">' + (r.base_rent_psf ? '$'+Number(r.base_rent_psf).toFixed(2) : '—') + '</td>'
+      + '<td style="'+TD+'">' + (r.expiration_date ? String(r.expiration_date).slice(0,10) : '—') + '</td>'
+      + '<td style="'+TD+'">' + (r.lease_type||'—') + '</td>'
+      + '<td style="'+TD+'color:'+sc+';font-weight:600;">' + sl + '</td>'
+      + '<td style="'+TD+'">' + (r.market||'—') + '</td>'
+      + '<td style="'+TD+'white-space:nowrap;">'
       + '<button onclick="_llEditLease(\''+tid+'\')" style="background:#2196F3;color:#fff;border:none;border-radius:3px;padding:2px 7px;font-size:10px;cursor:pointer;margin-right:4px;">Edit</button>'
       + '<button onclick="_llDeleteLease(\''+tid+'\',\''+tname+'\',\''+taddr+'\')" style="background:#C0392B;color:#fff;border:none;border-radius:3px;padding:2px 7px;font-size:10px;cursor:pointer;">Del</button>'
       + '</td></tr>';
