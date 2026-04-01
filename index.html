@@ -3747,9 +3747,58 @@ function _normalizeTenant(name) {
 
 // Upserts parsed lease rows to Supabase, deduplicating on address+tenant.
 // Skips rows missing address or tenant. Never throws — wraps all errors as console.warn.
+// Promise-based dialog shown to manual importers when existing records are found.
+// Resolves with 'replace', 'update', or 'cancel'.
+function _showReimportDialog(count, address) {
+  return new Promise(function(resolve) {
+    var overlay = document.createElement('div');
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.72);z-index:9999;display:flex;align-items:center;justify-content:center;';
+    var box = document.createElement('div');
+    box.style.cssText = 'background:#1a1f2e;border:1px solid #2a3050;border-radius:10px;padding:28px 32px;max-width:440px;width:90%;font-family:inherit;';
+    box.innerHTML =
+      '<div style="font-size:15px;font-weight:700;color:#e8eaf0;margin-bottom:8px;">Existing Lease Records Found</div>'
+      + '<div style="font-size:13px;color:#9ca3af;margin-bottom:22px;">'
+        + count + ' lease record' + (count !== 1 ? 's' : '') + ' found for '
+        + '<strong style="color:#c8ccda">' + address + '</strong>.'
+      + '</div>'
+      + '<div style="display:flex;gap:10px;flex-wrap:wrap;">'
+        + '<button id="_rdlg-replace" style="flex:1;padding:9px 14px;background:#7f1d1d;border:1px solid #991b1b;border-radius:6px;color:#fca5a5;font-size:12px;font-weight:600;cursor:pointer;">Replace All</button>'
+        + '<button id="_rdlg-update" style="flex:1;padding:9px 14px;background:#1e3a5f;border:1px solid #1e40af;border-radius:6px;color:#93c5fd;font-size:12px;font-weight:600;cursor:pointer;">Update Only</button>'
+        + '<button id="_rdlg-cancel" style="padding:9px 14px;background:transparent;border:1px solid #374151;border-radius:6px;color:#6b7280;font-size:12px;cursor:pointer;">Cancel</button>'
+      + '</div>';
+    overlay.appendChild(box);
+    document.body.appendChild(overlay);
+    function cleanup(result) { document.body.removeChild(overlay); resolve(result); }
+    document.getElementById('_rdlg-replace').onclick = function() { cleanup('replace'); };
+    document.getElementById('_rdlg-update').onclick  = function() { cleanup('update'); };
+    document.getElementById('_rdlg-cancel').onclick  = function() { cleanup('cancel'); };
+    overlay.onclick = function(e) { if (e.target === overlay) cleanup('cancel'); };
+  });
+}
+
 async function _writeLeaseRows(rows, address, source) {
   if (!rows || !rows.length || !_sbOk || !_sb) return;
+
+  // Sources that come from a human manually importing data — these get a confirm dialog.
+  var MANUAL_SOURCES = ['ARGUS_IMPORT', 'LEASE_LIBRARY', 'NAPKIN'];
+  var isManual = MANUAL_SOURCES.indexOf(source) !== -1;
+
   try {
+    // ── Reimport check ──────────────────────────────────────────────────────
+    var _addrKey = (address || '').split(' ').slice(0, 3).join('%');
+    var existCheck = await _sb.from('leases').select('id').ilike('address', '%' + _addrKey + '%').limit(1);
+    var hasExisting = existCheck.data && existCheck.data.length > 0;
+
+    var _writeMode = 'update'; // default for all skill runs
+    if (hasExisting && isManual) {
+      // Get count for display
+      var cntRes = await _sb.from('leases').select('id', { count: 'exact', head: true }).ilike('address', '%' + _addrKey + '%');
+      _writeMode = await _showReimportDialog(cntRes.count || '?', address);
+      if (_writeMode === 'cancel') { console.log('[RIDGE] ' + source + ' import cancelled by user'); return; }
+    }
+    // Skill runs: _writeMode stays 'update' silently (no dialog, never deletes comps).
+
+    // ── Build insert set ─────────────────────────────────────────────────────
     var inserts = rows.map(function(r) {
       var row = Object.assign({ address: address || null }, r);
       if (row.expiration_date) row.expiration_date = _parseLeaseDate(row.expiration_date);
@@ -3780,9 +3829,20 @@ async function _writeLeaseRows(rows, address, source) {
       }
       return row;
     });
-    var res = await _sb.from('leases').upsert(inserts, { onConflict: 'address,tenant', ignoreDuplicates: false });
-    if (res.error) console.warn('[RIDGE] ' + source + ' leases write failed:', JSON.stringify(res.error));
-    else console.log('[RIDGE] ' + source + ' wrote ' + rows.length + ' leases to DB');
+
+    // ── Write ────────────────────────────────────────────────────────────────
+    if (_writeMode === 'replace') {
+      var delRes = await _sb.from('leases').delete().ilike('address', '%' + _addrKey + '%');
+      if (delRes.error) console.warn('[RIDGE] ' + source + ' replace-delete failed:', delRes.error.message);
+      else console.log('[RIDGE] ' + source + ' deleted existing leases for replace');
+      var insRes = await _sb.from('leases').insert(inserts);
+      if (insRes.error) console.warn('[RIDGE] ' + source + ' leases insert failed:', JSON.stringify(insRes.error));
+      else console.log('[RIDGE] ' + source + ' replaced with ' + inserts.length + ' leases');
+    } else {
+      var res = await _sb.from('leases').upsert(inserts, { onConflict: 'address,tenant', ignoreDuplicates: false });
+      if (res.error) console.warn('[RIDGE] ' + source + ' leases write failed:', JSON.stringify(res.error));
+      else console.log('[RIDGE] ' + source + ' wrote ' + inserts.length + ' leases to DB');
+    }
   } catch(e) { console.warn('[RIDGE] ' + source + ' leases exception:', e.message); }
 }
 
