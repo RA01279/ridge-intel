@@ -6589,7 +6589,8 @@ async function runRidgeAPI(skillName, prompt, runInputs, runToolId) {
         if (_lastRunToolId === 'isr') {
           var _jRaw = accumulated.substring(_fenceIdx);
           var _jm2 = _jRaw.match(/```json\s*([\s\S]*?)```/);
-          if (_jm2) { try { _isrParsedData = JSON.parse(_jm2[1]); } catch(e) {} }
+          if (_jm2) { try { _isrParsedData = JSON.parse(_jm2[1]); } catch(e) { console.warn('[RIDGE] _isrParsedData JSON parse error:', e.message, 'raw:', _jm2[1].slice(0,200)); } }
+          console.log('[RIDGE] _isrParsedData keys:', _isrParsedData ? Object.keys(_isrParsedData) : 'NULL', 'fenceIdx:', _fenceIdx, 'accumulated length:', accumulated.length);
         }
       }
     }
@@ -8254,13 +8255,19 @@ async function ridgeExportPPT() {
     }
     function cleanNum(v) { return String(v||'').replace(/[$,\s]/g,''); }
 
-    // Parse structured JSON from end of response
-    var jd = null;
-    try {
-      var jm = panelText.match(/```json\s*([\s\S]*?)```\s*$/);
-      if (jm) jd = JSON.parse(jm[1]);
-      console.log('ISR PPT JSON parsed:', jd ? 'ok' : 'null');
-    } catch(e) { console.warn('ISR PPT JSON parse failed:', e); }
+    // Parse structured JSON — prefer already-extracted _isrParsedData, then re-parse raw output
+    var jd = _isrParsedData || null;
+    if (!jd) {
+      var _rawText = _skillRawOutputs['isr'] || '';
+      if (_rawText) {
+        var _jm = _rawText.match(/```json\s*([\s\S]*?)```/);
+        if (_jm) {
+          try { jd = JSON.parse(_jm[1]); }
+          catch(e) { console.warn('[RIDGE] ridgeExportPPT JSON parse failed:', e.message); }
+        }
+      }
+    }
+    console.log('[RIDGE] ridgeExportPPT jd:', jd ? Object.keys(jd) : 'NULL');
 
     // Fallback section extractor for when JSON is unavailable
     function extractSection(text, heading) {
