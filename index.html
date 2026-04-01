@@ -4368,7 +4368,7 @@ async function _isrExtractJSON(memoText) {
       },
       body: JSON.stringify({
         model: 'claude-haiku-4-5-20251001',
-        max_tokens: 4000,
+        max_tokens: 8000,
         system: 'You are a data extraction assistant. Return ONLY valid JSON, no other text.',
         messages: [{
           role: 'user',
@@ -6853,7 +6853,7 @@ async function runRidgeAPI(skillName, prompt, runInputs, runToolId) {
       var _isrBtn2 = document.getElementById('pptx-btn-isr');
       if (_isrBtn2) { _isrBtn2.disabled = true; _isrBtn2.textContent = '⏳ Extracting data...'; }
       var _isrSections = ['RENT ROLL ANALYSIS','LEASE COMP ANALYSIS','SENSITIVITY ANALYSIS','RISK MATRIX','IC RECOMMENDATION','ENTRADA HURDLE CONFIRMATION'];
-      var _trimmedMemo = _isrSections.map(function(s){ return _extractKeySection(accumulated, s); }).filter(Boolean).join('\n\n').slice(0, 8000);
+      var _trimmedMemo = _isrSections.map(function(s){ return _extractKeySection(accumulated, s); }).filter(Boolean).map(function(s){ return s.slice(0, 1500); }).join('\n\n').slice(0, 10000);
       _isrExtractJSON(_trimmedMemo);
     }
     console.log('Stream complete — about to enter Supabase post-run block');
@@ -8935,7 +8935,7 @@ async function ridgeExportPPT() {
     // ── SLIDE 11 — Lease Expiration Waterfall ─────────────────
     var s11=pptx.addSlide(); s11.background={color:BG}; addHdr(s11,'Lease Expiration Waterfall',11);
     var rr11=(jd&&jd.rent_roll&&jd.rent_roll.length)?jd.rent_roll:[];
-    // Fallback: parse rent roll from raw ISR text if jd.rent_roll is empty
+    // Fallback 1: parse rent roll from raw ISR memo text
     if(!rr11.length && panelText){
       var _rrSec11=extractSection(panelText,'RENT ROLL ANALYSIS')||extractSection(panelText,'RENT ROLL');
       var _rrLines11=_rrSec11.split('\n').filter(function(l){return l.includes('|')&&!l.match(/^[\s|-]+$/)&&!/tenant.*sf.*expir/i.test(l);});
@@ -8945,6 +8945,25 @@ async function ridgeExportPPT() {
           rr11.push({tenant:cs[0],sf:cs[1]||'0',expiration:cs[3]||'',rent_psf:cs[4]||''});
         }
       });
+    }
+    // Fallback 2: query Supabase leases table by property address
+    if(!rr11.length && _sb && _sbOk){
+      var _isrAddrEl11=document.getElementById('f-isr-addr');
+      var _isrAddr11=(_isrAddrEl11&&_isrAddrEl11.value.trim())||d.addr||'';
+      if(_isrAddr11){
+        try{
+          var _leaseRes11=await _sb.from('leases')
+            .select('tenant,sf,base_rent_psf,expiration_date,lease_type')
+            .ilike('address','%'+_isrAddr11.split(' ').slice(0,3).join('%')+'%')
+            .eq('vacant',false)
+            .limit(20);
+          if(_leaseRes11.data&&_leaseRes11.data.length){
+            rr11=_leaseRes11.data.map(function(r){
+              return {tenant:r.tenant,sf:r.sf,expiration:r.expiration_date,rent_psf:r.base_rent_psf,mkt_psf:r.base_rent_psf};
+            });
+          }
+        }catch(_le11){console.warn('[RIDGE] Lease DB fallback failed:',_le11);}
+      }
     }
     var curYr11=new Date().getFullYear();
     var pal11=['1E2761','1B5E20','2196F3','E67E22','C0392B','8E44AD','16A085','D97706'];
@@ -9220,12 +9239,17 @@ async function ridgeExportPPT() {
 
     // 3. Recommendation summary
     var sumTxt14='';
-    if(jd&&jd.recommendation&&jd.recommendation.summary){sumTxt14=stripMd(jd.recommendation.summary.slice(0,380));}
-    else{sumTxt14=stripMd(extractSection(panelText,'IC RECOMMENDATION').replace(/^##[^\n]*/,'').trim().slice(0,380));}
+    if(jd&&jd.recommendation&&jd.recommendation.summary){
+      sumTxt14=stripMd(jd.recommendation.summary.slice(0,380));
+    } else {
+      var _recRaw14=_extractKeySection(panelText,'IC RECOMMENDATION')||extractSection(panelText,'IC RECOMMENDATION');
+      sumTxt14=stripMd(_recRaw14.replace(/^##[^\n]*/,'').trim().slice(0,380));
+    }
     if(sumTxt14){s14.addText(sumTxt14,{x:0.25,y:2.58,w:12.83,h:0.65,fontSize:10.5,color:TEXT2,wrap:true,valign:'top'});}
 
     // 4. Entrada Hurdle Confirmation
-    var hurdleTxt14=extractSection(panelText,'ENTRADA HURDLE CONFIRMATION').replace(/^##[^\n]*/,'').trim();
+    var hurdleTxt14=_extractKeySection(panelText,'ENTRADA HURDLE CONFIRMATION')||extractSection(panelText,'ENTRADA HURDLE CONFIRMATION');
+    hurdleTxt14=hurdleTxt14.replace(/^##?[^\n]*/,'').trim();
     s14.addShape(pptx.ShapeType.rect,{x:0.25,y:3.32,w:0.06,h:1.35,fill:{color:NAVY},line:{color:NAVY}});
     s14.addText('ENTRADA HURDLE CONFIRMATION',{x:0.38,y:3.32,w:12.7,h:0.26,fontSize:9,color:NAVY,bold:true,charSpacing:1.5});
     if(hurdleTxt14){
@@ -9241,8 +9265,14 @@ async function ridgeExportPPT() {
 
     // 5. Next Steps
     var ns14=(jd&&jd.recommendation&&jd.recommendation.next_steps)?jd.recommendation.next_steps:[];
-    if(!ns14.length){ns14=extractSection(panelText,'IC RECOMMENDATION').split('\n').filter(function(l){return l.match(/^\d+\./);}).slice(0,6);}
-    if(!ns14.length){ns14=extractSection(panelText,'NEXT STEPS').split('\n').filter(function(l){return l.trim()&&!l.match(/^##/);}).slice(0,6);}
+    if(!ns14.length){
+      var _nsRaw14=_extractKeySection(panelText,'IC RECOMMENDATION')||extractSection(panelText,'IC RECOMMENDATION');
+      ns14=_nsRaw14.split('\n').filter(function(l){return l.match(/^\d+\./);}).slice(0,6);
+    }
+    if(!ns14.length){
+      var _nsRaw14b=_extractKeySection(panelText,'NEXT STEPS')||extractSection(panelText,'NEXT STEPS');
+      ns14=_nsRaw14b.split('\n').filter(function(l){return l.trim()&&!l.match(/^##/);}).slice(0,6);
+    }
     s14.addShape(pptx.ShapeType.rect,{x:0.25,y:4.72,w:0.06,h:Math.min(ns14.length||1,6)*0.42+0.1,fill:{color:NAVY},line:{color:NAVY}});
     s14.addText('NEXT STEPS',{x:0.38,y:4.72,w:12.7,h:0.26,fontSize:9,color:NAVY,bold:true,charSpacing:1.5});
     if(ns14.length){
