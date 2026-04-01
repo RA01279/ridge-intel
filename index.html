@@ -633,9 +633,6 @@ footer{border-top:1px solid var(--border);padding:20px 24px;text-align:center;co
     </div><div class="tool-card" id="card-canvas">
       <div class="tc-row"><span class="tc-num">11</span><span class="tc-name">CANVAS</span></div>
       <div class="tc-desc">Tenant sourcing. Fill a building or hunt acquisition targets.</div>
-    </div><div class="tool-card" id="card-lease-library" onclick="togglePanel('lease-library')">
-      <div class="tc-row"><span class="tc-num">13</span><span class="tc-name">LEASE LIBRARY</span></div>
-      <div class="tc-desc">Proprietary lease comp database — import, search, manage.</div>
     </div></div>
 <div id="panels-container"><div class="tool-panel open" id="panel-lens">
   <div class="panel-head">
@@ -1183,86 +1180,7 @@ footer{border-top:1px solid var(--border);padding:20px 24px;text-align:center;co
       </div>
       <div class="res-body" id="rout-canvas"></div>
     </div>
-  </div></div><div class="tool-panel" id="panel-lease-library">
-  <div class="panel-head">
-    <span class="panel-head-icon">🗄</span>
-    <span class="panel-head-title">LEASE LIBRARY</span>
-    <span class="panel-head-sub">Proprietary Comp Database</span>
-    <button class="panel-close" onclick="togglePanel('lease-library')">✕ Close</button>
-  </div>
-  <div class="panel-body">
-
-    <!-- ── SECTION 1: IMPORT ────────────────────────────────── -->
-    <div class="ll-section">
-      <div class="ll-sec-title">IMPORT RENT ROLL</div>
-      <div class="fr two">
-        <div class="fg"><label class="fl">Property Address</label><input type="text" id="ll-address" placeholder="6480 Chupp Road, Stonecrest, GA"></div>
-        <div class="fg"><label class="fl">Market</label><select id="ll-market"><option>Atlanta, GA</option><option>Savannah, GA</option><option>Dallas–Fort Worth, TX</option><option>Houston, TX</option><option>Austin, TX (Watch)</option></select></div>
-      </div>
-      <div class="upload-group" style="margin-top:10px;">
-        <label>Argus / Excel Rent Roll or CSV <span>XLSX · XLS · CSV — Argus export or generic rent roll</span></label>
-        <div class="uz" id="uz-ll-file" onclick="document.getElementById('ll-file').click()">
-          <input type="file" id="ll-file" accept=".xlsx,.xls,.csv">
-          <div class="uz-ico">📊</div>
-          <div class="uz-t">Click or drag to upload</div>
-          <div class="uz-s">XLSX · XLS · CSV</div>
-          <div class="uz-st" id="uzst-ll-file"></div>
-        </div>
-      </div>
-      <div class="btn-row">
-        <button class="btn btn-p" id="ll-import-btn" onclick="_llImportClick()">📥 IMPORT RENT ROLL</button>
-      </div>
-      <div id="ll-preview-section" style="display:none;margin-top:16px;">
-        <div class="ll-sec-title">IMPORT PREVIEW</div>
-        <div id="ll-preview-info" style="font-size:12px;color:#1E2761;margin-bottom:8px;padding:6px 10px;background:#F0F4FF;border-radius:4px;"></div>
-        <div id="ll-preview-table" style="overflow-x:auto;max-height:300px;overflow-y:auto;border:1px solid #e0e4ef;border-radius:4px;"></div>
-        <div class="btn-row" style="margin-top:10px;">
-          <button class="btn btn-p" id="ll-confirm-btn" onclick="_llConfirmImport()">✅ Confirm Import</button>
-          <button class="btn btn-o" onclick="document.getElementById('ll-preview-section').style.display='none'">Cancel</button>
-        </div>
-      </div>
-    </div>
-
-    <!-- ── SECTION 2+3: DATABASE + STATS ─────────────────────── -->
-    <div class="ll-section" style="margin-top:24px;">
-      <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px;">
-        <div class="ll-sec-title" style="margin:0;">LEASE DATABASE</div>
-        <span id="ll-row-count" style="background:#1E2761;color:#CADCFC;font-size:10px;font-weight:700;padding:2px 9px;border-radius:10px;letter-spacing:.04em;">0 comps</span>
-        <button class="btn btn-o" onclick="_llLoadLeases()" style="font-size:11px;padding:3px 10px;margin-left:auto;">↺ Refresh</button>
-      </div>
-      <div id="ll-stats" style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px;"></div>
-      <!-- Search + Filters -->
-      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;align-items:center;">
-        <input type="text" id="ll-search" placeholder="Search by tenant, address, market, submarket..." style="flex:2;min-width:220px;padding:6px 10px;border:1px solid #d1d9ef;border-radius:4px;font-size:12px;" onkeydown="if(event.key==='Enter')_llSearch()">
-        <select id="ll-filter-market" style="font-size:12px;padding:5px 8px;border:1px solid #d1d9ef;border-radius:4px;">
-          <option value="">All Markets</option>
-          <option>Atlanta, GA</option><option>Savannah, GA</option>
-          <option>Dallas–Fort Worth, TX</option><option>Houston, TX</option><option>Austin, TX (Watch)</option>
-        </select>
-        <select id="ll-filter-type" style="font-size:12px;padding:5px 8px;border:1px solid #d1d9ef;border-radius:4px;">
-          <option value="">All Types</option>
-          <option>Flex Industrial</option><option>Industrial / Warehouse</option>
-          <option>NNN</option><option>Gross</option><option>Modified Gross</option>
-        </select>
-        <select id="ll-filter-status" style="font-size:12px;padding:5px 8px;border:1px solid #d1d9ef;border-radius:4px;">
-          <option value="">All Status</option><option>Occupied</option><option>Vacant</option>
-        </select>
-        <input type="text" id="ll-filter-psf-min" placeholder="Min PSF" style="width:72px;padding:5px 8px;border:1px solid #d1d9ef;border-radius:4px;font-size:12px;">
-        <input type="text" id="ll-filter-psf-max" placeholder="Max PSF" style="width:72px;padding:5px 8px;border:1px solid #d1d9ef;border-radius:4px;font-size:12px;">
-        <button class="btn btn-p" onclick="_llSearch()" style="font-size:12px;padding:5px 14px;">Search</button>
-      </div>
-      <!-- Table -->
-      <div id="ll-table-wrap" style="overflow-x:auto;border:1px solid #e0e4ef;border-radius:4px;min-height:80px;"></div>
-      <!-- Pagination -->
-      <div id="ll-pagination" style="display:flex;align-items:center;gap:10px;margin-top:8px;font-size:12px;"></div>
-      <!-- Export -->
-      <div class="btn-row" style="margin-top:14px;">
-        <button class="btn btn-g" onclick="_llExportLeases()" style="font-size:12px;">⬇ EXPORT TO EXCEL</button>
-      </div>
-    </div>
-
-  </div>
-</div></div>
+  </div></div>
 
 <!-- ═══ PIPELINE ═══ -->
 <div class="pipeline-section">
@@ -1618,6 +1536,14 @@ var TOOLS = [
     ],
     steps:['Reading master lease...','Parsing amendments...','Reconstructing current terms...','Building consolidated abstract...','Mapping amendment deltas...','Analyzing tenant leverage...','Generating acquisition summary...'],
     system:`You are a senior CRE attorney and acquisitions officer at Entrada Partners. You specialize in reconstructing the effective current terms of industrial and flex leases from a master lease and a chain of amendments. You understand what long-tenured tenants negotiate over time, how amendment history reveals tenant leverage, and what provisions will concern institutional buyers at exit. Be specific — quote provisions, cite amendment numbers, and quantify economic impacts.`
+  },
+  {
+    id:'lease-library', num:'14', icon:'🗄', name:'LEASE LIBRARY',
+    badge:'Comp Database',
+    desc:'Proprietary lease comp database — import, search, manage.',
+    shortDesc:'Proprietary lease comp database — import, search, manage.',
+    uploads:[], fields:[], steps:[], system:'', prompt:null,
+    standalone: true  // rendered with custom panel HTML, not buildPanelHTML
   }
 ];
 
@@ -1654,8 +1580,21 @@ function renderTools() {
     var panel = document.createElement('div');
     panel.className = 'tool-panel';
     panel.id = 'panel-' + tool.id;
-    panel.innerHTML = buildPanelHTML(tool);
+    if (tool.standalone) {
+      panel.innerHTML = _buildStandalonePanelHTML(tool.id);
+    } else {
+      panel.innerHTML = buildPanelHTML(tool);
+    }
     panels.appendChild(panel);
+
+    // Wire standalone tool inputs
+    if (tool.id === 'lease-library') {
+      var llFileInp = document.getElementById('ll-file');
+      if (llFileInp) llFileInp.addEventListener('change', function() {
+        var st = document.getElementById('uzst-ll-file');
+        if (st && llFileInp.files[0]) st.textContent = '✓ ' + llFileInp.files[0].name;
+      });
+    }
 
     // Wire upload inputs after DOM insertion
     tool.uploads.forEach(u => {
@@ -1706,6 +1645,81 @@ function renderTools() {
     });
     obs.observe(dsPanel, {attributes:true});
   }
+}
+
+function _buildStandalonePanelHTML(id) {
+  if (id === 'lease-library') {
+    return `<div class="panel-head">
+    <span class="panel-head-icon">🗄</span>
+    <span class="panel-head-title">LEASE LIBRARY</span>
+    <span class="panel-head-sub">Proprietary Comp Database</span>
+    <button class="panel-close" onclick="togglePanel('lease-library')">✕ Close</button>
+  </div>
+  <div class="panel-body">
+    <div class="ll-section">
+      <div class="ll-sec-title">IMPORT RENT ROLL</div>
+      <div class="fr two">
+        <div class="fg"><label class="fl">Property Address</label><input type="text" id="ll-address" placeholder="6480 Chupp Road, Stonecrest, GA"></div>
+        <div class="fg"><label class="fl">Market</label><select id="ll-market"><option>Atlanta, GA</option><option>Savannah, GA</option><option>Dallas–Fort Worth, TX</option><option>Houston, TX</option><option>Austin, TX (Watch)</option></select></div>
+      </div>
+      <div class="upload-group" style="margin-top:10px;">
+        <label>Argus / Excel Rent Roll or CSV <span>XLSX · XLS · CSV — Argus export or generic rent roll</span></label>
+        <div class="uz" id="uz-ll-file" onclick="document.getElementById('ll-file').click()">
+          <input type="file" id="ll-file" accept=".xlsx,.xls,.csv">
+          <div class="uz-ico">📊</div>
+          <div class="uz-t">Click or drag to upload</div>
+          <div class="uz-s">XLSX · XLS · CSV</div>
+          <div class="uz-st" id="uzst-ll-file"></div>
+        </div>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-p" id="ll-import-btn" onclick="_llImportClick()">📥 IMPORT RENT ROLL</button>
+      </div>
+      <div id="ll-preview-section" style="display:none;margin-top:16px;">
+        <div class="ll-sec-title">IMPORT PREVIEW</div>
+        <div id="ll-preview-info" style="font-size:12px;color:#1E2761;margin-bottom:8px;padding:6px 10px;background:#F0F4FF;border-radius:4px;"></div>
+        <div id="ll-preview-table" style="overflow-x:auto;max-height:300px;overflow-y:auto;border:1px solid #e0e4ef;border-radius:4px;"></div>
+        <div class="btn-row" style="margin-top:10px;">
+          <button class="btn btn-p" id="ll-confirm-btn" onclick="_llConfirmImport()">✅ Confirm Import</button>
+          <button class="btn btn-o" onclick="document.getElementById('ll-preview-section').style.display='none'">Cancel</button>
+        </div>
+      </div>
+    </div>
+    <div class="ll-section" style="margin-top:24px;">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px;">
+        <div class="ll-sec-title" style="margin:0;">LEASE DATABASE</div>
+        <span id="ll-row-count" style="background:#1E2761;color:#CADCFC;font-size:10px;font-weight:700;padding:2px 9px;border-radius:10px;letter-spacing:.04em;">0 comps</span>
+        <button class="btn btn-o" onclick="_llLoadLeases()" style="font-size:11px;padding:3px 10px;margin-left:auto;">↺ Refresh</button>
+      </div>
+      <div id="ll-stats" style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px;"></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;align-items:center;">
+        <input type="text" id="ll-search" placeholder="Search by tenant, address, market, submarket..." style="flex:2;min-width:220px;padding:6px 10px;border:1px solid #d1d9ef;border-radius:4px;font-size:12px;" onkeydown="if(event.key==='Enter')_llSearch()">
+        <select id="ll-filter-market" style="font-size:12px;padding:5px 8px;border:1px solid #d1d9ef;border-radius:4px;">
+          <option value="">All Markets</option>
+          <option>Atlanta, GA</option><option>Savannah, GA</option>
+          <option>Dallas–Fort Worth, TX</option><option>Houston, TX</option><option>Austin, TX (Watch)</option>
+        </select>
+        <select id="ll-filter-type" style="font-size:12px;padding:5px 8px;border:1px solid #d1d9ef;border-radius:4px;">
+          <option value="">All Types</option>
+          <option>Flex Industrial</option><option>Industrial / Warehouse</option>
+          <option>NNN</option><option>Gross</option><option>Modified Gross</option>
+        </select>
+        <select id="ll-filter-status" style="font-size:12px;padding:5px 8px;border:1px solid #d1d9ef;border-radius:4px;">
+          <option value="">All Status</option><option>Occupied</option><option>Vacant</option>
+        </select>
+        <input type="text" id="ll-filter-psf-min" placeholder="Min PSF" style="width:72px;padding:5px 8px;border:1px solid #d1d9ef;border-radius:4px;font-size:12px;">
+        <input type="text" id="ll-filter-psf-max" placeholder="Max PSF" style="width:72px;padding:5px 8px;border:1px solid #d1d9ef;border-radius:4px;font-size:12px;">
+        <button class="btn btn-p" onclick="_llSearch()" style="font-size:12px;padding:5px 14px;">Search</button>
+      </div>
+      <div id="ll-table-wrap" style="overflow-x:auto;border:1px solid #e0e4ef;border-radius:4px;min-height:80px;"></div>
+      <div id="ll-pagination" style="display:flex;align-items:center;gap:10px;margin-top:8px;font-size:12px;"></div>
+      <div class="btn-row" style="margin-top:14px;">
+        <button class="btn btn-g" onclick="_llExportLeases()" style="font-size:12px;">⬇ EXPORT TO EXCEL</button>
+      </div>
+    </div>
+  </div>`;
+  }
+  return '';
 }
 
 function buildPanelHTML(tool) {
@@ -8561,18 +8575,7 @@ var _llPage = 0;
 var _llPageSize = 25;
 var _llTotal = 0;
 
-// Initialize STATE entry for lease-library
-STATE['lease-library'] = { files:{}, metrics:{}, result:null };
-
-// ── FILE UPLOAD DISPLAY ──────────────────────────────────
-document.addEventListener('DOMContentLoaded', function() {
-  var llFile = document.getElementById('ll-file');
-  if (llFile) llFile.addEventListener('change', function() {
-    var st = document.getElementById('uzst-ll-file');
-    if (st && llFile.files[0]) st.textContent = '✓ ' + llFile.files[0].name;
-  });
-  // Load library on panel open (handled via togglePanel → _llLoadLeases)
-});
+// STATE for lease-library is initialized by the TOOLS.forEach loop above
 
 // ── IMPORT ───────────────────────────────────────────────
 async function _llImportClick() {
