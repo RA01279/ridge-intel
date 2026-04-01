@@ -2002,6 +2002,11 @@ function handleXLSX(toolId, uploadId, input) {
 
       STATE[toolId].files[uploadId] = allText;
       STATE[toolId].metrics = { ...STATE[toolId].metrics, ...extracted };
+      // Persist raw ArrayBuffer for PPTX cell-ref extraction (Slides 8, 11, 12)
+      if (toolId === 'isr' && uploadId === 'model') {
+        _isrModelBuffer = e.target.result;
+        STATE['isr'].files['model-buf'] = e.target.result;
+      }
 
       uz.classList.add('loaded');
       st.textContent = `✓ ${wb.SheetNames.length} sheets · ${Object.keys(extracted).filter(k=>extracted[k]).length} metrics extracted`;
@@ -3647,6 +3652,7 @@ var _sbOk = false;
 var _lastRunInputs = null;
 var _lastRunToolId  = null;
 var _isrParsedData  = null;  // structured JSON extracted from ISR response — used by PPTX builder
+var _isrModelBuffer = null;  // raw ArrayBuffer of uploaded ISR model — persists across PPTX export
 var _skillRawOutputs = {};   // keyed by tool id: 'napkin', 'gavel', 'isr', etc. — full response only, never compressed
 var _ridgeSessionLog  = [];  // bookkeeping audit trail — never sent to the Claude API
 
@@ -8218,8 +8224,9 @@ async function _napkinExportXLS() {
 }
 
 async function _extractCashFlows() {
-  var modelBuffer = STATE['isr'] && STATE['isr'].files && STATE['isr'].files['model'];
-  if (!modelBuffer) return null;
+  var modelBuffer = _isrModelBuffer ||
+    (STATE['isr'] && STATE['isr'].files && (STATE['isr'].files['model-buf'] || STATE['isr'].files['model']));
+  if (!modelBuffer || typeof modelBuffer === 'string') return null;
   try {
     var wb = XLSX.read(modelBuffer, {type:'array'});
     var ws = wb.Sheets['DCF Model-Year'];
@@ -8253,10 +8260,9 @@ async function _extractCashFlows() {
 }
 
 async function _extractSensitivity() {
-  var modelBuffer = STATE['isr'] &&
-    STATE['isr'].files &&
-    STATE['isr'].files['model'];
-  if (!modelBuffer) return null;
+  var modelBuffer = _isrModelBuffer ||
+    (STATE['isr'] && STATE['isr'].files && (STATE['isr'].files['model-buf'] || STATE['isr'].files['model']));
+  if (!modelBuffer || typeof modelBuffer === 'string') return null;
 
   try {
     var wb = XLSX.read(modelBuffer, {type:'array'});
@@ -8608,6 +8614,12 @@ async function ridgeExportPPT() {
     var d = _lastRunInputs || {};
     var m = (STATE && STATE['isr'] && STATE['isr'].metrics) || {};
     var panelText = _skillRawOutputs['isr'] || document.getElementById('ridge-panel-content').innerText;
+    console.log('[RIDGE] PPTX state check:',
+      'modelBuffer:', !!_isrModelBuffer,
+      'STATE model:', !!(STATE['isr'] && STATE['isr'].files && STATE['isr'].files['model-buf']),
+      'jd:', !!_isrParsedData,
+      'jd.rent_roll:', _isrParsedData && _isrParsedData.rent_roll ? _isrParsedData.rent_roll.length : 0
+    );
 
     function fmtUSD(v) {
       if (!v || v === '—') return '—';
@@ -8922,7 +8934,18 @@ async function ridgeExportPPT() {
 
     // ── SLIDE 11 — Lease Expiration Waterfall ─────────────────
     var s11=pptx.addSlide(); s11.background={color:BG}; addHdr(s11,'Lease Expiration Waterfall',11);
-    var rr11=(jd&&jd.rent_roll)||[];
+    var rr11=(jd&&jd.rent_roll&&jd.rent_roll.length)?jd.rent_roll:[];
+    // Fallback: parse rent roll from raw ISR text if jd.rent_roll is empty
+    if(!rr11.length && panelText){
+      var _rrSec11=extractSection(panelText,'RENT ROLL ANALYSIS')||extractSection(panelText,'RENT ROLL');
+      var _rrLines11=_rrSec11.split('\n').filter(function(l){return l.includes('|')&&!l.match(/^[\s|-]+$/)&&!/tenant.*sf.*expir/i.test(l);});
+      _rrLines11.forEach(function(l){
+        var cs=l.split('|').map(function(c){return c.trim();});
+        if(cs.length>=4&&cs[0]&&!/^(tenant|property)/i.test(cs[0])){
+          rr11.push({tenant:cs[0],sf:cs[1]||'0',expiration:cs[3]||'',rent_psf:cs[4]||''});
+        }
+      });
+    }
     var curYr11=new Date().getFullYear();
     var pal11=['1E2761','1B5E20','2196F3','E67E22','C0392B','8E44AD','16A085','D97706'];
     var tenantColor11={}, tcIdx11=0;
