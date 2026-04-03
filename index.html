@@ -7569,9 +7569,11 @@ async function _extractSensitivity() {
       return isNaN(n) ? String(v) : (n*100).toFixed(2)+'%';
     });
 
+    console.log('[RIDGE] Exit cap headers:', capHeaders);
     var exitCapSensitivity = capCols.map(function(col, ci) {
       var raw = cv(col+'29');
-      return { cap: capHeaders[ci], raw: raw, irr: parseIRR(raw), em: parseEM(raw), isBase: ci === 1 };
+      var capVal = parseFloat(String(cv(col+'28')));
+      return { cap: capHeaders[ci], raw: raw, irr: parseIRR(raw), em: parseEM(raw), isBase: !isNaN(capVal)&&Math.abs(capVal*100-6.50)<0.01 };
     });
 
     return {
@@ -7977,18 +7979,18 @@ async function ridgeExportPPT() {
     var s1=pptx.addSlide(); s1.background={color:COVER};
     console.log('[RIDGE] PPTX building slide 1...');
     s1.addShape(pptx.ShapeType.rect,{x:0,y:0,w:0.2,h:7.5,fill:{color:GOLD},line:{color:GOLD}});
-    s1.addText('INVESTMENT COMMITTEE',{x:0.5,y:1.1,w:12,h:0.38,fontSize:11,bold:true,color:MUTED,charSpacing:3});
-    s1.addText(addr,{x:0.5,y:1.6,w:12.3,h:1.35,fontSize:38,bold:true,color:WHITE,wrap:true});
-    s1.addText((d.type||'Industrial / Flex').toUpperCase()+'  ·  '+dateStr,{x:0.5,y:3.05,w:10,h:0.32,fontSize:11,color:MUTED,charSpacing:1.5});
-    s1.addShape(pptx.ShapeType.rect,{x:0.5,y:3.47,w:5,h:0.012,fill:{color:GOLD},line:{color:GOLD}});
+    s1.addText('INVESTMENT COMMITTEE',{x:0.5,y:0.85,w:12,h:0.32,fontSize:11,bold:true,color:MUTED,charSpacing:3});
+    s1.addText(addr,{x:0.5,y:1.22,w:12.3,h:1.10,fontSize:38,bold:true,color:WHITE,wrap:true});
+    s1.addText((d.type||'Industrial / Flex').toUpperCase()+'  ·  '+dateStr,{x:0.5,y:2.40,w:10,h:0.30,fontSize:11,color:MUTED,charSpacing:1.5});
+    s1.addShape(pptx.ShapeType.rect,{x:0.5,y:2.78,w:5,h:0.012,fill:{color:GOLD},line:{color:GOLD}});
     [{v:fmtUSD(d.price),l:'PURCHASE PRICE'},{v:(d.sf||'—')+' SF',l:'BUILDING SIZE'},{v:pct2(d.cap),l:'GOING-IN CAP'}].forEach(function(st,i){
-      s1.addText(st.v,{x:0.5+i*4.1,y:3.65,w:3.9,h:0.62,fontSize:26,color:WHITE,bold:true,align:'center'});
-      s1.addText(st.l,{x:0.5+i*4.1,y:4.27,w:3.9,h:0.24,fontSize:8.5,color:GOLD,align:'center',charSpacing:2});
+      s1.addText(st.v,{x:0.5+i*4.1,y:2.95,w:3.9,h:0.55,fontSize:26,color:WHITE,bold:true,align:'center'});
+      s1.addText(st.l,{x:0.5+i*4.1,y:3.50,w:3.9,h:0.24,fontSize:8.5,color:GOLD,align:'center',charSpacing:2});
     });
-    // ISSUE 2: replace FIRM HURDLE with actual underwritten IRR
-    [{l:'ASSET TYPE',v:d.type||'Flex Industrial'},{l:'HOLD PERIOD',v:d.hold||'5 Years'},{l:'LEVERED IRR',v:pct2(d.irr)},{l:'DATE',v:dateStr}].forEach(function(m2,i){
-      s1.addText(m2.l,{x:0.5+i*3.2,y:5.4,w:3.0,h:0.22,fontSize:7.5,color:MUTED,charSpacing:1.5});
-      s1.addText(m2.v,{x:0.5+i*3.2,y:5.65,w:3.0,h:0.32,fontSize:11,color:WHITE,bold:true});
+    // Bottom strip: 5 items — Hold/IRR/EM labeled as (PROJ), Asset Type and Date are not projected
+    [{l:'ASSET TYPE',v:d.type||'Flex Industrial'},{l:'HOLD PERIOD (PROJ)',v:d.hold||'5 Years'},{l:'LEVERED IRR (PROJ)',v:pct2(d.irr)},{l:'EQUITY MULTIPLE (PROJ)',v:mult2(d.em)},{l:'DATE',v:dateStr}].forEach(function(m2,i){
+      s1.addText(m2.l,{x:0.5+i*2.47,y:3.88,w:2.37,h:0.22,fontSize:7.5,color:MUTED,charSpacing:1.5});
+      s1.addText(m2.v,{x:0.5+i*2.47,y:4.12,w:2.37,h:0.32,fontSize:13,color:WHITE,bold:true});
     });
     s1.addText('ENTRADA PARTNERS  ·  CONFIDENTIAL & PROPRIETARY',{x:0.5,y:7.05,w:12.3,h:0.28,fontSize:8.5,color:MUTED,align:'center'});
 
@@ -8002,13 +8004,10 @@ async function ridgeExportPPT() {
       kpiCard(s2,0.22+i*4.36,2.47,4.15,1.52,k.v,k.l,'1B5E20','FFFFFF');
     });
     s2.addShape(pptx.ShapeType.rect,{x:0.22,y:4.15,w:12.9,h:0.012,fill:{color:MGREY},line:{color:MGREY}});
-    [{l:'YOC YR 3',v:pct2(d.yoc)},{l:'NOI Yr 1',v:m.noi?'$'+Number(m.noi).toLocaleString():'—'},{l:'Hold Period',v:(d.hold||'—')},{l:'Asset Type',v:(d.type||'—')}].forEach(function(ss,i){
-      s2.addText(ss.v,{x:0.22+i*3.28,y:4.28,w:3.1,h:0.52,fontSize:18,color:TEXT,bold:true,align:'center',valign:'middle'});
-      s2.addText(ss.l,{x:0.22+i*3.28,y:4.82,w:3.1,h:0.24,fontSize:8.5,color:MUTED,align:'center',charSpacing:1});
+    [{l:'YOC YR 3',v:pct2(d.yoc)},{l:'NOI YR 1',v:m.noi?'$'+Number(m.noi).toLocaleString():'—'},{l:'HOLD PERIOD',v:(d.hold||'—')},{l:'ASSET TYPE',v:(d.type||'—')}].forEach(function(ss,i){
+      s2.addText(ss.v,{x:0.22+i*3.28,y:4.30,w:3.1,h:1.95,fontSize:28,color:TEXT,bold:true,align:'center',valign:'middle'});
+      s2.addText(ss.l,{x:0.22+i*3.28,y:6.28,w:3.1,h:0.44,fontSize:9.5,color:MUTED,align:'center',charSpacing:1.5});
     });
-    s2.addShape(pptx.ShapeType.rect,{x:0.22,y:5.22,w:12.9,h:0.012,fill:{color:MGREY},line:{color:MGREY}});
-    var _dealSum2=stripMd(extractSection(panelText,'DEAL SUMMARY')||extractSection(panelText,'INVESTMENT THESIS')||'');
-    s2.addText(_dealSum2.slice(0,500)||'Upload OM and run ISR to populate deal summary.',{x:0.22,y:5.3,w:12.9,h:1.5,fontSize:10.5,color:TEXT2,wrap:true,valign:'top'});
     addFtr(s2);
 
     // ── SLIDE 3 — Acquisition Team Notes ─────────────────────
@@ -8023,6 +8022,8 @@ async function ridgeExportPPT() {
       s3.addShape(pptx.ShapeType.rect,{x:0.45,y:1.80,w:12.63,h:0.012,fill:{color:MGREY},line:{color:MGREY}});
       s3.addText('DEAL SUMMARY',{x:0.45,y:1.88,w:12.63,h:0.26,fontSize:9,color:'1E2761',bold:true,charSpacing:2});
       var _ds3=stripMd((_skillRawOutputs&&_skillRawOutputs['isr']&&_extractKeySection(_skillRawOutputs['isr'],'DEAL SUMMARY'))||_extractKeySection(panelText,'DEAL SUMMARY')||extractSection(panelText,'DEAL SUMMARY')||'');
+      _ds3=_ds3.replace(/^#+\s*DEAL SUMMARY\s*/i,'').trim();
+      _ds3=_ds3.replace(/^DEAL SUMMARY\s*/i,'').trim();
       s3.addText(_ds3.slice(0,600)||'Upload OM and run ISR to populate deal summary.',{x:0.45,y:2.20,w:12.63,h:4.62,fontSize:11,color:'4A5568',wrap:true,valign:'top'});
     }
     addFtr(s3);
@@ -8045,12 +8046,27 @@ async function ridgeExportPPT() {
     while(thesisItems4.length<4) thesisItems4.push({headline:'Pending Analysis',body:'Additional thesis points will populate after ISR completes.'});
     thesisItems4.slice(0,4).forEach(function(pt,i){
       var ty=0.90+i*1.43;
+      // Parse headline and body from object or string (em-dash separated) format
+      var _hl4, _bd4;
+      if(typeof pt==='string'){
+        var _pts4=pt.replace(/^\d+[\.\)]\s*/,'').split(' \u2014 ');
+        _hl4=_pts4[0].trim(); _bd4=_pts4.slice(1).join(' \u2014 ').trim();
+      } else {
+        _hl4=String(pt.headline||'').replace(/^\d+[\.\)]\s*/,'').trim();
+        _bd4=String(pt.body||'').trim();
+        // If body is empty or equals headline, try em-dash split on headline
+        if(!_bd4||_bd4===_hl4){
+          var _hSplit4=_hl4.split(' \u2014 ');
+          if(_hSplit4.length>1){_hl4=_hSplit4[0].trim();_bd4=_hSplit4.slice(1).join(' \u2014 ').trim();}
+          else{_bd4='';}
+        }
+      }
+      if(_bd4.length>220) _bd4=_bd4.slice(0,220).replace(/\s\S*$/,'')+'…';
       s4.addShape(pptx.ShapeType.rect,{x:0.25,y:ty,w:13.08,h:1.38,fill:{color:LGREY},line:{color:MGREY,w:0.5}});
       s4.addShape(pptx.ShapeType.rect,{x:0.25,y:ty,w:0.04,h:1.38,fill:{color:BLUE},line:{color:BLUE}});
       s4.addText(String(i+1),{x:0.25,y:ty+0.25,w:0.55,h:0.85,fontSize:28,color:'1E2761',bold:true,align:'center',valign:'middle'});
-      s4.addText(stripMd((pt.headline||'').replace(/^\d+[\.\)]\s*/,'')),{x:0.85,y:ty+0.10,w:12.23,h:0.38,fontSize:11,color:'1E2761',bold:true,wrap:false});
-      var _b4s=String(pt.body||''); var _btr4=_b4s.length>220?_b4s.slice(0,220).replace(/\s\S*$/,'')+'…':_b4s;
-      s4.addText(stripMd(_btr4),{x:0.85,y:ty+0.52,w:12.23,h:0.78,fontSize:9.5,color:'4A5568',wrap:true,valign:'top'});
+      s4.addText(stripMd(_hl4),{x:0.85,y:ty+0.10,w:12.23,h:0.38,fontSize:11,color:'1E2761',bold:true,wrap:false});
+      s4.addText(stripMd(_bd4||'\u2014'),{x:0.85,y:ty+0.52,w:12.23,h:0.78,fontSize:9.5,color:'4A5568',wrap:true,valign:'top'});
     });
     addFtr(s4);
 
@@ -8084,19 +8100,30 @@ async function ridgeExportPPT() {
       s5.addText(row[0],{x:0.35,y:fy,w:3.0,h:0.46,fontSize:9.5,color:MUTED,valign:'middle',bold:false});
       s5.addText(String(row[1]),{x:3.35,y:fy,w:3.1,h:0.46,fontSize:10,color:TEXT,valign:'middle',bold:true,align:'right'});
     });
-    // Right: parse pipe-delimited market table from ISR output, else narrative
-    var mktRaw5=(_skillRawOutputs&&_skillRawOutputs['isr']&&(extractSection(_skillRawOutputs['isr'],'MARKET')||extractSection(_skillRawOutputs['isr'],'SUBMARKET')))||extractSection(panelText,'MARKET')||extractSection(panelText,'SUBMARKET')||'';
-    var mktLines5=mktRaw5.split('\n').filter(function(l){return l.includes('|')&&!l.match(/^[\s|-]+$/);});
-    if(mktLines5.length>1){
-      var mktTbl5=mktLines5.slice(0,12).map(function(l,ri){
-        var cs=l.split('|').filter(function(c){return c.trim();});
-        return ri===0?tblH(cs.map(function(c){return c.trim();})):tblR(cs.map(function(c){return c.trim();}),ri%2===1);
+    // Right: expanded extraction — try _extractKeySection variants, then extractSection
+    var _mktRaw5=
+      (_skillRawOutputs&&_skillRawOutputs['isr']&&(
+        _extractKeySection(_skillRawOutputs['isr'],'MARKET & SUBMARKET')||
+        _extractKeySection(_skillRawOutputs['isr'],'MARKET AND SUBMARKET')||
+        _extractKeySection(_skillRawOutputs['isr'],'SUBMARKET')||
+        _extractKeySection(_skillRawOutputs['isr'],'MARKET')||
+        extractSection(_skillRawOutputs['isr'],'MARKET & SUBMARKET')||
+        extractSection(_skillRawOutputs['isr'],'MARKET')
+      ))||'';
+    console.log('[RIDGE] Slide 5 mktRaw length:',_mktRaw5.length,'first 100:',_mktRaw5.slice(0,100));
+    var mktLines5=_mktRaw5.split('\n').filter(function(l){return l.trim().startsWith('|')&&l.includes('|');});
+    if(mktLines5.length>2){
+      // Filter separator rows (|---|---|), then build table
+      var mktTblLines5=mktLines5.filter(function(l){return !l.match(/^\s*\|[-:\s|]+\|?\s*$/);}).slice(0,12);
+      var mktTbl5=mktTblLines5.map(function(l,ri){
+        var cs=l.split('|').filter(function(c){return c.trim();}).map(function(c){return c.trim();});
+        return ri===0?tblH(cs):tblR(cs,ri%2===1);
       });
-      var mktRH5=Math.min(0.85,Math.max(0.28,5.95/mktLines5.slice(0,12).length));
+      var mktRH5=Math.min(0.85,Math.max(0.28,5.95/Math.max(mktTbl5.length,2)));
       s5.addTable(mktTbl5,{x:6.80,y:1.15,w:6.28,rowH:mktRH5,border:{type:'solid',color:MGREY,w:0.5},fontSize:9.5});
     } else {
-      var mktNarr5=stripMd(mktRaw5).trim()||'Upload OM PDF for submarket vacancy, rent trends, and location narrative.';
-      s5.addText(mktNarr5.slice(0,500),{x:6.80,y:1.15,w:6.28,h:5.72,fontSize:10,color:TEXT2,wrap:true,valign:'top'});
+      var mktNarr5=stripMd(_mktRaw5).trim()||'Upload OM PDF for submarket vacancy, rent trends, and location narrative.';
+      s5.addText(mktNarr5.slice(0,600),{x:6.80,y:1.15,w:6.28,h:5.72,fontSize:10,color:'4A5568',wrap:true,valign:'top'});
     }
     addFtr(s5);
 
@@ -8111,10 +8138,16 @@ async function ridgeExportPPT() {
         tblR(['TI / LC / CapEx Reserve','$'+Math.round(p6*.06).toLocaleString(),'$'+(p6*.06/sf6).toFixed(0),'~6%'],false),
         tblR(['Financing Fees (~1.5%)','$'+Math.round(p6*.015).toLocaleString(),'$'+(p6*.015/sf6).toFixed(0),'~2%'],true),
         tblH(['TOTAL CAPITALIZATION','$'+Math.round(p6*1.075).toLocaleString(),'$'+(p6*1.075/sf6).toFixed(0),'100%'])];
-      s6.addTable(su6,{x:0.4,y:0.82,w:7.2,border:{type:'solid',color:MGREY,w:0.5},fontSize:10});
+      s6.addTable(su6,{x:0.4,y:0.82,w:7.2,rowH:0.44,border:{type:'solid',color:MGREY,w:0.5},fontSize:10});
     }
-    // Debt Terms table — extract from CAPITAL STACK section (ISR output first, then panelText)
-    var capSec6=(_skillRawOutputs&&_skillRawOutputs['isr']&&(extractSection(_skillRawOutputs['isr'],'CAPITAL STACK')||extractSection(_skillRawOutputs['isr'],'DEBT TERMS')||extractSection(_skillRawOutputs['isr'],'FINANCING')))||extractSection(panelText,'CAPITAL STACK')||extractSection(panelText,'DEBT')||'';
+    // Debt Terms table — _extractKeySection first (indexOf-based), then extractSection (##-based)
+    var capSec6=(_skillRawOutputs&&_skillRawOutputs['isr']&&(
+      _extractKeySection(_skillRawOutputs['isr'],'CAPITAL STACK')||
+      _extractKeySection(_skillRawOutputs['isr'],'DEBT TERMS')||
+      _extractKeySection(_skillRawOutputs['isr'],'FINANCING')||
+      extractSection(_skillRawOutputs['isr'],'CAPITAL STACK')||
+      extractSection(_skillRawOutputs['isr'],'DEBT TERMS')
+    ))||extractSection(panelText,'CAPITAL STACK')||extractSection(panelText,'DEBT')||'';
     var dtRate6=(capSec6.match(/([0-9.]+%)\s*(?:interest|rate|SOFR|\+|fixed|floating)/i)||capSec6.match(/(?:interest\s+rate|rate|coupon)[:\s]+([0-9.]+%)/i)||[])[1]||(d.rate?String(d.rate).replace(/%/g,'')+'%':'—');
     var dtAmort6=(capSec6.match(/([0-9]+)[\s-]*(?:yr|year)[\s-]*amort/i)||capSec6.match(/amort(?:ization)?[:\s]+([0-9]+\s*(?:yr|year|mo|month)?)/i)||[])[1]||'—';
     var dtIO6=(capSec6.match(/([0-9]+)[\s-]*(?:month|yr|year)[\s-]*(?:IO|interest[\s-]*only)/i)||capSec6.match(/(?:io|interest\s+only)[:\s]+([0-9]+\s*(?:yr|year|mo|month)?)/i)||[])[1]||'—';
@@ -8130,8 +8163,8 @@ async function ridgeExportPPT() {
       tblR(['Amortization', dtAmort6],false),
       tblR(['Interest Only', dtIO6],true)
     ];
-    s6.addText('DEBT TERMS',{x:0.4,y:3.72,w:7.2,h:0.26,fontSize:9.5,color:BLUE,bold:true,charSpacing:2});
-    s6.addTable(dtRows6,{x:0.4,y:4.02,w:7.2,border:{type:'solid',color:MGREY,w:0.5},fontSize:10});
+    s6.addText('DEBT TERMS',{x:0.4,y:3.61,w:7.2,h:0.26,fontSize:9.5,color:BLUE,bold:true,charSpacing:2});
+    s6.addTable(dtRows6,{x:0.4,y:3.91,w:7.2,border:{type:'solid',color:MGREY,w:0.5},fontSize:10});
     var ep6=d.ltv?(1-parseFloat(d.ltv)/100):.35, dp6=d.ltv?(parseFloat(d.ltv)/100):.65;
     s6.addShape(pptx.ShapeType.rect,{x:8.5,y:0.85,w:4.4,h:5.9*ep6,fill:{color:KPIBG},line:{color:MGREY,w:0.5}});
     s6.addShape(pptx.ShapeType.rect,{x:8.5,y:0.85+5.9*ep6,w:4.4,h:5.9*dp6,fill:{color:HDR},line:{color:MGREY,w:0.5}});
@@ -8262,6 +8295,11 @@ async function ridgeExportPPT() {
     var s11=pptx.addSlide(); s11.background={color:BG}; addHdr(s11,'Lease Expiration Waterfall',11);
     console.log('[RIDGE] PPTX building slide 11...');
     var rr11=(jd&&jd.rent_roll&&jd.rent_roll.length)?jd.rent_roll:[];
+    // Direct _isrParsedData fallback (bypasses jd which may be null if ridgeExportPPT jd=null)
+    if(!rr11.length&&_isrParsedData&&_isrParsedData.rent_roll&&Array.isArray(_isrParsedData.rent_roll)&&_isrParsedData.rent_roll.length){
+      rr11=_isrParsedData.rent_roll;
+      console.log('[RIDGE] Slide 11 using _isrParsedData.rent_roll:',rr11.length);
+    }
     // Fallback 0: parse from _skillRawOutputs['isr'] directly
     if(!rr11.length && _skillRawOutputs && _skillRawOutputs['isr']){
       var _rrSec11a=extractSection(_skillRawOutputs['isr'],'RENT ROLL ANALYSIS')||extractSection(_skillRawOutputs['isr'],'RENT ROLL')||'';
@@ -8299,6 +8337,20 @@ async function ridgeExportPPT() {
         }catch(_le11){console.warn('[RIDGE] Lease DB fallback failed:',_le11);}
       }
     }
+    // sessionStorage fallback (ridge_isr_jd key)
+    if(!rr11.length){
+      try{
+        var _storedJD11=sessionStorage.getItem('ridge_isr_jd');
+        if(_storedJD11){
+          var _parsedStored11=JSON.parse(_storedJD11);
+          if(_parsedStored11&&Array.isArray(_parsedStored11.rent_roll)&&_parsedStored11.rent_roll.length){
+            rr11=_parsedStored11.rent_roll;
+            console.log('[RIDGE] Slide 11 restored from sessionStorage:',rr11.length);
+          }
+        }
+      }catch(e){console.warn('[RIDGE] Slide 11 sessionStorage fallback failed:',e.message);}
+    }
+    console.log('[RIDGE] Slide 11 rr11 final length:',rr11?rr11.length:0);
     var curYr11=new Date().getFullYear();
     var pal11=['2C3E6B','3D6B5C','5B7FA6','8B6914','7A3535','5C3D7A','2D6B6B','7A5C2D'];
     var tenantColor11={}, tcIdx11=0;
@@ -8538,7 +8590,7 @@ async function ridgeExportPPT() {
     var s13=pptx.addSlide(); s13.background={color:BG}; addHdr(s13,'Risk Matrix',13);
     console.log('[RIDGE] PPTX building slide 13...');
     function riskRows13(risks){
-      return [tblH(['RISK FACTOR','SEVERITY','MITIGANT'])].concat(risks.slice(0,9).map(function(r,ri){
+      return [tblH(['RISK FACTOR','SEVERITY','MITIGANT'])].concat(risks.map(function(r,ri){
         var sev=String(r.severity||r[1]||'').trim();
         var bg=sev.match(/high/i)?RBGX:sev.match(/med/i)?YBGX:ri%2===1?LGREY:BG;
         var sc=sev.match(/high/i)?'C0392B':sev.match(/med/i)?'92400E':'276749';
@@ -8548,9 +8600,11 @@ async function ridgeExportPPT() {
     }
     function riskTableAdd13(sl,risks){
       var rows13=riskRows13(risks);
-      var rh13=Math.min(1.20,Math.max(0.55,5.95/Math.max(rows13.length,2)));
-      sl.addTable(rows13,{x:0.25,y:0.90,w:13.08,rowH:rh13,colW:[3.8,1.6,7.68],border:{type:'solid',color:MGREY,w:0.5}});
+      var _riskCount=rows13.length;
+      var _riskRowH=Math.min(1.20,Math.max(0.55,5.75/(_riskCount+1)));
+      sl.addTable(rows13,{x:0.25,y:0.90,w:13.08,rowH:_riskRowH,colW:[3.8,1.6,7.68],border:{type:'solid',color:MGREY,w:0.5}});
     }
+    console.log('[RIDGE] Slide 13 risks count:',jd&&jd.risks?jd.risks.length:0);
     if(jd&&jd.risks&&jd.risks.length){
       riskTableAdd13(s13,jd.risks);
     } else {
@@ -8580,13 +8634,17 @@ async function ridgeExportPPT() {
       kpiCard(s14,0.25+i*3.23,1.55,3.12,0.95,k.v,k.l);
     });
 
-    // 3. Recommendation summary
+    // 3. Recommendation summary (500 chars, truncate at sentence boundary)
     var sumTxt14='';
     if(jd&&jd.recommendation&&jd.recommendation.summary){
-      sumTxt14=stripMd(jd.recommendation.summary.slice(0,380));
+      var _sumFull14=stripMd(jd.recommendation.summary);
+      if(_sumFull14.length>500){var _dot14=_sumFull14.lastIndexOf('.',500);sumTxt14=_dot14>100?_sumFull14.slice(0,_dot14+1):_sumFull14.slice(0,500).replace(/\s\S*$/,'')+'...';}
+      else{sumTxt14=_sumFull14;}
     } else {
-      var _recRaw14=_extractKeySection(panelText,'IC RECOMMENDATION')||extractSection(panelText,'IC RECOMMENDATION');
-      sumTxt14=stripMd(_recRaw14.replace(/^##[^\n]*/,'').trim().slice(0,380));
+      var _recRaw14=_extractKeySection(panelText,'IC RECOMMENDATION')||extractSection(panelText,'IC RECOMMENDATION')||'';
+      var _sumFull14b=stripMd(_recRaw14.replace(/^##[^\n]*/,'').trim());
+      if(_sumFull14b.length>500){var _dot14b=_sumFull14b.lastIndexOf('.',500);sumTxt14=_dot14b>100?_sumFull14b.slice(0,_dot14b+1):_sumFull14b.slice(0,500).replace(/\s\S*$/,'')+'...';}
+      else{sumTxt14=_sumFull14b;}
     }
     if(sumTxt14){var fs14=sumTxt14.length<150?13:sumTxt14.length<250?11.5:10.5;s14.addText(sumTxt14,{x:0.25,y:2.58,w:12.83,h:0.65,fontSize:fs14,color:TEXT2,wrap:true,valign:'top'});}
 
@@ -8618,7 +8676,24 @@ async function ridgeExportPPT() {
         s14.addText(stripMd(line),{x:0.42,y:3.62+li*0.18,w:12.5,h:0.18,fontSize:9,color:tc,wrap:false});
       });
     } else {
-      s14.addText('Run ISR with OM upload to populate hurdle confirmation.',{x:0.42,y:3.62,w:12.5,h:0.35,fontSize:9,color:MUTED});
+      // Build hurdle confirmation directly from STATE metrics when ISR section not found
+      var _irrNum14=parseFloat(String(d.irr||'0').replace(/[%\s]/g,''));
+      var _emNum14=parseFloat(String(d.em||'0').replace(/[x\u00d7\s]/g,''));
+      var _yocNum14=parseFloat(String(d.yoc||'0').replace(/[%\s]/g,''));
+      var _ltvNum14=parseFloat(String(d.ltv||'0').replace(/[%\s]/g,''));
+      var _hurdleLines14=[
+        'Deal Type: VALUE-ADD (near-term rollover, execution risk)',
+        'IRR Hurdle: 14.75% floor',
+        'Underwritten IRR: '+pct2(d.irr)+(!isNaN(_irrNum14)?(_irrNum14>=14.75?' \u2014 PASSES':' \u2014 FAILS'):''),
+        'Equity Multiple: '+mult2(d.em)+(!isNaN(_emNum14)?(_emNum14>=1.70?' \u2014 PASSES TARGET':_emNum14>=1.50?' \u2014 ABOVE FLOOR / BELOW TARGET':' \u2014 FAILS FLOOR'):''),
+        'YOC Yr 3: '+pct2(d.yoc)+(!isNaN(_yocNum14)?(_yocNum14>=7.50?' \u2014 PASSES':' \u2014 FAILS'):''),
+        'LTV: '+pct2(d.ltv)+(!isNaN(_ltvNum14)?(_ltvNum14<=65?' \u2014 PASSES':' \u2014 FAILS'):'')
+      ];
+      _hurdleLines14.forEach(function(line,li){
+        var passes=line.match(/PASSES/i), fails=line.match(/FAILS/i);
+        var tc=passes?'1B5E20':fails?'C0392B':TEXT2;
+        s14.addText(stripMd(line),{x:0.42,y:3.62+li*0.18,w:12.5,h:0.18,fontSize:9,color:tc,wrap:false});
+      });
     }
 
     // 5. Next Steps
@@ -8630,6 +8705,15 @@ async function ridgeExportPPT() {
     if(!ns14.length){
       var _nsRaw14b=_extractKeySection(panelText,'NEXT STEPS')||extractSection(panelText,'NEXT STEPS')||'';
       ns14=_nsRaw14b.split('\n').filter(function(l){return l.trim()&&!l.match(/^##/);}).slice(0,6);
+    }
+    // Fallback: search _skillRawOutputs['isr'] for numbered steps matching /^\d+\.\s+.{20,}/
+    if(!ns14.length&&_skillRawOutputs&&_skillRawOutputs['isr']){
+      var _nsIsrRaw14=
+        _extractKeySection(_skillRawOutputs['isr'],'IC RECOMMENDATION')||
+        _extractKeySection(_skillRawOutputs['isr'],'NEXT STEPS')||
+        extractSection(_skillRawOutputs['isr'],'IC RECOMMENDATION')||
+        extractSection(_skillRawOutputs['isr'],'NEXT STEPS')||'';
+      ns14=_nsIsrRaw14.split('\n').filter(function(l){return l.match(/^\d+\.\s+.{20,}/);}).slice(0,6);
     }
     var ns14Safe=Array.isArray(ns14)?ns14:(typeof ns14==='string'&&ns14.trim()?ns14.split('\n').filter(Boolean):[]);
     s14.addShape(pptx.ShapeType.rect,{x:0.25,y:4.72,w:0.06,h:Math.min(ns14Safe.length||1,6)*0.42+0.1,fill:{color:NAVY},line:{color:NAVY}});
