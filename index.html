@@ -8564,6 +8564,7 @@ async function ridgeExportPPT() {
     // ── SLIDE 14 — IC Recommendation + Next Steps (merged) ────
     var s14=pptx.addSlide(); s14.background={color:BG}; addHdr(s14,'IC Recommendation',14);
     console.log('[RIDGE] PPTX building slide 14...');
+    try {
 
     // 1. Verdict
     var verd14;
@@ -8591,13 +8592,22 @@ async function ridgeExportPPT() {
 
     // 4. Entrada Hurdle Confirmation — try ISR raw output first, then panelText
     var _isrRaw14=(_skillRawOutputs&&_skillRawOutputs['isr'])||'';
-    var _h14a=_isrRaw14?(_extractKeySection(_isrRaw14,'ENTRADA HURDLE CONFIRMATION')||''):'';
-    console.log('[RIDGE] hurdle section attempt 1:', _h14a?_h14a.slice(0,100):'empty');
-    var _h14b=_h14a||(_isrRaw14?(_extractKeySection(_isrRaw14,'HURDLE CONFIRMATION')||extractSection(_isrRaw14,'ENTRADA HURDLE CONFIRMATION')||''):'');
-    console.log('[RIDGE] hurdle section attempt 2:', _h14b?_h14b.slice(0,100):'empty');
-    var hurdleTxt14=_h14b||_extractKeySection(panelText,'ENTRADA HURDLE CONFIRMATION')||extractSection(panelText,'ENTRADA HURDLE CONFIRMATION')||'';
-    console.log('[RIDGE] hurdle section attempt 3:', hurdleTxt14?hurdleTxt14.slice(0,100):'empty');
-    hurdleTxt14=hurdleTxt14.replace(/^##?[^\n]*/,'').trim();
+    console.log('[RIDGE] raw ISR last 500 chars:', _isrRaw14.slice(-500));
+    console.log('[RIDGE] ISR contains HURDLE:', _isrRaw14.indexOf('HURDLE'));
+    console.log('[RIDGE] ISR contains ENTRADA:', _isrRaw14.indexOf('ENTRADA'));
+    var _hurdleRaw14=
+      _extractKeySection(_isrRaw14,'ENTRADA HURDLE CONFIRMATION')||
+      _extractKeySection(_isrRaw14,'HURDLE CONFIRMATION')||
+      _extractKeySection(_isrRaw14,'Entrada Hurdle Confirmation')||
+      extractSection(_isrRaw14,'ENTRADA HURDLE CONFIRMATION')||
+      extractSection(panelText,'ENTRADA HURDLE CONFIRMATION')||
+      '';
+    console.log('[RIDGE] hurdle raw extracted:', _hurdleRaw14?_hurdleRaw14.slice(0,150):'STILL EMPTY');
+    if(!_hurdleRaw14){
+      var _hurdleMatch14=_isrRaw14.match(/Deal Type:[\s\S]+?Overall:[^\n]+/);
+      if(_hurdleMatch14) _hurdleRaw14=_hurdleMatch14[0];
+    }
+    var hurdleTxt14=_hurdleRaw14.replace(/^##?[^\n]*/,'').trim();
     s14.addShape(pptx.ShapeType.rect,{x:0.25,y:3.32,w:0.06,h:1.35,fill:{color:NAVY},line:{color:NAVY}});
     s14.addText('ENTRADA HURDLE CONFIRMATION',{x:0.38,y:3.32,w:12.7,h:0.26,fontSize:9,color:NAVY,bold:true,charSpacing:1.5});
     if(hurdleTxt14){
@@ -8613,20 +8623,21 @@ async function ridgeExportPPT() {
 
     // 5. Next Steps
     var ns14=(jd&&jd.recommendation&&jd.recommendation.next_steps)?jd.recommendation.next_steps:[];
-    if(!ns14.length){
-      var _nsRaw14=_extractKeySection(panelText,'IC RECOMMENDATION')||extractSection(panelText,'IC RECOMMENDATION');
+    if(!Array.isArray(ns14)||!ns14.length){
+      var _nsRaw14=_extractKeySection(panelText,'IC RECOMMENDATION')||extractSection(panelText,'IC RECOMMENDATION')||'';
       ns14=_nsRaw14.split('\n').filter(function(l){return l.match(/^\d+\./);}).slice(0,6);
     }
     if(!ns14.length){
-      var _nsRaw14b=_extractKeySection(panelText,'NEXT STEPS')||extractSection(panelText,'NEXT STEPS');
+      var _nsRaw14b=_extractKeySection(panelText,'NEXT STEPS')||extractSection(panelText,'NEXT STEPS')||'';
       ns14=_nsRaw14b.split('\n').filter(function(l){return l.trim()&&!l.match(/^##/);}).slice(0,6);
     }
-    s14.addShape(pptx.ShapeType.rect,{x:0.25,y:4.72,w:0.06,h:Math.min(ns14.length||1,6)*0.42+0.1,fill:{color:NAVY},line:{color:NAVY}});
+    var ns14Safe=Array.isArray(ns14)?ns14:(typeof ns14==='string'&&ns14.trim()?ns14.split('\n').filter(Boolean):[]);
+    s14.addShape(pptx.ShapeType.rect,{x:0.25,y:4.72,w:0.06,h:Math.min(ns14Safe.length||1,6)*0.42+0.1,fill:{color:NAVY},line:{color:NAVY}});
     s14.addText('NEXT STEPS',{x:0.38,y:4.72,w:12.7,h:0.26,fontSize:9,color:NAVY,bold:true,charSpacing:1.5});
-    if(ns14.length){
-      var nsFontSz14=ns14.length>4?9:10;
-      var nsGap14=ns14.length>4?0.38:0.43;
-      ns14.slice(0,6).forEach(function(st,i){
+    if(ns14Safe.length){
+      var nsFontSz14=ns14Safe.length>4?9:10;
+      var nsGap14=ns14Safe.length>4?0.38:0.43;
+      ns14Safe.slice(0,6).forEach(function(st,i){
         var stTxt=stripMd(String(st).replace(/^\d+\.\s*/,'').replace(/^[-*]\s*/,''));
         s14.addShape(pptx.ShapeType.rect,{x:0.38,y:5.02+i*nsGap14,w:0.28,h:0.28,fill:{color:NAVY},line:{color:NAVY}});
         s14.addText(String(i+1),{x:0.38,y:5.02+i*nsGap14,w:0.28,h:0.28,fontSize:9,color:WHITE,bold:true,align:'center',valign:'middle'});
@@ -8638,6 +8649,10 @@ async function ridgeExportPPT() {
 
     s14.addShape(pptx.ShapeType.rect,{x:0.25,y:7.05,w:12.83,h:0.012,fill:{color:MGREY},line:{color:MGREY}});
     s14.addText('ENTRADA PARTNERS  ·  CONFIDENTIAL & PROPRIETARY  ·  '+dateStr.toUpperCase(),{x:0.25,y:7.08,w:12.83,h:0.18,fontSize:7.5,color:MUTED,align:'center'});
+    } catch(e14) {
+      console.warn('[RIDGE] Slide 14 build error:', e14.message);
+      s14.addText('Slide build error — re-run ISR to populate.',{x:0.25,y:2.5,w:12.83,h:1,fontSize:12,color:'888888',align:'center'});
+    }
 
     } catch(buildErr) {
       console.error('ISR PPT slide build error:', buildErr);
