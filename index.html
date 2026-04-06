@@ -454,15 +454,18 @@ footer{border-top:1px solid var(--border);padding:20px 24px;text-align:center;co
 <div class="apikey-modal-bg" id="apikey-modal">
   <div class="apikey-modal">
     <button class="xbtn" onclick="closeApiKeyModal()">✕</button>
-    <h3>Anthropic API Key</h3>
-    <p>Enter your Anthropic API key to enable native response streaming inside RIDGE.</p>
+    <h3>Settings</h3>
+    <p style="margin-bottom:14px;">Configure your API keys and display name.</p>
+    <p style="margin-top:0;margin-bottom:6px;">Your Name <span style="color:var(--muted);font-size:11px;">(used in reports and outreach scripts)</span></p>
+    <input type="text" id="officer-name-input" placeholder="e.g. Rhett Anderson" style="margin-bottom:10px;" />
+    <p style="margin-top:0;margin-bottom:6px;">Anthropic API Key</p>
     <input type="password" id="apikey-input" placeholder="sk-ant-..." />
     <p style="margin-top:14px;margin-bottom:6px;">Voyage AI API Key <span style="color:var(--muted);font-size:11px;">(for semantic lease search)</span></p>
     <input type="password" id="voyage-input" placeholder="pa-..." />
     <div class="apikey-note">🔒 Stored in Supabase · Never logged · Never committed to GitHub</div>
     <div class="modal-btns" style="margin-top:16px;">
       <button class="btn btn-o" onclick="closeApiKeyModal()">Cancel</button>
-      <button class="btn btn-p" onclick="saveApiKey()">Save Key</button>
+      <button class="btn btn-p" onclick="saveApiKey()">Save</button>
     </div>
   </div>
 </div>
@@ -2468,7 +2471,7 @@ async function exportDailySignalXLSX() {
 
   // ── ExcelJS formatted workbook ─────────────────────────────
   var wb = new ExcelJS.Workbook();
-  wb.creator = 'RIDGE';
+  wb.creator = 'Entrada Partners';
   var ws = wb.addWorksheet('Daily Signal', { views:[{ state:'frozen', xSplit:0, ySplit:6 }] });
 
   var NAVY   = '0D1B2A';
@@ -2488,7 +2491,7 @@ async function exportDailySignalXLSX() {
   // ── Row 1: Main title ──────────────────────────────────────
   ws.mergeCells('A1:O1');
   var t1 = ws.getCell('A1');
-  t1.value = 'RIDGE  ·  DAILY SIGNAL REPORT';
+  t1.value = 'ENTRADA PARTNERS  ·  DAILY SIGNAL REPORT';
   t1.font   = { bold:true, size:14, color:{ argb:WHITE }, name:'Calibri' };
   t1.fill   = fillSolid(NAVY);
   t1.alignment = { vertical:'middle', horizontal:'left', indent:2 };
@@ -2762,7 +2765,7 @@ async function exportDailySignalXLSX() {
   var blob = new Blob([buf], { type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
   var url = URL.createObjectURL(blob);
   var a = document.createElement('a');
-  a.href = url; a.download = 'RIDGE_DailySignal_' + fileDate + '.xlsx';
+  a.href = url; a.download = 'Entrada_DailySignal_' + fileDate + '.xlsx';
   document.body.appendChild(a); a.click(); document.body.removeChild(a);
   URL.revokeObjectURL(url);
 
@@ -4235,7 +4238,7 @@ async function plSaveEdit(id) {
 function plLaunchReport() {
   var deals = getPipelineDeals().filter(function(d) { return d.stage !== 'Dead'; });
   if (!deals.length) { showToast('No active deals to report on'); return; }
-  var lines = ['RIDGE DEAL PIPELINE REPORT — ' + new Date().toLocaleDateString(), ''];
+  var lines = ['ENTRADA PARTNERS — DEAL PIPELINE REPORT — ' + new Date().toLocaleDateString(), ''];
   var byStage = {};
   deals.forEach(function(d) { if (!byStage[d.stage]) byStage[d.stage] = []; byStage[d.stage].push(d); });
   PL_STAGES.forEach(function(s) {
@@ -4505,7 +4508,7 @@ function rcTitle(ws, toolName, subtitle, dateStr) {
   var W = 10;
   ws.mergeCells('A1:J1');
   var c1 = ws.getCell('A1');
-  c1.value = 'RIDGE  ·  ' + toolName;
+  c1.value = 'ENTRADA PARTNERS  ·  ' + toolName;
   c1.font = { bold:true, size:14, color:{ argb:RC.WHITE }, name:'Calibri' };
   c1.fill = rcF(RC.NAVY); c1.alignment = { vertical:'middle', indent:2 };
   ws.getRow(1).height = 30;
@@ -4609,7 +4612,7 @@ async function exportToolReport(toolId) {
     var m       = (STATE[toolId] || {}).metrics || {};
 
     var wb = new ExcelJS.Workbook();
-    wb.creator = 'RIDGE — Entrada Partners';
+    wb.creator = 'Entrada Partners';
 
     switch(toolId) {
       case 'lens':        _exportLens(wb, toolId, dateStr, paste); break;
@@ -4629,7 +4632,7 @@ async function exportToolReport(toolId) {
     var buf = await wb.xlsx.writeBuffer();
     var addr = rcGetField(toolId, 'addr') || tool.name;
     var slug = addr.split(',')[0].replace(/[^a-zA-Z0-9]/g,'_').replace(/_+/g,'_');
-    downloadBlob(buf, 'RIDGE_' + tool.name.replace(/[^a-zA-Z0-9]/g,'_').replace(/_+/g,'_') + '_' + slug + '_' + fileDate + '.xlsx');
+    downloadBlob(buf, 'Entrada_' + tool.name.replace(/[^a-zA-Z0-9]/g,'_').replace(/_+/g,'_') + '_' + slug + '_' + fileDate + '.xlsx');
     showToast('✓ Report downloaded');
   } catch(err) {
     showToast('Export error: ' + err.message);
@@ -4654,7 +4657,7 @@ function _exportLens(wb, tid, dateStr, paste) {
     ['Context',      rcGetField(tid,'notes')],
   ], r);
 
-  rcSecHead(ws, r, 'RIDGE HURDLE CHECK'); r++;
+  rcSecHead(ws, r, 'INVESTMENT HURDLE CHECK'); r++;
   r = rcKV(ws, [
     ['Target IRR',    '≥ 14.75%'],
     ['Equity Multiple','≥ 1.8x'],
@@ -4726,8 +4729,8 @@ function _exportNapkin(wb, tid, dateStr, paste) {
     ['Going-In Cap Rate',   capRate],
     ['Price PSF',           psf],
     ['Potential NOI (mkt rent × occ)', potNOI],
-    ['RIDGE IRR Hurdle',    '≥ 14.75%'],
-    ['RIDGE YOC Target',    '7.5% – 8.0% at Yr3/4'],
+    ['IRR Hurdle',    '≥ 14.75%'],
+    ['YOC Target',    '7.5% – 8.0% at Yr3/4'],
   ], r);
 
   r = rcAnalysis(ws, paste, r);
@@ -4748,7 +4751,7 @@ function _exportMarket(wb, tid, dateStr, paste) {
     ['Active Deal',    rcGetField(tid,'deal')],
   ], r);
 
-  rcSecHead(ws, r, 'RIDGE MARKET BENCHMARKS'); r++;
+  rcSecHead(ws, r, 'MARKET BENCHMARKS'); r++;
   r = rcKV(ws, [
     ['Target Markets',      'ATL · SAV · DFW · HOU'],
     ['Asset Type',          'Industrial / Flex Industrial'],
@@ -4778,7 +4781,7 @@ function _exportLeaseComp(wb, tid, dateStr, paste) {
   r = rcKV(ws, [
     ['Analysis Purpose', 'Validate underwritten rent assumptions vs. market comps'],
     ['Key Question',     'Does in-place rent support or lag market? Roll risk?'],
-    ['RIDGE Flag',       'Underwrite conservatively — use comps, not asking rents'],
+    ['Note',             'Underwrite conservatively — use comps, not asking rents'],
   ], r);
 
   r = rcAnalysis(ws, paste, r);
@@ -4841,7 +4844,7 @@ function _exportDebt(wb, tid, dateStr, paste) {
 
   ws.getRow(r).height = 8; r++;
 
-  rcSecHead(ws, r, 'RIDGE DEBT CONSTRAINTS'); r++;
+  rcSecHead(ws, r, 'DEBT CONSTRAINTS'); r++;
   r = rcKV(ws, [
     ['Max LTV',       '65%'],
     ['Min DSCR',      '1.25x'],
@@ -4872,7 +4875,7 @@ function _exportLOI(wb, tid, dateStr, paste) {
 
   // Title block
   ws.mergeCells('A1:B1');
-  ws.getCell('A1').value = 'RIDGE  ·  LOI GENERATOR';
+  ws.getCell('A1').value = 'ENTRADA PARTNERS  ·  LOI GENERATOR';
   ws.getCell('A1').font = { bold:true, size:14, color:{ argb:RC.WHITE }, name:'Calibri' };
   ws.getCell('A1').fill = rcF(RC.NAVY);
   ws.getCell('A1').alignment = { vertical:'middle', indent:2 };
@@ -5363,6 +5366,7 @@ function _parseGavelLeases(txt){
 // ── ANTHROPIC API INTEGRATION ────────────────────────────────
 var _apiKey = null;
 var _voyageKey = null;
+var _officerName = '';
 
 var _mapsKey = null;
 async function loadMapsKey() {
@@ -5389,14 +5393,22 @@ async function loadApiKey() {
       _voyageKey = vr.data.data.voyageKey;
     }
   } catch(e) { console.warn('[RIDGE] loadApiKey (voyage_config) failed:', e.message); }
+  try {
+    var nr = await _sb.from('session_state').select('data').eq('id', 'officer_config').single();
+    if (!nr.error && nr.data && nr.data.data && nr.data.data.officerName) {
+      _officerName = nr.data.data.officerName;
+    }
+  } catch(e) {}
 }
 
 async function saveApiKey() {
   var val = (document.getElementById('apikey-input').value || '').trim();
   var vval = (document.getElementById('voyage-input').value || '').trim();
+  var nval = (document.getElementById('officer-name-input').value || '').trim();
   if (!val) { showToast('Enter an Anthropic API key first'); return; }
   _apiKey = val;
   if (vval) _voyageKey = vval;
+  if (nval) _officerName = nval;
   if (_sbOk && _sb) {
     try {
       await _sb.from('session_state').upsert({ id: 'api_config', data: { apiKey: val } }, { onConflict: 'id' });
@@ -5406,9 +5418,14 @@ async function saveApiKey() {
         await _sb.from('session_state').upsert({ id: 'voyage_config', data: { voyageKey: vval } }, { onConflict: 'id' });
       } catch(e) { console.warn('[RIDGE] saveApiKey (voyage_config) failed:', e.message); }
     }
+    if (nval) {
+      try {
+        await _sb.from('session_state').upsert({ id: 'officer_config', data: { officerName: nval } }, { onConflict: 'id' });
+      } catch(e) { console.warn('[RIDGE] saveApiKey (officer_config) failed:', e.message); }
+    }
   }
   closeApiKeyModal();
-  showToast('API key' + (vval ? 's' : '') + ' saved');
+  showToast('Settings saved');
 }
 
 function _showModal(id) { var el = document.getElementById(id); if (el) el.classList.add('show'); }
@@ -5417,8 +5434,9 @@ function _hideModal(id) { var el = document.getElementById(id); if (el) el.class
 function showApiKeyModal() {
   document.getElementById('apikey-input').value = '';
   document.getElementById('voyage-input').value = '';
+  document.getElementById('officer-name-input').value = _officerName || '';
   _showModal('apikey-modal');
-  setTimeout(function() { document.getElementById('apikey-input').focus(); }, 100);
+  setTimeout(function() { document.getElementById('officer-name-input').focus(); }, 100);
 }
 
 function closeApiKeyModal() {
@@ -6015,6 +6033,11 @@ async function runRidgeAPI(skillName, prompt, runInputs, runToolId) {
     'default': 'You are RIDGE, a senior acquisitions officer at Entrada Partners, an institutional private equity firm. You specialize in industrial and flex CRE acquisitions in Atlanta, Savannah, DFW, and Houston. You are running the ' + skillName + ' module. Be precise, data-driven, and direct. Write like a senior professional presenting to an investment committee. Format all output in clean markdown with tables where data warrants it. Never hedge excessively — state your conviction and defend it.'
   };
   var systemPrompt = systemPrompts[skillName] || systemPrompts['default'];
+  // Personalize: replace generic title with officer name if set
+  if (_officerName) {
+    systemPrompt = systemPrompt.replace(/You are (RIDGE, )?a senior acquisitions officer/g, 'You are ' + _officerName + ', a senior acquisitions officer');
+    prompt = prompt.replace(/You are (RIDGE, )?a senior acquisitions officer/g, 'You are ' + _officerName + ', a senior acquisitions officer');
+  }
   var isISRRun = skillName.toLowerCase().includes('acquisition investment');
   // ── SESSION LOG: user turn ────────────────────────────────────
   _ridgeSessionLog.push({
@@ -6901,7 +6924,7 @@ function ridgeExportPDF() {
         '<div class="section-title">Next Steps</div><div class="flags">'+stepsHTML+'</div>',
       '</div></div>',
       '<div class="footer">',
-        '<span>RIDGE Intelligence \u2014 Entrada Partners \u2014 Confidential \u2014 Internal Use Only</span>',
+        '<span>Entrada Partners \u2014 Confidential \u2014 Internal Use Only</span>',
         '<span>Generated '+genStr+'</span>',
       '</div></div>'
     ].join('');
@@ -7020,7 +7043,7 @@ async function ridgeExportXLS() {
   var el = document.getElementById('ridge-panel-content');
   var skillName = document.getElementById('ridge-panel-skill-name').textContent;
   var wb = new ExcelJS.Workbook();
-  wb.creator = 'RIDGE Intelligence — Entrada Partners';
+  wb.creator = 'Entrada Partners';
   wb.created = new Date();
 
   var NAVY = 'FF1E2761';
@@ -7059,7 +7082,7 @@ async function ridgeExportXLS() {
   }
 
   function addBrandFooter(ws, rowNum) {
-    ws.getRow(rowNum + 2).getCell(1).value = 'RIDGE Intelligence — Entrada Partners — Confidential';
+    ws.getRow(rowNum + 2).getCell(1).value = 'Entrada Partners — Confidential';
     ws.getRow(rowNum + 2).getCell(1).font = { size: 9, color: { argb: 'FF999999' }, italic: true, name: 'Calibri' };
   }
 
@@ -7271,7 +7294,7 @@ async function ridgeExportXLS() {
     });
   }
 
-  var fname = 'RIDGE_' + skillName.replace(/[^a-zA-Z0-9]/g,'_') + '_' + new Date().toISOString().slice(0,10) + '.xlsx';
+  var fname = 'Entrada_' + skillName.replace(/[^a-zA-Z0-9]/g,'_') + '_' + new Date().toISOString().slice(0,10) + '.xlsx';
   var buf = await wb.xlsx.writeBuffer();
   var blob = new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
   var a = document.createElement('a');
@@ -7294,7 +7317,7 @@ async function _napkinExportXLS() {
 
   var NAVY='FF1E2761', WHITE='FFFFFFFF', LT_GREEN='FFE8F5E9', LT_RED='FFFFEBEE', LT_GREY='FFF5F5F5';
 
-  var wb = new ExcelJS.Workbook(); wb.creator='Entrada Partners — RIDGE Intelligence'; wb.created=new Date();
+  var wb = new ExcelJS.Workbook(); wb.creator='Entrada Partners'; wb.created=new Date();
 
   // ─ Sheet 1: Deal Screen ────────────────────────────────────
   var ws = wb.addWorksheet('Deal Screen');
@@ -7675,7 +7698,7 @@ async function ridgeExportPPT() {
         s1.addText(sb.label,{x:bx,y:4.45,w:3.2,h:0.35,fontSize:9,color:MUTED,fontFace:'Courier New',align:'center',charSpacing:2});
       });
       s1.addShape(pptx.ShapeType.rect,{x:0,y:6.9,w:13.33,h:0.6,fill:{color:NAVY}});
-      s1.addText('RIDGE Intelligence  ·  Entrada Partners  ·  CONFIDENTIAL',{x:0.5,y:6.95,w:9,h:0.45,fontSize:10,color:MUTED,fontFace:'Courier New'});
+      s1.addText('Entrada Partners  ·  CONFIDENTIAL',{x:0.5,y:6.95,w:9,h:0.45,fontSize:10,color:MUTED,fontFace:'Courier New'});
       s1.addText(dateStr,{x:9.5,y:6.95,w:3.3,h:0.45,fontSize:10,color:MUTED,fontFace:'Courier New',align:'right'});
 
       // ════════════════════════════════════
@@ -7709,7 +7732,7 @@ async function ridgeExportPPT() {
         {text:calc.yoc34+'%',options:{bold:true,color:calc.meetsYOC?GREEN:RED,fontSize:11,fontFace:'Courier New',fill:{color:MID},align:'center'}}
       ]],{x:0.35,y:4.7,w:12.63,h:0.55,colW:[2.1,2.1,2.1,2.1,2.1,2.1],border:{pt:1,color:'30363D'}});
       s2.addShape(pptx.ShapeType.rect,{x:0,y:6.9,w:13.33,h:0.6,fill:{color:NAVY}});
-      s2.addText('RIDGE Intelligence  ·  Entrada Partners  ·  CONFIDENTIAL',{x:0.5,y:6.95,w:9,h:0.45,fontSize:10,color:MUTED,fontFace:'Courier New'});
+      s2.addText('Entrada Partners  ·  CONFIDENTIAL',{x:0.5,y:6.95,w:9,h:0.45,fontSize:10,color:MUTED,fontFace:'Courier New'});
       s2.addText(dateStr,{x:9.5,y:6.95,w:3.3,h:0.45,fontSize:10,color:MUTED,fontFace:'Courier New',align:'right'});
 
       // ════════════════════════════════════
@@ -7759,7 +7782,7 @@ async function ridgeExportPPT() {
       s3.addText('$'+calc.maxPrice,{x:7.1,y:5.1,w:5.7,h:0.65,fontSize:28,bold:true,color:GREEN,fontFace:'Courier New',align:'center'});
       s3.addText('$'+calc.maxPricePSF+' PSF  ·  $'+calc.priceReduction+' BELOW ASK',{x:7.1,y:5.8,w:5.7,h:0.35,fontSize:9,color:MUTED,fontFace:'Courier New',align:'center'});
       s3.addShape(pptx.ShapeType.rect,{x:0,y:6.9,w:13.33,h:0.6,fill:{color:NAVY}});
-      s3.addText('RIDGE Intelligence  ·  Entrada Partners  ·  CONFIDENTIAL',{x:0.5,y:6.95,w:9,h:0.45,fontSize:10,color:MUTED,fontFace:'Courier New'});
+      s3.addText('Entrada Partners  ·  CONFIDENTIAL',{x:0.5,y:6.95,w:9,h:0.45,fontSize:10,color:MUTED,fontFace:'Courier New'});
       s3.addText(dateStr,{x:9.5,y:6.95,w:3.3,h:0.45,fontSize:10,color:MUTED,fontFace:'Courier New',align:'right'});
 
       // ════════════════════════════════════
@@ -7819,7 +7842,7 @@ async function ridgeExportPPT() {
       s4.addText('< 12% (FAIL)  ·  ★ = Current Assumptions',{x:6.8,y:4.45,w:6.3,h:0.25,fontSize:9,color:MUTED,fontFace:'Courier New'});
       s4.addText('Hold sensitivity uses base exit cap ('+calc.exitCap+'%); Cap sensitivity uses 5-yr hold.',{x:0.35,y:4.82,w:12.63,h:0.35,fontSize:9,color:MUTED,fontFace:'Courier New'});
       s4.addShape(pptx.ShapeType.rect,{x:0,y:6.9,w:13.33,h:0.6,fill:{color:NAVY}});
-      s4.addText('RIDGE Intelligence  ·  Entrada Partners  ·  CONFIDENTIAL',{x:0.5,y:6.95,w:9,h:0.45,fontSize:10,color:MUTED,fontFace:'Courier New'});
+      s4.addText('Entrada Partners  ·  CONFIDENTIAL',{x:0.5,y:6.95,w:9,h:0.45,fontSize:10,color:MUTED,fontFace:'Courier New'});
       s4.addText(dateStr,{x:9.5,y:6.95,w:3.3,h:0.45,fontSize:10,color:MUTED,fontFace:'Courier New',align:'right'});
 
       // ════════════════════════════════════
@@ -7861,9 +7884,9 @@ async function ridgeExportPPT() {
         s5.addText('• Confirm off-market / broker relationship\n• Schedule site visit and market tour\n• Request T-12 operating statements\n• Run waterfall and full IC model',{x:0.5,y:4.9,w:12.33,h:1.65,fontSize:11,color:TEXT,fontFace:'Courier New',valign:'top'});
       }
       s5.addShape(pptx.ShapeType.rect,{x:0,y:6.9,w:13.33,h:0.6,fill:{color:NAVY}});
-      s5.addText('RIDGE Intelligence  ·  Entrada Partners  ·  CONFIDENTIAL  ·  '+dateStr,{x:0.5,y:6.95,w:12.63,h:0.45,fontSize:10,color:MUTED,fontFace:'Courier New',align:'center'});
+      s5.addText('Entrada Partners  ·  CONFIDENTIAL  ·  '+dateStr,{x:0.5,y:6.95,w:12.63,h:0.45,fontSize:10,color:MUTED,fontFace:'Courier New',align:'center'});
 
-      var fname='RIDGE_Napkin_'+safeAddr+'_'+new Date().toISOString().slice(0,10)+'.pptx';
+      var fname='Entrada_Napkin_'+safeAddr+'_'+new Date().toISOString().slice(0,10)+'.pptx';
       await pptx.writeFile({fileName:fname});
       return;
     }
@@ -8744,7 +8767,7 @@ async function ridgeExportPPT() {
       return;
     }
 
-    var fname = 'RIDGE_IC_Report_'+String(d.addr||'Deal').replace(/[^a-zA-Z0-9]/g,'_').slice(0,30)+'_'+new Date().toISOString().slice(0,10)+'.pptx';
+    var fname = 'Entrada_IC_Report_'+String(d.addr||'Deal').replace(/[^a-zA-Z0-9]/g,'_').slice(0,30)+'_'+new Date().toISOString().slice(0,10)+'.pptx';
     console.log('ISR PPT writing file...');
     try {
       await pptx.writeFile({ fileName: fname });
@@ -8762,7 +8785,7 @@ async function ridgeExportPPT() {
   var s0=pptx.addSlide();
   s0.background={color:'0D1117'};
   s0.addText(skillName,{x:0.5,y:2.2,w:12.3,h:1.4,fontSize:44,bold:true,color:'2196F3',fontFace:'Courier New',align:'center'});
-  s0.addText('RIDGE Intelligence  ·  '+dateStr,{x:0.5,y:3.8,w:12.3,h:0.6,fontSize:16,color:'8B949E',align:'center'});
+  s0.addText('Entrada Partners  ·  '+dateStr,{x:0.5,y:3.8,w:12.3,h:0.6,fontSize:16,color:'8B949E',align:'center'});
   var h2s=el.querySelectorAll('h2');
   if (h2s.length===0) {
     var sg=pptx.addSlide();
@@ -8782,7 +8805,7 @@ async function ridgeExportPPT() {
       if (bullets.length) sl.addText(bullets,{x:0.5,y:1.4,w:12.3,h:5.8,valign:'top',wrap:true});
     });
   }
-  var fname='RIDGE_'+skillName.replace(/[^a-zA-Z0-9]/g,'_')+'_'+new Date().toISOString().slice(0,10)+'.pptx';
+  var fname='Entrada_'+skillName.replace(/[^a-zA-Z0-9]/g,'_')+'_'+new Date().toISOString().slice(0,10)+'.pptx';
   await pptx.writeFile({fileName:fname});
 }
 
@@ -9294,7 +9317,7 @@ async function _llExportLeases() {
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(toRows(occ)),  'Occupied Only');
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(toRows(vac)),  'Vacant');
   var dateStr = new Date().toISOString().slice(0,10);
-  XLSX.writeFile(wb, 'RIDGE_Lease_Library_' + dateStr + '.xlsx');
+  XLSX.writeFile(wb, 'Entrada_Lease_Library_' + dateStr + '.xlsx');
   showToast('✅ Exported ' + all.length + ' leases');
 }
 
