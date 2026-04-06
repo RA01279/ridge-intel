@@ -8217,11 +8217,11 @@ async function ridgeExportPPT() {
         var cs=l.split('|').filter(function(c){return c.trim();}).map(function(c){return c.trim();});
         return ri===0?tblH(cs):tblR(cs,ri%2===1);
       });
-      var mktRH5=Math.min(0.85,Math.max(0.28,5.95/Math.max(mktTbl5.length,2)));
-      s5.addTable(mktTbl5,{x:6.80,y:1.15,w:6.28,rowH:mktRH5,border:{type:'solid',color:MGREY,w:0.5},fontSize:9.5});
+      var mktRH5=Math.min(0.85,Math.max(0.28,5.60/Math.max(mktTbl5.length,2)));
+      s5.addTable(mktTbl5,{x:6.35,y:0.85,w:5.55,rowH:mktRH5,border:{type:'solid',color:MGREY,w:0.5},fontSize:9.5});
     } else {
       var mktNarr5=stripMd(_mktRaw5).trim()||'Upload OM PDF for submarket vacancy, rent trends, and location narrative.';
-      s5.addText(mktNarr5.slice(0,600),{x:6.80,y:1.15,w:6.28,h:5.72,fontSize:10,color:'4A5568',wrap:true,valign:'top'});
+      s5.addText(mktNarr5.slice(0,600),{x:6.35,y:0.85,w:5.55,h:5.60,fontSize:10,color:'4A5568',wrap:true,valign:'top'});
     }
     addFtr(s5);
 
@@ -8293,29 +8293,49 @@ async function ridgeExportPPT() {
     console.log('[RIDGE] PPTX building slide 8...');
     var cfModelRows = await _extractCashFlows();
     if(cfModelRows && cfModelRows.length){
-      function fmtDollar(v){ return '$'+Math.round(v).toLocaleString('en-US'); }
-      function yocCell8(v){
-        var tc = v>=7.5?'1B5E20':(v>=6.0?'D97706':'C0392B');
-        return {text:v.toFixed(2)+'%',options:{fontSize:10,color:tc,bold:true,fill:{color:'F0F4FF'},align:'center'}};
+      var cf8Yrs = cfModelRows.slice(0,5);
+      var cf8N   = cf8Yrs.length;
+      // Header: METRIC | YR 1 | YR 2 | YR 3 | YR 4 | YR 5 (Exit)
+      var hdrBase8 = {bold:true, color:WHITE, fill:{color:'1E2761'}, fontSize:10, align:'center'};
+      var cfHdr8 = [{text:'METRIC', options:Object.assign({},hdrBase8,{align:'left'})}]
+        .concat(cf8Yrs.map(function(r,i){
+          return {text: i===cf8N-1 ? r.year+' (Exit)' : r.year, options:hdrBase8};
+        }));
+      function fmtDollar8(v){ return '$'+Math.round(v).toLocaleString('en-US'); }
+      function yocFill8(v){
+        if(v>=7.5)  return {bg:'2E7D32', tc:'FFFFFF'};
+        if(v>=6.0)  return {bg:'E65100', tc:'FFFFFF'};
+        return           {bg:'C62828', tc:'FFFFFF'};
       }
-      var cfHdr = tblH(['YEAR','EGR','NOI','DEBT SERVICE','LEVERED CF','YOC','CoC']);
-      var cfDataRows = cfModelRows.map(function(r,ri){
-        var altBg = ri%2===1?'F0F4FF':BG;
-        var baseOpts = {fontSize:10,color:TEXT2,fill:{color:altBg}};
-        return [
-          {text:r.year,options:{fontSize:10,color:TEXT,bold:true,fill:{color:altBg}}},
-          {text:fmtDollar(r.egr),options:baseOpts},
-          {text:fmtDollar(r.noi),options:baseOpts},
-          {text:fmtDollar(r.ds),options:baseOpts},
-          {text:fmtDollar(r.levCF),options:baseOpts},
-          yocCell8(r.yoc),
-          {text:r.coc.toFixed(2)+'%',options:baseOpts}
-        ];
-      });
-      var cfRowH = Math.min(0.85, Math.max(0.28, 5.95 / (cfModelRows.length + 1)));
-      s8.addTable([cfHdr].concat(cfDataRows),{x:0.25,y:0.90,w:13.08,rowH:cfRowH,colW:[2.2,2.0,2.0,2.0,2.0,1.4,1.48],border:{type:'solid',color:MGREY,w:0.5},fontSize:10});
+      var cf8Metrics = [
+        {label:'EGR',          fmt:function(r){ return fmtDollar8(r.egr); },   extraOpts:null},
+        {label:'NOI',          fmt:function(r){ return fmtDollar8(r.noi); },   extraOpts:null},
+        {label:'DEBT SERVICE', fmt:function(r){ return fmtDollar8(r.ds); },    extraOpts:null},
+        {label:'LEVERED CF',   fmt:function(r,isLast){ return fmtDollar8(r.levCF)+(isLast?'*':''); }, extraOpts:null},
+        {label:'YOC',          fmt:function(r){ return r.yoc.toFixed(2)+'%'; },
+          extraOpts:function(r){ var f=yocFill8(r.yoc); return {fill:{color:f.bg},color:f.tc,bold:true}; }},
+        {label:'CoC',          fmt:function(r){ return r.coc.toFixed(2)+'%'; }, extraOpts:null},
+      ];
+      var cf8RowH  = 5.95 / (cf8Metrics.length + 1);
+      var cf8YrW   = (13.08 - 2.2) / cf8N;
+      var cf8ColW  = [2.2].concat(cf8Yrs.map(function(){ return cf8YrW; }));
+      var cf8Rows  = [cfHdr8].concat(cf8Metrics.map(function(md,mi){
+        var altBg = mi%2===1 ? LGREY : BG;
+        var labelCell = {text:md.label, options:{bold:true,color:TEXT,fill:{color:altBg},fontSize:10,align:'left'}};
+        var dataCells = cf8Yrs.map(function(r,yi){
+          var isLast = yi===cf8N-1;
+          var val    = md.label==='LEVERED CF' ? fmtDollar8(r.levCF)+(isLast?'*':'') : md.fmt(r,isLast);
+          var opts   = {fontSize:10,color:TEXT2,fill:{color:altBg},align:'right'};
+          if(md.extraOpts){ var extra=md.extraOpts(r); for(var k in extra) opts[k]=extra[k]; }
+          return {text:val, options:opts};
+        });
+        return [labelCell].concat(dataCells);
+      }));
+      s8.addTable(cf8Rows, {x:0.25, y:0.90, w:13.08, rowH:cf8RowH, colW:cf8ColW, border:{type:'solid',color:MGREY,w:0.5}, fontSize:10});
+      // Footnote below table
+      s8.addText('* Includes reversion proceeds', {x:0.25, y:0.90+cf8RowH*(cf8Metrics.length+1)+0.05, w:5.0, h:0.22, fontSize:8, color:'8A9BB0'});
     } else {
-      s8.addText('Upload acquisition model (.xlsx) to populate cash flow data.',{x:0.25,y:2.5,w:12.83,h:1.0,fontSize:13,color:MUTED,align:'center',valign:'middle',wrap:true});
+      s8.addText('Upload acquisition model (.xlsx) to populate cash flow data.',{x:0.25,y:3.5,w:12.83,h:1.0,fontSize:13,color:MUTED,align:'center',valign:'middle',wrap:true});
     }
     addFtr(s8);
 
@@ -8550,10 +8570,10 @@ async function ridgeExportPPT() {
     // 4-tier IRR color helper — muted institutional palette
     function irrColors(irr) {
       if (irr === null || irr === undefined) return {bg:BG, tc:TEXT2};
-      if (irr >= 14.75) return {bg:'1F4E2C', tc:WHITE};
-      if (irr >= 13.50) return {bg:'7A5C00', tc:WHITE};
-      if (irr >= 12.00) return {bg:'7A3500', tc:WHITE};
-      return {bg:'5C1A1A', tc:WHITE};
+      if (irr >= 14.75) return {bg:'2E7D32', tc:WHITE};
+      if (irr >= 13.50) return {bg:'B8860B', tc:WHITE};
+      if (irr >= 12.00) return {bg:'A0522D', tc:WHITE};
+      return {bg:'8B1A1A', tc:WHITE};
     }
 
     // Two-line cell: IRR (bold large) + EM (small), with optional bold gold border for base highlight
@@ -8596,11 +8616,12 @@ async function ridgeExportPPT() {
       var tbl1 = [hdr1];
       hs12.forEach(function(row) {
         var isBaseRow = row.isBase;
+        var is7yr    = row.label === '7 yr';
         var labelCell = {
           text: (isBaseRow ? '\u2605 ' : '') + row.label,
           options: {
-            fill:   {color: isBaseRow ? '1A3525' : LGREY},
-            color:  isBaseRow ? 'A07E35' : TEXT2,
+            fill:   {color: is7yr ? LGREY : isBaseRow ? '1A3525' : LGREY},
+            color:  is7yr ? MUTED : isBaseRow ? 'A07E35' : TEXT2,
             bold:   isBaseRow,
             fontSize: 10,
             align: 'center',
@@ -8611,7 +8632,18 @@ async function ridgeExportPPT() {
         for (var ci12 = 0; ci12 < 5; ci12++) {
           var cell12 = row['col_'+ci12];
           var isBaseCell = isBaseRow && ci12 === 2;
-          var highlight12 = isBaseRow || ci12 === 2;
+          var highlight12 = !is7yr && (isBaseRow || ci12 === 2);
+          // 7yr row: muted gray — no tier color, no gold border
+          if (is7yr) {
+            var irrTxt7 = (cell12.irr !== null && cell12.irr !== undefined) ? cell12.irr.toFixed(2)+'%' : 'N/A';
+            var emTxt7  = cell12.em || '—';
+            dataRow.push({
+              text: [{text:irrTxt7, options:{bold:false, fontSize:11}},
+                     {text:'\n'+emTxt7, options:{bold:false, fontSize:8.5}}],
+              options: {fill:{color:LGREY}, color:MUTED, align:'center', valign:'middle', border:{type:'solid',color:MGREY,pt:0.5}}
+            });
+            continue;
+          }
           var c12 = sens2Cell(cell12.irr, cell12.em, highlight12);
           if (isBaseCell) {
             // Star on the intersection cell
@@ -8671,10 +8703,10 @@ async function ridgeExportPPT() {
 
     // Legend
     var lgnd = [
-      {color:'1F4E2C', label:'\u25a0  \u2265 14.75%  VALUE-ADD HURDLE'},
-      {color:'7A5C00', label:'\u25a0  13.50\u201314.74%  CORE+/STABILIZED RANGE'},
-      {color:'7A3500', label:'\u25a0  12.00\u201313.49%  APPROACHING FLOOR'},
-      {color:'5C1A1A', label:'\u25a0  < 12.00%  FAILS ALL HURDLES'}
+      {color:'2E7D32', label:'\u25a0  \u2265 14.75%  VALUE-ADD HURDLE'},
+      {color:'B8860B', label:'\u25a0  13.50\u201314.74%  CORE+/STABILIZED RANGE'},
+      {color:'A0522D', label:'\u25a0  12.00\u201313.49%  APPROACHING FLOOR'},
+      {color:'8B1A1A', label:'\u25a0  < 12.00%  FAILS ALL HURDLES'}
     ];
     var lx12 = 0.35;
     lgnd.forEach(function(li) {
