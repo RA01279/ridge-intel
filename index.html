@@ -7614,7 +7614,7 @@ async function _extractCashFlows() {
   }
 }
 
-async function _extractSensitivity() {
+async function _extractSensitivity(nra) {
   var modelBuffer = _isrModelBuffer ||
     (STATE['isr'] && STATE['isr'].files && (STATE['isr'].files['model-buf'] || STATE['isr'].files['model']));
   if (!modelBuffer || typeof modelBuffer === 'string') return null;
@@ -7646,8 +7646,9 @@ async function _extractSensitivity() {
     var holdLabels = ['3 yr','4 yr','5 yr','6 yr','7 yr'];
 
     var priceHeaders = priceCols.map(function(col) {
-      var v = cv(col+'17');
-      return v ? '$'+parseFloat(v).toFixed(0)+' PSF' : col;
+      var price = parseFloat(cv(col+'17')) || 0;
+      var psf = nra > 0 ? Math.round(price / nra) : 0;
+      return psf > 0 ? '$' + psf + ' PSF' : col;
     });
 
     var holdSensitivity = holdRows.map(function(row, ri) {
@@ -8561,7 +8562,7 @@ async function ridgeExportPPT() {
     addFtr(s11);
 
     // ── SLIDE 12 — Sensitivity Analysis ──────────────────────
-    var sensFromModel = await _extractSensitivity();
+    var sensFromModel = await _extractSensitivity(Number(String(d.sf||'0').replace(/[^0-9.]/g,''))||0);
     var s12=pptx.addSlide(); s12.background={color:BG}; addHdr(s12,'Sensitivity Analysis',12);
     console.log('[RIDGE] PPTX building slide 12...');
     s12.addText('IRR by Purchase Price × Hold Period',{x:0.4,y:0.82,w:6.5,h:0.28,fontSize:11,color:BLUE,bold:true});
@@ -8791,7 +8792,24 @@ async function ridgeExportPPT() {
       extractSection(panelText,'ENTRADA HURDLE CONFIRMATION')||
       '';
     console.log('[RIDGE] hurdle raw extracted:', _hurdleRaw14?_hurdleRaw14.slice(0,150):'STILL EMPTY');
-    if(!_hurdleRaw14){
+    // Broader fallback: find any ## ENTRADA... section when HURDLE keyword is absent
+    if (!_hurdleRaw14) {
+      var _entradaHdr = _isrRaw14.match(/##\s+ENTRADA[^\n]*/i);
+      if (_entradaHdr) {
+        var _hIdx = _isrRaw14.indexOf(_entradaHdr[0]);
+        var _hNext = _isrRaw14.indexOf('\n## ', _hIdx + 4);
+        _hurdleRaw14 = _hNext > -1 ? _isrRaw14.slice(_hIdx, _hNext) : _isrRaw14.slice(_hIdx, _hIdx + 3000);
+      }
+    }
+    if (!_hurdleRaw14) {
+      var _entradaPt = panelText.match(/##\s+ENTRADA[^\n]*/i);
+      if (_entradaPt) {
+        var _hIdxPt = panelText.indexOf(_entradaPt[0]);
+        var _hNextPt = panelText.indexOf('\n## ', _hIdxPt + 4);
+        _hurdleRaw14 = _hNextPt > -1 ? panelText.slice(_hIdxPt, _hNextPt) : panelText.slice(_hIdxPt, _hIdxPt + 3000);
+      }
+    }
+    if (!_hurdleRaw14) {
       var _hurdleMatch14=_isrRaw14.match(/Deal Type:[\s\S]+?Overall:[^\n]+/);
       if(_hurdleMatch14) _hurdleRaw14=_hurdleMatch14[0];
     }
