@@ -608,9 +608,6 @@ footer{border-top:1px solid var(--border);padding:20px 24px;text-align:center;co
 <div class="tool-grid" id="tool-grid"><div class="tool-card open" id="card-lens">
       <div class="tc-row"><span class="tc-num">01</span><span class="tc-name">LENS</span></div>
       <div class="tc-desc">Broker OM teardown. Bear / Base / Bull · max entry price.</div>
-    </div><div class="tool-card" id="card-scout">
-      <div class="tc-row"><span class="tc-num">02</span><span class="tc-name">SCOUT</span></div>
-      <div class="tc-desc">Off-market sourcing. Ranked prospects from vacancy, debt, and ownership signals.</div>
     </div><div class="tool-card" id="card-napkin">
       <div class="tc-row"><span class="tc-num">03</span><span class="tc-name">THE NAPKIN</span></div>
       <div class="tc-desc">60-second screen. Ask price in, Go / No-Go out.</div>
@@ -625,7 +622,7 @@ footer{border-top:1px solid var(--border);padding:20px 24px;text-align:center;co
       <div class="tc-desc">Capital stack modeling. DSCR, debt yield, LTV across scenarios.</div>
     </div><div class="tool-card" id="card-isr">
       <div class="tc-row"><span class="tc-num">07</span><span class="tc-name">ACQUISITION INVESTMENT REPORT</span></div>
-      <div class="tc-desc">Upload model → IC analysis + 11-slide deck.</div>
+      <div class="tc-desc">Upload model → IC analysis + 14-slide deck.</div>
     </div><div class="tool-card" id="card-loi">
       <div class="tc-row"><span class="tc-num">08</span><span class="tc-name">LOI GENERATOR</span></div>
       <div class="tc-desc">Draft-ready LOI. Entrada defaults locked in.</div>
@@ -687,52 +684,6 @@ footer{border-top:1px solid var(--border);padding:20px 24px;text-align:center;co
         </div>
       </div>
       <div class="res-body" id="rout-lens"></div>
-    </div>
-  </div></div><div class="tool-panel" id="panel-scout">
-  <div class="panel-head">
-    <span class="panel-head-icon">🔭</span>
-    <span class="panel-head-title">SCOUT</span>
-    <span class="panel-head-sub">Deal Sourcing</span>
-    <button class="panel-close" onclick="togglePanel(&#39;scout&#39;)">✕ Close</button>
-  </div>
-  <div class="panel-body">
-    <div class="upload-row one">
-    <div class="upload-group">
-      <label>Submarket Data <span>Optional: CoStar export, comp list, or any market data</span></label>
-      <div class="uz" id="uz-scout-data" onclick="document.getElementById(&#39;file-scout-data&#39;).click()">
-        <input type="file" id="file-scout-data" accept=".xlsx,.csv,.pdf">
-        <div class="uz-ico">📊</div>
-        <div class="uz-t">Click or drag to upload</div>
-        <div class="uz-s">XLSX · CSV · PDF</div>
-        <div class="uz-st" id="uzst-scout-data"></div>
-      </div>
-    </div></div>
-    
-    <div class="manual-toggle" onclick="toggleManual(&#39;scout&#39;)">
-      <span id="marrow-scout">▶</span> Fields &amp; Parameters
-      <span style="color:var(--faint);font-size:11px;margin-left:4px">— auto-filled from upload where available</span>
-    </div>
-    <div class="manual-body" id="mbody-scout">
-      <div class="fr two"><div class="fg"><label class="fl">Market / Submarket</label><input type="text" id="f-scout-mkt" placeholder="Northeast Atlanta — Gwinnett/Buford"></div><div class="fg"><label class="fl">Mode</label><select id="f-scout-mode"><option>Submarket Sweep</option><option>Property Dossier</option></select></div></div><div class="fr three"><div class="fg"><label class="fl">Min SF</label><input type="text" id="f-scout-sfmin" placeholder="20,000"></div><div class="fg"><label class="fl">Max SF</label><input type="text" id="f-scout-sfmax" placeholder="200,000"></div><div class="fg"><label class="fl">Max Price</label><input type="text" id="f-scout-price" placeholder="$40,000,000"></div></div><div class="fr one"><div class="fg"><label class="fl">Debt Signals to Target</label><select id="f-scout-signals"><option>Loans 2018–2021 Maturing</option><option>CMBS Watchlist</option><option>Bridge Loan Stress</option><option>All Signals</option></select></div></div><div class="fr one"><div class="fg"><label class="fl">Specific Property Address</label><input type="text" id="f-scout-addr" placeholder="Leave blank for sweep mode"></div></div>
-    </div>
-    <div class="btn-row">
-      <button class="btn btn-p" id="run-btn-scout" onclick="runTool(&#39;scout&#39;)">⚡ Run SCOUT</button>
-      <button class="btn btn-o" onclick="clearTool(&#39;scout&#39;)">Clear</button>
-      
-    </div>
-    <div class="loading" id="loading-scout">
-      <div class="loading-lbl" id="llbl-scout">Working...</div>
-      <div class="pbar"><div class="pfill" id="pfill-scout"></div></div>
-      <div class="pstep" id="pstep-scout"></div>
-    </div>
-    <div class="results" id="results-scout">
-      <div class="res-head">
-        <div class="res-title" id="rtitle-scout">SCOUT — Results</div>
-        <div class="res-actions">
-          <button class="btn btn-o" style="font-size:12px" onclick="copyResult(&#39;scout&#39;)">📋 Copy</button>
-        </div>
-      </div>
-      <div class="res-body" id="rout-scout"></div>
     </div>
   </div></div><div class="tool-panel" id="panel-napkin">
   <div class="panel-head">
@@ -2117,7 +2068,7 @@ function handleMultiXLSX(toolId, uploadId, input) {
           var lines = rows.map(function(r){ return r.filter(function(c){ return c!==''; }).join(' | '); }).filter(function(l){ return l.trim(); });
           allText += '\n=== FILE: ' + file.name + ' / SHEET: ' + name + ' ===\n' + lines.join('\n');
         });
-      } catch(err) {}
+      } catch(err) { console.warn('[RIDGE] handleXLSX parse failed:', err.message); }
       done++;
       if (done === files.length) {
         STATE[toolId].files[uploadId] = allText;
@@ -2952,7 +2903,7 @@ function handleFile(toolId, uploadId, input, type) {
                       }
                     });
                   }
-                }).catch(function(e) { console.warn('leases insert failed:', e); });
+                }).catch(function(e) { console.warn('leases insert failed:', e); showToast('Lease data could not be saved.'); });
               }
             }
           });
@@ -3095,13 +3046,6 @@ async function buildTrigger(toolId, d) {
       p += 'PROPERTY: ' + (d.addr||'') + '\nASSET TYPE: ' + (d.type||'') + '\nSIZE: ' + (d.sf||'') + ' SF\nASKING: $' + (d.ask||'') + '\nCONTEXT: ' + (d.notes||'') + '\n\n';
       p += 'ENTRADA CRITERIA: $10M-$70M | Atlanta/Savannah/DFW/Houston | 14.75%+ levered IRR | 7.5-8.0% YOC Yr3/4 | 95% off-market\n\n';
       p += 'Produce:\n## BROKER NARRATIVE vs REALITY\nWhat the broker is claiming vs what the data actually supports. Be specific and cite numbers.\n\n## RE-UNDERWRITE\nRebuild the return stack from scratch using RIDGE assumptions (60-65% LTV, market debt terms, realistic vacancy, market exit cap). Show your math.\n\n## STRESS TEST\n3 scenarios: Base / Downside (-15% NOI, +50bps exit cap) / Severe (-25% NOI, +100bps exit cap). IRR and EM for each.\n\n## WHAT THE BROKER IS HIDING\nFlag every assumption that is aggressive, missing, or impossible to verify. Be direct.\n\n## MAX ENTRY PRICE\nThe exact price where this deal clears 14.75% IRR under RIDGE assumptions. Dollar amount and PSF.\n\n## VERDICT\nPURSUE | CONDITIONAL | PASS — one word, then one paragraph defending it. If CONDITIONAL, state exactly what has to be true.';
-      return p;
-
-    case 'scout':
-      p = 'You are a senior acquisitions officer at Entrada Partners running a sourcing sweep.\n\n';
-      p += 'MODE: ' + (d.mode||'Submarket Sweep') + '\nMARKET: ' + (d.mkt||'') + '\nSF RANGE: ' + (d.sfmin||'10,000') + ' - ' + (d.sfmax||'300,000') + ' SF\nMAX PRICE: $' + (d.price||'') + '\nSIGNALS: ' + (d.signals||'All') + '\nPROPERTY: ' + (d.addr||'') + '\n\n';
-      p += 'ENTRADA SOURCING CRITERIA:\n- Private owners, 7-15yr hold, family LLC or local operating company\n- Debt stress: bridge loans 2019-2022 vintage, CMBS watchlist, loan maturity within 18 months\n- Physical signals: no permits 5+ years, vacancy above submarket average, capex neglect\n- Target: motivated seller who hasnt acknowledged the situation publicly\n\n';
-      p += 'Produce:\n## SUBMARKET SNAPSHOT\nVacancy rate, asking rents (Class A/B/C), absorption trend, new supply pipeline, 3 most recent comparable sales with cap rates and PSF. Be specific — cite actual numbers.\n\n## TOP 10 PROSPECT LIST\n| # | Address | Est SF | Owner Entity | Hold (yrs) | Primary Signal | Debt Signal | Conviction |\nFor each: specific owner name/entity from public records, estimated acquisition year, what makes them motivated, recommended outreach angle.\n\n## DEBT STRESS FLAGS\nAny CMBS watchlist placements, bridge loans approaching maturity, or special servicer assignments in this submarket. Cite EDGAR or public sources.\n\n## PORTFOLIO PLAYS\nAny owners with multiple assets who might entertain a portfolio conversation. Flag the clustering opportunity.\n\n## RECOMMENDED FIRST CALL\nThe single highest-conviction prospect. Why them, why now, what to say in the first 30 seconds.';
       return p;
 
     case 'napkin':
@@ -3712,7 +3656,7 @@ async function _sbLoadDeals() {
     });
     localStorage.setItem('ridge_pipeline', JSON.stringify(deals));
     renderPipeline();
-  } catch(e) {}
+  } catch(e) { console.warn('[RIDGE] _sbLoadDeals failed:', e.message); showToast('Pipeline failed to load from database.'); }
 }
 
 async function _sbUpsertDeal(deal) {
@@ -3946,7 +3890,7 @@ async function _writeLeaseRows(rows, address, source) {
       if (res.error) console.warn('[RIDGE] ' + source + ' leases write failed:', JSON.stringify(res.error));
       else console.log('[RIDGE] ' + source + ' wrote ' + inserts.length + ' leases to DB');
     }
-  } catch(e) { console.warn('[RIDGE] ' + source + ' leases exception:', e.message); }
+  } catch(e) { console.warn('[RIDGE] ' + source + ' leases exception:', e.message); showToast('Import failed — check file format and try again.'); }
 }
 
 /* ═══════════════════════════════════
@@ -4626,6 +4570,7 @@ async function exportToolReport(toolId) {
       case 'lease-compare': _exportLeaseCompare(wb, toolId, dateStr, paste); break;
       case 'lease-stack':   _exportLeaseStack(wb, toolId, dateStr, paste); break;
       case 'canvas':      _exportCanvas(wb, toolId, dateStr, paste); break;
+      case 'waterfall':   _exportWaterfall(wb, toolId, dateStr, paste); break;
       default: showToast('No export configured'); return;
     }
 
@@ -5205,6 +5150,136 @@ function _exportLeaseStack(wb, tid, dateStr, paste) {
   r = rcAnalysis(ws, paste, r);
 }
 
+// ── WATERFALL ─────────────────────────────────────────────
+function _exportWaterfall(wb, tid, dateStr, paste) {
+  if (!paste || !paste.trim()) { showToast('Run Waterfall skill first to export results.'); return; }
+
+  var NAVY   = 'FF1E2761';
+  var WHITE  = 'FFFFFFFF';
+  var LGRAY  = 'FFF0F4FF';
+  var DGRAY  = 'FF4A5568';
+
+  var addr = rcGetField(tid, 'addr') || rcGetField(tid, 'property') || 'Property';
+  var ws = wb.addWorksheet('Waterfall Summary', { views: [{ state: 'frozen', xSplit: 0, ySplit: 3 }] });
+  rcColWidths(ws, [28, 20, 14, 14, 16, 16]);
+
+  // ── Title rows ──────────────────────────────────────────
+  var t1 = ws.getRow(1);
+  t1.getCell(1).value = 'GP/LP WATERFALL ANALYSIS';
+  t1.getCell(1).font = { bold: true, size: 14, color: { argb: WHITE } };
+  t1.getCell(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: NAVY } };
+  ws.mergeCells(1, 1, 1, 6);
+  t1.height = 24;
+
+  var t2 = ws.getRow(2);
+  t2.getCell(1).value = addr + '  ·  ' + dateStr;
+  t2.getCell(1).font = { italic: true, size: 11, color: { argb: DGRAY } };
+  t2.getCell(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: LGRAY } };
+  ws.mergeCells(2, 1, 2, 6);
+  t2.height = 18;
+
+  var r = 3;
+
+  // ── Key inputs section ───────────────────────────────────
+  var secRow = ws.getRow(r);
+  secRow.getCell(1).value = 'KEY INPUTS';
+  secRow.getCell(1).font = { bold: true, color: { argb: WHITE } };
+  secRow.getCell(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: NAVY } };
+  ws.mergeCells(r, 1, r, 6);
+  r++;
+
+  // Parse key metrics from panelText
+  function _wfExtract(label, pattern) {
+    var m = paste.match(pattern);
+    return m ? m[1].trim() : '—';
+  }
+  var kvPairs = [
+    ['Equity Invested',     _wfExtract('equity', /[Ee]quity\s+[Ii]nvested[:\s]+\$?([\d,\.]+[MmKkBb]?)/), '$'],
+    ['Total Distributions', _wfExtract('distrib', /[Tt]otal\s+[Dd]istributions?[:\s]+\$?([\d,\.]+[MmKkBb]?)/), '$'],
+    ['Preferred Return',    _wfExtract('pref', /[Pp]referred\s+[Rr]eturn[:\s]+([\d\.]+%?)/), ''],
+    ['Hurdle Rate',         _wfExtract('hurdle', /[Hh]urdle[:\s]+([\d\.]+%?)/), ''],
+    ['GP Split',            _wfExtract('gp split', /GP\s+[Ss]plit[:\s]+([\d\.]+%?)/), ''],
+    ['LP Split',            _wfExtract('lp split', /LP\s+[Ss]plit[:\s]+([\d\.]+%?)/), ''],
+  ];
+  kvPairs.forEach(function(kv) {
+    var row = ws.getRow(r);
+    row.getCell(1).value = kv[0];
+    row.getCell(1).font  = { bold: true };
+    row.getCell(1).fill  = { type: 'pattern', pattern: 'solid', fgColor: { argb: LGRAY } };
+    row.getCell(2).value = kv[1];
+    row.getCell(2).alignment = { horizontal: 'right' };
+    ws.mergeCells(r, 2, r, 6);
+    r++;
+  });
+
+  r++; // spacer
+
+  // ── Waterfall tiers table ────────────────────────────────
+  var tierSecRow = ws.getRow(r);
+  tierSecRow.getCell(1).value = 'WATERFALL TIERS';
+  tierSecRow.getCell(1).font = { bold: true, color: { argb: WHITE } };
+  tierSecRow.getCell(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: NAVY } };
+  ws.mergeCells(r, 1, r, 6);
+  r++;
+
+  var hdr = ws.getRow(r);
+  ['TIER', 'DESCRIPTION', 'LP %', 'GP %', 'LP AMOUNT', 'GP AMOUNT'].forEach(function(h, i) {
+    hdr.getCell(i + 1).value = h;
+    hdr.getCell(i + 1).font = { bold: true, color: { argb: WHITE } };
+    hdr.getCell(i + 1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: NAVY } };
+    hdr.getCell(i + 1).alignment = { horizontal: 'center' };
+  });
+  r++;
+
+  // Parse tier rows from paste text
+  var tierKeywords = ['Return of Capital', 'Preferred Return', 'Catch.?up', 'Carried Interest', 'Tier\\s+\\d', 'Promoted Interest', 'Promote'];
+  var tierPattern = new RegExp('(' + tierKeywords.join('|') + ')', 'i');
+  var tierRows = [];
+  paste.split('\n').forEach(function(line) {
+    if (tierPattern.test(line)) {
+      var lpPct  = (line.match(/LP[:\s]+(\d+\.?\d*%?)/) || [])[1] || '—';
+      var gpPct  = (line.match(/GP[:\s]+(\d+\.?\d*%?)/) || [])[1] || '—';
+      var lpAmt  = (line.match(/LP[^|]*\|\s*\$?([\d,\.]+[MmKk]?)/) || [])[1] || '—';
+      var gpAmt  = (line.match(/GP[^|]*\|\s*\$?([\d,\.]+[MmKk]?)/) || [])[1] || '—';
+      var desc   = line.replace(/[|#*`]/g, '').replace(/\s+/g, ' ').trim().slice(0, 80);
+      tierRows.push([String(tierRows.length + 1), desc, lpPct, gpPct, lpAmt, gpAmt]);
+    }
+  });
+  if (!tierRows.length) {
+    tierRows = [['1','Return of Capital','100%','0%','—','—'],
+                ['2','Preferred Return (Pref)','100%','0%','—','—'],
+                ['3','GP Catch-up','0%','100%','—','—'],
+                ['4','Residual / Carried Interest','80%','20%','—','—']];
+  }
+  tierRows.forEach(function(tr, idx) {
+    var row = ws.getRow(r);
+    tr.forEach(function(v, i) {
+      row.getCell(i + 1).value = v;
+      row.getCell(i + 1).alignment = { horizontal: i < 2 ? 'left' : 'center' };
+      row.getCell(i + 1).fill = { type: 'pattern', pattern: 'solid',
+        fgColor: { argb: idx % 2 === 0 ? 'FFFFFFFF' : LGRAY } };
+      row.getCell(i + 1).border = { bottom: { style: 'thin', color: { argb: 'FFE0E0E0' } } };
+    });
+    r++;
+  });
+
+  r++; // spacer
+
+  // ── Full narrative ───────────────────────────────────────
+  var narSecRow = ws.getRow(r);
+  narSecRow.getCell(1).value = 'FULL ANALYSIS OUTPUT';
+  narSecRow.getCell(1).font = { bold: true, color: { argb: WHITE } };
+  narSecRow.getCell(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: NAVY } };
+  ws.mergeCells(r, 1, r, 6);
+  r++;
+
+  var narRow = ws.getRow(r);
+  narRow.getCell(1).value = paste.replace(/[#*`]/g, '').trim();
+  narRow.getCell(1).alignment = { wrapText: true, vertical: 'top' };
+  ws.mergeCells(r, 1, r, 6);
+  narRow.height = Math.min(400, Math.max(60, Math.ceil(paste.length / 80) * 15));
+}
+
 // ═══════════════════════════════════════════════════════════
 //  END EXPORT SYSTEM
 // ═══════════════════════════════════════════════════════════
@@ -5751,7 +5826,7 @@ async function histDelete(id) {
     var el = document.getElementById('hrow-' + id);
     if (el) el.remove();
     if (!_historyRows.length) renderHistoryList();
-  } catch(e) { console.warn('Delete failed:', e); }
+  } catch(e) { console.warn('Delete failed:', e); showToast('Delete failed — please try again.'); }
 }
 
 async function histSemanticSearch() {
@@ -6260,7 +6335,7 @@ async function runRidgeAPI(skillName, prompt, runInputs, runToolId) {
             });
           } catch(e) { console.warn('signal_reports save failed:', e); }
         }
-      } catch(e) { console.warn('Supabase skill_outputs save failed:', e); }
+      } catch(e) { console.warn('Supabase skill_outputs save failed:', e); showToast('Output could not be saved to history.'); }
       // Update/insert leases row after Gavel run — independent try so skill_outputs errors don't block it
       if (skillNameSaved.toLowerCase().includes('gavel')) {
       try {
@@ -6331,8 +6406,8 @@ async function runRidgeAPI(skillName, prompt, runInputs, runToolId) {
                 }
               });
             }
-          } catch(e) { console.warn('leases update/insert failed:', e); }
-      } catch(e) { console.warn('Gavel leases block failed:', e); }
+          } catch(e) { console.warn('leases update/insert failed:', e); showToast('Lease data could not be saved to database.'); }
+      } catch(e) { console.warn('Gavel leases block failed:', e); showToast('Lease data could not be saved to database.'); }
       }
       // ── LEASE DB: post-run wiring for lens, isr, lease-comp, lease-stack, lease-compare, legal ──
       if (_lastRunToolId && ['lens','isr','lease-comp','lease-stack','lease-compare','legal'].indexOf(_lastRunToolId) !== -1) {
@@ -9219,7 +9294,7 @@ async function _llRenderStats() {
         + '<div style="font-size:10px;color:#4A5568;letter-spacing:.06em;text-transform:uppercase;margin-top:2px;">' + s.label + '</div>'
         + '</div>';
     }).join('');
-  } catch(e) {}
+  } catch(e) { console.warn('[RIDGE] _llRenderStats failed:', e.message); }
 }
 
 // ── DELETE ───────────────────────────────────────────────
