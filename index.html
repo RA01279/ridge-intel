@@ -8128,9 +8128,13 @@ async function ridgeExportPPT() {
     var s3=pptx.addSlide(); s3.background={color:BG}; addHdr(s3,'Acquisition Team Notes',3);
     console.log('[RIDGE] PPTX building slide 3...');
     var teamNotes3=(d.thesis||'').trim();
-    // Filter test/placeholder values: < 10 chars or known test strings
+    // Filter test/placeholder values: check line by line — all non-empty lines must be
+    // >= 10 chars AND not match known test strings for the block to be shown
     var _testPat3=/^(test|balogna|testing|lorem|placeholder|dummy|sample|foobar|foo|bar|n\/a|na|tbd|tbc|xxx|\.\.\.)$/i;
-    var _isTestNotes3=!teamNotes3||teamNotes3.length<10||_testPat3.test(teamNotes3.trim().toLowerCase());
+    var _notes3Lines=teamNotes3.split('\n').filter(function(l){return l.trim().length>0;});
+    var _isTestNotes3=!teamNotes3||_notes3Lines.length===0||_notes3Lines.every(function(l){
+      var lt=l.trim(); return lt.length<10||_testPat3.test(lt.toLowerCase());
+    });
     var _cleanNotes3=_isTestNotes3?'':teamNotes3;
 
     // Accent bar on left
