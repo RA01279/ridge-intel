@@ -8558,15 +8558,21 @@ async function ridgeExportPPT() {
     var curYr11=new Date().getFullYear();
     var curMo11=new Date().getMonth()+1; // 1-12
 
-    // Parse expiration to year — handles YYYY, Mon-YYYY, MM/DD/YY, MM/YYYY, etc.
+    // Parse expiration to year — handles YYYY, Mon-YYYY, Mon-YY ("Jun-28"), MM/DD/YY, MM/YY
     function parseExpYr(exp){
-      var s=String(exp||'');
-      // 4-digit year — most common
-      var m4=s.match(/(\d{4})/);
-      if(m4){var y4=parseInt(m4[1]);if(y4>=2020&&y4<=2050)return y4;}
-      // 2-digit year: MM/DD/YY or MM-DD-YY
-      var m2=s.match(/\d{1,2}[\/-]\d{1,2}[\/-](\d{2})$/);
-      if(m2){var y2=parseInt(m2[1]);return y2<50?2000+y2:1900+y2;}
+      var s=String(exp||'').trim();
+      // 4-digit year anywhere in string (e.g. "Jun-2028", "2028-06", "2028")
+      var m4=s.match(/\b(20[2-4]\d)\b/);
+      if(m4) return parseInt(m4[1]);
+      // Mon-YY (e.g. "Jun-28", "Apr-28", "Jun 28") — the primary jd.rent_roll format
+      var mMonYY=s.match(/[A-Za-z]{3}[\s-](\d{2})$/);
+      if(mMonYY){var ya=parseInt(mMonYY[1]);return ya<50?2000+ya:1900+ya;}
+      // MM/YY or MM-YY at end (e.g. "6/28", "06/28")
+      var mSlash=s.match(/^\d{1,2}[\/\-](\d{2})$/);
+      if(mSlash){var yb=parseInt(mSlash[1]);return yb<50?2000+yb:1900+yb;}
+      // MM/DD/YY (e.g. "6/30/28", "06/30/28")
+      var mFull=s.match(/\d{1,2}[\/-]\d{1,2}[\/-](\d{2})$/);
+      if(mFull){var yc=parseInt(mFull[1]);return yc<50?2000+yc:1900+yc;}
       return NaN;
     }
 
