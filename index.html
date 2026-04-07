@@ -8562,7 +8562,10 @@ async function ridgeExportPPT() {
     addFtr(s11);
 
     // ── SLIDE 12 — Sensitivity Analysis ──────────────────────
-    var sensFromModel = await _extractSensitivity(Number(String(d.sf||'0').replace(/[^0-9.]/g,''))||0);
+    var _nra14 = Number(String(d.sf||'').replace(/[^0-9.]/g,'')) ||
+                 Number(String((STATE&&STATE['isr']&&STATE['isr'].metrics&&STATE['isr'].metrics.sf)||'').replace(/[^0-9.]/g,'')) ||
+                 Number(((document.getElementById('f-isr-sf')||{}).value||'').replace(/[^0-9.]/g,'')) || 0;
+    var sensFromModel = await _extractSensitivity(_nra14);
     var s12=pptx.addSlide(); s12.background={color:BG}; addHdr(s12,'Sensitivity Analysis',12);
     console.log('[RIDGE] PPTX building slide 12...');
     s12.addText('IRR by Purchase Price × Hold Period',{x:0.4,y:0.82,w:6.5,h:0.28,fontSize:11,color:BLUE,bold:true});
