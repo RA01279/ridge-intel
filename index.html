@@ -7597,12 +7597,21 @@ async function _extractCashFlows() {
     cols.forEach(function(col, i) {
       var interest = Math.abs(cv(col+'205'));
       var principal = Math.abs(cv(col+'206'));
+      var levCFraw = cv(col+'215');
+      // For last year (exit): if levCF is near-zero, try adjacent rows for equity reversion
+      if (i === cols.length - 1 && Math.abs(levCFraw) < 1000) {
+        var exitCandidates = [218, 213, 211, 210, 198, 196];
+        for (var ec = 0; ec < exitCandidates.length; ec++) {
+          var ecv = Math.abs(cv(col + exitCandidates[ec]));
+          if (ecv > 50000) { levCFraw = ecv; break; }
+        }
+      }
       rows.push({
         year: years[i],
         egr: cv(col+'54'),
         noi: cv(col+'123'),
         ds: interest + principal,
-        levCF: cv(col+'215'),
+        levCF: levCFraw,
         yoc: cv(col+'243') * 100,
         coc: cv(col+'244') * 100
       });
@@ -7983,7 +7992,13 @@ async function ridgeExportPPT() {
       if (!v || v === '—') return '—';
       var raw = String(v).replace(/[$,\s]/g,'');
       var n = parseFloat(raw);
-      return isNaN(n) ? '$' + raw : '$' + n.toLocaleString();
+      return isNaN(n) ? '$' + raw : '$' + Math.round(n).toLocaleString('en-US');
+    }
+    function fmtPSF(v) {
+      if (!v || v === '—') return '—';
+      var raw = String(v).replace(/[$,\s]/g,'');
+      var n = parseFloat(raw);
+      return isNaN(n) ? '$' + raw + ' PSF' : '$' + Math.round(n).toLocaleString('en-US') + ' PSF';
     }
     function cleanNum(v) { return String(v||'').replace(/[$,\s]/g,''); }
     // ISSUE 8: always two decimal places
@@ -8096,14 +8111,14 @@ async function ridgeExportPPT() {
     // ── SLIDE 2 — Deal Snapshot ───────────────────────────────
     var s2=pptx.addSlide(); s2.background={color:BG}; addHdr(s2,'Deal Snapshot',2);
     console.log('[RIDGE] PPTX building slide 2...');
-    [{v:fmtUSD(d.price),l:'PURCHASE PRICE'},{v:fmtUSD(d.psf)+' PSF',l:'PRICE PER SF'},{v:pct2(d.cap),l:'GOING-IN CAP RATE'}].forEach(function(k,i){
+    [{v:fmtUSD(d.price),l:'PURCHASE PRICE'},{v:fmtPSF(d.psf),l:'PRICE PER SF'},{v:pct2(d.cap),l:'GOING-IN CAP RATE'}].forEach(function(k,i){
       kpiCard(s2,0.22+i*4.36,0.85,4.15,1.52,k.v,k.l,'1E2761','FFFFFF');
     });
     [{v:pct2(d.irr),l:'LEVERED IRR'},{v:mult2(d.em),l:'EQUITY MULTIPLE'},{v:pct2(d.ltv),l:'LTV'}].forEach(function(k,i){
       kpiCard(s2,0.22+i*4.36,2.47,4.15,1.52,k.v,k.l,'1B5E20','FFFFFF');
     });
     s2.addShape(pptx.ShapeType.rect,{x:0.22,y:4.15,w:12.9,h:0.012,fill:{color:MGREY},line:{color:MGREY}});
-    [{l:'YOC YR 3',v:pct2(d.yoc)},{l:'NOI YR 1',v:m.noi?'$'+Number(m.noi).toLocaleString():'—'},{l:'HOLD PERIOD',v:(d.hold||'—')},{l:'ASSET TYPE',v:(d.type||'—')}].forEach(function(ss,i){
+    [{l:'YOC YR 3',v:pct2(d.yoc)},{l:'NOI YR 1',v:m.noi?'$'+Math.round(Number(m.noi)).toLocaleString('en-US'):'—'},{l:'HOLD PERIOD',v:(d.hold||'—')},{l:'ASSET TYPE',v:(d.type||'—')}].forEach(function(ss,i){
       s2.addText(ss.v,{x:0.22+i*3.28,y:4.30,w:3.1,h:1.95,fontSize:28,color:TEXT,bold:true,align:'center',valign:'middle'});
       s2.addText(ss.l,{x:0.22+i*3.28,y:6.28,w:3.1,h:0.44,fontSize:9.5,color:MUTED,align:'center',charSpacing:1.5});
     });
@@ -8113,18 +8128,29 @@ async function ridgeExportPPT() {
     var s3=pptx.addSlide(); s3.background={color:BG}; addHdr(s3,'Acquisition Team Notes',3);
     console.log('[RIDGE] PPTX building slide 3...');
     var teamNotes3=(d.thesis||'').trim();
-    s3.addShape(pptx.ShapeType.rect,{x:0.25,y:0.90,w:0.06,h:5.95,fill:{color:'1E2761'},line:{color:'1E2761'}});
-    if(teamNotes3.length>=100){
-      s3.addText(teamNotes3,{x:0.45,y:0.90,w:12.63,h:5.95,fontSize:13,color:'1A1A2E',wrap:true,valign:'top'});
-    } else {
-      if(teamNotes3){s3.addText(teamNotes3,{x:0.45,y:0.90,w:12.63,h:0.80,fontSize:13,color:'1A1A2E',wrap:true,valign:'top'});}
-      s3.addShape(pptx.ShapeType.rect,{x:0.45,y:1.80,w:12.63,h:0.012,fill:{color:MGREY},line:{color:MGREY}});
-      s3.addText('DEAL SUMMARY',{x:0.45,y:1.88,w:12.63,h:0.26,fontSize:9,color:'1E2761',bold:true,charSpacing:2});
-      var _ds3=stripMd((_skillRawOutputs&&_skillRawOutputs['isr']&&_extractKeySection(_skillRawOutputs['isr'],'DEAL SUMMARY'))||_extractKeySection(panelText,'DEAL SUMMARY')||extractSection(panelText,'DEAL SUMMARY')||'');
-      _ds3=_ds3.replace(/^#+\s*DEAL SUMMARY\s*/i,'').trim();
-      _ds3=_ds3.replace(/^DEAL SUMMARY\s*/i,'').trim();
-      s3.addText(_ds3.slice(0,600)||'Upload OM and run ISR to populate deal summary.',{x:0.45,y:2.20,w:12.63,h:4.62,fontSize:11,color:'4A5568',wrap:true,valign:'top'});
-    }
+    // Filter test/placeholder values: < 10 chars or known test strings
+    var _testPat3=/^(test|balogna|testing|lorem|placeholder|dummy|sample|foobar|foo|bar|n\/a|na|tbd|tbc|xxx|\.\.\.)$/i;
+    var _isTestNotes3=!teamNotes3||teamNotes3.length<10||_testPat3.test(teamNotes3.trim().toLowerCase());
+    var _cleanNotes3=_isTestNotes3?'':teamNotes3;
+
+    // Accent bar on left
+    s3.addShape(pptx.ShapeType.rect,{x:0.25,y:0.80,w:0.06,h:6.05,fill:{color:'1E2761'},line:{color:'1E2761'}});
+
+    // DEAL SUMMARY — top of content area
+    s3.addText('DEAL SUMMARY',{x:0.45,y:0.82,w:12.63,h:0.26,fontSize:9.5,color:'1E2761',bold:true,charSpacing:2});
+    var _ds3=stripMd((_skillRawOutputs&&_skillRawOutputs['isr']&&_extractKeySection(_skillRawOutputs['isr'],'DEAL SUMMARY'))||_extractKeySection(panelText,'DEAL SUMMARY')||extractSection(panelText,'DEAL SUMMARY')||'');
+    _ds3=_ds3.replace(/^#+\s*DEAL SUMMARY\s*/i,'').trim();
+    _ds3=_ds3.replace(/^DEAL SUMMARY\s*/i,'').trim();
+    s3.addText(_ds3.slice(0,480)||'Upload OM and run ISR to populate deal summary.',{x:0.45,y:1.12,w:12.63,h:2.70,fontSize:10.5,color:'4A5568',wrap:true,valign:'top'});
+
+    // Divider between DEAL SUMMARY and ACQUISITION TEAM NOTES
+    s3.addShape(pptx.ShapeType.rect,{x:0.45,y:3.92,w:12.63,h:0.012,fill:{color:MGREY},line:{color:MGREY}});
+
+    // ACQUISITION TEAM NOTES — below divider
+    s3.addText('ACQUISITION TEAM NOTES',{x:0.45,y:3.98,w:12.63,h:0.26,fontSize:9.5,color:'1E2761',bold:true,charSpacing:2});
+    // Show clean notes or muted placeholder (never show test strings)
+    s3.addText(_cleanNotes3||'[Acquisition team notes \u2014 add in ISR form before export]',
+      {x:0.45,y:4.28,w:12.63,h:2.40,fontSize:_cleanNotes3?11:10,color:_cleanNotes3?'1A1A2E':MUTED,wrap:true,valign:'top'});
     addFtr(s3);
 
     // ── SLIDE 4 — Investment Thesis ───────────────────────────
@@ -8160,6 +8186,13 @@ async function ridgeExportPPT() {
           else{_bd4='';}
         }
       }
+      // Strip any residual leading numbering artifacts (e.g. "1. " or "2) ")
+      _hl4=_hl4.replace(/^\d+[\.\)]\s*/,'').trim();
+      // Inject actual IRR if headline has 0% or placeholder IRR value
+      var _actualIRR4=pct2(d.irr||(jd&&jd.recommendation&&jd.recommendation.irr)||'');
+      if(_actualIRR4&&_actualIRR4!=='—'){
+        _hl4=_hl4.replace(/^\d+\.?\d*%\s+(Levered IRR)/i, _actualIRR4+' $1');
+      }
       if(_bd4.length>220) _bd4=_bd4.slice(0,220).replace(/\s\S*$/,'')+'…';
       s4.addShape(pptx.ShapeType.rect,{x:0.25,y:ty,w:13.08,h:1.38,fill:{color:LGREY},line:{color:MGREY,w:0.5}});
       s4.addShape(pptx.ShapeType.rect,{x:0.25,y:ty,w:0.04,h:1.38,fill:{color:BLUE},line:{color:BLUE}});
@@ -8172,9 +8205,9 @@ async function ridgeExportPPT() {
     // ── SLIDE 5 — Property Overview ───────────────────────────
     var s5=pptx.addSlide(); s5.background={color:BG}; addHdr(s5,'Property Overview',5);
     console.log('[RIDGE] PPTX building slide 5...');
-    s5.addShape(pptx.ShapeType.rect,{x:6.58,y:0.90,w:0.012,h:5.95,fill:{color:MGREY},line:{color:MGREY}});
-    s5.addText('DEAL SUMMARY',{x:0.25,y:0.90,w:6.30,h:0.26,fontSize:9.5,color:'1E2761',bold:true,charSpacing:2});
-    s5.addText('LOCATION & SUBMARKET',{x:6.80,y:0.90,w:6.28,h:0.26,fontSize:9.5,color:'1E2761',bold:true,charSpacing:2});
+    s5.addShape(pptx.ShapeType.rect,{x:6.58,y:0.80,w:0.012,h:6.10,fill:{color:MGREY},line:{color:MGREY}});
+    s5.addText('DEAL SUMMARY',{x:0.25,y:0.80,w:6.30,h:0.26,fontSize:9.5,color:'1E2761',bold:true,charSpacing:2});
+    s5.addText('LOCATION & SUBMARKET',{x:6.80,y:0.80,w:6.28,h:0.26,fontSize:9.5,color:'1E2761',bold:true,charSpacing:2});
     // Left: structured fact rows
     var _sfRaw5=Number((STATE&&STATE['isr']&&STATE['isr'].metrics&&STATE['isr'].metrics.sf)||0)||
                 Number(((document.getElementById('f-isr-sf')||{}).value||'0').replace(/[^0-9.]/g,'')||0)||
@@ -8185,7 +8218,7 @@ async function ridgeExportPPT() {
       ['Asset Type', d.type||'—'],
       ['Size', _sfStr5],
       ['Purchase Price', fmtUSD(d.price)],
-      ['Price PSF', fmtUSD(d.psf)],
+      ['Price PSF', fmtPSF(d.psf)],
       ['Going-In Cap Rate', pct2(d.cap)],
       ['Levered IRR', pct2(d.irr)],
       ['Equity Multiple', mult2(d.em)],
@@ -8194,10 +8227,10 @@ async function ridgeExportPPT() {
       ['Hold Period', d.hold||'—']
     ];
     factRows5.forEach(function(row,ri){
-      var fy=1.15+ri*0.48;
-      s5.addShape(pptx.ShapeType.rect,{x:0.25,y:fy,w:6.30,h:0.46,fill:{color:ri%2===1?LGREY:BG},line:{color:MGREY,w:0.5}});
-      s5.addText(row[0],{x:0.35,y:fy,w:3.0,h:0.46,fontSize:9.5,color:MUTED,valign:'middle',bold:false});
-      s5.addText(String(row[1]),{x:3.35,y:fy,w:3.1,h:0.46,fontSize:10,color:TEXT,valign:'middle',bold:true,align:'right'});
+      var fy=1.10+ri*0.46;
+      s5.addShape(pptx.ShapeType.rect,{x:0.25,y:fy,w:6.30,h:0.34,fill:{color:ri%2===1?LGREY:BG},line:{color:MGREY,w:0.5}});
+      s5.addText(row[0],{x:0.35,y:fy,w:3.0,h:0.34,fontSize:9,color:MUTED,valign:'middle',bold:false});
+      s5.addText(String(row[1]),{x:3.35,y:fy,w:3.1,h:0.34,fontSize:9.5,color:TEXT,valign:'middle',bold:true,align:'right'});
     });
     // Right: expanded extraction — try _extractKeySection variants, then extractSection
     var _mktRaw5=
@@ -8219,10 +8252,13 @@ async function ridgeExportPPT() {
         return ri===0?tblH(cs):tblR(cs,ri%2===1);
       });
       var mktRH5=Math.min(0.85,Math.max(0.28,5.60/Math.max(mktTbl5.length,2)));
-      s5.addTable(mktTbl5,{x:6.35,y:0.85,w:5.55,rowH:mktRH5,border:{type:'solid',color:MGREY,w:0.5},fontSize:9.5});
+      var mktColCnt5=mktTbl5[0]?mktTbl5[0].length:2;
+      var mktValColW5=mktColCnt5>1?(5.55-3.2)/Math.max(mktColCnt5-1,1):2.35;
+      var mktColW5=[3.2].concat(Array.apply(null,Array(Math.max(mktColCnt5-1,0))).map(function(){return mktValColW5;}));
+      s5.addTable(mktTbl5,{x:6.35,y:0.80,w:5.55,rowH:mktRH5,colW:mktColW5,border:{type:'solid',color:MGREY,w:0.5},fontSize:9.5});
     } else {
       var mktNarr5=stripMd(_mktRaw5).trim()||'Upload OM PDF for submarket vacancy, rent trends, and location narrative.';
-      s5.addText(mktNarr5.slice(0,600),{x:6.35,y:0.85,w:5.55,h:5.60,fontSize:10,color:'4A5568',wrap:true,valign:'top'});
+      s5.addText(mktNarr5.slice(0,600),{x:6.35,y:0.80,w:5.55,h:5.60,fontSize:10,color:'4A5568',wrap:true,valign:'top'});
     }
     addFtr(s5);
 
@@ -8239,7 +8275,7 @@ async function ridgeExportPPT() {
         tblH(['TOTAL CAPITALIZATION','$'+Math.round(p6*1.075).toLocaleString(),'$'+(p6*1.075/sf6).toFixed(0),'100%'])];
       s6.addTable(su6,{x:0.4,y:0.82,w:7.2,rowH:0.44,border:{type:'solid',color:MGREY,w:0.5},fontSize:10});
     }
-    // Debt Terms table — _extractKeySection first (indexOf-based), then extractSection (##-based)
+    // Debt Terms table — use _capRaw with ISR-specific patterns per fix spec
     var capSec6=(_skillRawOutputs&&_skillRawOutputs['isr']&&(
       _extractKeySection(_skillRawOutputs['isr'],'CAPITAL STACK')||
       _extractKeySection(_skillRawOutputs['isr'],'DEBT TERMS')||
@@ -8247,10 +8283,20 @@ async function ridgeExportPPT() {
       extractSection(_skillRawOutputs['isr'],'CAPITAL STACK')||
       extractSection(_skillRawOutputs['isr'],'DEBT TERMS')
     ))||extractSection(panelText,'CAPITAL STACK')||extractSection(panelText,'DEBT')||'';
-    var dtRate6=(capSec6.match(/([0-9.]+%)\s*(?:interest|rate|SOFR|\+|fixed|floating)/i)||capSec6.match(/(?:interest\s+rate|rate|coupon)[:\s]+([0-9.]+%)/i)||[])[1]||(d.rate?String(d.rate).replace(/%/g,'')+'%':'—');
-    var dtAmort6=(capSec6.match(/([0-9]+)[\s-]*(?:yr|year)[\s-]*amort/i)||capSec6.match(/amort(?:ization)?[:\s]+([0-9]+\s*(?:yr|year|mo|month)?)/i)||[])[1]||'—';
-    var dtIO6=(capSec6.match(/([0-9]+)[\s-]*(?:month|yr|year)[\s-]*(?:IO|interest[\s-]*only)/i)||capSec6.match(/(?:io|interest\s+only)[:\s]+([0-9]+\s*(?:yr|year|mo|month)?)/i)||[])[1]||'—';
-    var dtTerm6=(capSec6.match(/([0-9]+)[\s-]*(?:yr|year)[\s-]*(?:term|loan)/i)||[])[1]||'—';
+    // Dedicated _capRaw with broader ISR search (CAPITAL STACK | DEBT sections)
+    var _capRaw6=(_skillRawOutputs&&_skillRawOutputs['isr']&&(
+      _extractKeySection(_skillRawOutputs['isr'],'CAPITAL STACK')||
+      _extractKeySection(_skillRawOutputs['isr'],'DEBT')
+    ))||capSec6;
+    var dtRate6=(_capRaw6.match(/(\d+\.?\d*%?)[\s\w]*(?:interest rate|rate|SOFR\s*\+[\s\d.]+%?)/i)||[])[1]||
+                (_capRaw6.match(/(?:interest\s+rate|rate|coupon)[:\s]+([0-9.]+%)/i)||[])[1]||
+                (d.rate?String(d.rate).replace(/%/g,'')+'%':'—');
+    var dtTerm6=(_capRaw6.match(/(\d+)[\s-]*(?:year|yr)[\s\w]*(?:term|loan term|maturity)/i)||[])[1]||
+                (_capRaw6.match(/([0-9]+)[\s-]*(?:yr|year)[\s-]*(?:term|loan)/i)||[])[1]||'—';
+    var dtAmort6=(_capRaw6.match(/(\d+)[\s-]*(?:year|yr)[\s\w]*(?:amort)/i)||[])[1]||
+                 (_capRaw6.match(/amort(?:ization)?[:\s]+([0-9]+\s*(?:yr|year|mo|month)?)/i)||[])[1]||'—';
+    var dtIO6=(_capRaw6.match(/(\d+)[\s-]*(?:month|yr|year)[\s\w]*(?:IO|interest.only)/i)||[])[1]||
+              (_capRaw6.match(/(?:io|interest\s+only)[:\s]+([0-9]+\s*(?:yr|year|mo|month)?)/i)||[])[1]||'—';
     var _ltv6Raw=String(d.ltv||'').replace(/%/g,''); var dtLTV6=_ltv6Raw?(_ltv6Raw+'%'):((capSec6.match(/ltv[:\s]+([0-9.]+%?)/i)||[])[1]||'—');
     var dtAmt6=p6&&_ltv6Raw?('$'+Math.round(p6*parseFloat(_ltv6Raw)/100).toLocaleString()):((capSec6.match(/\$[\d,]+(?:\s*(?:senior|loan|million|M))?/)||[])[0]||'—');
     var dtRows6=[
@@ -8300,19 +8346,27 @@ async function ridgeExportPPT() {
       var hdrBase8 = {bold:true, color:WHITE, fill:{color:'1E2761'}, fontSize:10, align:'center'};
       var cfHdr8 = [{text:'METRIC', options:Object.assign({},hdrBase8,{align:'left'})}]
         .concat(cf8Yrs.map(function(r,i){
-          return {text: i===cf8N-1 ? r.year+' (Exit)' : r.year, options:hdrBase8};
+          return {text: i===cf8N-1 ? String(r.year).replace(/\s*\(Exit\)\s*/gi,'').trim()+' (Exit)' : r.year, options:hdrBase8};
         }));
       function fmtDollar8(v){ return '$'+Math.round(v).toLocaleString('en-US'); }
       function yocFill8(v){
         if(v>=7.5)  return {bg:'2E7D32', tc:'FFFFFF'};
-        if(v>=6.0)  return {bg:'E65100', tc:'FFFFFF'};
+        if(v>=6.0)  return {bg:'F9A825', tc:'1A2332'};
         return           {bg:'C62828', tc:'FFFFFF'};
       }
       var cf8Metrics = [
         {label:'EGR',          fmt:function(r){ return fmtDollar8(r.egr); },   extraOpts:null},
         {label:'NOI',          fmt:function(r){ return fmtDollar8(r.noi); },   extraOpts:null},
         {label:'DEBT SERVICE', fmt:function(r){ return fmtDollar8(r.ds); },    extraOpts:null},
-        {label:'LEVERED CF',   fmt:function(r,isLast){ return fmtDollar8(r.levCF)+(isLast?'*':''); }, extraOpts:null},
+        {label:'LEVERED CF',   fmt:function(r,isLast){
+          var v=r.levCF;
+          // Last year: if near-zero, try jd for exit value
+          if(isLast&&Math.abs(v)<1000){
+            var _ep=jd&&(Number(jd.exit_value||0)||Number(jd.reversion_proceeds||0)||Number(jd.net_proceeds||0)||Number(jd.sale_proceeds||0));
+            if(_ep>50000) v=_ep;
+          }
+          return (isLast&&Math.abs(v)<1000)?'—*':fmtDollar8(v)+(isLast?'*':'');
+        }, extraOpts:null},
         {label:'YOC',          fmt:function(r){ return r.yoc.toFixed(2)+'%'; },
           extraOpts:function(r){ var f=yocFill8(r.yoc); return {fill:{color:f.bg},color:f.tc,bold:true}; }},
         {label:'CoC',          fmt:function(r){ return r.coc.toFixed(2)+'%'; }, extraOpts:null},
@@ -8325,7 +8379,7 @@ async function ridgeExportPPT() {
         var labelCell = {text:md.label, options:{bold:true,color:TEXT,fill:{color:altBg},fontSize:10,align:'left'}};
         var dataCells = cf8Yrs.map(function(r,yi){
           var isLast = yi===cf8N-1;
-          var val    = md.label==='LEVERED CF' ? fmtDollar8(r.levCF)+(isLast?'*':'') : md.fmt(r,isLast);
+          var val    = md.fmt(r,isLast);
           var opts   = {fontSize:10,color:TEXT2,fill:{color:altBg},align:'right'};
           if(md.extraOpts){ var extra=md.extraOpts(r); for(var k in extra) opts[k]=extra[k]; }
           return {text:val, options:opts};
@@ -8379,11 +8433,18 @@ async function ridgeExportPPT() {
       var vac10=(mktFb10.match(/vacanc[yi][^\d]*(\d[\d.,\s]*%?)/i)||[])[1]||'—';
       var rent10=(mktFb10.match(/(?:avg|average|asking)\s+rent[^\d]*\$?([\d.,]+(?:\s*psf)?)/i)||[])[1]||'—';
       var sup10=(mktFb10.match(/(?:supply|under\s+construction)[^\d]*(\d[\d.,\s]*(?:sf|msf|ksf)?)/i)||[])[1]||'—';
-      var rep10=(mktFb10.match(/replacement\s+cost[^\d]*\$?([\d.,]+(?:\s*psf)?)/i)||[])[1]||'—';
+      // Replacement cost: prefer PSF patterns over total portfolio value
+      var _repRng10=mktFb10.match(/replacement\s+cost[^$\n]*\$([\d,]+)\s*(?:\u2013|-|to)\s*\$([\d,]+)\s*(?:psf|\/sf)/i);
+      var _repSgl10=mktFb10.match(/replacement\s+cost[^$\n]*\$([\d,]+)\s*(?:psf|\/sf)/i);
+      var _repFall10=mktFb10.match(/replacement\s+cost[^\d]*\$?([\d.,]+)/i);
+      var rep10=_repRng10?('$'+_repRng10[1]+'\u2013$'+_repRng10[2]+' PSF'):
+                _repSgl10?('$'+_repSgl10[1]+' PSF'):
+                (_repFall10?_repFall10[1]:'—');
       [{v:vac10,l:'VACANCY RATE'},{v:rent10,l:'AVG ASKING RENT'},{v:sup10,l:'NEW SUPPLY'},{v:rep10,l:'REPLACEMENT COST'}].forEach(function(kp,i){mktKPICard10(s10,0.25+i*3.27,0.90,kp.v,kp.l);});
     }
-    // Lease comps — always show section; placeholder if empty
+    // Lease comps — always show section; try ISR data, panelText, then Supabase DB
     var lcRows10=[];
+    var _lcFromDB10=false;
     if(jd&&jd.lease_comps&&jd.lease_comps.length){
       lcRows10=[tblH(['PROPERTY','SIZE (SF)','DATE','TERM','RATE PSF','TYPE'])].concat(
         jd.lease_comps.slice(0,5).map(function(c,ri){return tblR([c.property||'',c.sf||'',c.date||'',c.term||'',c.rate||'',c.type||''],ri%2===1);}));
@@ -8392,10 +8453,34 @@ async function ridgeExportPPT() {
       var lcLines10=lcSec10.split('\n').filter(function(l){return l.includes('|')&&!l.match(/^[\s|-]+$/);});
       if(lcLines10.length>1){lcRows10=lcLines10.slice(0,6).map(function(l,ri){var cs=l.split('|').filter(function(c){return c.trim();});return ri===0?tblH(cs.map(function(c){return c.trim();})):tblR(cs.map(function(c){return c.trim();}),ri%2===1);});}
     }
-    s10.addText('LEASE COMPARABLES',{x:0.25,y:2.05,w:13.08,h:0.26,fontSize:9.5,color:'1E2761',bold:true,charSpacing:2});
+    // Supabase lease DB fallback — query by inferred market when no comps found
+    if(!lcRows10.length&&_sb&&_sbOk){
+      var _dealMkt10=(jd&&jd.market&&jd.market.name)||(function(){
+        var a=(d.addr||'').toLowerCase();
+        if(a.includes('savannah')) return 'Savannah, GA';
+        if(a.includes(', ga')||a.includes('atlanta')||a.includes('gwinnett')||a.includes('conyers')||a.includes('stonecrest')||a.includes('lithonia')) return 'Atlanta, GA';
+        if(a.includes('dallas')||a.includes('fort worth')||a.includes(' tx')||a.includes(',tx')) return 'Dallas\u2013Fort Worth, TX';
+        if(a.includes('houston')) return 'Houston, TX';
+        if(a.includes('austin')) return 'Austin, TX (Watch)';
+        return '';
+      })();
+      if(_dealMkt10){
+        try{
+          var _lcRes10=await _sb.from('leases').select('*').eq('market',_dealMkt10).eq('vacant',false).order('created_at',{ascending:false}).limit(6);
+          if(_lcRes10.data&&_lcRes10.data.length){
+            _lcFromDB10=true;
+            lcRows10=[tblH(['PROPERTY','SF','DATE','RATE PSF','TYPE'])].concat(
+              _lcRes10.data.slice(0,5).map(function(c,ri){return tblR([c.address||c.property||'',c.sf||'',c.expiration_date||c.date||'',c.base_rent_psf||'',c.lease_type||''],ri%2===1);}));
+          }
+        }catch(_lce10){console.warn('[RIDGE] Slide 10 lease DB fallback failed:',_lce10);}
+      }
+    }
+    var _lcLabel10=_lcFromDB10?'LEASE COMPARABLES \u2014 RIDGE DATABASE':'LEASE COMPARABLES';
+    s10.addText(_lcLabel10,{x:0.25,y:2.05,w:13.08,h:0.26,fontSize:9.5,color:'1E2761',bold:true,charSpacing:2});
     if(lcRows10.length>1){
+      var _lcColW10=_lcFromDB10?[4.5,1.5,1.8,1.98,3.3]:[4.0,1.65,1.5,1.3,1.65,1.98];
       var lcRH10=Math.min(0.85,Math.max(0.28,4.50/Math.max(lcRows10.length,2)));
-      s10.addTable(lcRows10,{x:0.25,y:2.35,w:13.08,rowH:lcRH10,colW:[4.0,1.65,1.5,1.3,1.65,1.98],border:{type:'solid',color:MGREY,w:0.5},fontSize:9.5});
+      s10.addTable(lcRows10,{x:0.25,y:2.35,w:13.08,rowH:lcRH10,colW:_lcColW10,border:{type:'solid',color:MGREY,w:0.5},fontSize:9.5});
     } else {
       s10.addText('Upload OM to populate lease comps.',{x:0.25,y:2.35,w:13.08,h:0.38,fontSize:10,color:MUTED});
     }
@@ -8471,25 +8556,36 @@ async function ridgeExportPPT() {
     }
     console.log('[RIDGE] Slide 11 rr11 final length:',rr11?rr11.length:0);
     var curYr11=new Date().getFullYear();
-    var pal11=['2C3E6B','3D6B5C','5B7FA6','8B6914','7A3535','5C3D7A','2D6B6B','7A5C2D'];
-    var tenantColor11={}, tcIdx11=0;
-    rr11.forEach(function(r){var t=String(r.tenant||'Unknown').trim();if(!tenantColor11[t]){tenantColor11[t]=pal11[tcIdx11++%8];}});
+    var curMo11=new Date().getMonth()+1; // 1-12
 
-    // Parse "Mon-YYYY" (e.g. "Aug-2028") or any 4-digit year in the string
+    // Parse expiration to year — handles YYYY, Mon-YYYY, MM/DD/YY, MM/YYYY, etc.
     function parseExpYr(exp){
       var s=String(exp||'');
-      var m=s.match(/(\d{4})/);
-      return m?parseInt(m[1]):NaN;
+      // 4-digit year — most common
+      var m4=s.match(/(\d{4})/);
+      if(m4){var y4=parseInt(m4[1]);if(y4>=2020&&y4<=2050)return y4;}
+      // 2-digit year: MM/DD/YY or MM-DD-YY
+      var m2=s.match(/\d{1,2}[\/-]\d{1,2}[\/-](\d{2})$/);
+      if(m2){var y2=parseInt(m2[1]);return y2<50?2000+y2:1900+y2;}
+      return NaN;
+    }
+
+    // Urgency color by year (months from now)
+    function yrUrgencyColor11(yr){
+      var monthsDiff=(yr-curYr11)*12+(1-curMo11); // approximate months to start of year
+      if(monthsDiff<=12) return 'C62828';  // red — ≤12 months
+      if(monthsDiff<=24) return 'F9A825';  // amber — 13–24 months
+      return '2E7D32';                      // green — 25+ months
     }
 
     var expByYrTenant11={};
     rr11.forEach(function(r){
       var yr=parseExpYr(r.expiration);
-      if(!isNaN(yr)&&yr>=curYr11&&yr<=curYr11+10){
+      if(!isNaN(yr)&&yr>=curYr11-1&&yr<=curYr11+12){
         var sfn=parseFloat(String(r.sf||'0').replace(/[^0-9.]/g,''))||0;
         var t=String(r.tenant||'Unknown').trim();
         if(!expByYrTenant11[yr]) expByYrTenant11[yr]=[];
-        expByYrTenant11[yr].push({tenant:t,sf:sfn,color:tenantColor11[t]});
+        expByYrTenant11[yr].push({tenant:t,sf:sfn});
       }
     });
 
@@ -8528,32 +8624,25 @@ async function ridgeExportPPT() {
         barGap11=nBars>1?(7.0-nBars*barW11)/(nBars-1):0;
       }
       chartYrs11.forEach(function(yr,i){
-        var tenants=expByYrTenant11[yr]||[];
         var totalYrSF=yrTotalSF11(yr);
         var totalBarH=maxSF11>0?(totalYrSF/maxSF11)*maxBarH11:0;
-        var stackTop=barY011;
-        tenants.forEach(function(t){
-          var th=totalYrSF>0?(t.sf/totalYrSF)*totalBarH:0;
-          if(th>0.02){
-            stackTop-=th;
-            s11.addShape(pptx.ShapeType.rect,{x:barX11+i*(barW11+barGap11),y:stackTop,w:barW11,h:th,fill:{type:'solid',color:t.color},line:{color:t.color}});
-          }
-        });
+        var barColor=yrUrgencyColor11(yr);
+        var bx=barX11+i*(barW11+barGap11);
+        if(totalBarH>0.02){
+          s11.addShape(pptx.ShapeType.rect,{x:bx,y:barY011-totalBarH,w:barW11,h:totalBarH,fill:{type:'solid',color:barColor},line:{color:barColor}});
+        }
         if(totalBarH>0.05){
           s11.addText(totalYrSF>=1000?Math.round(totalYrSF/1000)+'K':String(Math.round(totalYrSF)),
-            {x:barX11+i*(barW11+barGap11),y:barY011-totalBarH-0.3,w:barW11,h:0.26,fontSize:7.5,color:TEXT,align:'center',bold:true});
+            {x:bx,y:barY011-totalBarH-0.3,w:barW11,h:0.26,fontSize:7.5,color:TEXT,align:'center',bold:true});
         }
-        s11.addText(String(yr),{x:barX11+i*(barW11+barGap11),y:barY011+0.06,w:barW11,h:0.26,fontSize:8,color:TEXT2,align:'center'});
+        s11.addText(String(yr),{x:bx,y:barY011+0.06,w:barW11,h:0.26,fontSize:8,color:TEXT2,align:'center'});
       });
 
-      // Tenant legend
-      var lgKeys11=Object.keys(tenantColor11).slice(0,8);
-      var lgCols11=Math.min(lgKeys11.length,4), lgRows11=Math.ceil(lgKeys11.length/lgCols11);
-      lgKeys11.forEach(function(t,i){
-        var lc=Math.floor(i/lgRows11), lr=i%lgRows11;
-        var lx=barX11+lc*1.88, ly=6.35+lr*0.22;
-        s11.addShape(pptx.ShapeType.rect,{x:lx,y:ly,w:0.13,h:0.13,fill:{type:'solid',color:tenantColor11[t]},line:{color:tenantColor11[t]}});
-        s11.addText(t.slice(0,16),{x:lx+0.17,y:ly-0.01,w:1.65,h:0.16,fontSize:7,color:TEXT2});
+      // Urgency legend
+      [{color:'C62828',label:'\u226412 months (Immediate)'},{color:'F9A825',label:'13\u201324 months (Near-Term)'},{color:'2E7D32',label:'25+ months (Long-Term)'}].forEach(function(lg,i){
+        var lx=barX11+i*2.4, ly=6.35;
+        s11.addShape(pptx.ShapeType.rect,{x:lx,y:ly,w:0.13,h:0.13,fill:{type:'solid',color:lg.color},line:{color:lg.color}});
+        s11.addText(lg.label,{x:lx+0.17,y:ly-0.01,w:2.2,h:0.16,fontSize:7,color:TEXT2});
       });
 
     } else {
