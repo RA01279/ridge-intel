@@ -3269,16 +3269,6 @@ Table 1: IRR by Purchase Price × Hold Period
 Table 2: IRR by Purchase Price × Exit Cap Rate
 Color commentary: green = clears hurdle, yellow = borderline, red = fails
 
-## RISK MATRIX
-Table: Risk Factor | Severity (High/Medium/Low) | Mitigant
-Minimum 6 risks. Be specific — name the tenants, the dates, the dollar amounts.
-
-## IC RECOMMENDATION
-PURSUE | CONDITIONAL | PASS
-If PURSUE: state the conviction and next steps
-If CONDITIONAL: state exactly what must be verified before proceeding
-5 specific next steps numbered and actionable
-
 ## ENTRADA HURDLE CONFIRMATION
 This section is MANDATORY and must appear in every memo regardless of whether the deal passes or fails.
 
@@ -3307,7 +3297,17 @@ IC Recommendation Logic:
   CONDITIONAL: Hurdles near threshold — state specifically which hurdles are short and by how much; state what verification or price adjustment would close the gap; location quality and asset functionality drive the risk assessment
   PASS: Fundamental return gap that cannot be closed by reasonable price adjustment or assumption refinement
 
-Overall: [CLEARS ALL HURDLES — PURSUE / FAILS X OF 5 — CONDITIONAL based on location/functionality / PASS — fundamental return gap]`;
+Overall: [CLEARS ALL HURDLES — PURSUE / FAILS X OF 5 — CONDITIONAL based on location/functionality / PASS — fundamental return gap]
+
+## RISK MATRIX
+Table: Risk Factor | Severity (High/Medium/Low) | Mitigant
+Minimum 6 risks. Be specific — name the tenants, the dates, the dollar amounts.
+
+## IC RECOMMENDATION
+PURSUE | CONDITIONAL | PASS
+If PURSUE: state the conviction and next steps
+If CONDITIONAL: state exactly what must be verified before proceeding
+5 specific next steps numbered and actionable`;
       return p;
 
     case 'loi':
@@ -7697,6 +7697,40 @@ async function _extractSensitivity(nra) {
   }
 }
 
+function _extractDebtTerms() {
+  var modelBuffer = _isrModelBuffer ||
+    (STATE['isr'] && STATE['isr'].files && (STATE['isr'].files['model-buf'] || STATE['isr'].files['model']));
+  if (!modelBuffer || typeof modelBuffer === 'string') return null;
+  try {
+    var wb = XLSX.read(modelBuffer, {type:'array'});
+    var ws = wb.Sheets['General Inputs'] ||
+             wb.Sheets[Object.keys(wb.Sheets)
+               .find(function(s){ return s.includes('General'); })] || null;
+    if (!ws) return null;
+    var cv = function(ref) {
+      var c = ws[ref]; return (c && c.v !== undefined && c.v !== null) ? c.v : null;
+    };
+    return {
+      loanAmount:      cv('J37'),
+      ltv:             cv('H37'),
+      closeDate:       cv('J38'),
+      rate:            cv('J39'),
+      rateType:        cv('H39'),
+      ioPeriod:        cv('J40'),
+      amortization:    cv('J41'),
+      financingFees:   cv('J42'),
+      extensionFees:   cv('J43'),
+      tiFunding:       cv('J46'),
+      capexFunding:    cv('J47'),
+      totalFutureFund: cv('J48'),
+      totalLoanAmount: cv('J49')
+    };
+  } catch(e) {
+    console.warn('[RIDGE] _extractDebtTerms failed:', e.message);
+    return null;
+  }
+}
+
 async function ridgeExportPPT() {
   console.log('ridgeExportPPT fired — skillName:', document.getElementById('ridge-panel-skill-name').textContent, '| _lastRunInputs:', _lastRunInputs ? 'present' : 'null', '| PptxGenJS:', typeof PptxGenJS);
   if (typeof PptxGenJS === 'undefined') {
@@ -8266,6 +8300,8 @@ async function ridgeExportPPT() {
     }
     addFtr(s5);
 
+    var _dt6 = _extractDebtTerms();
+
     // ── SLIDE 6 — Sources & Uses / Capital Stack ──────────────
     var s6=pptx.addSlide(); s6.background={color:BG}; addHdr(s6,'Sources & Uses / Capital Stack',6);
     console.log('[RIDGE] PPTX building slide 6...');
@@ -8279,41 +8315,37 @@ async function ridgeExportPPT() {
         tblH(['TOTAL CAPITALIZATION','$'+Math.round(p6*1.075).toLocaleString(),'$'+(p6*1.075/sf6).toFixed(0),'100%'])];
       s6.addTable(su6,{x:0.4,y:0.82,w:7.2,rowH:0.44,border:{type:'solid',color:MGREY,w:0.5},fontSize:10});
     }
-    // Debt Terms table — use _capRaw with ISR-specific patterns per fix spec
-    var capSec6=(_skillRawOutputs&&_skillRawOutputs['isr']&&(
-      _extractKeySection(_skillRawOutputs['isr'],'CAPITAL STACK')||
-      _extractKeySection(_skillRawOutputs['isr'],'DEBT TERMS')||
-      _extractKeySection(_skillRawOutputs['isr'],'FINANCING')||
-      extractSection(_skillRawOutputs['isr'],'CAPITAL STACK')||
-      extractSection(_skillRawOutputs['isr'],'DEBT TERMS')
-    ))||extractSection(panelText,'CAPITAL STACK')||extractSection(panelText,'DEBT')||'';
-    // Dedicated _capRaw with broader ISR search (CAPITAL STACK | DEBT sections)
-    var _capRaw6=(_skillRawOutputs&&_skillRawOutputs['isr']&&(
-      _extractKeySection(_skillRawOutputs['isr'],'CAPITAL STACK')||
-      _extractKeySection(_skillRawOutputs['isr'],'DEBT')
-    ))||capSec6;
-    var dtRate6=(_capRaw6.match(/(\d+\.?\d*%?)[\s\w]*(?:interest rate|rate|SOFR\s*\+[\s\d.]+%?)/i)||[])[1]||
-                (_capRaw6.match(/(?:interest\s+rate|rate|coupon)[:\s]+([0-9.]+%)/i)||[])[1]||
-                (d.rate?String(d.rate).replace(/%/g,'')+'%':'—');
-    var dtTerm6=(_capRaw6.match(/(\d+)[\s-]*(?:year|yr)[\s\w]*(?:term|loan term|maturity)/i)||[])[1]||
-                (_capRaw6.match(/([0-9]+)[\s-]*(?:yr|year)[\s-]*(?:term|loan)/i)||[])[1]||'—';
-    var dtAmort6=(_capRaw6.match(/(\d+)[\s-]*(?:year|yr)[\s\w]*(?:amort)/i)||[])[1]||
-                 (_capRaw6.match(/amort(?:ization)?[:\s]+([0-9]+\s*(?:yr|year|mo|month)?)/i)||[])[1]||'—';
-    var dtIO6=(_capRaw6.match(/(\d+)[\s-]*(?:month|yr|year)[\s\w]*(?:IO|interest.only)/i)||[])[1]||
-              (_capRaw6.match(/(?:io|interest\s+only)[:\s]+([0-9]+\s*(?:yr|year|mo|month)?)/i)||[])[1]||'—';
-    var _ltv6Raw=String(d.ltv||'').replace(/%/g,''); var dtLTV6=_ltv6Raw?(_ltv6Raw+'%'):((capSec6.match(/ltv[:\s]+([0-9.]+%?)/i)||[])[1]||'—');
-    var dtAmt6=p6&&_ltv6Raw?('$'+Math.round(p6*parseFloat(_ltv6Raw)/100).toLocaleString()):((capSec6.match(/\$[\d,]+(?:\s*(?:senior|loan|million|M))?/)||[])[0]||'—');
-    var dtRows6=[
-      tblH(['DEBT TERMS','']),
-      tblR(['Loan Amount', dtAmt6],false),
-      tblR(['LTV', dtLTV6],true),
-      tblR(['Interest Rate', dtRate6],false),
-      tblR(['Loan Term', dtTerm6],true),
-      tblR(['Amortization', dtAmort6],false),
-      tblR(['Interest Only', dtIO6],true)
+    // Debt Terms table — direct from acquisition model General Inputs G37:J49
+    var _fmtRate = function(v, type) {
+      if (!v) return '—';
+      var pct = v < 1 ? (v*100).toFixed(2) : parseFloat(v).toFixed(2);
+      return pct + '%' + (type ? ' (' + type + ')' : '');
+    };
+    var _fmtYr = function(v) {
+      if (!v) return '—';
+      var s = String(v).toLowerCase();
+      return s.includes('year') || s.includes('yr') ? v : v + ' years';
+    };
+    var _fmtMo = function(v) {
+      if (!v) return '—';
+      var s = String(v).toLowerCase();
+      return s.includes('month') || s.includes('mo') ? v : v + ' months';
+    };
+    var debtRows = [
+      tblH(['DEBT TERMS', '']),
+      tblR(['Loan Amount',          _dt6 && _dt6.loanAmount      ? '$' + Math.round(_dt6.loanAmount).toLocaleString('en-US')      : '—'], false),
+      tblR(['Total Loan (w/ FF)',   _dt6 && _dt6.totalLoanAmount  ? '$' + Math.round(_dt6.totalLoanAmount).toLocaleString('en-US') : '—'], true),
+      tblR(['LTV',                  _dt6 && _dt6.ltv              ? Math.round(_dt6.ltv < 1 ? _dt6.ltv*100 : _dt6.ltv) + '%'      : '—'], false),
+      tblR(['Interest Rate',        _fmtRate(_dt6 && _dt6.rate, _dt6 && _dt6.rateType)], true),
+      tblR(['IO Period',            _fmtMo(_dt6 && _dt6.ioPeriod)], false),
+      tblR(['Amortization',         _fmtYr(_dt6 && _dt6.amortization)], true),
+      tblR(['Financing Fees',       _dt6 && _dt6.financingFees    ? (_dt6.financingFees < 1 ? (_dt6.financingFees*100).toFixed(2) : _dt6.financingFees) + '%' : '—'], false),
+      tblR(['Close Date',           _dt6 && _dt6.closeDate        ? String(_dt6.closeDate)                                        : '—'], true),
+      tblR(['Future TI/LC Funding', _dt6 && _dt6.tiFunding        ? '$' + Math.round(_dt6.tiFunding).toLocaleString('en-US')      : '—'], false),
+      tblR(['Total Future Funding', _dt6 && _dt6.totalFutureFund  ? '$' + Math.round(_dt6.totalFutureFund).toLocaleString('en-US'): '—'], true)
     ];
     s6.addText('DEBT TERMS',{x:0.4,y:3.61,w:7.2,h:0.26,fontSize:9.5,color:BLUE,bold:true,charSpacing:2});
-    s6.addTable(dtRows6,{x:0.4,y:3.91,w:7.2,border:{type:'solid',color:MGREY,w:0.5},fontSize:10});
+    s6.addTable(debtRows,{x:0.4,y:3.91,w:7.2,border:{type:'solid',color:MGREY,w:0.5},fontSize:10});
     var ep6=d.ltv?(1-parseFloat(d.ltv)/100):.35, dp6=d.ltv?(parseFloat(d.ltv)/100):.65;
     s6.addShape(pptx.ShapeType.rect,{x:8.5,y:0.85,w:4.4,h:5.9*ep6,fill:{color:KPIBG},line:{color:MGREY,w:0.5}});
     s6.addShape(pptx.ShapeType.rect,{x:8.5,y:0.85+5.9*ep6,w:4.4,h:5.9*dp6,fill:{color:HDR},line:{color:MGREY,w:0.5}});
@@ -8457,26 +8489,52 @@ async function ridgeExportPPT() {
       var lcLines10=lcSec10.split('\n').filter(function(l){return l.includes('|')&&!l.match(/^[\s|-]+$/);});
       if(lcLines10.length>1){lcRows10=lcLines10.slice(0,6).map(function(l,ri){var cs=l.split('|').filter(function(c){return c.trim();});return ri===0?tblH(cs.map(function(c){return c.trim();})):tblR(cs.map(function(c){return c.trim();}),ri%2===1);});}
     }
-    // Supabase lease DB fallback — query by inferred market when no comps found
-    if(!lcRows10.length&&_sb&&_sbOk){
-      var _dealMkt10=(jd&&jd.market&&jd.market.name)||(function(){
-        var a=(d.addr||'').toLowerCase();
-        if(a.includes('savannah')) return 'Savannah, GA';
-        if(a.includes(', ga')||a.includes('atlanta')||a.includes('gwinnett')||a.includes('conyers')||a.includes('stonecrest')||a.includes('lithonia')) return 'Atlanta, GA';
-        if(a.includes('dallas')||a.includes('fort worth')||a.includes(' tx')||a.includes(',tx')) return 'Dallas\u2013Fort Worth, TX';
-        if(a.includes('houston')) return 'Houston, TX';
-        if(a.includes('austin')) return 'Austin, TX (Watch)';
-        return '';
-      })();
-      if(_dealMkt10){
-        try{
-          var _lcRes10=await _sb.from('leases').select('*').eq('market',_dealMkt10).eq('vacant',false).order('created_at',{ascending:false}).limit(6);
-          if(_lcRes10.data&&_lcRes10.data.length){
-            _lcFromDB10=true;
-            lcRows10=[tblH(['PROPERTY','SF','DATE','RATE PSF','TYPE'])].concat(
-              _lcRes10.data.slice(0,5).map(function(c,ri){return tblR([c.address||c.property||'',c.sf||'',c.expiration_date||c.date||'',c.base_rent_psf||'',c.lease_type||''],ri%2===1);}));
+    // Supabase lease DB fallback — relevance-filtered by market, size, and recency
+    if (!lcRows10.length && _sb) {
+      try {
+        var _addr10 = (d.addr || '').toLowerCase();
+        var _mkt10 = _addr10.includes('lithonia') || _addr10.includes('stonecrest') ||
+                     _addr10.includes('smyrna')   || _addr10.includes('marietta')   ||
+                     _addr10.includes('atlanta')  || _addr10.includes(', ga')
+                     ? 'Atlanta' :
+                     _addr10.includes('savannah') ? 'Savannah' :
+                     _addr10.includes('houston')  ? 'Houston'  :
+                     _addr10.includes('dallas') || _addr10.includes('dfw') ? 'Dallas' : null;
+
+        if (_mkt10) {
+          var _nra10 = Number(d.sf) || 50000;
+          var _dbRes = await _sb.from('leases')
+            .select('*')
+            .ilike('market', '%' + _mkt10 + '%')
+            .not('base_rent_psf', 'is', null)
+            .gte('sf', Math.round(_nra10 * 0.35))
+            .lte('sf', Math.round(_nra10 * 3.0))
+            .gte('created_at', new Date(Date.now() - 3*365*24*60*60*1000).toISOString())
+            .not('address', 'ilike', '%' + (d.addr||'').split(',')[0] + '%')
+            .order('created_at', { ascending: false })
+            .limit(8);
+
+          if (_dbRes.data && _dbRes.data.length > 0) {
+            var leaseComps = _dbRes.data.map(function(r) {
+              return {
+                property: r.address || r.tenant || '—',
+                size_sf:  r.sf,
+                date:     (r.created_at || '').slice(0, 7),
+                term:     r.lease_term_months ? r.lease_term_months + ' mo' : '—',
+                rate_psf: r.base_rent_psf,
+                type:     r.lease_type || 'NNN'
+              };
+            });
+            _lcFromDB10 = true;
+            lcRows10 = [tblH(['PROPERTY','SIZE (SF)','DATE','TERM','RATE PSF','TYPE'])].concat(
+              leaseComps.slice(0,5).map(function(c,ri){
+                return tblR([c.property, c.size_sf||'—', c.date, c.term, c.rate_psf||'—', c.type], ri%2===1);
+              }));
+            console.log('[RIDGE] Slide 10 lease DB fallback: ' + leaseComps.length + ' comps loaded');
           }
-        }catch(_lce10){console.warn('[RIDGE] Slide 10 lease DB fallback failed:',_lce10);}
+        }
+      } catch(e) {
+        console.warn('[RIDGE] Slide 10 lease DB fallback failed:', e.message);
       }
     }
     var _lcLabel10=_lcFromDB10?'LEASE COMPARABLES \u2014 RIDGE DATABASE':'LEASE COMPARABLES';
@@ -8486,7 +8544,7 @@ async function ridgeExportPPT() {
       var lcRH10=Math.min(0.85,Math.max(0.28,4.50/Math.max(lcRows10.length,2)));
       s10.addTable(lcRows10,{x:0.25,y:2.35,w:13.08,rowH:lcRH10,colW:_lcColW10,border:{type:'solid',color:MGREY,w:0.5},fontSize:9.5});
     } else {
-      s10.addText('Upload OM to populate lease comps.',{x:0.25,y:2.35,w:13.08,h:0.38,fontSize:10,color:MUTED});
+      s10.addText('No lease comps available \u2014 run Lease Comp Map to populate database.',{x:0.25,y:2.35,w:13.08,h:0.38,fontSize:10,color:MUTED});
     }
     // Sale comps — show below lease comps if jd.sale_comps[] or jd.market.comps[] available
     var saleCmps10=(jd&&jd.sale_comps&&jd.sale_comps.length)?jd.sale_comps:((jd&&jd.market&&jd.market.comps&&jd.market.comps.length)?jd.market.comps:null);
