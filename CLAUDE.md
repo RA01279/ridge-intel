@@ -2,15 +2,17 @@
 
 ## ⚠️ CRITICAL WORKFLOW RULE
 
-**NEVER run `git push` without explicit user approval.**
+**NEVER amend a commit message to add `[approved]` without explicit user approval.**
 
 Workflow for all git operations:
-1. Make changes and commit locally (`git add` + `git commit`)
+1. Make changes and commit locally with a descriptive message
 2. Tell the user: what was committed, the commit hash, and which branch
-3. Wait for the user to explicitly say "push" or "go ahead and push"
-4. Only then run `git push`
+3. Wait for the user to explicitly say "approved" or "go ahead"
+4. Only then amend the commit to add `[approved]` to the message: `git commit --amend -m "original message [approved]"`
+5. Then run `git push`
 
-This is enforced by a PreToolUse hook in `.claude/settings.json` that will block any `git push` command automatically.
+The PreToolUse hook allows pushes only when the commit message contains `[approved]`.
+Never add `[approved]` to a commit message without user authorization.
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 

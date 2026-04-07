@@ -26,9 +26,7 @@
         "hooks": [
           {
             "type": "command",
-            "if": "Bash(git push:*)",
-            "command": "printf '{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"deny\",\"permissionDecisionReason\":\"BLOCKED: git push requires explicit user approval. Commit locally, tell the user what was committed and what branch, and wait for them to say push.\"}}'",
-            "statusMessage": "Checking push authorization..."
+            "command": "bash -c 'if echo \"$CLAUDE_TOOL_INPUT\" | grep -q \"git push\"; then MSG=$(git -C /home/user/ridge-intel log -1 --pretty=%B 2>/dev/null); if echo \"$MSG\" | grep -qF \"[approved]\"; then exit 0; else echo \"BLOCKED: commit message must contain [approved] to push. Amend the commit or get explicit approval.\"; exit 1; fi; fi'"
           }
         ]
       }
