@@ -7700,17 +7700,22 @@ async function _extractSensitivity(nra) {
 function _extractDebtTerms() {
   var modelBuffer = _isrModelBuffer ||
     (STATE['isr'] && STATE['isr'].files && (STATE['isr'].files['model-buf'] || STATE['isr'].files['model']));
-  if (!modelBuffer || typeof modelBuffer === 'string') return null;
+  console.log('[RIDGE] _extractDebtTerms: modelBuffer type=', typeof modelBuffer, modelBuffer ? 'present' : 'null');
+  if (!modelBuffer) return null;
   try {
-    var wb = XLSX.read(modelBuffer, {type:'array'});
+    // Support both ArrayBuffer/Uint8Array (type:'array') and base64 string (type:'base64')
+    var xlsxReadOpts = typeof modelBuffer === 'string' ? {type:'base64'} : {type:'array'};
+    var wb = XLSX.read(modelBuffer, xlsxReadOpts);
+    console.log('[RIDGE] _extractDebtTerms: SheetNames=', JSON.stringify(wb.SheetNames));
     var ws = wb.Sheets['General Inputs'] ||
              wb.Sheets[Object.keys(wb.Sheets)
-               .find(function(s){ return s.includes('General'); })] || null;
+               .find(function(s){ return s.toLowerCase().includes('general'); })] || null;
+    console.log('[RIDGE] _extractDebtTerms: ws=', ws ? 'found' : 'null (no General Inputs sheet)');
     if (!ws) return null;
     var cv = function(ref) {
       var c = ws[ref]; return (c && c.v !== undefined && c.v !== null) ? c.v : null;
     };
-    return {
+    var result = {
       loanAmount:      cv('J37'),
       ltv:             cv('H37'),
       closeDate:       cv('J38'),
@@ -7725,6 +7730,8 @@ function _extractDebtTerms() {
       totalFutureFund: cv('J48'),
       totalLoanAmount: cv('J49')
     };
+    console.log('[RIDGE] _extractDebtTerms raw values:', JSON.stringify(result));
+    return result;
   } catch(e) {
     console.warn('[RIDGE] _extractDebtTerms failed:', e.message);
     return null;
@@ -8243,9 +8250,9 @@ async function ridgeExportPPT() {
     // ── SLIDE 5 — Property Overview ───────────────────────────
     var s5=pptx.addSlide(); s5.background={color:BG}; addHdr(s5,'Property Overview',5);
     console.log('[RIDGE] PPTX building slide 5...');
-    s5.addShape(pptx.ShapeType.rect,{x:6.58,y:0.80,w:0.012,h:6.10,fill:{color:MGREY},line:{color:MGREY}});
-    s5.addText('DEAL SUMMARY',{x:0.25,y:0.80,w:6.30,h:0.26,fontSize:9.5,color:'1E2761',bold:true,charSpacing:2});
-    s5.addText('LOCATION & SUBMARKET',{x:6.80,y:0.80,w:6.28,h:0.26,fontSize:9.5,color:'1E2761',bold:true,charSpacing:2});
+    s5.addShape(pptx.ShapeType.rect,{x:6.30,y:0.80,w:0.012,h:6.10,fill:{color:MGREY},line:{color:MGREY}});
+    s5.addText('DEAL SUMMARY',{x:0.40,y:0.80,w:5.80,h:0.26,fontSize:9.5,color:'1E2761',bold:true,charSpacing:2});
+    s5.addText('LOCATION & SUBMARKET',{x:6.70,y:0.80,w:6.23,h:0.26,fontSize:9.5,color:'1E2761',bold:true,charSpacing:2});
     // Left: structured fact rows
     var _sfRaw5=Number((STATE&&STATE['isr']&&STATE['isr'].metrics&&STATE['isr'].metrics.sf)||0)||
                 Number(((document.getElementById('f-isr-sf')||{}).value||'0').replace(/[^0-9.]/g,'')||0)||
@@ -8266,9 +8273,9 @@ async function ridgeExportPPT() {
     ];
     factRows5.forEach(function(row,ri){
       var fy=1.10+ri*0.46;
-      s5.addShape(pptx.ShapeType.rect,{x:0.25,y:fy,w:6.30,h:0.34,fill:{color:ri%2===1?LGREY:BG},line:{color:MGREY,w:0.5}});
-      s5.addText(row[0],{x:0.35,y:fy,w:3.0,h:0.34,fontSize:9,color:MUTED,valign:'middle',bold:false});
-      s5.addText(String(row[1]),{x:3.35,y:fy,w:3.1,h:0.34,fontSize:9.5,color:TEXT,valign:'middle',bold:true,align:'right'});
+      s5.addShape(pptx.ShapeType.rect,{x:0.40,y:fy,w:5.80,h:0.34,fill:{color:ri%2===1?LGREY:BG},line:{color:MGREY,w:0.5}});
+      s5.addText(row[0],{x:0.50,y:fy,w:3.0,h:0.34,fontSize:9,color:MUTED,valign:'middle',bold:false});
+      s5.addText(String(row[1]),{x:3.35,y:fy,w:2.85,h:0.34,fontSize:9.5,color:TEXT,valign:'middle',bold:true,align:'right'});
     });
     // Right: expanded extraction — try _extractKeySection variants, then extractSection
     var _mktRaw5=
@@ -8291,16 +8298,17 @@ async function ridgeExportPPT() {
       });
       var mktRH5=Math.min(0.85,Math.max(0.28,5.60/Math.max(mktTbl5.length,2)));
       var mktColCnt5=mktTbl5[0]?mktTbl5[0].length:2;
-      var mktValColW5=mktColCnt5>1?(5.55-3.2)/Math.max(mktColCnt5-1,1):2.35;
+      var mktValColW5=mktColCnt5>1?(6.3-3.2)/Math.max(mktColCnt5-1,1):3.1;
       var mktColW5=[3.2].concat(Array.apply(null,Array(Math.max(mktColCnt5-1,0))).map(function(){return mktValColW5;}));
-      s5.addTable(mktTbl5,{x:6.35,y:0.80,w:5.55,rowH:mktRH5,colW:mktColW5,border:{type:'solid',color:MGREY,w:0.5},fontSize:9.5});
+      s5.addTable(mktTbl5,{x:6.60,y:0.80,w:6.30,rowH:mktRH5,colW:mktColW5,border:{type:'solid',color:MGREY,w:0.5},fontSize:9.5});
     } else {
       var mktNarr5=stripMd(_mktRaw5).trim()||'Upload OM PDF for submarket vacancy, rent trends, and location narrative.';
-      s5.addText(mktNarr5.slice(0,600),{x:6.35,y:0.80,w:5.55,h:5.60,fontSize:10,color:'4A5568',wrap:true,valign:'top'});
+      s5.addText(mktNarr5.slice(0,600),{x:6.60,y:0.80,w:6.30,h:5.60,fontSize:10,color:'4A5568',wrap:true,valign:'top'});
     }
     addFtr(s5);
 
     var _dt6 = _extractDebtTerms();
+    console.log('[RIDGE] Slide 6 _dt6:', JSON.stringify(_dt6));
 
     // ── SLIDE 6 — Sources & Uses / Capital Stack ──────────────
     var s6=pptx.addSlide(); s6.background={color:BG}; addHdr(s6,'Sources & Uses / Capital Stack',6);
@@ -8489,49 +8497,99 @@ async function ridgeExportPPT() {
       var lcLines10=lcSec10.split('\n').filter(function(l){return l.includes('|')&&!l.match(/^[\s|-]+$/);});
       if(lcLines10.length>1){lcRows10=lcLines10.slice(0,6).map(function(l,ri){var cs=l.split('|').filter(function(c){return c.trim();});return ri===0?tblH(cs.map(function(c){return c.trim();})):tblR(cs.map(function(c){return c.trim();}),ri%2===1);});}
     }
-    // Supabase lease DB fallback — relevance-filtered by market, size, and recency
+    // Supabase lease DB fallback — spec-compliant matching: SF delta, asset class, clear height,
+    // dock/grade tiers (schema-checked), commencement within 12 months, top-5 with +5mi retry
     if (!lcRows10.length && _sb) {
       try {
-        var _addr10 = (d.addr || '').toLowerCase();
-        var _mkt10 = _addr10.includes('lithonia') || _addr10.includes('stonecrest') ||
-                     _addr10.includes('smyrna')   || _addr10.includes('marietta')   ||
-                     _addr10.includes('atlanta')  || _addr10.includes(', ga')
+        var _subjectSF10 = Number(String(d.sf||'').replace(/[^0-9.]/g,'')) || 50000;
+        var _subjectAssetClass10 = d.type || '';
+        var _subjectClearHt10 = Number(d.clear_height) || 0;
+        var _subjectDockRaw10 = Number(d.dock_high_doors) || 0;
+        var _subjectGradeRaw10 = Number(d.grade_level_doors) || 0;
+        // SF delta per spec
+        var _sfDelta10 = _subjectSF10 < 10000 ? 2500 :
+                         _subjectSF10 < 25000 ? 5000 :
+                         _subjectSF10 < 75000 ? 15000 : 25000;
+        // Commencement cutoff: 12 months back (hard cutoff)
+        var _cutoff10 = new Date(Date.now() - 365*24*60*60*1000).toISOString().slice(0,10);
+        // Market for radius approximation (zip-based geo requires PostGIS; use market name)
+        var _addr10lc = (d.addr || '').toLowerCase();
+        var _mkt10 = _addr10lc.includes('lithonia') || _addr10lc.includes('stonecrest') ||
+                     _addr10lc.includes('smyrna')   || _addr10lc.includes('marietta')   ||
+                     _addr10lc.includes('atlanta')  || _addr10lc.includes(', ga')
                      ? 'Atlanta' :
-                     _addr10.includes('savannah') ? 'Savannah' :
-                     _addr10.includes('houston')  ? 'Houston'  :
-                     _addr10.includes('dallas') || _addr10.includes('dfw') ? 'Dallas' : null;
-
-        if (_mkt10) {
-          var _nra10 = Number(d.sf) || 50000;
-          var _dbRes = await _sb.from('leases')
+                     _addr10lc.includes('savannah') ? 'Savannah' :
+                     _addr10lc.includes('houston')  ? 'Houston'  :
+                     _addr10lc.includes('dallas') || _addr10lc.includes('dfw') ? 'Dallas' : null;
+        // Check whether optional columns exist before using them
+        var _colCheck10 = await _sb.from('leases').select('dock_high_doors,grade_level_doors').limit(1);
+        var _schemaErr10 = _colCheck10.error ? String(_colCheck10.error.message||'') : '';
+        var _hasDock10 = !_schemaErr10.includes('dock_high_doors');
+        var _hasGrade10 = !_schemaErr10.includes('grade_level_doors');
+        if (!_hasDock10 || !_hasGrade10) {
+          console.warn('[RIDGE] dock_high_doors / grade_level_doors columns not yet in schema — filtering by SF, asset class, clear height, radius only');
+        }
+        // Build query with given sfDelta (called twice for retry)
+        var _buildQ10 = function(sfDelta) {
+          var q = _sb.from('leases')
             .select('*')
-            .ilike('market', '%' + _mkt10 + '%')
             .not('base_rent_psf', 'is', null)
-            .gte('sf', Math.round(_nra10 * 0.35))
-            .lte('sf', Math.round(_nra10 * 3.0))
-            .gte('created_at', new Date(Date.now() - 3*365*24*60*60*1000).toISOString())
-            .not('address', 'ilike', '%' + (d.addr||'').split(',')[0] + '%')
-            .order('created_at', { ascending: false })
-            .limit(8);
-
-          if (_dbRes.data && _dbRes.data.length > 0) {
-            var leaseComps = _dbRes.data.map(function(r) {
-              return {
-                property: r.address || r.tenant || '—',
-                size_sf:  r.sf,
-                date:     (r.created_at || '').slice(0, 7),
-                term:     r.lease_term_months ? r.lease_term_months + ' mo' : '—',
-                rate_psf: r.base_rent_psf,
-                type:     r.lease_type || 'NNN'
-              };
-            });
-            _lcFromDB10 = true;
-            lcRows10 = [tblH(['PROPERTY','SIZE (SF)','DATE','TERM','RATE PSF','TYPE'])].concat(
-              leaseComps.slice(0,5).map(function(c,ri){
-                return tblR([c.property, c.size_sf||'—', c.date, c.term, c.rate_psf||'—', c.type], ri%2===1);
-              }));
-            console.log('[RIDGE] Slide 10 lease DB fallback: ' + leaseComps.length + ' comps loaded');
+            .gte('commencement_date', _cutoff10)
+            .gte('sf', _subjectSF10 - sfDelta)
+            .lte('sf', _subjectSF10 + sfDelta);
+          if (_mkt10) q = q.ilike('market', '%' + _mkt10 + '%');
+          if (_subjectAssetClass10) q = q.ilike('asset_class', '%' + _subjectAssetClass10 + '%');
+          if (_subjectClearHt10 > 0) {
+            q = q.gte('clear_height', _subjectClearHt10 - 2).lte('clear_height', _subjectClearHt10 + 2);
           }
+          if (_hasDock10 && _subjectDockRaw10 > 0) {
+            var _dt = _subjectDockRaw10 <= 10 ? [0,10] : _subjectDockRaw10 <= 20 ? [11,20] : [20,9999];
+            q = q.gte('dock_high_doors', _dt[0]);
+            if (_dt[1] < 9999) q = q.lte('dock_high_doors', _dt[1]);
+          }
+          if (_hasGrade10 && _subjectGradeRaw10 > 0) {
+            var _gt = _subjectGradeRaw10 <= 2 ? [1,2] : _subjectGradeRaw10 <= 5 ? [3,5] : [5,9999];
+            q = q.gte('grade_level_doors', _gt[0]);
+            if (_gt[1] < 9999) q = q.lte('grade_level_doors', _gt[1]);
+          }
+          return q.order('commencement_date', {ascending:false}).limit(20);
+        };
+        var _dbRes10 = await _buildQ10(_sfDelta10);
+        var _comps10 = _dbRes10.data || [];
+        // Retry with +5mi equivalent (expanded SF delta) if fewer than 5
+        if (_comps10.length < 5) {
+          console.log('[RIDGE] Slide 10: ' + _comps10.length + ' comps at initial range — expanding (+5mi equiv)');
+          var _sfDeltaExp10 = _sfDelta10 + (_subjectSF10 < 10000 ? 2500 : _subjectSF10 < 25000 ? 5000 : 15000);
+          var _dbRes10b = await _buildQ10(_sfDeltaExp10);
+          if ((_dbRes10b.data||[]).length > _comps10.length) _comps10 = _dbRes10b.data;
+        }
+        if (_comps10.length > 0) {
+          // Sort: commencement_date desc, SF delta asc (distance not available without PostGIS)
+          _comps10.sort(function(a,b){
+            var d1 = new Date(b.commencement_date||0) - new Date(a.commencement_date||0);
+            if (d1 !== 0) return d1;
+            return Math.abs((a.sf||0)-_subjectSF10) - Math.abs((b.sf||0)-_subjectSF10);
+          });
+          _lcFromDB10 = true;
+          lcRows10 = [tblH(['PROPERTY','SIZE (SF)','COMM DATE','TERM','RATE PSF','TYPE'])].concat(
+            _comps10.slice(0,5).map(function(c,ri){
+              return tblR([
+                c.address||c.tenant||'—',
+                c.sf ? Number(c.sf).toLocaleString() : '—',
+                (c.commencement_date||'—').slice(0,7),
+                c.lease_term_months ? c.lease_term_months+' mo' : '—',
+                c.base_rent_psf ? '$'+Number(c.base_rent_psf).toFixed(2) : '—',
+                c.lease_type||'NNN'
+              ], ri%2===1);
+            }));
+          console.log('[RIDGE] Slide 10 lease DB: ' + Math.min(_comps10.length,5) + ' comps loaded');
+        } else {
+          // Zero comps — explicit no-data placeholder; never fabricate a row
+          _lcFromDB10 = true;
+          lcRows10 = [
+            tblH(['PROPERTY','SIZE (SF)','COMM DATE','TERM','RATE PSF','TYPE']),
+            tblR(['No external lease comparables available \u2014 sourcing in progress','\u2014','\u2014','\u2014','\u2014','\u2014'],false)
+          ];
         }
       } catch(e) {
         console.warn('[RIDGE] Slide 10 lease DB fallback failed:', e.message);
@@ -8540,7 +8598,7 @@ async function ridgeExportPPT() {
     var _lcLabel10=_lcFromDB10?'LEASE COMPARABLES \u2014 RIDGE DATABASE':'LEASE COMPARABLES';
     s10.addText(_lcLabel10,{x:0.25,y:2.05,w:13.08,h:0.26,fontSize:9.5,color:'1E2761',bold:true,charSpacing:2});
     if(lcRows10.length>1){
-      var _lcColW10=_lcFromDB10?[4.5,1.5,1.8,1.98,3.3]:[4.0,1.65,1.5,1.3,1.65,1.98];
+      var _lcColW10=_lcFromDB10?[4.5,1.4,1.5,1.28,1.5,2.9]:[4.0,1.65,1.5,1.3,1.65,1.98];
       var lcRH10=Math.min(0.85,Math.max(0.28,4.50/Math.max(lcRows10.length,2)));
       s10.addTable(lcRows10,{x:0.25,y:2.35,w:13.08,rowH:lcRH10,colW:_lcColW10,border:{type:'solid',color:MGREY,w:0.5},fontSize:9.5});
     } else {
@@ -8679,7 +8737,7 @@ async function ridgeExportPPT() {
         var tenantNames=(expByYrTenant11[yr]||[]).map(function(t){return t.tenant;}).join(', ').slice(0,28);
         expTbl11.push(tblR([String(yr),sf>=1000?(sf/1000).toFixed(0)+'K SF':sf+' SF',(sf/totalSF11*100).toFixed(1)+'%',tenantNames],ri%2===1));
       });
-      var tblRowH11=Math.max(0.42, (5.55/Math.min(allYrs11.length,10)));
+      var tblRowH11=Math.min(0.55,Math.max(0.42,(5.43/Math.min(allYrs11.length,10))));
       s11.addTable(expTbl11,{x:0.25,y:1.42,w:5.0,rowH:tblRowH11,colW:[0.9,1.25,0.95,1.9],border:{type:'solid',color:MGREY,w:0.5},fontSize:9});
 
       // ── Right: bar chart (x:5.5, w:7.58) ──
@@ -9024,16 +9082,17 @@ async function ridgeExportPPT() {
       ns14=_nsIsrRaw14.split('\n').filter(function(l){return l.match(/^\d+\.\s+.{20,}/);}).slice(0,6);
     }
     var ns14Safe=Array.isArray(ns14)?ns14:(typeof ns14==='string'&&ns14.trim()?ns14.split('\n').filter(Boolean):[]);
-    s14.addShape(pptx.ShapeType.rect,{x:0.25,y:4.72,w:0.06,h:Math.min(ns14Safe.length||1,6)*0.42+0.1,fill:{color:NAVY},line:{color:NAVY}});
+    var nsGap14=ns14Safe.length>=6?0.30:ns14Safe.length>4?0.38:0.43;
+    var nsBarH14=Math.min(Math.min(ns14Safe.length||1,6)*nsGap14+0.40,6.85-4.72);
+    s14.addShape(pptx.ShapeType.rect,{x:0.25,y:4.72,w:0.06,h:nsBarH14,fill:{color:NAVY},line:{color:NAVY}});
     s14.addText('NEXT STEPS',{x:0.38,y:4.72,w:12.7,h:0.26,fontSize:9,color:NAVY,bold:true,charSpacing:1.5});
     if(ns14Safe.length){
       var nsFontSz14=ns14Safe.length>4?9:10;
-      var nsGap14=ns14Safe.length>4?0.38:0.43;
       ns14Safe.slice(0,6).forEach(function(st,i){
         var stTxt=stripMd(String(st).replace(/^\d+\.\s*/,'').replace(/^[-*]\s*/,''));
         s14.addShape(pptx.ShapeType.rect,{x:0.38,y:5.02+i*nsGap14,w:0.28,h:0.28,fill:{color:NAVY},line:{color:NAVY}});
         s14.addText(String(i+1),{x:0.38,y:5.02+i*nsGap14,w:0.28,h:0.28,fontSize:9,color:WHITE,bold:true,align:'center',valign:'middle'});
-        s14.addText(stTxt,{x:0.72,y:5.02+i*nsGap14,w:12.36,h:0.3,fontSize:nsFontSz14,color:TEXT2,wrap:true,valign:'middle'});
+        s14.addText(stTxt,{x:0.72,y:5.02+i*nsGap14,w:12.36,h:0.28,fontSize:nsFontSz14,color:TEXT2,wrap:true,valign:'middle'});
       });
     } else {
       s14.addText('Run ISR with a complete OM upload to generate actionable next steps.',{x:0.38,y:5.02,w:12.5,h:0.5,fontSize:10,color:MUTED,wrap:true});
