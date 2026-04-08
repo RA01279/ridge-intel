@@ -8096,7 +8096,7 @@ async function ridgeExportPPT() {
     var REDG  = '2D0A0A';
 
     var addr  = d.addr || 'Subject Property';
-    var TOTAL = 14;
+    var TOTAL = 15;
     var dateStr = new Date().toLocaleDateString('en-US',{month:'long',year:'numeric'});
 
     function addHdr(sl,title,n){
@@ -8270,7 +8270,6 @@ async function ridgeExportPPT() {
 
     var _mktPipeLines5=_mktRaw5.split('\n').filter(function(l){return l.trim().startsWith('|')&&l.includes('|');});
     var _mktDataLines5=_mktPipeLines5.filter(function(l){return !l.match(/^\s*\|[-:\s|]+\|?\s*$/);}).slice(0,10);
-    var _mktRowCount5=0;
 
     if(_mktDataLines5.length>1){
       var _s5hdrCells=_mktDataLines5[0].split('|').filter(function(c){return c.trim();}).map(function(c){return c.trim();});
@@ -8290,7 +8289,6 @@ async function ridgeExportPPT() {
           {text:cs[2]||'\u2014',options:{fontSize:9,color:TEXT,fill:{color:bg},align:'center'}}
         ]);
       });
-      _mktRowCount5=_s5mktTbl.length;
       s5.addTable(_s5mktTbl,{x:0.35,y:0.95,w:5.60,rowH:0.42,colW:[2.40,1.60,1.60],border:{type:'solid',color:MGREY,w:0.5},fontSize:9});
     } else {
       var _s5fbData=['Overall Vacancy Rate','Vacancy Rate (<50K SF)','Market Asking Rent (NNN)',
@@ -8307,36 +8305,7 @@ async function ridgeExportPPT() {
           {text:'\u2014',options:{fontSize:9,color:TEXT,fill:{color:bg},align:'center'}}
         ];
       }));
-      _mktRowCount5=_s5mktFbTbl.length;
       s5.addTable(_s5mktFbTbl,{x:0.35,y:0.95,w:5.60,rowH:0.42,colW:[2.40,1.60,1.60],border:{type:'solid',color:MGREY,w:0.5},fontSize:9});
-    }
-
-    // Sale comps mini-table — render only if data exists, no placeholder rows
-    var _compRaw5=(_skillRawOutputs&&_skillRawOutputs['isr']&&(
-      _extractKeySection(_skillRawOutputs['isr'],'SALE COMP')||
-      _extractKeySection(_skillRawOutputs['isr'],'COMPARABLE SALE')||
-      extractSection(_skillRawOutputs['isr'],'SALE COMP')
-    ))||'';
-    if(_compRaw5.trim()){
-      var _compPipe5=_compRaw5.split('\n').filter(function(l){return l.trim().startsWith('|')&&l.includes('|');});
-      var _compData5=_compPipe5.filter(function(l){return !l.match(/^\s*\|[-:\s|]+\|?\s*$/);}).slice(0,6);
-      if(_compData5.length>1){
-        var _compY5=0.95+_mktRowCount5*0.42+0.20;
-        if(_compY5<5.80){
-          var _compColCnt5=(_compData5[0].split('|').filter(function(c){return c.trim();})).length||1;
-          var _compColW5=Array.apply(null,Array(_compColCnt5)).map(function(){return parseFloat((5.60/_compColCnt5).toFixed(4));});
-          var _compTbl5=_compData5.map(function(l,ri){
-            var cs=l.split('|').filter(function(c){return c.trim();}).map(function(c){return c.trim()||'\u2014';});
-            var bg=ri%2===0?'F0F4FF':'FFFFFF';
-            return cs.map(function(c){
-              return ri===0
-                ?{text:c,options:{bold:true,color:'FFFFFF',fill:{color:'1E2761'},fontSize:9,align:'center'}}
-                :{text:c,options:{fontSize:9,color:TEXT,fill:{color:bg},align:'center'}};
-            });
-          });
-          s5.addTable(_compTbl5,{x:0.35,y:_compY5,w:5.60,rowH:0.38,colW:_compColW5,border:{type:'solid',color:MGREY,w:0.5},fontSize:9});
-        }
-      }
     }
 
     // ── RIGHT COLUMN — Property Data Panel ── x:6.30, w:6.70, right edge: 13.00 ──
@@ -8675,8 +8644,54 @@ async function ridgeExportPPT() {
     }
     addFtr(s10);
 
-    // ── SLIDE 11 — Lease Expiration Waterfall ─────────────────
-    var s11=pptx.addSlide(); s11.background={color:BG}; addHdr(s11,'Lease Expiration Waterfall',11);
+    // ── SLIDE 11 — Sale Comparables ──────────────────────────────
+    var sSC=pptx.addSlide(); sSC.background={color:BG}; addHdr(sSC,'Sale Comparables',11);
+    console.log('[RIDGE] PPTX building slide 11 (Sale Comparables)...');
+    var _scData11=(jd&&jd.sale_comps&&jd.sale_comps.length)?jd.sale_comps:null;
+    var _scHdr11=[
+      {text:'Property',options:{bold:true,color:'FFFFFF',fill:{color:HDR},fontSize:9,align:'left'}},
+      {text:'SF',options:{bold:true,color:'FFFFFF',fill:{color:HDR},fontSize:9,align:'center'}},
+      {text:'Sale Date',options:{bold:true,color:'FFFFFF',fill:{color:HDR},fontSize:9,align:'center'}},
+      {text:'Price',options:{bold:true,color:'FFFFFF',fill:{color:HDR},fontSize:9,align:'center'}},
+      {text:'$/SF',options:{bold:true,color:'FFFFFF',fill:{color:HDR},fontSize:9,align:'center'}},
+      {text:'Cap Rate',options:{bold:true,color:'FFFFFF',fill:{color:HDR},fontSize:9,align:'center'}},
+      {text:'Buyer',options:{bold:true,color:'FFFFFF',fill:{color:HDR},fontSize:9,align:'center'}},
+      {text:'Notes',options:{bold:true,color:'FFFFFF',fill:{color:HDR},fontSize:9,align:'left'}}
+    ];
+    var _scRows11;
+    if(_scData11&&_scData11.length){
+      _scRows11=[_scHdr11].concat(_scData11.map(function(c,ri){
+        var bg=ri%2===0?'F0F4FF':'FFFFFF';
+        var _scFmtPrice11=c.price?(typeof c.price==='number'?'$'+Math.round(c.price).toLocaleString():String(c.price)):(c.sale_price?String(c.sale_price):'\u2014');
+        var _scFmtPSF11=String(c.psf||c.price_psf||'\u2014');
+        return [
+          {text:String(c.property||c.name||'\u2014'),options:{fontSize:9,color:TEXT,fill:{color:bg},align:'left'}},
+          {text:String(c.sf||'\u2014'),options:{fontSize:9,color:TEXT,fill:{color:bg},align:'center'}},
+          {text:String(c.date||c.sale_date||'\u2014'),options:{fontSize:9,color:TEXT,fill:{color:bg},align:'center'}},
+          {text:_scFmtPrice11,options:{fontSize:9,color:TEXT,fill:{color:bg},align:'center'}},
+          {text:_scFmtPSF11,options:{fontSize:9,color:TEXT,fill:{color:bg},align:'center'}},
+          {text:String(c.cap||c.cap_rate||'\u2014'),options:{fontSize:9,color:TEXT,fill:{color:bg},align:'center'}},
+          {text:String(c.buyer||'\u2014'),options:{fontSize:9,color:TEXT,fill:{color:bg},align:'left'}},
+          {text:String(c.notes||'\u2014'),options:{fontSize:9,color:TEXT,fill:{color:bg},align:'left'}}
+        ];
+      }));
+    } else {
+      _scRows11=[_scHdr11,[
+        {text:'No sale comparables provided \u2014 source from CoStar prior to IC',options:{fontSize:9,color:MUTED,fill:{color:'F0F4FF'},align:'left'}},
+        {text:'\u2014',options:{fontSize:9,color:MUTED,fill:{color:'F0F4FF'},align:'center'}},
+        {text:'\u2014',options:{fontSize:9,color:MUTED,fill:{color:'F0F4FF'},align:'center'}},
+        {text:'\u2014',options:{fontSize:9,color:MUTED,fill:{color:'F0F4FF'},align:'center'}},
+        {text:'\u2014',options:{fontSize:9,color:MUTED,fill:{color:'F0F4FF'},align:'center'}},
+        {text:'\u2014',options:{fontSize:9,color:MUTED,fill:{color:'F0F4FF'},align:'center'}},
+        {text:'\u2014',options:{fontSize:9,color:MUTED,fill:{color:'F0F4FF'},align:'center'}},
+        {text:'\u2014',options:{fontSize:9,color:MUTED,fill:{color:'F0F4FF'},align:'center'}}
+      ]];
+    }
+    sSC.addTable(_scRows11,{x:1.47,y:0.95,w:10.40,rowH:0.42,colW:[3.00,0.80,0.90,1.10,0.70,0.80,1.10,2.00],border:{type:'solid',color:MGREY,w:0.5},fontSize:9});
+    addFtr(sSC);
+
+    // ── SLIDE 12 — Lease Expiration Waterfall ─────────────────
+    var s11=pptx.addSlide(); s11.background={color:BG}; addHdr(s11,'Lease Expiration Waterfall',12);
     console.log('[RIDGE] PPTX building slide 11...');
     var rr11=(jd&&jd.rent_roll&&jd.rent_roll.length)?jd.rent_roll:[];
     // Direct _isrParsedData fallback (bypasses jd which may be null if ridgeExportPPT jd=null)
@@ -8841,7 +8856,7 @@ async function ridgeExportPPT() {
                  Number(String((STATE&&STATE['isr']&&STATE['isr'].metrics&&STATE['isr'].metrics.sf)||'').replace(/[^0-9.]/g,'')) ||
                  Number(((document.getElementById('f-isr-sf')||{}).value||'').replace(/[^0-9.]/g,'')) || 0;
     var sensFromModel = await _extractSensitivity(_nra14);
-    var s12=pptx.addSlide(); s12.background={color:BG}; addHdr(s12,'Sensitivity Analysis',12);
+    var s12=pptx.addSlide(); s12.background={color:BG}; addHdr(s12,'Sensitivity Analysis',13);
     console.log('[RIDGE] PPTX building slide 12...');
     s12.addText('IRR by Purchase Price × Hold Period',{x:0.4,y:0.82,w:6.5,h:0.28,fontSize:11,color:BLUE,bold:true});
     s12.addText('IRR by Purchase Price × Exit Cap Rate',{x:7.2,y:0.82,w:6.0,h:0.28,fontSize:11,color:BLUE,bold:true});
@@ -8996,7 +9011,7 @@ async function ridgeExportPPT() {
     addFtr(s12);
 
     // ── SLIDE 13 — Risk Matrix ────────────────────────────────
-    var s13=pptx.addSlide(); s13.background={color:BG}; addHdr(s13,'Risk Matrix',13);
+    var s13=pptx.addSlide(); s13.background={color:BG}; addHdr(s13,'Risk Matrix',14);
     console.log('[RIDGE] PPTX building slide 13...');
     function riskRows13(risks){
       return [tblH(['RISK FACTOR','SEVERITY','MITIGANT'])].concat(risks.map(function(r,ri){
@@ -9025,7 +9040,7 @@ async function ridgeExportPPT() {
     addFtr(s13);
 
     // ── SLIDE 14 — IC Recommendation + Next Steps (merged) ────
-    var s14=pptx.addSlide(); s14.background={color:BG}; addHdr(s14,'IC Recommendation',14);
+    var s14=pptx.addSlide(); s14.background={color:BG}; addHdr(s14,'IC Recommendation',15);
     console.log('[RIDGE] PPTX building slide 14...');
     try {
 
