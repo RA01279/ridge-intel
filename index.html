@@ -2153,6 +2153,7 @@ function clearDailySourced() {
 
 var _dsTKKeys = [];
 
+// → extracted to shared/utils.js (Phase 2)
 function normDSAddr(a){ return (a||'').toLowerCase().trim().replace(/\s+/g,' '); }
 
 function getDSTracker(){
@@ -3767,6 +3768,7 @@ function _parseLeaseTable(text) {
   } catch(e) { return []; }
 }
 
+// → extracted to shared/utils.js (Phase 2)
 function _parseLeaseDate(str) {
   if (!str) return null;
   var months = {Jan:1,Feb:2,Mar:3,Apr:4,May:5,Jun:6,
@@ -3780,6 +3782,7 @@ function _parseLeaseDate(str) {
   return str.length === 10 ? str : null;
 }
 
+// → extracted to shared/utils.js (Phase 2)
 // Normalize tenant name: trim, remove trailing punctuation/asterisks,
 // standardize common legal suffix variations so dedup works correctly.
 function _normalizeTenant(name) {
@@ -4028,6 +4031,7 @@ function plConvClass(conv) {
   if (conv === 'Watch List') return 'conv-watch';
   return 'conv-dead';
 }
+// → extracted to shared/utils.js (Phase 2)
 function plDaysAgo(iso) {
   if (!iso) return '';
   var diff = Math.floor((Date.now() - new Date(iso).getTime()) / 86400000);
@@ -4298,6 +4302,7 @@ function copyResult(toolId) {
 // ═══════════════════════════════════════════════════════════
 //  ISR CALL 2 — JSON EXTRACTION (Haiku, non-streaming)
 // ═══════════════════════════════════════════════════════════
+// → extracted to shared/utils.js (Phase 2)
 function _extractKeySection(text, header) {
   var idx = text.indexOf('## ' + header);
   if (idx === -1) idx = text.indexOf('# ' + header);
@@ -8034,12 +8039,14 @@ async function ridgeExportPPT() {
       'jd.rent_roll:', _isrParsedData && _isrParsedData.rent_roll ? _isrParsedData.rent_roll.length : 0
     );
 
+    // → extracted to shared/utils.js (Phase 2)
     function fmtUSD(v) {
       if (!v || v === '—') return '—';
       var raw = String(v).replace(/[$,\s]/g,'');
       var n = parseFloat(raw);
       return isNaN(n) ? '$' + raw : '$' + Math.round(n).toLocaleString('en-US');
     }
+    // → extracted to shared/utils.js (Phase 2)
     function fmtPSF(v) {
       if (!v || v === '—') return '—';
       var raw = String(v).replace(/[$,\s]/g,'');
@@ -8048,8 +8055,11 @@ async function ridgeExportPPT() {
     }
     function cleanNum(v) { return String(v||'').replace(/[$,\s]/g,''); }
     // ISSUE 8: always two decimal places
+    // → extracted to shared/utils.js (Phase 2)
     function pct2(v) { var n=parseFloat(String(v||'').replace(/[%\s]/g,'')); return isNaN(n)?(String(v||'')||'—'):n.toFixed(2)+'%'; }
+    // → extracted to shared/utils.js (Phase 2)
     function mult2(v) { var n=parseFloat(String(v||'').replace(/[x×\s]/g,'')); return isNaN(n)?(String(v||'')||'—'):n.toFixed(2)+'×'; }
+    // → extracted to shared/utils.js (Phase 2)
     function stripMd(s) { return String(s||'').replace(/\*\*(.*?)\*\*/g,'$1').replace(/\*(.*?)\*/g,'$1').replace(/#{1,6}\s/g,'').replace(/`/g,'').trim(); }
 
     // Parse structured JSON — prefer already-extracted _isrParsedData, then re-parse raw output
