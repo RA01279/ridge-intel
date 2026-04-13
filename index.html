@@ -4214,6 +4214,7 @@ function plLaunchReport() {
   runRidgeAPI('Pipeline Report', lines.join('\n'), null, null);
 }
 
+// → extracted to shared/ui.js (Phase 2)
 function showToast(msg) {
   var t = document.getElementById('ridge-toast');
   if (!t) {
@@ -5516,7 +5517,9 @@ async function saveApiKey() {
   showToast('Settings saved');
 }
 
+// → extracted to shared/ui.js (Phase 2)
 function _showModal(id) { var el = document.getElementById(id); if (el) el.classList.add('show'); }
+// → extracted to shared/ui.js (Phase 2)
 function _hideModal(id) { var el = document.getElementById(id); if (el) el.classList.remove('show'); }
 
 function showApiKeyModal() {
@@ -5527,6 +5530,7 @@ function showApiKeyModal() {
   setTimeout(function() { document.getElementById('officer-name-input').focus(); }, 100);
 }
 
+// → extracted to shared/ui.js (Phase 2)
 function closeApiKeyModal() {
   _hideModal('apikey-modal');
 }
