@@ -3600,6 +3600,7 @@ If CONDITIONAL: state exactly what must be verified before proceeding
 }
 
 // ── SUPABASE PERSISTENCE ─────────────────────────────────────
+// → extracted to shared/supabase.js (Phase 2) — client ref + ok flag
 var _sb = null;
 var _sbOk = false;
 var _lastRunInputs = null;
@@ -3665,6 +3666,7 @@ async function _sbLoadDeals() {
   } catch(e) { console.warn('[RIDGE] _sbLoadDeals failed:', e.message); showToast('Pipeline failed to load from database.'); }
 }
 
+// → extracted to shared/supabase.js (Phase 2)
 async function _sbUpsertDeal(deal) {
   if (!_sbOk || !_sb) return;
   var payload = {
@@ -3700,6 +3702,7 @@ async function _sbUpsertDeal(deal) {
   }
 }
 
+// → extracted to shared/supabase.js (Phase 2)
 async function _sbDeleteDeal(id) {
   if (!_sbOk || !_sb) return;
   var result = await _sb.from('deals').delete().eq('id', id);
