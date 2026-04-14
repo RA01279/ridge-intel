@@ -3857,6 +3857,115 @@ async function _writeLeaseRows(rows, address, source) {
   } catch(e) { console.warn('[RIDGE] ' + source + ' leases exception:', e.message); showToast('Import failed — check file format and try again.'); }
 }
 
+// ── Sale comp pipe-table parser (mirrors _parseLeaseTable) ──────────────────
+// Looks for a pipe-delimited table whose header row contains ADDRESS/PROPERTY/
+// COMP alongside a sale-specific keyword (PRICE, PSF, CAP, DATE, SALE).
+// Returns plain objects whose keys match the sale_comps DB schema.
+function _parseSaleCompTable(text) {
+  if (!text) return [];
+  try {
+    var lines = text.split('\n');
+    var headerIdx = -1;
+    var headers = [];
+    for (var i = 0; i < lines.length; i++) {
+      if (/ADDRESS|PROPERTY|COMPARABLE|COMP\b/i.test(lines[i]) && /\|/.test(lines[i]) &&
+          /PRICE|PSF|CAP|DATE|SALE/i.test(lines[i])) {
+        headerIdx = i;
+        headers = lines[i].split('|').map(function(h) { return h.trim().toUpperCase().replace(/[\s\-./]+/g, '_'); });
+        break;
+      }
+    }
+    if (headerIdx === -1) return [];
+    var col = function(keys) {
+      for (var k = 0; k < keys.length; k++) {
+        for (var hi = 0; hi < headers.length; hi++) {
+          if (headers[hi].indexOf(keys[k]) !== -1) return hi;
+        }
+      }
+      return -1;
+    };
+    var cAddr  = col(['ADDRESS', 'PROPERTY', 'COMP', 'NAME']);
+    var cSF    = col(['SF', 'SQ', 'SIZE', 'BUILDING']);
+    var cPrice = col(['SALE_PRICE', 'PRICE']);
+    var cPSF   = col(['PSF', 'PRICE_PSF', '_SF']);
+    var cCap   = col(['CAP']);
+    var cDate  = col(['DATE', 'SALE_DATE']);
+    var cBuyer = col(['BUYER']);
+    var cNotes = col(['NOTES', 'NOTE']);
+    if (cAddr === -1) return [];
+    var startIdx = headerIdx + 1;
+    if (startIdx < lines.length && /^[\s\-|]+$/.test(lines[startIdx])) startIdx++;
+    var rows = [];
+    for (var j = startIdx; j < lines.length; j++) {
+      var row = lines[j];
+      if (!row.trim() || !/\|/.test(row)) break;
+      var cells = row.split('|').map(function(c) { return c.trim(); });
+      var addr = cAddr >= 0 ? (cells[cAddr] || '') : '';
+      if (!addr || /^(\u2014+|-{2,})$/.test(addr)) continue;
+      var num = function(ci) {
+        if (ci < 0 || !cells[ci]) return null;
+        var v = parseFloat((cells[ci] || '').replace(/[$,%\s]/g, ''));
+        return isNaN(v) ? null : v;
+      };
+      var obj = { address: addr };
+      var sfv   = num(cSF);    if (sfv)              obj.sf = sfv;
+      var pv    = num(cPrice); if (pv)               obj.sale_price = pv;
+      var psfv  = num(cPSF);   if (psfv)             obj.price_psf = psfv;
+      var capv  = num(cCap);   if (capv)             obj.going_in_cap = capv;
+      if (cDate  >= 0 && cells[cDate])  obj.sale_date = cells[cDate];
+      if (cBuyer >= 0 && cells[cBuyer]) obj.buyer = cells[cBuyer];
+      if (cNotes >= 0 && cells[cNotes]) obj.notes = cells[cNotes];
+      rows.push(obj);
+    }
+    return rows;
+  } catch(e) { return []; }
+}
+
+// ── Write sale comps to Supabase ─────────────────────────────────────────────
+// Accepts comps array from ISR (_isrParsedData.sale_comps) or LENS text parse.
+// onConflict: 'address,sale_date' — requires unique index in Supabase:
+//   ALTER TABLE sale_comps ADD CONSTRAINT sale_comps_address_sale_date_key UNIQUE (address, sale_date);
+async function _writeSaleComps(comps, source, priority) {
+  if (!_sb || !_sbOk || !comps || !comps.length) return;
+  var _priorityMap = { 'ISR': 5, 'LENS': 6, 'MANUAL': 7 };
+  var _priority = _priorityMap[source] || 7;
+  var inserts = comps.map(function(c) {
+    var _zip = ((c.address || c.property || c.name || '').match(/\b\d{5}\b/) || [])[0] || null;
+    return {
+      address:           c.address || c.property || c.name || null,
+      zip_code:          _zip,
+      asset_type:        c.asset_type || c.type || null,
+      building_sf:       c.sf ? parseFloat(c.sf) : null,
+      year_built:        c.year_built ? parseInt(c.year_built) : null,
+      sale_date:         c.sale_date || c.date || null,
+      sale_price:        (c.sale_price || c.price) ?
+                           parseFloat(String(c.sale_price || c.price).replace(/[$,]/g, '')) : null,
+      price_psf:         (c.price_psf || c.psf) ?
+                           parseFloat(String(c.price_psf || c.psf).replace(/[$,]/g, '')) : null,
+      going_in_cap:      (c.going_in_cap || c.cap_rate || c.cap) ?
+                           parseFloat(String(c.going_in_cap || c.cap_rate || c.cap).replace(/[%]/g, '')) : null,
+      occupancy_at_sale: c.occupancy ?
+                           parseFloat(String(c.occupancy).replace(/[%]/g, '')) : null,
+      buyer:             c.buyer || null,
+      seller:            c.seller || null,
+      dock_high_doors:   c.dock_high_doors  != null ? parseInt(c.dock_high_doors)  : null,
+      grade_level_doors: c.grade_level_doors != null ? parseInt(c.grade_level_doors) : null,
+      clear_height:      c.clear_height     != null ? parseFloat(c.clear_height)   : null,
+      source:            source,
+      source_priority:   _priority,
+      notes:             c.notes || null
+    };
+  });
+  try {
+    var { error } = await _sb.from('sale_comps').upsert(inserts,
+      { onConflict: 'address,sale_date' });
+    if (error) console.warn('[RIDGE] sale_comps write failed:', error.message);
+    else console.log('[RIDGE]', source, 'wrote', inserts.length, 'sale comps to DB');
+  } catch(e) {
+    console.warn('[RIDGE] _writeSaleComps error:', e.message);
+  }
+}
+
 /* ═══════════════════════════════════
    PIPELINE — STANDALONE DEAL BOARD
 ═══════════════════════════════════ */
@@ -6365,6 +6474,14 @@ async function runRidgeAPI(skillName, prompt, runInputs, runToolId) {
               } catch(e) {}
             }
             await _writeLeaseRows(_lRows, _lAddr, _lastRunToolId.toUpperCase());
+            // Sale comps — ISR: from structured _isrParsedData; LENS: parse from text output
+            if (_lastRunToolId === 'isr' && _isrParsedData && _isrParsedData.sale_comps && _isrParsedData.sale_comps.length) {
+              _writeSaleComps(_isrParsedData.sale_comps, 'ISR', 5);
+            }
+            if (_lastRunToolId === 'lens') {
+              var _scRows = _parseSaleCompTable(accumulated);
+              if (_scRows.length) _writeSaleComps(_scRows, 'LENS', 6);
+            }
           } else if (_lastRunToolId === 'lease-comp') {
             _lRows = _parseLeaseTable(accumulated);
             await _writeLeaseRows(_lRows, _lAddr, 'LEASE_COMP_MAP');
