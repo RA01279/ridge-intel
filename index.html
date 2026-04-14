@@ -9324,7 +9324,6 @@ async function _llImportClick() {
   var mktEl  = document.getElementById('ll-market');
   var address = addrEl ? addrEl.value.trim() : '';
   var market  = mktEl  ? mktEl.value.trim() : '';
-  if (!address) { showToast('Enter property address first'); return; }
   // Use persisted file reference (set by change/drop listener in renderTools)
   var file = _llSelectedFile || (function(){
     var el = document.getElementById('ll-file');
@@ -9336,13 +9335,27 @@ async function _llImportClick() {
   try {
     var name = file.name.toLowerCase();
     var rows;
-    if (name.endsWith('.csv')) {
-      rows = await _llParseCSV(file, address, market);
-    } else if (name.endsWith('.xlsx') || name.endsWith('.xls')) {
-      rows = await _llParseArgusExcel(file, address, market);
+    // Try RIDGE standardized template first (handles both XLSX and CSV)
+    rows = await _llTryRidgeTemplate(file, market);
+    if (rows !== null) {
+      // Template detected — auto-populate address field from first non-blank row
+      for (var _ti = 0; _ti < rows.length; _ti++) {
+        if (rows[_ti].address) {
+          if (addrEl && !addrEl.value.trim()) addrEl.value = rows[_ti].address;
+          break;
+        }
+      }
+      address = addrEl ? addrEl.value.trim() : '';
     } else {
-      showToast('Unsupported file type. Use XLSX, XLS, or CSV.');
-      btn.textContent = '📥 IMPORT RENT ROLL'; btn.disabled = false; return;
+      if (!address) { showToast('Enter property address first'); btn.textContent = '📥 IMPORT RENT ROLL'; btn.disabled = false; return; }
+      if (name.endsWith('.csv')) {
+        rows = await _llParseCSV(file, address, market);
+      } else if (name.endsWith('.xlsx') || name.endsWith('.xls')) {
+        rows = await _llParseArgusExcel(file, address, market);
+      } else {
+        showToast('Unsupported file type. Use XLSX, XLS, or CSV.');
+        btn.textContent = '📥 IMPORT RENT ROLL'; btn.disabled = false; return;
+      }
     }
     if (!rows || !rows.length) {
       showToast('No rows parsed — check file format');
@@ -9519,6 +9532,115 @@ async function _llParseCSV(file, address, market) {
   });
 }
 
+// ── RIDGE STANDARDIZED LEASE LIBRARY TEMPLATE ────────────────────────────────
+// Parses the 16-column RIDGE template. Detection: header row must contain both
+// 'Property Address' and 'Tenant Name' (case-insensitive exact match).
+// Returns [] when template detected but no valid data rows; null when not this format.
+// Skips: blank address/tenant, SF ≤ 0, and sample rows (Tenant Name contains
+// 'Technologies' or 'Logistics' — the built-in template examples).
+function _llParseRidgeTemplate(raw, market) {
+  var hdrIdx = -1;
+  for (var s = 0; s < Math.min(raw.length, 5); s++) {
+    var rowL = (raw[s] || []).map(function(c){ return String(c||'').toLowerCase().trim(); });
+    if (rowL.indexOf('property address') !== -1 && rowL.indexOf('tenant name') !== -1) {
+      hdrIdx = s; break;
+    }
+  }
+  if (hdrIdx === -1) return null; // not RIDGE template
+
+  var hdr = (raw[hdrIdx] || []).map(function(c){ return String(c||'').toLowerCase().trim(); });
+  function fc(term) { var i = hdr.indexOf(term); return i !== -1 ? i : -1; }
+
+  var cAddr  = fc('property address');
+  var cSuite = fc('suite / unit');
+  var cTen   = fc('tenant name');
+  var cSF    = fc('sf');
+  var cType  = fc('lease type');
+  var cStart = fc('commencement date');
+  var cEnd   = fc('expiration date');
+  var cPSF   = fc('base rent psf (annual)');
+  var cEsc   = fc('escalation %');
+  var cFree  = fc('free rent (months)');
+  var cTI    = fc('ti psf ($)');
+  var cDock  = fc('dock high doors');
+  var cGrade = fc('grade level doors');
+  var cClear = fc('clear height (ft)');
+  var cSrc   = fc('source');
+  // 'Annual Rent ($)' intentionally ignored — calculated field
+
+  if (cAddr === -1 || cTen === -1) return []; // template detected but required columns missing
+
+  var num = function(r, ci) {
+    if (ci < 0 || r[ci] == null) return null;
+    var v = parseFloat(String(r[ci]).replace(/[$,%\s]/g, ''));
+    return isNaN(v) ? null : v;
+  };
+
+  var SAMPLE = /technologies|logistics/i;
+  var rows = [];
+  for (var i = hdrIdx + 1; i < raw.length; i++) {
+    var r = raw[i]; if (!r) continue;
+    var addr   = cAddr >= 0 ? String(r[cAddr]  || '').trim() : '';
+    var tenant = cTen  >= 0 ? String(r[cTen]   || '').trim() : '';
+    if (!addr || !tenant) continue;        // skip blank rows
+    if (SAMPLE.test(tenant)) continue;     // skip template sample rows
+    var sfRaw = num(r, cSF);
+    if (!sfRaw || sfRaw <= 0) continue;   // skip rows without valid SF
+    var dockV  = num(r, cDock);
+    var gradeV = num(r, cGrade);
+    rows.push({
+      address:             addr,
+      market:              market || null,
+      tenant:              tenant,
+      suite:               cSuite >= 0 ? String(r[cSuite] || '').trim() || null : null,
+      sf:                  sfRaw,
+      lease_type:          cType  >= 0 ? String(r[cType]  || '').trim() || null : null,
+      commencement_date:   cStart >= 0 && r[cStart] ? _parseLeaseDateFull(String(r[cStart])) : null,
+      expiration_date:     cEnd   >= 0 && r[cEnd]   ? _parseLeaseDateFull(String(r[cEnd]))   : null,
+      base_rent_psf:       num(r, cPSF),
+      rent_escalation_pct: num(r, cEsc),
+      free_rent_months:    num(r, cFree),
+      ti_psf:              num(r, cTI),
+      dock_high_doors:     dockV  != null ? parseInt(dockV)  : null,
+      grade_level_doors:   gradeV != null ? parseInt(gradeV) : null,
+      clear_height:        num(r, cClear),
+      notes:               cSrc >= 0 ? String(r[cSrc] || '').trim() || null : null,
+      source:              'LEASE_LIBRARY',
+      extracted_data:      {},
+    });
+  }
+  return rows; // [] signals template detected, no valid data rows
+}
+
+// Reads file to raw 2D array and runs RIDGE template detection.
+// Returns parsed rows array (possibly empty) if template detected, null if not.
+// Supports .xlsx, .xls, and .csv without reading the file twice on success.
+async function _llTryRidgeTemplate(file, market) {
+  return new Promise(function(resolve) {
+    var reader = new FileReader();
+    var fname = file.name.toLowerCase();
+    reader.onload = function(e) {
+      try {
+        var raw;
+        if (fname.endsWith('.csv')) {
+          var lines = e.target.result.split('\n').filter(function(l){ return l.trim(); });
+          raw = lines.map(function(l){
+            return l.split(',').map(function(c){ return c.replace(/^"|"$/g,'').trim() || null; });
+          });
+        } else {
+          var wb = XLSX.read(e.target.result, { type: 'array', cellDates: false, raw: false });
+          var ws = wb.Sheets[wb.SheetNames[0]];
+          raw = XLSX.utils.sheet_to_json(ws, { header: 1, defval: null, raw: false });
+        }
+        resolve(_llParseRidgeTemplate(raw, market));
+      } catch(err) { resolve(null); }
+    };
+    reader.onerror = function(){ resolve(null); };
+    if (fname.endsWith('.csv')) reader.readAsText(file);
+    else                        reader.readAsArrayBuffer(file);
+  });
+}
+
 // ── PREVIEW ──────────────────────────────────────────────
 function _llRenderPreview(rows) {
   var occupied = rows.filter(function(r){ return !r.vacant; }).length;
@@ -9563,8 +9685,56 @@ async function _llConfirmImport() {
   btn.textContent = '⏳ Importing...'; btn.disabled = true;
   var address = (document.getElementById('ll-address')||{}).value || '';
   try {
-    await _writeLeaseRows(rows, address, 'LEASE_LIBRARY');
-    showToast('✅ Imported ' + rows.length + ' leases for ' + address);
+    var toWrite = rows;
+    var skipped = 0;
+
+    if (_sbOk && _sb) {
+      // ── Batch dedup grouped by address prefix ───────────────────────────
+      // Collect unique address prefixes from incoming rows
+      var _addrGroups = {};
+      rows.forEach(function(row) {
+        var pfx = (row.address || address || '').split(',')[0].trim();
+        if (pfx) _addrGroups[pfx] = true;
+      });
+      var _addrKeys = Object.keys(_addrGroups);
+
+      // For each unique address, fetch existing records in one query (parallel)
+      var _existMap = {}; // key: tenant_normalized||commencement_date → min source_priority
+      await Promise.all(_addrKeys.map(async function(addrPfx) {
+        try {
+          var res = await _sb.from('leases')
+            .select('tenant_normalized, commencement_date, source_priority')
+            .ilike('address', '%' + addrPfx + '%');
+          (res.data || []).forEach(function(ex) {
+            var key = (ex.tenant_normalized || '') + '||' + (ex.commencement_date || '');
+            var sp  = ex.source_priority != null ? ex.source_priority : 99;
+            if (!_existMap.hasOwnProperty(key) || sp < _existMap[key]) _existMap[key] = sp;
+          });
+        } catch(e2) { /* dedup failure non-fatal — allow rows to proceed */ }
+      }));
+
+      // Filter: skip rows where a higher-priority (lower number) record already exists
+      toWrite = [];
+      rows.forEach(function(row) {
+        var tn  = _normalizeTenant(row.tenant || '');
+        var cd  = row.commencement_date || '';
+        var key = tn + '||' + cd;
+        var existPri = _existMap.hasOwnProperty(key) ? _existMap[key] : null;
+        if (existPri !== null && existPri < 7) {
+          console.log('[RIDGE] Lease Library import skipped — higher priority record exists for ' +
+            row.tenant + ' at ' + (row.address || address));
+          skipped++;
+        } else {
+          toWrite.push(row);
+        }
+      });
+    }
+
+    var written = toWrite.length;
+    if (written > 0) {
+      await _writeLeaseRows(toWrite, address, 'LEASE_LIBRARY');
+    }
+    showToast('[RIDGE] Lease Library: ' + written + ' rows imported, ' + skipped + ' skipped (higher priority exists)');
     document.getElementById('ll-preview-section').style.display = 'none';
     _llParsedRows = [];
     _llSelectedFile = null;
