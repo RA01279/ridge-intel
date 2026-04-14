@@ -2893,7 +2893,10 @@ function handleFile(toolId, uploadId, input, type) {
                 _sb.from('leases').insert({
                   address: addrEl ? addrEl.value || null : null,
                   tenant: tenantEl ? tenantEl.value || null : null,
-                  full_text: fullText
+                  full_text: fullText,
+                  source_priority: 1,
+                  tenant_normalized: _normalizeTenant(tenantEl ? tenantEl.value || '' : ''),
+                  zip_code: ((addrEl ? addrEl.value || '' : '').match(/\b\d{5}\b/) || [])[0] || null
                 }).select('id').single().then(function(res) {
                   if (res.data) {
                     if (!STATE['gavel']) STATE['gavel'] = {};
@@ -3769,6 +3772,17 @@ function _showReimportDialog(count, address) {
 async function _writeLeaseRows(rows, address, source) {
   if (!rows || !rows.length || !_sbOk || !_sb) return;
 
+  // Priority ladder — determines which source wins on upsert conflict
+  var _priorityMap = {
+    'GAVEL': 1, 'LEGAL_REVIEW': 2, 'LEASE_STACK': 3,
+    'LEASE_COMPARE': 4, 'ISR': 5, 'LENS': 6,
+    'LEASE_COMP_MAP': 6, 'LEASE_LIBRARY': 7, 'ARGUS_IMPORT': 7, 'NAPKIN': 7
+  };
+  var _priority = _priorityMap[source] || 7;
+
+  // Extract zip code from address string once, reuse for all rows
+  var _zip = ((address || '').match(/\b\d{5}\b/) || [])[0] || null;
+
   // Sources that come from a human manually importing data — these get a confirm dialog.
   var MANUAL_SOURCES = ['ARGUS_IMPORT', 'LEASE_LIBRARY', 'NAPKIN'];
   var isManual = MANUAL_SOURCES.indexOf(source) !== -1;
@@ -3794,6 +3808,13 @@ async function _writeLeaseRows(rows, address, source) {
       if (row.expiration_date) row.expiration_date = _parseLeaseDate(row.expiration_date);
       // Normalize tenant name for consistent dedup
       if (row.tenant) row.tenant = _normalizeTenant(row.tenant);
+      // Enrich with new schema columns
+      row.source_priority   = _priority;
+      row.tenant_normalized = _normalizeTenant(row.tenant || '');
+      row.zip_code          = _zip;
+      row.dock_high_doors   = row.dock_high_doors  != null ? parseInt(row.dock_high_doors)  : null;
+      row.grade_level_doors = row.grade_level_doors != null ? parseInt(row.grade_level_doors) : null;
+      row.clear_height      = row.clear_height     != null ? parseFloat(row.clear_height)   : null;
       return row;
     });
     // Skip rows missing both address and tenant
@@ -6297,6 +6318,9 @@ async function runRidgeAPI(skillName, prompt, runInputs, runToolId) {
           if (_addrFinal && _addrFinal.value) _leaseUpdate.address = _addrFinal.value;
           if (_tenantFinal && _tenantFinal.value) _leaseUpdate.tenant = _tenantFinal.value;
           if (_lastRunInputs && _lastRunInputs.notes) _leaseUpdate.notes = _lastRunInputs.notes;
+          _leaseUpdate.source_priority   = 1;
+          _leaseUpdate.tenant_normalized = _normalizeTenant(_leaseUpdate.tenant || '');
+          _leaseUpdate.zip_code          = ((_leaseUpdate.address || '').match(/\b\d{5}\b/) || [])[0] || null;
           try {
             var _embedRowId = _leaseId;
             if (_leaseId) {
