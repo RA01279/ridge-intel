@@ -2153,8 +2153,7 @@ function clearDailySourced() {
 
 var _dsTKKeys = [];
 
-// → extracted to shared/utils.js (Phase 2)
-function normDSAddr(a){ return (a||'').toLowerCase().trim().replace(/\s+/g,' '); }
+
 
 function getDSTracker(){
   return getDailySignalState().tracker;
@@ -3666,48 +3665,9 @@ async function _sbLoadDeals() {
   } catch(e) { console.warn('[RIDGE] _sbLoadDeals failed:', e.message); showToast('Pipeline failed to load from database.'); }
 }
 
-// → extracted to shared/supabase.js (Phase 2)
-async function _sbUpsertDeal(deal) {
-  if (!_sbOk || !_sb) return;
-  var payload = {
-    id: deal.id,
-    address: deal.addr || null,
-    asset_type: deal.type || null,
-    asking_price: deal.price ? parseFloat(String(deal.price).replace(/[$,]/g, '')) : null,
-    sf: deal.sf ? parseFloat(deal.sf.toString().replace(/,/g, '')) : null,
-    market: deal.mkt || null,
-    stage: deal.stage || 'Initial Screen',
-    conviction: deal.conv || null,
-    broker: deal.broker || null,
-    notes: deal.notes || null,
-    data: { nextDate: deal.nextDate || null },
-    created_at: deal.createdAt,
-    updated_at: deal.updatedAt
-  };
-  console.log('[RIDGE] DEALS PAYLOAD:', JSON.stringify(payload));
-  var result = await _sb.from('deals').upsert(payload, { onConflict: 'id' });
-  console.log('[RIDGE] DEALS RESULT:', JSON.stringify(result));
-  if (result.error) {
-    console.error('[RIDGE] DEALS ERROR:', JSON.stringify(result.error));
-    return;
-  }
-  // Only log activity AFTER successful deal upsert
-  var logResult = await _sb.from('activity_log').insert({
-    deal_id: deal.id,
-    action: 'Deal added',
-    notes: deal.addr
-  });
-  if (logResult.error) {
-    console.warn('[RIDGE] activity_log failed:', JSON.stringify(logResult.error));
-  }
-}
 
-// → extracted to shared/supabase.js (Phase 2)
-async function _sbDeleteDeal(id) {
-  if (!_sbOk || !_sb) return;
-  var result = await _sb.from('deals').delete().eq('id', id);
-  if (result.error) console.warn('[RIDGE] deal delete failed:', JSON.stringify(result.error));
-}
+
+
 
 // ── LEASE TABLE PARSER ───────────────────────────────────────
 // Parses pipe-delimited rent roll / comp tables from Claude output.
@@ -3771,37 +3731,9 @@ function _parseLeaseTable(text) {
   } catch(e) { return []; }
 }
 
-// → extracted to shared/utils.js (Phase 2)
-function _parseLeaseDate(str) {
-  if (!str) return null;
-  var months = {Jan:1,Feb:2,Mar:3,Apr:4,May:5,Jun:6,
-                Jul:7,Aug:8,Sep:9,Oct:10,Nov:11,Dec:12};
-  var m = str.match(/^([A-Za-z]{3})[- ](\d{4})$/);
-  if (m) {
-    var mo = months[m[1]];
-    if (mo) return m[2] + '-' + String(mo).padStart(2,'0') + '-01';
-  }
-  // Already ISO format or unparseable
-  return str.length === 10 ? str : null;
-}
 
-// → extracted to shared/utils.js (Phase 2)
-// Normalize tenant name: trim, remove trailing punctuation/asterisks,
-// standardize common legal suffix variations so dedup works correctly.
-function _normalizeTenant(name) {
-  if (!name) return name;
-  return name
-    .trim()
-    .replace(/\*+$/, '')                          // strip trailing asterisks (Argus vacant marker)
-    .trim()
-    .replace(/\bCorporation\b/gi, 'Corp')          // Corporation → Corp
-    .replace(/\bIncorporated\b/gi, 'Inc')          // Incorporated → Inc
-    .replace(/\bL\.L\.C\.\b/gi, 'LLC')            // L.L.C. → LLC
-    .replace(/\bL\.L\.C\b/gi, 'LLC')
-    .replace(/\bLimited\b/gi, 'Ltd')
-    .replace(/[.,]+$/, '')                         // strip trailing . or ,
-    .trim();
-}
+
+
 
 // Upserts parsed lease rows to Supabase, deduplicating on address+tenant.
 // Skips rows missing address or tenant. Never throws — wraps all errors as console.warn.
@@ -4034,14 +3966,7 @@ function plConvClass(conv) {
   if (conv === 'Watch List') return 'conv-watch';
   return 'conv-dead';
 }
-// → extracted to shared/utils.js (Phase 2)
-function plDaysAgo(iso) {
-  if (!iso) return '';
-  var diff = Math.floor((Date.now() - new Date(iso).getTime()) / 86400000);
-  if (diff === 0) return 'today';
-  if (diff === 1) return '1 day ago';
-  return diff + ' days ago';
-}
+
 
 function renderPipeline() {
   var deals = getPipelineDeals();
@@ -4214,20 +4139,7 @@ function plLaunchReport() {
   runRidgeAPI('Pipeline Report', lines.join('\n'), null, null);
 }
 
-// → extracted to shared/ui.js (Phase 2)
-function showToast(msg) {
-  var t = document.getElementById('ridge-toast');
-  if (!t) {
-    t = document.createElement('div');
-    t.id = 'ridge-toast';
-    t.style.cssText = 'position:fixed;bottom:28px;right:28px;background:var(--navy);border:1px solid var(--blue);color:var(--text);padding:13px 20px;border-radius:var(--r);font-size:13px;z-index:9999;opacity:0;transition:opacity .3s;max-width:380px;line-height:1.5;box-shadow:0 4px 20px rgba(0,0,0,.4)';
-    document.body.appendChild(t);
-  }
-  t.textContent = msg;
-  t.style.opacity = '1';
-  clearTimeout(t._timer);
-  t._timer = setTimeout(() => { t.style.opacity = '0'; }, 4000);
-}
+
 
 // ═══════════════════════════════════════════════════════════
 //  MARKDOWN RENDERER
@@ -4306,15 +4218,7 @@ function copyResult(toolId) {
 // ═══════════════════════════════════════════════════════════
 //  ISR CALL 2 — JSON EXTRACTION (Haiku, non-streaming)
 // ═══════════════════════════════════════════════════════════
-// → extracted to shared/utils.js (Phase 2)
-function _extractKeySection(text, header) {
-  var idx = text.indexOf('## ' + header);
-  if (idx === -1) idx = text.indexOf('# ' + header);
-  if (idx === -1) return '';
-  var next = text.indexOf('\n## ', idx + 4);
-  if (next === -1) next = text.indexOf('\n# ', idx + 4);
-  return next > -1 ? text.slice(idx, next) : text.slice(idx, idx + 3000);
-}
+
 
 async function _isrExtractJSON(memoText) {
   var _isrBtn = document.getElementById('pptx-btn-isr');
@@ -5517,10 +5421,7 @@ async function saveApiKey() {
   showToast('Settings saved');
 }
 
-// → extracted to shared/ui.js (Phase 2)
-function _showModal(id) { var el = document.getElementById(id); if (el) el.classList.add('show'); }
-// → extracted to shared/ui.js (Phase 2)
-function _hideModal(id) { var el = document.getElementById(id); if (el) el.classList.remove('show'); }
+
 
 function showApiKeyModal() {
   document.getElementById('apikey-input').value = '';
@@ -5530,10 +5431,7 @@ function showApiKeyModal() {
   setTimeout(function() { document.getElementById('officer-name-input').focus(); }, 100);
 }
 
-// → extracted to shared/ui.js (Phase 2)
-function closeApiKeyModal() {
-  _hideModal('apikey-modal');
-}
+
 
 // ── VOYAGE AI EMBEDDINGS ───────────────────────────────────────
 // Requires voyage_config row in session_state and vector(1536) columns on leases, skill_outputs, deals.
@@ -8046,28 +7944,11 @@ async function ridgeExportPPT() {
       'jd.rent_roll:', _isrParsedData && _isrParsedData.rent_roll ? _isrParsedData.rent_roll.length : 0
     );
 
-    // → extracted to shared/utils.js (Phase 2)
-    function fmtUSD(v) {
-      if (!v || v === '—') return '—';
-      var raw = String(v).replace(/[$,\s]/g,'');
-      var n = parseFloat(raw);
-      return isNaN(n) ? '$' + raw : '$' + Math.round(n).toLocaleString('en-US');
-    }
-    // → extracted to shared/utils.js (Phase 2)
-    function fmtPSF(v) {
-      if (!v || v === '—') return '—';
-      var raw = String(v).replace(/[$,\s]/g,'');
-      var n = parseFloat(raw);
-      return isNaN(n) ? '$' + raw + ' PSF' : '$' + Math.round(n).toLocaleString('en-US') + ' PSF';
-    }
+
+
     function cleanNum(v) { return String(v||'').replace(/[$,\s]/g,''); }
     // ISSUE 8: always two decimal places
-    // → extracted to shared/utils.js (Phase 2)
-    function pct2(v) { var n=parseFloat(String(v||'').replace(/[%\s]/g,'')); return isNaN(n)?(String(v||'')||'—'):n.toFixed(2)+'%'; }
-    // → extracted to shared/utils.js (Phase 2)
-    function mult2(v) { var n=parseFloat(String(v||'').replace(/[x×\s]/g,'')); return isNaN(n)?(String(v||'')||'—'):n.toFixed(2)+'×'; }
-    // → extracted to shared/utils.js (Phase 2)
-    function stripMd(s) { return String(s||'').replace(/\*\*(.*?)\*\*/g,'$1').replace(/\*(.*?)\*/g,'$1').replace(/#{1,6}\s/g,'').replace(/`/g,'').trim(); }
+
 
     // Parse structured JSON — prefer already-extracted _isrParsedData, then re-parse raw output
     var jd = _isrParsedData || null;
