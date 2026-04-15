@@ -2930,6 +2930,26 @@ async function loadFolderFiles(toolId, uploadId, dirHandle) {
       else {
         console.log('[RIDGE] Synced', _propInserts.length, 'properties from', folderName);
         showToast('✅ Synced ' + _propInserts.length + ' properties from ' + folderName + ' → RIDGE database');
+        // ── EMBEDDINGS: generate for synced properties ────────────────────────
+        if (_sbOk && _sb) {
+          _propInserts.forEach(function(_prop) {
+            if (!_prop.address) return;
+            var _embedText = [
+              _prop.address, _prop.market || '',
+              _prop.asset_class || '', _prop.submarket || '',
+              _prop.owner_name || '', _prop.conviction_tier || ''
+            ].join(' ').trim();
+            _generateEmbedding(_embedText).then(function(_vec) {
+              if (!_vec) return;
+              _sb.from('properties')
+                .update({ embedding: _vec })
+                .ilike('address', '%' + _prop.address.split(',')[0] + '%')
+                .then(function(r) {
+                  if (r.error) console.warn('[RIDGE] property embed error:', r.error.message);
+                });
+            });
+          });
+        }
       }
     } catch(e) {
       console.warn('[RIDGE] properties sync error:', e.message);
@@ -3977,6 +3997,27 @@ async function _writeLeaseRows(rows, address, source) {
       else console.log('[RIDGE] ' + source + ' wrote ' + inserts.length + ' leases to DB');
     }
   } catch(e) { console.warn('[RIDGE] ' + source + ' leases exception:', e.message); showToast('Import failed — check file format and try again.'); }
+
+  // ── EMBEDDINGS: generate for newly written lease rows ──────────────────────
+  if (_sbOk && _sb) {
+    inserts.forEach(function(_er) {
+      if (!_er.address || !_er.tenant) return;
+      var _embedText = [
+        _er.address, _er.tenant, _er.asset_class || '',
+        _er.lease_type || '', _er.base_rent_psf || ''
+      ].join(' ').trim();
+      _generateEmbedding(_embedText).then(function(_vec) {
+        if (!_vec) return;
+        _sb.from('leases')
+          .update({ embedding: _vec })
+          .eq('tenant_normalized', _er.tenant_normalized)
+          .ilike('address', '%' + (_er.address || '').split(',')[0] + '%')
+          .then(function(r) {
+            if (r.error) console.warn('[RIDGE] lease embed update error:', r.error.message);
+          });
+      });
+    });
+  }
 }
 
 // ── Lease Comp Map — smart Supabase query with tiered fallback ───────────────
@@ -4129,6 +4170,29 @@ async function _writeSaleComps(comps, source, priority) {
     else console.log('[RIDGE]', source, 'wrote', inserts.length, 'sale comps to DB');
   } catch(e) {
     console.warn('[RIDGE] _writeSaleComps error:', e.message);
+  }
+
+  // ── EMBEDDINGS: generate for newly written sale comp rows ──────────────────
+  if (_sbOk && _sb) {
+    inserts.forEach(function(_sc) {
+      if (!_sc.address) return;
+      (function(_row) {
+        var _embedText = [
+          _row.address, _row.asset_type || '',
+          _row.sale_date || '', _row.price_psf || '', _row.source || ''
+        ].join(' ').trim();
+        _generateEmbedding(_embedText).then(function(_vec) {
+          if (!_vec) return;
+          _sb.from('sale_comps')
+            .update({ embedding: _vec })
+            .eq('address', _row.address)
+            .eq('sale_date', _row.sale_date)
+            .then(function(r) {
+              if (r.error) console.warn('[RIDGE] sale_comp embed error:', r.error.message);
+            });
+        });
+      })(_sc);
+    });
   }
 }
 
@@ -6070,7 +6134,7 @@ async function histSemanticSearch() {
     if (vec) {
       // Semantic search via pgvector
       var res = await _sb.rpc('match_skill_outputs', {
-        query_embedding: '[' + vec.join(',') + ']',
+        query_embedding: vec,
         match_threshold: 0.45,
         match_count: 40
       });
