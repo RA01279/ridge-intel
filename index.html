@@ -812,7 +812,7 @@ footer{border-top:1px solid var(--border);padding:20px 24px;text-align:center;co
       <span style="color:var(--faint);font-size:11px;margin-left:4px">— auto-filled from upload where available</span>
     </div>
     <div class="manual-body" id="mbody-lease-comp">
-      <div class="fr two"><div class="fg"><label class="fl">Market</label><select id="f-lease-comp-market"><option>Atlanta, GA</option><option>Savannah, GA</option><option>Dallas–Fort Worth, TX</option><option>Houston, TX</option><option>Austin, TX (Watch)</option></select></div><div class="fg"><label class="fl">Submarket</label><input type="text" id="f-lease-comp-sub" placeholder="Savannah Industrial"></div></div><div class="fr two"><div class="fg"><label class="fl">Subject Property Address *</label><input type="text" id="f-lease-comp-addr" placeholder="18 Patton Road, Savannah, GA"></div><div class="fg"><label class="fl">Current In-Place Rent PSF</label><input type="text" id="f-lease-comp-rent" placeholder="$11.00"></div></div><div class="fr two"><div class="fg"><label class="fl">Building SF</label><input type="text" id="f-lease-comp-sf" placeholder="45,500"></div></div>
+      <div class="fr two"><div class="fg"><label class="fl">Market</label><select id="f-lease-comp-market"><option>Atlanta, GA</option><option>Savannah, GA</option><option>Dallas–Fort Worth, TX</option><option>Houston, TX</option><option>Austin, TX (Watch)</option></select></div><div class="fg"><label class="fl">Submarket</label><input type="text" id="f-lease-comp-sub" placeholder="Savannah Industrial"></div></div><div class="fr two"><div class="fg"><label class="fl">Subject Property Address *</label><input type="text" id="f-lease-comp-addr" placeholder="18 Patton Road, Savannah, GA"></div><div class="fg"><label class="fl">Current In-Place Rent PSF</label><input type="text" id="f-lease-comp-rent" placeholder="$11.00"></div></div><div class="fr two"><div class="fg"><label class="fl">Building SF</label><input type="text" id="f-lease-comp-sf" placeholder="45,500"></div><div class="fg"><label class="fl">Asset Class</label><select id="f-lease-comp-asset_class"><option value="">Any</option><option>Industrial / Warehouse</option><option>Flex Industrial</option><option>Multi-Tenant Industrial</option></select></div></div><div class="fr two"><div class="fg"><label class="fl">Clear Height (ft)</label><input type="text" id="f-lease-comp-clear_ht" placeholder="e.g. 28"></div><div class="fg"><label class="fl">Dock High Doors</label><input type="text" id="f-lease-comp-dock_doors" placeholder="e.g. 4"></div></div><div class="fr two"><div class="fg"><label class="fl">Grade Level Doors</label><input type="text" id="f-lease-comp-grade_doors" placeholder="e.g. 2"></div><div class="fg"><label class="fl">Radius (mi)</label><input type="text" id="f-lease-comp-radius" placeholder="e.g. 10"></div></div>
     </div>
     <div class="btn-row">
       <button class="btn btn-p" id="run-btn-lease-comp" onclick="runTool(&#39;lease-comp&#39;)">⚡ Run LEASE COMP MAP</button>
@@ -1330,7 +1330,9 @@ var TOOLS = [
     fields:[
       {row:[{id:'market',label:'Market',type:'select',opts:['Atlanta, GA','Savannah, GA','Dallas–Fort Worth, TX','Houston, TX','Austin, TX (Watch)']},{id:'sub',label:'Submarket',ph:'e.g. Savannah Industrial'}]},
       {row:[{id:'addr',label:'Subject Property Address *',ph:'e.g. 4200 Commerce Pkwy, Savannah, GA'},{id:'rent',label:'Current In-Place Rent PSF',ph:'e.g. $10.25'}]},
-      {row:[{id:'sf',label:'Building SF',ph:'e.g. 58,000'}]},
+      {row:[{id:'sf',label:'Building SF',ph:'e.g. 58,000'},{id:'asset_class',label:'Asset Class',type:'select',opts:['Any','Industrial / Warehouse','Flex Industrial','Multi-Tenant Industrial']}]},
+      {row:[{id:'clear_ht',label:'Clear Height (ft)',ph:'e.g. 28'},{id:'dock_doors',label:'Dock High Doors',ph:'e.g. 4'}]},
+      {row:[{id:'grade_doors',label:'Grade Level Doors',ph:'e.g. 2'},{id:'radius',label:'Radius (mi)',ph:'e.g. 10'}]},
     ],
     steps:['Reading comp data...','Geocoding locations...','Benchmarking in-place rents...','Analyzing lease structures...','Generating comp analysis...'],
     system:`You are LEASE COMP MAP, RIDGE's lease comp analysis engine. You analyze lease comparables against a subject property to benchmark rents, identify roll risk, and support underwriting assumptions. Be specific with numbers. Flag any comps that are outliers.`,
@@ -3162,28 +3164,37 @@ async function buildTrigger(toolId, d) {
       if (d.sub)  p += ' in ' + d.sub;
       if (d.sf)   p += '. Building SF: ' + d.sf;
       if (d.rent) p += '. Current in-place rent: ' + d.rent + ' PSF';
-      // Enrich with Lease Library historical comps for the selected market
+      if (d.asset_class && d.asset_class !== 'Any') p += '. Asset class: ' + d.asset_class;
+      if (d.clear_ht)    p += '. Clear height: ' + d.clear_ht + 'ft';
+      if (d.dock_doors)  p += '. Dock high doors: ' + d.dock_doors;
+      if (d.grade_doors) p += '. Grade level doors: ' + d.grade_doors;
+      if (d.radius)      p += '. Comp search radius: ' + d.radius + ' miles';
+      // Enrich with Lease Library comps — smart tiered query
       if (_sbOk && _sb && d.market) {
         try {
-          var libRes = await _sb.from('leases')
-            .select('address,suite,tenant,sf,base_rent_psf,expiration_date,lease_type,market,vacant')
-            .eq('market', d.market)
-            .eq('vacant', false)
-            .order('created_at', { ascending: false })
-            .limit(20);
-          if (libRes.data && libRes.data.length > 0) {
+          var _lcmRows = await _lcmQuerySupabase({
+            market: d.market, sub: d.sub, sf: d.sf,
+            asset_class: d.asset_class, clear_ht: d.clear_ht,
+            dock_doors: d.dock_doors, grade_doors: d.grade_doors
+          });
+          if (_lcmRows.length > 0) {
             var libTable = '\nRIDGE LEASE DATABASE — Historical Comps for ' + d.market + ':\n';
-            libTable += '| Address | Suite | Tenant | SF | Rent PSF | Expiration | Type |\n';
-            libTable += '|---|---|---|---|---|---|---|\n';
-            libRes.data.forEach(function(r) {
+            libTable += '| Address | Suite | Tenant | SF | Rent PSF | Commenced | Type | Clear Ht | Dock | Grade |\n';
+            libTable += '|---|---|---|---|---|---|---|---|---|---|\n';
+            _lcmRows.forEach(function(r) {
               libTable += '| ' + (r.address||'—').slice(0,35) + ' | ' + (r.suite||'—') + ' | '
                 + (r.tenant||'—').slice(0,30) + ' | '
                 + (r.sf ? Number(r.sf).toLocaleString() : '—') + ' | '
                 + (r.base_rent_psf ? '$'+Number(r.base_rent_psf).toFixed(2)+' PSF' : '—') + ' | '
-                + (r.expiration_date ? r.expiration_date.slice(0,7) : '—') + ' | '
-                + (r.lease_type||'—') + ' |\n';
+                + (r.commencement_date ? r.commencement_date.slice(0,7) : '—') + ' | '
+                + (r.lease_type||'—') + ' | '
+                + (r.clear_height ? r.clear_height + '\'' : '—') + ' | '
+                + (r.dock_high_doors  != null ? r.dock_high_doors  : '—') + ' | '
+                + (r.grade_level_doors != null ? r.grade_level_doors : '—') + ' |\n';
             });
             d.comps_text = libTable + (d.comps_text ? '\n\nUPLOADED COMP DATA:\n' + d.comps_text : '');
+          } else if (!d.comps_text) {
+            showToast('[RIDGE] No comps in Lease Library for this market — upload comp data to proceed');
           }
         } catch(e) { /* enrichment failed — continue without */ }
       }
@@ -3855,6 +3866,50 @@ async function _writeLeaseRows(rows, address, source) {
       else console.log('[RIDGE] ' + source + ' wrote ' + inserts.length + ' leases to DB');
     }
   } catch(e) { console.warn('[RIDGE] ' + source + ' leases exception:', e.message); showToast('Import failed — check file format and try again.'); }
+}
+
+// ── Lease Comp Map — smart Supabase query with tiered fallback ───────────────
+// Queries the leases table with progressively wider filters until ≥5 comps found.
+// Tier 1: SF ±50%, 12-month commencement cutoff, physical spec tiers
+// Tier 2: SF ±100%, no date cutoff, no physical filter
+// Tier 3: market-wide, no filters
+async function _lcmQuerySupabase(params) {
+  if (!_sbOk || !_sb || !params.market) return [];
+  var subjectSF  = params.sf        ? parseFloat(String(params.sf).replace(/,/g, ''))  : null;
+  var clearHt    = params.clear_ht  ? parseFloat(params.clear_ht)                       : null;
+  var dockDoors  = params.dock_doors  ? parseInt(params.dock_doors, 10)                 : null;
+  var gradeDoors = params.grade_doors ? parseInt(params.grade_doors, 10)                : null;
+
+  var cutoffDate = new Date();
+  cutoffDate.setMonth(cutoffDate.getMonth() - 12);
+  var cutoff = cutoffDate.toISOString().slice(0, 10);
+
+  async function _doQuery(sfDelta, useDate, usePhysical) {
+    var q = _sb.from('leases')
+      .select('address,suite,tenant,sf,base_rent_psf,commencement_date,expiration_date,lease_type,market,clear_height,dock_high_doors,grade_level_doors,vacant')
+      .eq('market', params.market)
+      .eq('vacant', false);
+    if (sfDelta && subjectSF) {
+      q = q.gte('sf', Math.round(subjectSF * (1 - sfDelta)))
+            .lte('sf', Math.round(subjectSF * (1 + sfDelta)));
+    }
+    if (useDate) {
+      q = q.gte('commencement_date', cutoff);
+    }
+    if (usePhysical) {
+      if (clearHt)    q = q.gte('clear_height', clearHt - 4).lte('clear_height', clearHt + 8);
+      if (dockDoors  != null) q = q.gte('dock_high_doors',   Math.max(0, dockDoors  - 2)).lte('dock_high_doors',   dockDoors  + 4);
+      if (gradeDoors != null) q = q.gte('grade_level_doors', Math.max(0, gradeDoors - 2)).lte('grade_level_doors', gradeDoors + 4);
+    }
+    q = q.order('commencement_date', { ascending: false }).limit(25);
+    try { var res = await q; return (res.data && !res.error) ? res.data : []; }
+    catch(e) { return []; }
+  }
+
+  var rows = await _doQuery(0.5, true, true);          // Tier 1 — tight
+  if (rows.length < 5) rows = await _doQuery(1.0, false, false);  // Tier 2 — loose
+  if (rows.length < 5) rows = await _doQuery(0,   false, false);  // Tier 3 — market-wide
+  return rows;
 }
 
 // ── Sale comp pipe-table parser (mirrors _parseLeaseTable) ──────────────────
