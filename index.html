@@ -2427,6 +2427,29 @@ async function exportDailySignalXLSX() {
   var top15 = results.slice(0, 15);
   if (!top15.length) { showToast('No qualifying prospects found'); return; }
 
+  // ── PROPERTIES DB: write signal scores ───────────────────────
+  var scoredRows = results;
+  if (_sbOk && _sb && scoredRows && scoredRows.length) {
+    try {
+      var _scoreUpdates = scoredRows.map(function(r) {
+        return {
+          address:         r.address,
+          signal_score:    r.score || 0,
+          conviction_tier: r.score >= 8 ? 'High Conviction' :
+                           r.score >= 5 ? 'Watch List' : 'Below Threshold'
+        };
+      });
+      for (var _su of _scoreUpdates) {
+        await _sb.from('properties')
+          .update({ signal_score: _su.signal_score, conviction_tier: _su.conviction_tier })
+          .ilike('address', '%' + _su.address.split(',')[0] + '%');
+      }
+      console.log('[RIDGE] Updated signal scores for', _scoreUpdates.length, 'properties');
+    } catch(e) {
+      console.warn('[RIDGE] signal score update error:', e.message);
+    }
+  }
+
   // ── ExcelJS formatted workbook ─────────────────────────────
   var wb = new ExcelJS.Workbook();
   wb.creator = 'Entrada Partners';
@@ -2824,6 +2847,94 @@ async function loadFolderFiles(toolId, uploadId, dirHandle) {
   uz.classList.add('loaded');
   st.textContent = '✓ ' + entries.length + ' files · ' + allRows.length + ' properties loaded';
   if (btn) btn.style.display = 'inline-block';
+
+  // ── PROPERTIES DB: normalize rows and write to Supabase ──────────────────
+  var folderName = dirHandle.name;
+  var parsedRows = allRows.map(function(r) {
+    function colVal(keys) {
+      var rk = Object.keys(r);
+      for (var i = 0; i < keys.length; i++) {
+        for (var j = 0; j < rk.length; j++) {
+          if (rk[j].toLowerCase().includes(keys[i].toLowerCase())) return String(r[rk[j]] || '').trim();
+        }
+      }
+      return '';
+    }
+    return {
+      address:       colVal(['Property Address']),
+      propName:      colVal(['Property Name']),
+      city:          colVal(['City']),
+      submarket:     colVal(['Submarket Name', 'Submarket']),
+      rba:           parseFloat(colVal(['RBA', 'Rentable Building']).replace(/[^0-9.]/g,'')) || 0,
+      yearBuilt:     parseInt(colVal(['Year Built'])) || 0,
+      yearRenovated: parseInt(colVal(['Year Renovated'])) || 0,
+      ceilHt:        colVal(['Ceiling Ht', 'Clear Height']),
+      docks:         colVal(['Number Of Loading Docks', 'Loading Docks', 'Docks']),
+      driveIns:      colVal(['Drive Ins', 'Drive-Ins']),
+      power:         colVal(['Power']),
+      rail:          colVal(['Rail Lines', 'Rail']),
+      bldgClass:     colVal(['Building Class', 'Class']),
+      tenancy:       colVal(['Tenancy']),
+      vacancy:       parseFloat(colVal(['Vacancy %', 'Vacancy Pct', 'Vacancy Rate']).replace(/[^0-9.]/g,'')) || 0,
+      pctLeased:     parseFloat(colVal(['Percent Leased', '% Leased']).replace(/[^0-9.]/g,'')) || 0,
+      rentSF:        parseFloat(colVal(['Rent/SF', 'Rent Per SF', 'Asking Rent']).replace(/[^0-9.]/g,'')) || 0,
+      availSF:       parseFloat(colVal(['Total Available Space', 'Available SF', 'Avail']).replace(/[^0-9.]/g,'')) || 0,
+      lastSale:      colVal(['Last Sale Date', 'Last Sale']),
+      lastSaleAmt:   colVal(['Last Sale Price']),
+      forSale:       colVal(['For Sale Status', 'For Sale']),
+      forSalePrice:  colVal(['For Sale Price']),
+      owner:         colVal(['Recorded Owner Name', 'Owner Name']),
+      ownerAddr:     colVal(['Recorded Owner Address']),
+      phone:         colVal(['Recorded Owner Phone', 'Owner Phone']),
+    };
+  }).filter(function(r) { return r.address; });
+
+  if (_sbOk && _sb && parsedRows && parsedRows.length) {
+    try {
+      var _mktFromFolder = _detectMarketFromFolder(folderName);
+      var _propInserts = parsedRows.map(function(r) {
+        return {
+          address:         r.address || null,
+          property_name:   r.propName || null,
+          city:            r.city || null,
+          submarket:       r.submarket || null,
+          market:          _mktFromFolder.market,
+          asset_class:     _mktFromFolder.assetClass,
+          building_class:  r.bldgClass || null,
+          building_sf:     r.rba ? parseFloat(r.rba) : null,
+          year_built:      r.yearBuilt ? parseInt(r.yearBuilt) : null,
+          year_renovated:  r.yearRenovated ? parseInt(r.yearRenovated) : null,
+          ceiling_ht:      r.ceilHt || null,
+          dock_doors:      r.docks ? parseInt(r.docks) : null,
+          drive_ins:       r.driveIns || null,
+          power:           r.power || null,
+          rail:            r.rail || null,
+          tenancy:         r.tenancy || null,
+          vacancy_pct:     r.vacancy ? parseFloat(r.vacancy) : null,
+          pct_leased:      r.pctLeased ? parseFloat(r.pctLeased) : null,
+          asking_rent_psf: r.rentSF || null,
+          avail_sf:        r.availSF ? parseFloat(r.availSF) : null,
+          last_sale_date:  r.lastSale || null,
+          last_sale_price: r.lastSaleAmt ? parseFloat(String(r.lastSaleAmt).replace(/[$,]/g,'')) : null,
+          for_sale:        r.forSale || null,
+          for_sale_price:  r.forSalePrice ? parseFloat(String(r.forSalePrice).replace(/[$,]/g,'')) : null,
+          owner_name:      r.owner || null,
+          owner_address:   r.ownerAddr || null,
+          owner_phone:     r.phone || null,
+          market_tag:      folderName || null,
+          last_synced:     new Date().toISOString()
+        };
+      });
+      var _propRes = await _sb.from('properties').upsert(_propInserts, { onConflict: 'address' });
+      if (_propRes.error) console.warn('[RIDGE] properties upsert error:', _propRes.error.message);
+      else {
+        console.log('[RIDGE] Synced', _propInserts.length, 'properties from', folderName);
+        showToast('✅ Synced ' + _propInserts.length + ' properties from ' + folderName + ' → RIDGE database');
+      }
+    } catch(e) {
+      console.warn('[RIDGE] properties sync error:', e.message);
+    }
+  }
 }
 
 function handleFile(toolId, uploadId, input, type) {
@@ -5813,6 +5924,24 @@ function renderLeaseTable() {
         '</tr>';
     }).join('') +
     '</tbody></table>';
+}
+
+function _detectMarketFromFolder(folderName) {
+  var f = (folderName || '').toLowerCase();
+  var market = 'Unknown';
+  var assetClass = 'Industrial';
+
+  if (f.includes('atlanta') || f.includes('atl'))        market = 'Atlanta';
+  else if (f.includes('savannah') || f.includes('sav'))  market = 'Savannah';
+  else if (f.includes('dallas') || f.includes('dfw'))    market = 'DFW';
+  else if (f.includes('houston') || f.includes('hou'))   market = 'Houston';
+  else if (f.includes('austin') || f.includes('aus'))    market = 'Austin';
+
+  if (f.includes('flex'))                                 assetClass = 'Flex';
+  else if (f.includes('industrial') || f.includes('ind')) assetClass = 'Industrial';
+  else if (f.includes('office'))                          assetClass = 'Office';
+
+  return { market: market, assetClass: assetClass };
 }
 
 function _detectMarket(inputs) {
