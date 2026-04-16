@@ -3354,6 +3354,24 @@ async function buildTrigger(toolId, d) {
     case 'isr':
       console.log('ISR buildTrigger inputs:', {addr:d.addr, price:d.price, irr:d.irr, em:d.em, cap:d.cap, yoc:d.yoc, sf:d.sf});
       var _cleanPrice = String(d.price||'').replace(/[$,]/g,''), _cleanPSF = String(d.psf||'').replace(/[$,]/g,'');
+      var _isrMarketRentData = null;
+      if (_sbOk && _sb) {
+        try {
+          _isrMarketRentData = await _isrFetchMarketRent({
+            address: d.addr || '',
+            assetClass: d.type || 'Industrial',
+            sf: parseFloat(String(d.sf||'').replace(/[^0-9.]/g,'')) || 50000,
+            clearHeight: 0,
+            dockDoors: 0
+          });
+          if (_isrMarketRentData) {
+            console.log('[RIDGE] ISR market rent from DB:', _isrMarketRentData.marketRentPSF,
+              'PSF from', _isrMarketRentData.compCount, 'comps');
+          }
+        } catch(e) {
+          console.warn('[RIDGE] ISR market rent fetch error:', e.message);
+        }
+      }
       p = `You are a senior acquisitions officer at Entrada Partners preparing an institutional investment committee presentation.
 
 ${d.model_text ? '=== ACQUISITION MODEL (rent roll, cash flows, assumptions) ===\n' + d.model_text.slice(0, 12000) + '\n\n' : ''}PROPERTY: ${d.addr||''}
@@ -3458,6 +3476,15 @@ PURSUE | CONDITIONAL | PASS
 If PURSUE: state the conviction and next steps
 If CONDITIONAL: state exactly what must be verified before proceeding
 5 specific next steps numbered and actionable`;
+      p += (_isrMarketRentData ?
+        '\n\n[RIDGE COMP DATABASE — MARKET RENT]\n' +
+        'Weighted avg market rent from ' + _isrMarketRentData.compCount + ' executed comps: $' +
+        _isrMarketRentData.marketRentPSF + ' PSF NNN.\n' +
+        'Use this figure for Slide 10 market rent analysis. Do not estimate — this is real comp data.\n' +
+        'Comps: ' + _isrMarketRentData.comps.map(function(c) {
+          return (c.tenant||'Unknown') + ' | ' + (c.sf||'') + ' SF | $' + c.base_rent_psf + ' PSF | ' + (c.commencement_date||'');
+        }).join('; ')
+        : '\n\n[RIDGE COMP DATABASE] No comps found matching subject property criteria — estimate market rent from submarket knowledge.');
       return p;
 
     case 'loi':
@@ -4062,6 +4089,65 @@ async function _lcmQuerySupabase(params) {
   if (rows.length < 5) rows = await _doQuery(1.0, false, false);  // Tier 2 — loose
   if (rows.length < 5) rows = await _doQuery(0,   false, false);  // Tier 3 — market-wide
   return rows;
+}
+
+async function _isrFetchMarketRent(params) {
+  if (!_sb || !_sbOk) return null;
+  var { address, assetClass, sf, clearHeight, dockDoors } = params;
+
+  // Try semantic search first
+  var _semVec = await _generateEmbedding(
+    [address, assetClass, sf, 'industrial lease comp market rent'].join(' ')
+  );
+  var _semResults = [];
+  if (_semVec) {
+    try {
+      var { data: sd } = await _sb.rpc('match_leases', {
+        query_embedding: _semVec,
+        match_threshold: 0.65,
+        match_count: 10
+      });
+      _semResults = sd || [];
+    } catch(e) { console.warn('[RIDGE] ISR semantic rent fetch error:', e.message); }
+  }
+
+  // Also run structured query
+  var sfDelta = sf < 10000 ? 2500 : sf < 25000 ? 5000 : sf < 75000 ? 15000 : 25000;
+  var { data: sd2 } = await _sb.from('leases')
+    .select('base_rent_psf, sf, commencement_date, tenant, address, lease_type')
+    .eq('asset_class', assetClass)
+    .gte('sf', sf - sfDelta)
+    .lte('sf', sf + sfDelta)
+    .not('base_rent_psf', 'is', null)
+    .order('commencement_date', { ascending: false })
+    .limit(10);
+
+  // Merge and dedupe by address+tenant
+  var _seen = new Set();
+  var _all = (_semResults.concat(sd2 || [])).filter(function(r) {
+    var k = (r.address||'') + '|' + (r.tenant||'');
+    if (_seen.has(k)) return false;
+    _seen.add(k); return true;
+  }).filter(function(r) { return r.base_rent_psf > 0; });
+
+  if (!_all.length) return null;
+
+  // Weighted average — more recent comps weighted higher
+  var now = Date.now();
+  var totalWeight = 0, weightedSum = 0;
+  _all.forEach(function(r) {
+    var age = r.commencement_date ?
+      (now - new Date(r.commencement_date).getTime()) / (1000*60*60*24*365) : 2;
+    var w = Math.max(0.25, 1 - (age / 3));
+    weightedSum += r.base_rent_psf * w;
+    totalWeight += w;
+  });
+
+  return {
+    marketRentPSF: (weightedSum / totalWeight).toFixed(2),
+    compCount: _all.length,
+    comps: _all.slice(0, 5)
+  };
 }
 
 // ── Sale comp pipe-table parser (mirrors _parseLeaseTable) ──────────────────
