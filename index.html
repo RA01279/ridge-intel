@@ -3857,6 +3857,56 @@ async function _sbLoadDeals() {
   } catch(e) { console.warn('[RIDGE] _sbLoadDeals failed:', e.message); showToast('Pipeline failed to load from database.'); }
 }
 
+async function _plAutoAddDeal(params) {
+  if (!_sb || !_sbOk) return;
+  var { address, assetType, sf, price, source, conviction } = params;
+  if (!address || !address.trim()) return;
+
+  // Check if deal already exists for this address
+  try {
+    var { data: existing } = await _sb.from('deals')
+      .select('id, stage, conviction')
+      .ilike('address', '%' + address.split(',')[0].trim() + '%')
+      .limit(1);
+
+    if (existing && existing.length > 0) {
+      // Deal exists — only update conviction if new value is stronger
+      var _convRank = { 'High Conviction': 3, 'Watch List': 2, 'Needs More Data': 1 };
+      var existingRank = _convRank[existing[0].conviction] || 0;
+      var newRank = _convRank[conviction] || 0;
+      if (newRank > existingRank) {
+        await _sb.from('deals')
+          .update({ conviction: conviction, updated_at: new Date().toISOString() })
+          .eq('id', existing[0].id);
+        console.log('[RIDGE] Pipeline updated conviction for', address, '→', conviction);
+      } else {
+        console.log('[RIDGE] Pipeline deal exists for', address, '— no update needed');
+      }
+      return;
+    }
+
+    // No existing deal — create new at Prospect stage
+    var newDeal = {
+      address:      address.trim(),
+      asset_type:   assetType || 'Industrial',
+      sf:           sf ? parseFloat(String(sf).replace(/[^0-9.]/g,'')) : null,
+      asking_price: price ? parseFloat(String(price).replace(/[^0-9.]/g,'')) : null,
+      stage:        'Prospect',
+      conviction:   conviction || 'Needs More Data',
+      source:       source || 'RIDGE',
+      created_at:   new Date().toISOString(),
+      updated_at:   new Date().toISOString()
+    };
+    var { error } = await _sb.from('deals').insert(newDeal);
+    if (error) console.warn('[RIDGE] Pipeline auto-add error:', error.message);
+    else {
+      console.log('[RIDGE] Pipeline auto-added deal:', address, 'from', source);
+      showToast('📋 Added to Pipeline: ' + address.split(',')[0]);
+    }
+  } catch(e) {
+    console.warn('[RIDGE] _plAutoAddDeal error:', e.message);
+  }
+}
 
 
 
@@ -6709,6 +6759,26 @@ async function runRidgeAPI(skillName, prompt, runInputs, runToolId) {
       var _isrSections = ['RENT ROLL ANALYSIS','LEASE COMP ANALYSIS','SENSITIVITY ANALYSIS','RISK MATRIX','IC RECOMMENDATION','ENTRADA HURDLE CONFIRMATION'];
       var _trimmedMemo = _isrSections.map(function(s){ return _extractKeySection(accumulated, s); }).filter(Boolean).map(function(s){ return s.slice(0, 1500); }).join('\n\n').slice(0, 10000);
       _isrExtractJSON(_trimmedMemo);
+      // ── PIPELINE: auto-add from ISR run ──
+      if (_sbOk) {
+        var _isrConv = 'Needs More Data';
+        if (_isrParsedData && _isrParsedData.recommendation) {
+          var _rec = (_isrParsedData.recommendation || '').toLowerCase();
+          if (_rec.includes('proceed') || _rec.includes('acquire') || _rec.includes('recommend')) {
+            _isrConv = 'High Conviction';
+          } else if (_rec.includes('watch') || _rec.includes('monitor') || _rec.includes('revisit')) {
+            _isrConv = 'Watch List';
+          }
+        }
+        _plAutoAddDeal({
+          address:   (_lastRunInputs && (_lastRunInputs.addr || _lastRunInputs.address)) || '',
+          assetType: (_lastRunInputs && _lastRunInputs.type) || 'Industrial',
+          sf:        (_lastRunInputs && _lastRunInputs.sf) || null,
+          price:     (_lastRunInputs && (_lastRunInputs.price || _lastRunInputs.ask)) || null,
+          source:    'ISR',
+          conviction: _isrConv
+        });
+      }
     }
     console.log('Stream complete — about to enter Supabase post-run block');
     document.getElementById('ridge-pdf-btn').disabled = false;
@@ -6935,6 +7005,17 @@ async function runRidgeAPI(skillName, prompt, runInputs, runToolId) {
             if (_lastRunToolId === 'lens') {
               var _scRows = _parseSaleCompTable(accumulated);
               if (_scRows.length) _writeSaleComps(_scRows, 'LENS', 6);
+              // ── PIPELINE: auto-add from LENS run ──
+              if (_sbOk) {
+                _plAutoAddDeal({
+                  address:   _lAddr || '',
+                  assetType: (_lastRunInputs && _lastRunInputs.type) || 'Industrial',
+                  sf:        (_lastRunInputs && _lastRunInputs.sf) || null,
+                  price:     (_lastRunInputs && (_lastRunInputs.price || _lastRunInputs.ask)) || null,
+                  source:    'LENS',
+                  conviction: 'Needs More Data'
+                });
+              }
             }
           } else if (_lastRunToolId === 'lease-comp') {
             _lRows = _parseLeaseTable(accumulated);
@@ -6942,6 +7023,17 @@ async function runRidgeAPI(skillName, prompt, runInputs, runToolId) {
           } else if (_lastRunToolId === 'lease-stack') {
             _lRows = _parseLeaseTable(accumulated);
             await _writeLeaseRows(_lRows, _lAddr, 'LEASE_STACK');
+            // ── PIPELINE: auto-add from Lease Stack run ──
+            if (_sbOk) {
+              _plAutoAddDeal({
+                address:   _lAddr || '',
+                assetType: (_lastRunInputs && _lastRunInputs.type) || 'Industrial',
+                sf:        (_lastRunInputs && _lastRunInputs.sf) || null,
+                price:     null,
+                source:    'LEASE_STACK',
+                conviction: 'Needs More Data'
+              });
+            }
           } else if (_lastRunToolId === 'lease-compare') {
             _lRows = _parseLeaseTable(accumulated);
             if (_lRows.length) {
@@ -6951,6 +7043,17 @@ async function runRidgeAPI(skillName, prompt, runInputs, runToolId) {
               });
             }
             await _writeLeaseRows(_lRows, _lAddr, 'LEASE_COMPARE');
+            // ── PIPELINE: auto-add from Lease Negotiation run ──
+            if (_sbOk) {
+              _plAutoAddDeal({
+                address:   _lAddr || '',
+                assetType: (_lastRunInputs && _lastRunInputs.type) || 'Industrial',
+                sf:        (_lastRunInputs && _lastRunInputs.sf) || null,
+                price:     null,
+                source:    'LEASE_COMPARE',
+                conviction: 'Needs More Data'
+              });
+            }
           } else if (_lastRunToolId === 'legal') {
             _lRows = _parseLeaseTable(accumulated);
             if (!_lRows.length) {
@@ -6974,6 +7077,17 @@ async function runRidgeAPI(skillName, prompt, runInputs, runToolId) {
             await _writeLeaseRows(_lRows, _lAddr, 'LEGAL_REVIEW');
           }
         } catch(e) { console.warn('[RIDGE] lease post-run failed:', e.message); }
+      }
+      // ── PIPELINE: auto-add from Napkin run ──
+      if (_lastRunToolId === 'napkin' && _sbOk) {
+        _plAutoAddDeal({
+          address:   (_lastRunInputs && (_lastRunInputs.addr || _lastRunInputs.address)) || '',
+          assetType: (_lastRunInputs && _lastRunInputs.type) || 'Industrial',
+          sf:        (_lastRunInputs && _lastRunInputs.sf) || null,
+          price:     (_lastRunInputs && (_lastRunInputs.price || _lastRunInputs.ask)) || null,
+          source:    'NAPKIN',
+          conviction: 'Needs More Data'
+        });
       }
     }
   } catch(e) {
