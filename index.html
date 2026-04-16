@@ -1210,6 +1210,14 @@ footer{border-top:1px solid var(--border);padding:20px 24px;text-align:center;co
           <button class="btn btn-o" style="font-size:12px;" onclick="plToggleAddForm()">✕ Cancel</button>
         </div>
       </div>
+      <!-- Semantic search -->
+      <div style="padding:8px 0 12px 0;border-bottom:1px solid #1a2d42;margin-bottom:12px;">
+        <input type="text" id="pl-semantic-search"
+          placeholder='Search deals — e.g. "dock-high industrial Gwinnett watch list"'
+          style="width:100%;padding:6px 10px;background:#0d1b2a;border:1px solid #2a3f55;
+                 border-radius:4px;color:#e0e8f0;font-size:12px;box-sizing:border-box;" />
+        <div id="pl-search-results" style="display:none;margin-top:8px;"></div>
+      </div>
       <!-- Stage filter -->
       <div class="pl-summary" id="pl-filter-bar"></div>
       <!-- Deal list -->
@@ -4426,7 +4434,73 @@ function plConvClass(conv) {
 }
 
 
+var _plSearchTimer = null;
+
+function _plRenderSearchResults(results, queryText) {
+  var resultsEl = document.getElementById('pl-search-results');
+  var listEl = document.getElementById('pl-deal-list');
+  var filterBar = document.getElementById('pl-filter-bar');
+  if (!resultsEl) return;
+
+  if (!queryText || !queryText.trim()) {
+    resultsEl.style.display = 'none';
+    if (listEl) listEl.style.display = '';
+    if (filterBar) filterBar.style.display = '';
+    return;
+  }
+
+  if (listEl) listEl.style.display = 'none';
+  if (filterBar) filterBar.style.display = 'none';
+  resultsEl.style.display = 'block';
+
+  if (!results || !results.length) {
+    resultsEl.innerHTML = '<div style="font-size:12px;color:var(--muted);padding:10px 0;">No matching deals found in RIDGE database</div>';
+    return;
+  }
+
+  var pipelineDeals = getPipelineDeals();
+  resultsEl.innerHTML = results.map(function(r) {
+    var addr = r.address || r.addr || '';
+    var subtitle = r.skill_name || r.conviction_tier || r.asset_class || '';
+    var pct = Math.round((r.similarity || 0) * 100) + '% match';
+    var matchedDeal = pipelineDeals.find(function(d) {
+      return d.addr && addr && d.addr.toLowerCase().includes(addr.toLowerCase().split(',')[0].toLowerCase());
+    });
+    var viewBtn = matchedDeal
+      ? '<button class="btn btn-o" style="font-size:10px;padding:3px 9px;" onclick="_plFilter=\'' + matchedDeal.stage.replace(/'/g,"\\'") + '\';document.getElementById(\'pl-semantic-search\').value=\'\';_plRenderSearchResults([],' + "''" + ');renderPipeline();">View</button>'
+      : '';
+    return '<div style="padding:8px 10px;border:1px solid #1a2d42;border-radius:4px;margin-bottom:6px;background:#0d1b2a;">' +
+      '<div style="display:flex;justify-content:space-between;align-items:center;">' +
+      '<div>' +
+      '<div style="font-size:12px;font-weight:700;color:#e0e8f0;">' + _hEsc(addr || '—') + '</div>' +
+      (subtitle ? '<div style="font-size:10px;color:var(--muted);margin-top:2px;">' + _hEsc(subtitle) + '</div>' : '') +
+      '</div>' +
+      '<div style="display:flex;align-items:center;gap:8px;">' +
+      '<span style="font-size:10px;color:#4a9eff;">' + pct + '</span>' +
+      viewBtn +
+      '</div>' +
+      '</div>' +
+      '</div>';
+  }).join('');
+}
+
 function renderPipeline() {
+  // Wire semantic search listener once
+  var searchEl = document.getElementById('pl-semantic-search');
+  if (searchEl && !searchEl.dataset.bound) {
+    searchEl.dataset.bound = '1';
+    searchEl.addEventListener('input', function() {
+      var val = this.value;
+      clearTimeout(_plSearchTimer);
+      if (!val.trim()) { _plRenderSearchResults([], ''); return; }
+      _plSearchTimer = setTimeout(function() {
+        _plSemanticSearch(val).then(function(results) {
+          _plRenderSearchResults(results, val);
+        });
+      }, 400);
+    });
+  }
+
   var deals = getPipelineDeals();
   var countEl = document.getElementById('pl-count-line');
   var filterBar = document.getElementById('pl-filter-bar');
@@ -6263,6 +6337,32 @@ async function histSemanticSearch() {
     document.getElementById('hist-body').innerHTML = '<div class="hist-empty">Search failed: ' + _hEsc(e.message) + '</div>';
   } finally {
     if (btn) btn.disabled = false;
+  }
+}
+
+async function _plSemanticSearch(queryText) {
+  if (!_sb || !_sbOk || !queryText || !queryText.trim()) return [];
+  var vec = await _generateEmbedding(queryText.trim());
+  if (!vec) return [];
+  try {
+    var { data, error } = await _sb.rpc('match_skill_outputs', {
+      query_embedding: vec,
+      match_threshold: 0.60,
+      match_count: 15
+    });
+    if (error) { console.warn('[RIDGE] Pipeline semantic error:', error.message); return []; }
+    // Also search properties table
+    var { data: pd } = await _sb.rpc('match_properties', {
+      query_embedding: vec,
+      match_threshold: 0.60,
+      match_count: 10
+    });
+    var combined = (data || []).concat(pd || []);
+    console.log('[RIDGE] Pipeline semantic returned', combined.length, 'results');
+    return combined;
+  } catch(e) {
+    console.warn('[RIDGE] _plSemanticSearch error:', e.message);
+    return [];
   }
 }
 
