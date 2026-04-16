@@ -584,6 +584,7 @@ footer{border-top:1px solid var(--border);padding:20px 24px;text-align:center;co
     <button class="btn btn-o" onclick="showLeaseLibrary()" style="font-size:11px;padding:5px 12px;border-radius:4px;">📋 Leases</button>
     <button class="btn btn-o" onclick="showApiKeyModal()" style="font-size:11px;padding:5px 12px;border-radius:4px;">API Key</button>
     <span id="sb-dot" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--faint);flex-shrink:0;" title="Supabase initializing…"></span>
+    <span id="token-count" style="font-size:11px;color:var(--faint);cursor:default;" title="Session tokens — in: 0 · out: 0">0 tok</span>
     <span style="font-size:11px;color:var(--muted)">14 Skills Active · v5.3</span>
   </div>
 </header>
@@ -3780,12 +3781,23 @@ var _isrParsedData  = null;  // structured JSON extracted from ISR response — 
 var _isrModelBuffer = null;  // raw ArrayBuffer of uploaded ISR model — persists across PPTX export
 var _skillRawOutputs = {};   // keyed by tool id: 'napkin', 'gavel', 'isr', etc. — full response only, never compressed
 var _ridgeSessionLog  = [];  // bookkeeping audit trail — never sent to the Claude API
+var _sessionTokens = { input: 0, output: 0 };  // real API token counts for this browser session
 
 function _sbSetIndicator(ok) {
   var el = document.getElementById('sb-dot');
   if (!el) return;
   el.style.background = ok ? 'var(--green-bright)' : 'var(--faint)';
   el.title = ok ? 'Supabase connected' : 'Offline — localStorage fallback active';
+}
+
+function _trackTokens(input, output) {
+  _sessionTokens.input  += (input  || 0);
+  _sessionTokens.output += (output || 0);
+  var el = document.getElementById('token-count');
+  if (!el) return;
+  var total = _sessionTokens.input + _sessionTokens.output;
+  el.textContent = (total >= 1000 ? (total / 1000).toFixed(1) + 'K' : total) + ' tok';
+  el.title = 'Session tokens — in: ' + _sessionTokens.input.toLocaleString() + ' · out: ' + _sessionTokens.output.toLocaleString();
 }
 
 async function _sbInit() {
@@ -4697,6 +4709,7 @@ async function _isrExtractJSON(memoText) {
       })
     });
     var data = await resp.json();
+    if (data.usage) { _trackTokens(data.usage.input_tokens, data.usage.output_tokens); }
     var raw = data.content[0].text;
     var clean = raw.replace(/```json|```/g, '').trim();
     _isrParsedData = JSON.parse(clean);
@@ -6427,6 +6440,7 @@ async function _compressToMemoryBlock(response, tool) {
       })
     });
     const data = await res.json();
+    if (data.usage) { _trackTokens(data.usage.input_tokens, data.usage.output_tokens); }
     return (data.content && data.content[0] && data.content[0].text) || _fallbackCompress(response, tool);
   } catch(e) {
     return _fallbackCompress(response, tool);
@@ -6544,6 +6558,12 @@ async function runRidgeAPI(skillName, prompt, runInputs, runToolId) {
         if (jsonStr === '[DONE]') continue;
         try {
           var evt = JSON.parse(jsonStr);
+          if (evt.type === 'message_start' && evt.message && evt.message.usage) {
+            _trackTokens(evt.message.usage.input_tokens, 0);
+          }
+          if (evt.type === 'message_delta' && evt.usage) {
+            _trackTokens(0, evt.usage.output_tokens);
+          }
           if (evt.type === 'content_block_delta' && evt.delta && evt.delta.type === 'text_delta') {
             accumulated += evt.delta.text;
             _chunkCount++;
