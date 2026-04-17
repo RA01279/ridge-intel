@@ -3196,6 +3196,7 @@ async function buildTrigger(toolId, d) {
       p += 'PROPERTY: ' + (d.addr||'') + '\nASSET TYPE: ' + (d.type||'') + '\nSIZE: ' + (d.sf||'') + ' SF\nASKING: $' + (d.ask||'') + '\nCONTEXT: ' + (d.notes||'') + '\n\n';
       p += 'ENTRADA CRITERIA: $10M-$70M | Atlanta/Savannah/DFW/Houston | 14.75%+ levered IRR | 7.5-8.0% YOC Yr3/4 | 95% off-market\n\n';
       p += 'Produce:\n## BROKER NARRATIVE vs REALITY\nWhat the broker is claiming vs what the data actually supports. Be specific and cite numbers.\n\n## RE-UNDERWRITE\nRebuild the return stack from scratch using RIDGE assumptions (60-65% LTV, market debt terms, realistic vacancy, market exit cap). Show your math.\n\n## STRESS TEST\n3 scenarios: Base / Downside (-15% NOI, +50bps exit cap) / Severe (-25% NOI, +100bps exit cap). IRR and EM for each.\n\n## WHAT THE BROKER IS HIDING\nFlag every assumption that is aggressive, missing, or impossible to verify. Be direct.\n\n## MAX ENTRY PRICE\nThe exact price where this deal clears 14.75% IRR under RIDGE assumptions. Dollar amount and PSF.\n\n## VERDICT\nPURSUE | CONDITIONAL | PASS — one word, then one paragraph defending it. If CONDITIONAL, state exactly what has to be true.';
+      p += '\n\nNote: In your BROKER NARRATIVE vs REALITY section, explicitly flag any delta between the broker\'s stated rent assumptions and market rate comps if data cross-reference flags are present above.';
       return p;
 
     case 'napkin':
@@ -4303,6 +4304,45 @@ function _parseSaleCompTable(text) {
     }
     return rows;
   } catch(e) { return []; }
+}
+
+// ── LENS: extract broker assumptions from OM text ────────────────────────────
+// Parses regex patterns for asking rent, NOI, vacancy, cap rate, exit cap.
+// Returns plain object with whatever was found (nulls for misses).
+function _lensExtractAssumptions(omText) {
+  if (!omText) return {};
+  var assumptions = {};
+  var rentMatch = omText.match(/asking\s+rent[:\s]+\$?([\d,.]+)\s*(?:\/\s*sf|psf)/i);
+  if (rentMatch) assumptions.askingRentPSF = parseFloat(rentMatch[1].replace(/,/g, ''));
+  var noiMatch = omText.match(/(?:pro.?forma|stabilized)\s+noi[:\s]+\$?([\d,]+)/i);
+  if (noiMatch) assumptions.proFormaNOI = parseFloat(noiMatch[1].replace(/,/g, ''));
+  var vacMatch = omText.match(/vacancy[:\s]+([\d.]+)\s*%/i);
+  if (vacMatch) assumptions.brokerVacancy = parseFloat(vacMatch[1]);
+  var capMatch = omText.match(/(?:going.?in\s+)?cap\s+rate[:\s]+([\d.]+)\s*%/i);
+  if (capMatch) assumptions.brokerCapRate = parseFloat(capMatch[1]);
+  var exitCapMatch = omText.match(/exit\s+cap[:\s]+([\d.]+)\s*%/i);
+  if (exitCapMatch) assumptions.exitCap = parseFloat(exitCapMatch[1]);
+  return assumptions;
+}
+
+// ── LENS: cross-reference broker assumptions vs market data ──────────────────
+// Returns a formatted string of delta flags, or '' if nothing to flag.
+function _lensCrossReference(assumptions, marketRentData) {
+  if (!assumptions || !marketRentData) return '';
+  var flags = [];
+  if (assumptions.askingRentPSF && marketRentData.marketRentPSF) {
+    var pct = ((assumptions.askingRentPSF - marketRentData.marketRentPSF) / marketRentData.marketRentPSF * 100).toFixed(1);
+    var dir = pct > 0 ? 'ABOVE' : 'BELOW';
+    flags.push('Broker asking rent $' + assumptions.askingRentPSF + '/SF is ' + Math.abs(pct) + '% ' + dir + ' market ($' + marketRentData.marketRentPSF + '/SF avg from ' + (marketRentData.compCount || 0) + ' comps)');
+  }
+  if (assumptions.brokerVacancy !== undefined && assumptions.brokerVacancy < 5) {
+    flags.push('Broker vacancy assumption of ' + assumptions.brokerVacancy + '% appears aggressive vs market norms');
+  }
+  if (assumptions.brokerCapRate && assumptions.brokerCapRate < 5.0) {
+    flags.push('Broker going-in cap of ' + assumptions.brokerCapRate + '% is aggressive for this market/asset class');
+  }
+  if (!flags.length) return '';
+  return 'DATA CROSS-REFERENCE FLAGS:\n' + flags.map(function(f) { return '\u2022 ' + f; }).join('\n');
 }
 
 // ── Write sale comps to Supabase ─────────────────────────────────────────────
@@ -7053,6 +7093,32 @@ async function runRidgeAPI(skillName, prompt, runInputs, runToolId) {
             if (_lastRunToolId === 'lens') {
               var _scRows = _parseSaleCompTable(accumulated);
               if (_scRows.length) _writeSaleComps(_scRows, 'LENS', 6);
+              // ── LENS: assumption extraction + market cross-reference ──
+              try {
+                var _lensOmText = (STATE['lens'] && STATE['lens'].files && STATE['lens'].files['om']) || '';
+                var _lensAssumptions = _lensExtractAssumptions(_lensOmText);
+                var _lensMktRent = null;
+                if (_lAddr && _lastRunInputs && _lastRunInputs.type) {
+                  _lensMktRent = await _isrFetchMarketRent({
+                    address: _lAddr,
+                    assetClass: _lastRunInputs.type,
+                    sf: (_lastRunInputs && _lastRunInputs.sf) || null,
+                    clearHeight: null,
+                    dockDoors: null
+                  });
+                }
+                var _lensCrossRefNote = _lensCrossReference(_lensAssumptions, _lensMktRent);
+                if (_lensCrossRefNote) {
+                  console.log('[RIDGE] LENS cross-ref:', _lensCrossRefNote);
+                  var _lensContentEl = document.getElementById('ridge-panel-content');
+                  if (_lensContentEl) {
+                    var _flagDiv = document.createElement('div');
+                    _flagDiv.style.cssText = 'margin-top:12px;padding:10px 14px;background:#1a1120;border-left:3px solid #f59e0b;font-size:12px;color:#fbbf24;white-space:pre-wrap;border-radius:0 4px 4px 0;';
+                    _flagDiv.textContent = _lensCrossRefNote;
+                    _lensContentEl.appendChild(_flagDiv);
+                  }
+                }
+              } catch(e) { console.warn('[RIDGE] LENS cross-ref error:', e); }
               // ── PIPELINE: auto-add from LENS run ──
               if (_sbOk) {
                 _plAutoAddDeal({
