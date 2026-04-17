@@ -582,6 +582,7 @@ footer{border-top:1px solid var(--border);padding:20px 24px;text-align:center;co
   <div class="hdr-right">
     <button class="btn btn-o" onclick="showHistoryPanel()" style="font-size:11px;padding:5px 12px;border-radius:4px;">🕐 History</button>
     <button class="btn btn-o" onclick="showLeaseLibrary()" style="font-size:11px;padding:5px 12px;border-radius:4px;">📋 Leases</button>
+    <button class="btn btn-o" onclick="pickMarketIntelFolder()" style="font-size:11px;padding:5px 12px;border-radius:4px;">📊 Sync Market Intel</button>
     <button class="btn btn-o" onclick="showApiKeyModal()" style="font-size:11px;padding:5px 12px;border-radius:4px;">API Key</button>
     <span id="sb-dot" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--faint);flex-shrink:0;" title="Supabase initializing…"></span>
     <span id="token-count" style="font-size:11px;color:var(--faint);cursor:default;" title="Session tokens — in: 0 · out: 0">0 tok</span>
@@ -2808,6 +2809,61 @@ async function refreshCoStarFolder(toolId, uploadId) {
   await loadFolderFiles(toolId, uploadId, dirHandle);
 }
 
+// ── Market Intelligence folder sync ─────────────────────────────────────────
+// Reads PDF and XLSX market reports, extracts metrics via Claude, writes to
+// market_benchmarks table. Separate from pickCoStarFolder — different target.
+async function pickMarketIntelFolder() {
+  if (!window.showDirectoryPicker) { showToast('Folder picker not supported — use Chrome or Edge'); return; }
+  if (!_sbOk) { showToast('Supabase not connected — check API key'); return; }
+  try {
+    var dirHandle = await window.showDirectoryPicker({ mode: 'read' });
+    var synced = 0, failed = 0;
+    showToast('⏳ Reading Market Intelligence folder...');
+    for await (var entry of dirHandle.values()) {
+      if (entry.kind !== 'file') continue;
+      var fname = entry.name.toLowerCase();
+      if (!fname.endsWith('.pdf') && !fname.endsWith('.xlsx') && !fname.endsWith('.xls')) continue;
+      try {
+        var file = await entry.getFile();
+        var text = '';
+        if (fname.endsWith('.pdf')) {
+          var arrBuf = await file.arrayBuffer();
+          var pdf = await pdfjsLib.getDocument({ data: arrBuf }).promise;
+          var pages = [];
+          for (var pi = 1; pi <= pdf.numPages; pi++) {
+            var page = await pdf.getPage(pi);
+            var tc = await page.getTextContent();
+            pages.push(tc.items.map(function(s) { return s.str; }).join(' '));
+          }
+          text = pages.join('\n');
+        } else {
+          var arrBuf2 = await file.arrayBuffer();
+          var wb = XLSX.read(arrBuf2, { type: 'array' });
+          var rows = [];
+          wb.SheetNames.forEach(function(sn) { rows.push(XLSX.utils.sheet_to_csv(wb.Sheets[sn])); });
+          text = rows.join('\n');
+        }
+        if (text && text.length > 100) {
+          var metrics = await _extractMarketMetrics(text, entry.name);
+          if (metrics && metrics.market) {
+            await _writeMarketBenchmark(metrics);
+            synced++;
+          } else {
+            failed++;
+            console.warn('[RIDGE] Could not extract metrics from:', entry.name);
+          }
+        }
+      } catch(fe) {
+        failed++;
+        console.warn('[RIDGE] Market Intel file error:', entry.name, fe.message);
+      }
+    }
+    showToast('✅ Market Intelligence: ' + synced + ' reports synced' + (failed ? ', ' + failed + ' failed' : ''));
+  } catch(e) {
+    if (e.name !== 'AbortError') console.warn('[RIDGE] pickMarketIntelFolder error:', e.message);
+  }
+}
+
 async function loadFolderFiles(toolId, uploadId, dirHandle) {
   var uz = document.getElementById('uz-' + toolId + '-' + uploadId);
   var st = document.getElementById('uzst-' + toolId + '-' + uploadId);
@@ -3294,8 +3350,24 @@ async function buildTrigger(toolId, d) {
       return p;
 
     case 'market-pulse':
+      var _mpBenchmarks = null;
+      if (_sbOk && _sb && d.mkt) {
+        try { _mpBenchmarks = await _fetchMarketBenchmark(d.mkt, 'Industrial'); } catch(e) {}
+      }
       p = 'You are a senior acquisitions officer at Entrada Partners. Run a comprehensive market intelligence report.\n\n';
       p += 'MODE: ' + (d.mode||'Full Market') + '\nMARKET: ' + (d.mkt||'') + '\nSUBMARKET: ' + (d.sub||'') + '\nACTIVE DEAL: ' + (d.deal||'None') + '\n\n';
+      p += (_mpBenchmarks && _mpBenchmarks.length ?
+        '[RIDGE MARKET INTELLIGENCE DATABASE]\n' +
+        'Real CoStar market data for ' + _mpBenchmarks[0].market + ':\n' +
+        _mpBenchmarks.map(function(b) {
+          return '\u2022 Report date: ' + (b.report_date || 'unknown') +
+            ' | Vacancy: ' + (b.vacancy_rate != null ? b.vacancy_rate + '%' : 'N/A') +
+            ' | Asking rent: ' + (b.asking_rent_psf != null ? '$' + b.asking_rent_psf + ' PSF' : 'N/A') +
+            ' | Absorption: ' + (b.absorption_sf != null ? b.absorption_sf.toLocaleString() + ' SF' : 'N/A') +
+            (b.market_summary ? '\n  Summary: ' + b.market_summary : '');
+        }).join('\n') +
+        '\nUse this real data in your analysis. Do not estimate figures that are provided above.\n\n'
+        : '');
       p += 'Produce:\n## MARKET DASHBOARD\nTable: Vacancy | Asking Rent (Class A/B/C) | Net Absorption (TTM) | New Supply (Under Construction) | Cap Rate Range | YoY Rent Growth\n\n## SUBMARKET DEEP DIVE\nFor the specific submarket: vacancy trend (24-month direction), largest recent leases signed, active tenants in the market, key demand drivers, new supply risk.\n\n## COMPARABLE TRANSACTIONS\nLast 6 months: minimum 5 industrial/flex sales. For each: address, SF, sale price, PSF, cap rate, buyer, seller, date. Bold the most relevant comp to active deal if provided.\n\n## RENT FORECAST\n12-month and 24-month rent trajectory. What drives it — supply/demand balance, tenant demand, macro. Be specific.\n\n## ACQUISITION IMPLICATIONS\nFor Entrada specifically: where are the best basis opportunities right now? Which submarkets are showing motivated seller activity? Where are rents running ahead of cap rate compression?\n\n## CONVICTION CALL\nOne paragraph: if Entrada is buying industrial/flex in this market today, what is the specific thesis and where exactly should we be looking?';
       return p;
 
@@ -3495,6 +3567,24 @@ If CONDITIONAL: state exactly what must be verified before proceeding
           return (c.tenant||'Unknown') + ' | ' + (c.sf||'') + ' SF | $' + c.base_rent_psf + ' PSF | ' + (c.commencement_date||'');
         }).join('; ')
         : '\n\n[RIDGE COMP DATABASE] No comps found matching subject property criteria — estimate market rent from submarket knowledge.');
+      var _isrCity = (d.addr||'').split(',')[1] ? (d.addr||'').split(',')[1].trim() : '';
+      if (_isrCity && _sbOk && _sb) {
+        try {
+          var _isrMktBenchmarks = await _fetchMarketBenchmark(_isrCity, d.type || 'Industrial');
+          if (_isrMktBenchmarks && _isrMktBenchmarks.length) {
+            p += '\n\n[RIDGE MARKET INTELLIGENCE DATABASE]\n' +
+              'Real CoStar market data for ' + _isrMktBenchmarks[0].market + ':\n' +
+              _isrMktBenchmarks.map(function(b) {
+                return '\u2022 Report date: ' + (b.report_date || 'unknown') +
+                  ' | Vacancy: ' + (b.vacancy_rate != null ? b.vacancy_rate + '%' : 'N/A') +
+                  ' | Asking rent: ' + (b.asking_rent_psf != null ? '$' + b.asking_rent_psf + ' PSF' : 'N/A') +
+                  ' | Absorption: ' + (b.absorption_sf != null ? b.absorption_sf.toLocaleString() + ' SF' : 'N/A') +
+                  (b.market_summary ? '\n  Summary: ' + b.market_summary : '');
+              }).join('\n') +
+              '\nUse this real data for the MARKET & SUBMARKET slide. Do not estimate figures that are provided above.\n';
+          }
+        } catch(e) { console.warn('[RIDGE] ISR market benchmark fetch error:', e.message); }
+      }
       return p;
 
     case 'loi':
@@ -4343,6 +4433,96 @@ function _lensCrossReference(assumptions, marketRentData) {
   }
   if (!flags.length) return '';
   return 'DATA CROSS-REFERENCE FLAGS:\n' + flags.map(function(f) { return '\u2022 ' + f; }).join('\n');
+}
+
+// ── Market Intelligence: extract metrics from CoStar report text ─────────────
+// Calls Claude API with structured JSON prompt. Returns parsed metrics object or null.
+async function _extractMarketMetrics(reportText, filename) {
+  if (!reportText || reportText.length < 100) return null;
+  try {
+    var _metricPrompt =
+      'You are analyzing a CoStar commercial real estate market report. ' +
+      'Extract ONLY these specific market metrics as a JSON object. ' +
+      'Return ONLY valid JSON, no markdown, no explanation:\n' +
+      '{\n' +
+      '  "market": "<city or MSA name>",\n' +
+      '  "submarket": "<submarket name or null>",\n' +
+      '  "asset_class": "<Industrial or Flex or Office>",\n' +
+      '  "report_date": "<YYYY-MM-DD or YYYY-MM-01 if only month known, or null>",\n' +
+      '  "vacancy_rate": <number 0-100 or null>,\n' +
+      '  "asking_rent_psf": <number or null>,\n' +
+      '  "effective_rent_psf": <number or null>,\n' +
+      '  "absorption_sf": <number or null>,\n' +
+      '  "new_supply_sf": <number or null>,\n' +
+      '  "under_construction_sf": <number or null>,\n' +
+      '  "cap_rate": <number 0-20 or null>,\n' +
+      '  "price_psf": <number or null>,\n' +
+      '  "market_summary": "<2-3 sentence summary of key market conditions>"\n' +
+      '}\n\n' +
+      'REPORT FILENAME: ' + (filename || 'unknown') + '\n' +
+      'REPORT TEXT:\n' + reportText.slice(0, 10000);
+    var _resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': _apiKey, 'anthropic-version': '2023-06-01' },
+      body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 1024, messages: [{ role: 'user', content: _metricPrompt }] })
+    });
+    var _rj = await _resp.json();
+    var _raw = (_rj.content && _rj.content[0] && _rj.content[0].text) || '';
+    var _clean = _raw.replace(/```json|```/g, '').trim();
+    var _parsed = JSON.parse(_clean);
+    _parsed._filename = filename || null;
+    return _parsed;
+  } catch(e) {
+    console.warn('[RIDGE] _extractMarketMetrics error:', e.message);
+    return null;
+  }
+}
+
+// ── Market Intelligence: write benchmark row to Supabase ─────────────────────
+async function _writeMarketBenchmark(metrics) {
+  if (!_sb || !_sbOk || !metrics || !metrics.market) return;
+  try {
+    var row = {
+      market:                metrics.market,
+      submarket:             metrics.submarket || null,
+      asset_class:           metrics.asset_class || 'Industrial',
+      report_date:           metrics.report_date || null,
+      report_source:         'CoStar',
+      report_filename:       metrics._filename || null,
+      vacancy_rate:          metrics.vacancy_rate != null ? parseFloat(metrics.vacancy_rate) : null,
+      asking_rent_psf:       metrics.asking_rent_psf != null ? parseFloat(metrics.asking_rent_psf) : null,
+      effective_rent_psf:    metrics.effective_rent_psf != null ? parseFloat(metrics.effective_rent_psf) : null,
+      absorption_sf:         metrics.absorption_sf != null ? parseFloat(metrics.absorption_sf) : null,
+      new_supply_sf:         metrics.new_supply_sf != null ? parseFloat(metrics.new_supply_sf) : null,
+      under_construction_sf: metrics.under_construction_sf != null ? parseFloat(metrics.under_construction_sf) : null,
+      cap_rate:              metrics.cap_rate != null ? parseFloat(metrics.cap_rate) : null,
+      price_psf:             metrics.price_psf != null ? parseFloat(metrics.price_psf) : null,
+      market_summary:        metrics.market_summary || null
+    };
+    var { error } = await _sb.from('market_benchmarks')
+      .upsert(row, { onConflict: 'market,submarket,asset_class,report_date,report_source' });
+    if (error) console.warn('[RIDGE] market_benchmarks write error:', error.message);
+    else console.log('[RIDGE] Market benchmark written:', metrics.market, metrics.submarket, metrics.report_date);
+  } catch(e) { console.warn('[RIDGE] _writeMarketBenchmark error:', e.message); }
+}
+
+// ── Market Intelligence: fetch latest benchmarks from Supabase ───────────────
+async function _fetchMarketBenchmark(market, assetClass) {
+  if (!_sb || !_sbOk || !market) return null;
+  try {
+    var { data, error } = await _sb.from('market_benchmarks')
+      .select('*')
+      .ilike('market', '%' + market + '%')
+      .eq('asset_class', assetClass || 'Industrial')
+      .order('report_date', { ascending: false })
+      .limit(3);
+    if (error || !data || !data.length) return null;
+    console.log('[RIDGE] Market benchmark fetched:', data.length, 'records for', market);
+    return data;
+  } catch(e) {
+    console.warn('[RIDGE] _fetchMarketBenchmark error:', e.message);
+    return null;
+  }
 }
 
 // ── Write sale comps to Supabase ─────────────────────────────────────────────
