@@ -1277,7 +1277,10 @@ var TOOLS = [
     badge:'60-Second Screen',
     desc:'Back-of-envelope go/no-go. Address and ask price in, verdict out. Reverse-engineers cap rate, stabilized NOI, and YOC at Year 3/4.',
     shortDesc:'60-second screen. Ask price in, Go / No-Go out.',
-    uploads:[{id:'data',label:'Any Supporting Data',hint:'Optional: rent roll, T12, or comp list',icon:'📄',accept:'.pdf,.xlsx,.csv',type:'mixed'}],
+    uploads:[
+      {id:'data',label:'Any Supporting Data',hint:'Optional: rent roll, T12, or comp list',icon:'📄',accept:'.pdf,.xlsx,.csv',type:'mixed'},
+      {id:'rentroll',label:'Rent Roll (optional)',hint:'Upload rent roll to auto-calculate in-place NOI',icon:'📋',accept:'.xlsx,.csv',type:'mixed'}
+    ],
     fields:[
       {row:[{id:'addr',label:'Property Address *',ph:'e.g. 7100 Distribution Dr, Dallas, TX'},{id:'type',label:'Asset Type',type:'select',opts:['Flex Industrial','Industrial / Warehouse','Single-Story Office Conversion','Multi-Tenant Industrial']}]},
       {row:[{id:'ask',label:'Asking Price *',ph:'e.g. $16,800,000'},{id:'sf',label:'Building SF *',ph:'e.g. 94,000'}]},
@@ -3327,6 +3330,26 @@ async function buildTrigger(toolId, d) {
       p += '## RED FLAGS\nBullet list. Be direct. No hedging.\n\n';
       p += '## CONVICTION\nState exactly one of: HIGH CONVICTION | CONDITIONAL | PASS\nThen one paragraph defending that verdict.\n\n';
       p += '## NEXT STEPS\nThree specific actions if pursuing.';
+      // ── RENT ROLL: auto-calculate NOI from uploaded file ──
+      var _napRRText = (STATE['napkin'] && STATE['napkin'].files && STATE['napkin'].files['rentroll']) || '';
+      if (_napRRText && _napRRText.length > 20) {
+        try {
+          var _napRRLines = _napRRText.split('\n').filter(function(l) { return l.trim() && !l.startsWith('==='); });
+          var _napSep = (_napRRLines[0] && _napRRLines[0].includes('|')) ? /\s*\|\s*/ : /,/;
+          var _napRRArrays = _napRRLines.map(function(l) { return l.split(_napSep); });
+          var _napRRAddr = (d.addr || d.address || '');
+          var _napRRRows = _llParseGeneric(_napRRArrays, _napRRAddr, '');
+          var _napkinNOI = _napkinCalcNOI(_napRRRows);
+          if (_napkinNOI) {
+            p += '\n\nRENT ROLL ANALYSIS (auto-calculated from uploaded file):\n' +
+              'Occupied Units: ' + _napkinNOI.occupiedUnits + ' of ' + _napkinNOI.totalUnits + '\n' +
+              'Gross Revenue: $' + Math.round(_napkinNOI.grossRevenue).toLocaleString() + '\n' +
+              'In-Place NOI (NNN full pass-through, Gross at 95%): $' + Math.round(_napkinNOI.noi).toLocaleString() + '\n' +
+              'NNN SF: ' + Math.round(_napkinNOI.nnnSF).toLocaleString() + ' | Gross SF: ' + Math.round(_napkinNOI.grossSF).toLocaleString() + '\n' +
+              'Use these figures — do not estimate NOI from other inputs.\n';
+          }
+        } catch(e) { console.warn('[RIDGE] Napkin rent roll parse error:', e.message); }
+      }
       return p;
 
     case 'waterfall':
@@ -7641,6 +7664,23 @@ async function runRidgeAPI(skillName, prompt, runInputs, runToolId) {
           }
         } catch(e) { console.warn('[RIDGE] lease post-run failed:', e.message); }
       }
+      // ── NAPKIN: write rent roll to leases DB ──
+      if (_lastRunToolId === 'napkin' && _sbOk) {
+        try {
+          var _napRRText2 = (STATE['napkin'] && STATE['napkin'].files && STATE['napkin'].files['rentroll']) || '';
+          if (_napRRText2 && _napRRText2.length > 20) {
+            var _napRRLines2 = _napRRText2.split('\n').filter(function(l) { return l.trim() && !l.startsWith('==='); });
+            var _napSep2 = (_napRRLines2[0] && _napRRLines2[0].includes('|')) ? /\s*\|\s*/ : /,/;
+            var _napRRArrays2 = _napRRLines2.map(function(l) { return l.split(_napSep2); });
+            var _napAddr2 = (_lastRunInputs && (_lastRunInputs.addr || _lastRunInputs.address)) || '';
+            var _napRRRows2 = _llParseGeneric(_napRRArrays2, _napAddr2, '');
+            if (_napRRRows2 && _napRRRows2.length) {
+              await _writeLeaseRows(_napRRRows2, _napAddr2, 'NAPKIN');
+              console.log('[RIDGE] Napkin wrote', _napRRRows2.length, 'lease rows to DB');
+            }
+          }
+        } catch(e) { console.warn('[RIDGE] Napkin lease DB write error:', e.message); }
+      }
       // ── PIPELINE: auto-add from Napkin run ──
       if (_lastRunToolId === 'napkin' && _sbOk) {
         _plAutoAddDeal({
@@ -10669,6 +10709,36 @@ async function _llParseCSV(file, address, market) {
 // Returns [] when template detected but no valid data rows; null when not this format.
 // Skips: blank address/tenant, SF ≤ 0, and sample rows (Tenant Name contains
 // 'Technologies' or 'Logistics' — the built-in template examples).
+// ── Napkin: calculate in-place NOI from parsed rent roll rows ────────────────
+// Accepts rows from _llParseGeneric. NNN leases pass through 100%; Gross at 95%.
+function _napkinCalcNOI(rows) {
+  if (!rows || !rows.length) return null;
+  var nnnSF = 0, grossSF = 0, nnnRev = 0, grossRev = 0, occupiedCount = 0;
+  rows.forEach(function(r) {
+    var sf = parseFloat(r.sf) || 0;
+    var rentPSF = parseFloat(r.base_rent_psf) || 0;
+    var leaseType = (r.lease_type || '').toUpperCase();
+    if (sf <= 0 || rentPSF <= 0) return;
+    occupiedCount++;
+    var annualRent = sf * rentPSF;
+    if (leaseType === 'NNN' || leaseType === 'ABSOLUTE NNN' || leaseType === 'TRIPLE NET') {
+      nnnSF += sf; nnnRev += annualRent;
+    } else {
+      grossSF += sf; grossRev += annualRent;
+    }
+  });
+  var totalGross = nnnRev + grossRev;
+  if (totalGross === 0) return null;
+  return {
+    grossRevenue: totalGross,
+    noi: nnnRev + (grossRev * 0.95),
+    occupiedUnits: occupiedCount,
+    totalUnits: rows.length,
+    nnnSF: nnnSF,
+    grossSF: grossSF
+  };
+}
+
 function _llParseRidgeTemplate(raw, market) {
   var hdrIdx = -1;
   for (var s = 0; s < Math.min(raw.length, 5); s++) {
