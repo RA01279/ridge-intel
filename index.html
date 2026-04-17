@@ -3253,6 +3253,10 @@ async function buildTrigger(toolId, d) {
       p += 'ENTRADA CRITERIA: $10M-$70M | Atlanta/Savannah/DFW/Houston | 14.75%+ levered IRR | 7.5-8.0% YOC Yr3/4 | 95% off-market\n\n';
       p += 'Produce:\n## BROKER NARRATIVE vs REALITY\nWhat the broker is claiming vs what the data actually supports. Be specific and cite numbers.\n\n## RE-UNDERWRITE\nRebuild the return stack from scratch using RIDGE assumptions (60-65% LTV, market debt terms, realistic vacancy, market exit cap). Show your math.\n\n## STRESS TEST\n3 scenarios: Base / Downside (-15% NOI, +50bps exit cap) / Severe (-25% NOI, +100bps exit cap). IRR and EM for each.\n\n## WHAT THE BROKER IS HIDING\nFlag every assumption that is aggressive, missing, or impossible to verify. Be direct.\n\n## MAX ENTRY PRICE\nThe exact price where this deal clears 14.75% IRR under RIDGE assumptions. Dollar amount and PSF.\n\n## VERDICT\nPURSUE | CONDITIONAL | PASS — one word, then one paragraph defending it. If CONDITIONAL, state exactly what has to be true.';
       p += '\n\nNote: In your BROKER NARRATIVE vs REALITY section, explicitly flag any delta between the broker\'s stated rent assumptions and market rate comps if data cross-reference flags are present above.';
+      p += '\n\nNote: RIDGE will automatically parse this OM into structured data after your analysis. ' +
+        'Focus your response on: (1) investment thesis strength, (2) key risks and how to mitigate them, ' +
+        '(3) your recommended entry price and why, (4) what additional diligence is needed before LOI. ' +
+        'Do not restate property specs — those will be extracted automatically.\n';
       return p;
 
     case 'napkin':
@@ -4396,27 +4400,286 @@ function _parseSaleCompTable(text) {
   } catch(e) { return []; }
 }
 
-// ── LENS: extract broker assumptions from OM text ────────────────────────────
-// Parses regex patterns for asking rent, NOI, vacancy, cap rate, exit cap.
-// Returns plain object with whatever was found (nulls for misses).
-function _lensExtractAssumptions(omText) {
-  if (!omText) return {};
-  var assumptions = {};
-  var rentMatch = omText.match(/asking\s+rent[:\s]+\$?([\d,.]+)\s*(?:\/\s*sf|psf)/i);
-  if (rentMatch) assumptions.askingRentPSF = parseFloat(rentMatch[1].replace(/,/g, ''));
-  var noiMatch = omText.match(/(?:pro.?forma|stabilized)\s+noi[:\s]+\$?([\d,]+)/i);
-  if (noiMatch) assumptions.proFormaNOI = parseFloat(noiMatch[1].replace(/,/g, ''));
-  var vacMatch = omText.match(/vacancy[:\s]+([\d.]+)\s*%/i);
-  if (vacMatch) assumptions.brokerVacancy = parseFloat(vacMatch[1]);
-  var capMatch = omText.match(/(?:going.?in\s+)?cap\s+rate[:\s]+([\d.]+)\s*%/i);
-  if (capMatch) assumptions.brokerCapRate = parseFloat(capMatch[1]);
-  var exitCapMatch = omText.match(/exit\s+cap[:\s]+([\d.]+)\s*%/i);
-  if (exitCapMatch) assumptions.exitCap = parseFloat(exitCapMatch[1]);
-  return assumptions;
+// ── LENS: parse full OM into structured JSON via Claude API ─────────────────
+// Replaces the old regex-based _lensExtractAssumptions. Returns deeply structured
+// object or null on failure.
+async function _lensParseOM(omText, askingPrice) {
+  if (!omText || omText.length < 100) return null;
+  try {
+    var _parsePrompt =
+      'You are analyzing a commercial real estate offering memorandum for an institutional buyer. ' +
+      'Extract ALL of the following into a single valid JSON object. ' +
+      'Return ONLY valid JSON, no markdown fences, no explanation, no preamble.\n\n' +
+      '{\n' +
+      '  "deal_metadata": {\n' +
+      '    "property_name": "<string or null>",\n' +
+      '    "address": "<full address or null>",\n' +
+      '    "market": "<city or null>",\n' +
+      '    "submarket": "<submarket or null>",\n' +
+      '    "asset_class": "<Industrial|Flex|Office|Mixed>",\n' +
+      '    "asking_price": <number or null>,\n' +
+      '    "price_psf": <number or null>,\n' +
+      '    "building_sf": <number or null>,\n' +
+      '    "lot_size_acres": <number or null>,\n' +
+      '    "year_built": <number or null>,\n' +
+      '    "num_buildings": <number or null>,\n' +
+      '    "num_tenants": <number or null>\n' +
+      '  },\n' +
+      '  "physical": {\n' +
+      '    "clear_height_ft": <number or null>,\n' +
+      '    "dock_high_doors": <number or null>,\n' +
+      '    "grade_level_doors": <number or null>,\n' +
+      '    "office_pct": <number 0-100 or null>,\n' +
+      '    "power_amps": "<string or null>",\n' +
+      '    "sprinklers": "<string or null>",\n' +
+      '    "parking_ratio": "<string or null>",\n' +
+      '    "column_spacing": "<string or null>"\n' +
+      '  },\n' +
+      '  "occupancy": {\n' +
+      '    "current_occupancy_pct": <number 0-100 or null>,\n' +
+      '    "walt_years": <number or null>,\n' +
+      '    "largest_tenant_pct": <number 0-100 or null>,\n' +
+      '    "anchor_tenant": "<string or null>"\n' +
+      '  },\n' +
+      '  "broker_underwriting": {\n' +
+      '    "in_place_noi": <number or null>,\n' +
+      '    "stabilized_noi": <number or null>,\n' +
+      '    "going_in_cap": <number 0-20 or null>,\n' +
+      '    "stabilized_cap": <number 0-20 or null>,\n' +
+      '    "exit_cap": <number 0-20 or null>,\n' +
+      '    "market_rent_psf": <number or null>,\n' +
+      '    "stabilized_occupancy": <number 0-100 or null>,\n' +
+      '    "irr": <number 0-50 or null>,\n' +
+      '    "equity_multiple": <number or null>,\n' +
+      '    "hold_years": <number or null>\n' +
+      '  },\n' +
+      '  "rent_roll": [\n' +
+      '    {\n' +
+      '      "tenant": "<string>",\n' +
+      '      "suite": "<string or null>",\n' +
+      '      "sf": <number>,\n' +
+      '      "lease_type": "<NNN|Gross|MG|MTM>",\n' +
+      '      "commencement_date": "<YYYY-MM-DD or null>",\n' +
+      '      "expiration_date": "<YYYY-MM-DD or null>",\n' +
+      '      "base_rent_psf": <number or null>,\n' +
+      '      "annual_rent": <number or null>,\n' +
+      '      "options": "<string or null>",\n' +
+      '      "notes": "<string or null>"\n' +
+      '    }\n' +
+      '  ],\n' +
+      '  "market_context": {\n' +
+      '    "submarket_vacancy_pct": <number or null>,\n' +
+      '    "submarket_asking_rent_psf": <number or null>,\n' +
+      '    "absorption_sf": <number or null>,\n' +
+      '    "new_supply_sf": <number or null>,\n' +
+      '    "market_summary": "<2-3 sentences or null>"\n' +
+      '  },\n' +
+      '  "investment_highlights": ["<string>"],\n' +
+      '  "risk_factors": ["<string>"]\n' +
+      '}\n\n' +
+      (askingPrice ? 'ASKING PRICE PROVIDED BY USER: $' + askingPrice + '\n\n' : '') +
+      'OM TEXT:\n' + omText.slice(0, 12000);
+    var _resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': _apiKey, 'anthropic-version': '2023-06-01' },
+      body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 4096, messages: [{ role: 'user', content: _parsePrompt }] })
+    });
+    var _rj = await _resp.json();
+    var _raw = (_rj.content && _rj.content[0] && _rj.content[0].text) || '';
+    var _clean = _raw.replace(/```json|```/g, '').trim();
+    return JSON.parse(_clean);
+  } catch(e) {
+    console.warn('[RIDGE] _lensParseOM error:', e.message);
+    return null;
+  }
+}
+
+// ── LENS: SVG lease expiration bar chart ─────────────────────────────────────
+function _lensRolloverChart(rentRoll) {
+  if (!rentRoll || !rentRoll.length) return '';
+  var now = new Date();
+  var currentYear = now.getFullYear();
+  var years = {};
+  var totalSF = 0;
+  rentRoll.forEach(function(r) {
+    if (!r.expiration_date || !r.sf) return;
+    var yr = new Date(r.expiration_date).getFullYear();
+    if (yr < currentYear) yr = currentYear;
+    if (yr > currentYear + 7) yr = currentYear + 8;
+    years[yr] = (years[yr] || 0) + (parseFloat(r.sf) || 0);
+    totalSF += parseFloat(r.sf) || 0;
+  });
+  if (!totalSF) return '';
+  var displayYears = [];
+  for (var y = currentYear; y <= currentYear + 7; y++) displayYears.push(y);
+  var maxSF = Math.max.apply(null, displayYears.map(function(y) { return years[y] || 0; }));
+  if (!maxSF) return '';
+  var W = 520, H = 140, padL = 40, padB = 30, padR = 10, padT = 10;
+  var chartW = W - padL - padR;
+  var chartH = H - padT - padB;
+  var barW = Math.floor(chartW / displayYears.length) - 4;
+  var bars = displayYears.map(function(y, i) {
+    var sf = years[y] || 0;
+    var pct = sf / totalSF;
+    var bh = Math.round((sf / maxSF) * chartH);
+    var x = padL + i * (chartW / displayYears.length) + 2;
+    var yPos = padT + chartH - bh;
+    var color = pct > 0.25 ? '#e05c2a' : pct > 0.1 ? '#f0a500' : '#2a7abf';
+    return '<rect x="' + x + '" y="' + yPos + '" width="' + barW + '" height="' + bh +
+      '" fill="' + color + '" rx="2"/>' +
+      (sf > 0 ? '<text x="' + (x + barW/2) + '" y="' + (yPos - 3) +
+      '" text-anchor="middle" font-size="9" fill="#7ab3d4">' +
+      (pct * 100).toFixed(0) + '%</text>' : '') +
+      '<text x="' + (x + barW/2) + '" y="' + (padT + chartH + 14) +
+      '" text-anchor="middle" font-size="9" fill="#4a6a8a">' + y + '</text>';
+  }).join('');
+  return '<div style="margin:12px 0;">' +
+    '<div style="font-size:11px;color:#4a6a8a;margin-bottom:6px;">LEASE EXPIRATION SCHEDULE</div>' +
+    '<svg width="' + W + '" height="' + H + '" style="max-width:100%;">' +
+    '<line x1="' + padL + '" y1="' + padT + '" x2="' + padL + '" y2="' + (padT+chartH) +
+    '" stroke="#1a2d42" stroke-width="1"/>' +
+    '<line x1="' + padL + '" y1="' + (padT+chartH) + '" x2="' + (W-padR) + '" y2="' + (padT+chartH) +
+    '" stroke="#1a2d42" stroke-width="1"/>' +
+    bars +
+    '</svg></div>';
+}
+
+// ── LENS: render structured OM parse as collapsible HTML panels ───────────────
+function _lensRenderOM(parsed, crossRefFlags, marketRentData) {
+  if (!parsed) return '';
+  var dm = parsed.deal_metadata || {};
+  var ph = parsed.physical || {};
+  var occ = parsed.occupancy || {};
+  var uw = parsed.broker_underwriting || {};
+  var rr = parsed.rent_roll || [];
+  var mc = parsed.market_context || {};
+  var highlights = parsed.investment_highlights || [];
+  var risks = parsed.risk_factors || [];
+  var dbRent = marketRentData ? parseFloat(marketRentData.marketRentPSF) : null;
+
+  function panel(title, color, content) {
+    return '<div style="margin-bottom:8px;border:1px solid #1a2d42;border-radius:6px;overflow:hidden;">' +
+      '<div style="background:' + color + ';padding:8px 12px;font-size:11px;font-weight:600;' +
+      'color:#e0e8f0;letter-spacing:0.05em;">' + title + '</div>' +
+      '<div style="padding:10px 12px;background:#0a1628;font-size:12px;color:#c0d0e0;">' +
+      content + '</div></div>';
+  }
+  function kv(label, value) {
+    if (!value && value !== 0) return '';
+    return '<div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid #0d1f33;">' +
+      '<span style="color:#4a6a8a;">' + label + '</span>' +
+      '<span style="color:#e0e8f0;font-weight:500;">' + value + '</span></div>';
+  }
+  function flag(text, type) {
+    var c = type === 'warn' ? '#e05c2a' : '#2a7a4a';
+    var ic = type === 'warn' ? '\u26a0' : '\u2705';
+    return '<div style="padding:4px 8px;margin:3px 0;background:' + (type === 'warn' ? '#1a0d00' : '#001a0d') +
+      ';border-left:3px solid ' + c + ';border-radius:2px;font-size:11px;color:' + c + ';">' +
+      ic + ' ' + text + '</div>';
+  }
+
+  var header = '<div style="background:#0d1f33;border:1px solid #1a4a6b;border-radius:8px;padding:14px 16px;margin-bottom:10px;">' +
+    '<div style="font-size:15px;font-weight:700;color:#e0e8f0;">' + (dm.property_name || dm.address || 'Unnamed Property') + '</div>' +
+    '<div style="font-size:12px;color:#4a6a8a;margin-top:2px;">' + (dm.address || '') + '</div>' +
+    '<div style="display:flex;gap:16px;margin-top:10px;flex-wrap:wrap;">' +
+    (dm.asking_price ? '<div><div style="font-size:10px;color:#4a6a8a;">ASKING PRICE</div>' +
+      '<div style="font-size:16px;font-weight:700;color:#f0a500;">$' + (dm.asking_price/1000000).toFixed(2) + 'M</div></div>' : '') +
+    (dm.price_psf ? '<div><div style="font-size:10px;color:#4a6a8a;">PRICE PSF</div>' +
+      '<div style="font-size:16px;font-weight:700;color:#e0e8f0;">$' + dm.price_psf + '</div></div>' : '') +
+    (dm.building_sf ? '<div><div style="font-size:10px;color:#4a6a8a;">BUILDING SF</div>' +
+      '<div style="font-size:16px;font-weight:700;color:#e0e8f0;">' + Math.round(dm.building_sf).toLocaleString() + '</div></div>' : '') +
+    (occ.current_occupancy_pct != null ? '<div><div style="font-size:10px;color:#4a6a8a;">OCCUPANCY</div>' +
+      '<div style="font-size:16px;font-weight:700;color:#e0e8f0;">' + occ.current_occupancy_pct + '%</div></div>' : '') +
+    (occ.walt_years != null ? '<div><div style="font-size:10px;color:#4a6a8a;">WALT</div>' +
+      '<div style="font-size:16px;font-weight:700;color:#e0e8f0;">' + occ.walt_years + ' yrs</div></div>' : '') +
+    '</div></div>';
+
+  var physContent = kv('Clear Height', ph.clear_height_ft ? ph.clear_height_ft + ' ft' : null) +
+    kv('Dock High Doors', ph.dock_high_doors) +
+    kv('Grade Level Doors', ph.grade_level_doors) +
+    kv('Office %', ph.office_pct != null ? ph.office_pct + '%' : null) +
+    kv('Power', ph.power_amps) +
+    kv('Sprinklers', ph.sprinklers) +
+    kv('Parking Ratio', ph.parking_ratio) +
+    kv('Column Spacing', ph.column_spacing);
+
+  var rrTable = '';
+  if (rr.length) {
+    rrTable = '<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:11px;">' +
+      '<thead><tr style="background:#0d1f33;">' +
+      ['Tenant','SF','Type','Expiration','Rent PSF','Annual Rent'].map(function(h) {
+        return '<th style="padding:5px 8px;text-align:left;color:#4a6a8a;font-weight:500;">' + h + '</th>';
+      }).join('') + '</tr></thead><tbody>' +
+      rr.map(function(r, i) {
+        var isMTM = (r.lease_type||'').toUpperCase() === 'MTM' || (r.expiration_date && new Date(r.expiration_date) < new Date());
+        var bg = isMTM ? 'background:#1a0d00;' : (i % 2 === 0 ? '' : 'background:#060e1a;');
+        return '<tr style="' + bg + '">' +
+          '<td style="padding:4px 8px;color:#e0e8f0;font-weight:500;">' + (r.tenant||'—') + '</td>' +
+          '<td style="padding:4px 8px;color:#c0d0e0;">' + (r.sf ? Math.round(r.sf).toLocaleString() : '—') + '</td>' +
+          '<td style="padding:4px 8px;color:#c0d0e0;">' + (r.lease_type||'—') + '</td>' +
+          '<td style="padding:4px 8px;color:' + (isMTM ? '#e05c2a' : '#c0d0e0') + ';">' + (r.expiration_date||'MTM') + '</td>' +
+          '<td style="padding:4px 8px;color:#c0d0e0;">' + (r.base_rent_psf ? '$'+r.base_rent_psf : '—') + '</td>' +
+          '<td style="padding:4px 8px;color:#c0d0e0;">' + (r.annual_rent ? '$'+Math.round(r.annual_rent).toLocaleString() : '—') + '</td>' +
+          '</tr>';
+      }).join('') + '</tbody></table></div>';
+    rrTable += _lensRolloverChart(rr);
+  }
+
+  var uwFlags = '';
+  if (uw.stabilized_occupancy && uw.stabilized_occupancy > 95) {
+    uwFlags += flag('Stabilized occupancy assumption of ' + uw.stabilized_occupancy + '% is aggressive', 'warn');
+  }
+  if (uw.exit_cap && uw.going_in_cap && uw.exit_cap < uw.going_in_cap) {
+    uwFlags += flag('Exit cap ' + uw.exit_cap + '% tighter than going-in cap ' + uw.going_in_cap + '% — compression assumed', 'warn');
+  }
+  if (dbRent && uw.market_rent_psf) {
+    var delta = ((uw.market_rent_psf - dbRent) / dbRent) * 100;
+    if (delta > 10) {
+      uwFlags += flag('Broker market rent $' + uw.market_rent_psf + ' PSF is ' + delta.toFixed(1) + '% above RIDGE comp avg of $' + dbRent + ' PSF', 'warn');
+    } else {
+      uwFlags += flag('Broker market rent $' + uw.market_rent_psf + ' PSF aligns with RIDGE comp avg of $' + dbRent + ' PSF', 'ok');
+    }
+  }
+  if (crossRefFlags && crossRefFlags.length) {
+    crossRefFlags.forEach(function(f) { uwFlags += flag(f.replace(/^[\u26a0\u2705]\s*/,''), f.startsWith('\u26a0') ? 'warn' : 'ok'); });
+  }
+
+  var uwContent = kv('In-Place NOI', uw.in_place_noi ? '$' + Math.round(uw.in_place_noi).toLocaleString() : null) +
+    kv('Stabilized NOI', uw.stabilized_noi ? '$' + Math.round(uw.stabilized_noi).toLocaleString() : null) +
+    kv('Going-In Cap', uw.going_in_cap ? uw.going_in_cap + '%' : null) +
+    kv('Stabilized Cap', uw.stabilized_cap ? uw.stabilized_cap + '%' : null) +
+    kv('Exit Cap', uw.exit_cap ? uw.exit_cap + '%' : null) +
+    kv('Market Rent PSF', uw.market_rent_psf ? '$' + uw.market_rent_psf : null) +
+    kv('Broker IRR', uw.irr ? uw.irr + '%' : null) +
+    kv('Equity Multiple', uw.equity_multiple ? uw.equity_multiple + 'x' : null) +
+    (uwFlags ? '<div style="margin-top:8px;">' + uwFlags + '</div>' : '');
+
+  var hlContent = highlights.map(function(h) {
+    return '<div style="padding:3px 0;border-bottom:1px solid #0d1f33;color:#c0d0e0;">\u2022 ' + h + '</div>';
+  }).join('');
+
+  var riskContent = risks.map(function(r) {
+    return '<div style="padding:3px 0;border-bottom:1px solid #0d1f33;color:#e07a5a;">\u2022 ' + r + '</div>';
+  }).join('');
+
+  var mcContent = kv('Submarket Vacancy', mc.submarket_vacancy_pct ? mc.submarket_vacancy_pct + '%' : null) +
+    kv('Submarket Asking Rent', mc.submarket_asking_rent_psf ? '$' + mc.submarket_asking_rent_psf + ' PSF' : null) +
+    kv('Absorption', mc.absorption_sf ? Math.round(mc.absorption_sf).toLocaleString() + ' SF' : null) +
+    kv('New Supply', mc.new_supply_sf ? Math.round(mc.new_supply_sf).toLocaleString() + ' SF' : null) +
+    (mc.market_summary ? '<div style="margin-top:8px;color:#7ab3d4;font-size:11px;">' + mc.market_summary + '</div>' : '');
+
+  return header +
+    panel('PHYSICAL SPECIFICATIONS', '#0d2137', physContent || '<span style="color:#4a6a8a;">No physical data extracted</span>') +
+    (rr.length ? panel('RENT ROLL & ROLLOVER SCHEDULE', '#0d1f2e', rrTable) : '') +
+    panel('BROKER UNDERWRITING ASSUMPTIONS', '#1a1200', uwContent || '<span style="color:#4a6a8a;">No underwriting data extracted</span>') +
+    (hlContent ? panel('INVESTMENT HIGHLIGHTS', '#001a0d', hlContent) : '') +
+    (riskContent ? panel('RISK FACTORS', '#1a0500', riskContent) : '') +
+    (mcContent ? panel('MARKET CONTEXT', '#0d1a2e', mcContent) : '');
 }
 
 // ── LENS: cross-reference broker assumptions vs market data ──────────────────
 // Returns a formatted string of delta flags, or '' if nothing to flag.
+// Used in LENS buildTrigger prompt note — receives old regex-extracted assumptions.
 function _lensCrossReference(assumptions, marketRentData) {
   if (!assumptions || !marketRentData) return '';
   var flags = [];
@@ -7273,32 +7536,38 @@ async function runRidgeAPI(skillName, prompt, runInputs, runToolId) {
             if (_lastRunToolId === 'lens') {
               var _scRows = _parseSaleCompTable(accumulated);
               if (_scRows.length) _writeSaleComps(_scRows, 'LENS', 6);
-              // ── LENS: assumption extraction + market cross-reference ──
-              try {
-                var _lensOmText = (STATE['lens'] && STATE['lens'].files && STATE['lens'].files['om']) || '';
-                var _lensAssumptions = _lensExtractAssumptions(_lensOmText);
-                var _lensMktRent = null;
-                if (_lAddr && _lastRunInputs && _lastRunInputs.type) {
-                  _lensMktRent = await _isrFetchMarketRent({
-                    address: _lAddr,
-                    assetClass: _lastRunInputs.type,
-                    sf: (_lastRunInputs && _lastRunInputs.sf) || null,
-                    clearHeight: null,
-                    dockDoors: null
-                  });
-                }
-                var _lensCrossRefNote = _lensCrossReference(_lensAssumptions, _lensMktRent);
-                if (_lensCrossRefNote) {
-                  console.log('[RIDGE] LENS cross-ref:', _lensCrossRefNote);
-                  var _lensContentEl = document.getElementById('ridge-panel-content');
-                  if (_lensContentEl) {
-                    var _flagDiv = document.createElement('div');
-                    _flagDiv.style.cssText = 'margin-top:12px;padding:10px 14px;background:#1a1120;border-left:3px solid #f59e0b;font-size:12px;color:#fbbf24;white-space:pre-wrap;border-radius:0 4px 4px 0;';
-                    _flagDiv.textContent = _lensCrossRefNote;
-                    _lensContentEl.appendChild(_flagDiv);
+              // ── LENS OM INTELLIGENCE ──
+              if (_sbOk) {
+                try {
+                  var _omRawText = (STATE['lens'] && STATE['lens'].files && STATE['lens'].files['om']) || '';
+                  if (_omRawText && _omRawText.length > 100) {
+                    var _lensMarketRent = await _isrFetchMarketRent({
+                      address:    _lAddr || '',
+                      assetClass: (_lastRunInputs && _lastRunInputs.type) || 'Industrial',
+                      sf:         parseFloat((_lastRunInputs && _lastRunInputs.sf) || 0) || 50000,
+                      clearHeight: 0,
+                      dockDoors:  0
+                    });
+                    var _lensOMParsed = await _lensParseOM(_omRawText, _lastRunInputs && _lastRunInputs.ask);
+                    if (_lensOMParsed) {
+                      if (_lensOMParsed.rent_roll && _lensOMParsed.rent_roll.length) {
+                        await _writeLeaseRows(_lensOMParsed.rent_roll, _lAddr || '', 'LENS');
+                      }
+                      var _contentEl = document.getElementById('ridge-panel-content');
+                      if (_contentEl) {
+                        var _omHTML = _lensRenderOM(_lensOMParsed, null, _lensMarketRent);
+                        _contentEl.innerHTML += '<div style="margin-top:16px;border-top:1px solid #1a2d42;padding-top:16px;">' +
+                          '<div style="font-size:11px;color:#4a6a8a;letter-spacing:0.05em;margin-bottom:10px;">RIDGE OM INTELLIGENCE</div>' +
+                          _omHTML + '</div>';
+                      }
+                      if (_sb && _soId) {
+                        _sb.from('skill_outputs').update({ parsed_om: _lensOMParsed }).eq('id', _soId)
+                          .then(function(r) { if (r.error) console.warn('[RIDGE] parsed_om save error:', r.error.message); });
+                      }
+                    }
                   }
-                }
-              } catch(e) { console.warn('[RIDGE] LENS cross-ref error:', e); }
+                } catch(e) { console.warn('[RIDGE] LENS OM intelligence error:', e.message); }
+              }
               // ── PIPELINE: auto-add from LENS run ──
               if (_sbOk) {
                 _plAutoAddDeal({
