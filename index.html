@@ -3532,7 +3532,7 @@ LTV: ${d.ltv||''}
 HOLD: ${d.hold||''}
 
 ${d.thesis ? 'ACQUISITION TEAM NOTES (use these directly in the Investment Thesis slide — do not override with generic content):\n' + d.thesis + '\n\n' : ''}DEAL TYPE CLASSIFICATION
-Classify this deal as one of three types before applying any hurdle thresholds:
+Classify this deal as one of three types:
 - CORE+/STABILIZED: Institutional quality asset, strong location, creditworthy tenants, functional building, newer construction or well-maintained vintage
 - VALUE-ADD: Near-term rollover, below-market rents, deferred capex, execution risk present
 - DISTRESSED/REPOSITIONING: Busted cap stack, significant vacancy, full repositioning required
@@ -3540,27 +3540,22 @@ Classify this deal as one of three types before applying any hurdle thresholds:
 ENTRADA HURDLE THRESHOLDS BY DEAL TYPE:
 Levered IRR: Core+/Stabilized 13.50%-14.00% acceptable | Value-Add 14.75% floor -- no exceptions | Distressed 14.75% floor, 17.00%+ target
 Equity Multiple: 1.50x universal floor | 1.70x-2.20x target | Between 1.50x-1.70x: evaluated on hold period, exit cap conservatism, and business plan execution -- not automatic rejection
-YOC: 7.50%-8.00% target at Year 3, Year 4, AND Year 5 (consistent across all deal types)
+YOC: 7.50%-8.00% at Year 3, Year 4, AND Year 5
 LTV: 65% universal ceiling | 60% ceiling if occupancy at close is below 50%
-DSCR: 1.25x minimum by end of Year 1 (consistent across all deal types)
+DSCR: 1.25x minimum by end of Year 1
 Hold Period: Evaluated on absolute IRR -- no IRR premium required for shorter holds
 Geography: Criteria applied universally across all markets -- no market-tier adjustments
 
-${d.om_text ? 'OFFERING MEMORANDUM:\n' + d.om_text.slice(0, 16000) + '\n\n' : ''}${d.comps_text ? 'LEASE COMP DATA:\n' + d.comps_text.slice(0, 10000) + '\n\n' : ''}Produce a complete IC memo in the following structure. Write at the level of a senior PE professional presenting to an investment committee — specific, data-driven, no filler language.
+${d.om_text ? 'OFFERING MEMORANDUM:\n' + d.om_text.slice(0, 16000) + '\n\n' : ''}${d.comps_text ? 'LEASE COMP DATA:\n' + d.comps_text.slice(0, 10000) + '\n\n' : ''}FORMAT: IC memo structure below. Senior PE level — specific, data-driven, no filler.
 
 ## DEAL SUMMARY
 Two paragraphs: what the asset is, why we are buying it, and the return profile. Include all key metrics.
 
 ## INVESTMENT THESIS
-Four numbered thesis points in the format used by institutional PE firms:
-1. [Compelling headline] — detailed paragraph with specific data
-2. [Compelling headline] — detailed paragraph with specific data
-3. [Compelling headline] — detailed paragraph with specific data
-4. [Compelling headline] — detailed paragraph with specific data
+4 numbered points, each: [Compelling headline] — detailed paragraph with specific data.
 
 ## RETURN STACK
-Table: Metric | Value | Deal-Type Hurdle | Status
-All returns at purchase price. IRR, EM, YOC Yr1/Yr3/Yr4/Yr5, Going-in Cap, Exit Cap, DSCR, Equity Required, Total Capitalization. In the Deal-Type Hurdle column, state the threshold applicable to this deal's classified type (Core+/Stabilized: IRR 13.50%-14.00% | Value-Add: IRR 14.75% floor | Distressed: IRR 14.75% floor, 17.00%+ target). In the Status column, state PASSES or FAILS with basis-point or percentage-point delta where applicable.
+Table: Metric | Value | Deal-Type Hurdle | Status. All returns at purchase price: IRR, EM, YOC Yr1/Yr3/Yr4/Yr5, Going-in Cap, Exit Cap, DSCR, Equity Required, Total Capitalization. Reference hurdle thresholds defined above. Status: PASSES or FAILS with bps delta.
 
 ## CAPITAL STACK
 Sources and uses table. Debt terms. Equity required. LTV. DSCR.
@@ -3569,12 +3564,12 @@ Sources and uses table. Debt terms. Equity required. LTV. DSCR.
 Submarket fundamentals: vacancy, rents, absorption, new supply. Recent comparable sale transactions (minimum 3) with address, SF, price, PSF, cap rate, buyer, date. Why this submarket now.
 
 ## RENT ROLL ANALYSIS
-IMPORTANT: Extract the actual tenant rent roll from the OM or model. Output as a pipe-delimited table with this exact header row first:
+Extract the tenant rent roll from the OM or model. Output as a pipe-delimited table with this exact header row first:
 Tenant | SF | % NRA | Expiration | Rent PSF | Mkt PSF | Delta
 Then one row per tenant with real data from the uploaded documents. After the table: WALT (calculated), rollover schedule summary, mark-to-market upside commentary.
 
 ## LEASE COMP ANALYSIS
-IMPORTANT: Extract all lease comps from the OM or uploaded comp data. Output as a pipe-delimited table with this exact header row first:
+Extract all lease comps from the OM or uploaded comp data. Output as a pipe-delimited table with this exact header row first:
 Property | Size (SF) | Lease Date | Term | Rate PSF | Type | Tenant
 Then one row per comp with real data. After the table: brief commentary on how subject property compares to market, rent spread vs. in-place rents, and underwriting support.
 
@@ -3584,8 +3579,6 @@ Table 2: IRR by Purchase Price × Exit Cap Rate
 Color commentary: green = clears hurdle, yellow = borderline, red = fails
 
 ## ENTRADA HURDLE CONFIRMATION
-This section is MANDATORY and must appear in every memo regardless of whether the deal passes or fails.
-
 Deal Type: [CORE+/STABILIZED | VALUE-ADD | DISTRESSED/REPOSITIONING]
 Classification Basis: [one sentence — why this deal is classified as above, based on functionality, year built, tenant quality, and location]
 
@@ -3649,8 +3642,7 @@ If CONDITIONAL: state exactly what must be verified before proceeding
           }
         } catch(e) { console.warn('[RIDGE] ISR market benchmark fetch error:', e.message); }
       }
-      p += '\n\n## SALE COMPS\nIMPORTANT: List all comparable sale transactions from the OM or your market knowledge as a pipe-delimited table with this exact header row first:\nAddress | SF | Sale Date | Sale Price | Price PSF | Cap Rate | Buyer | Seller\nThen one row per comp. These will be automatically extracted and stored in the RIDGE comp database.\n';
-      p += '\nIMPORTANT: Your response must include a ## SALE COMPS section and a ## LEASE COMP ANALYSIS section with any comparable transactions mentioned in the OM or your market knowledge. Format as pipe-delimited tables. These will be automatically extracted and stored in the RIDGE comp database.\n';
+      p += '\n\n## SALE COMPS\nList all comparable sale transactions from the OM or your market knowledge as a pipe-delimited table with this exact header row first:\nAddress | SF | Sale Date | Sale Price | Price PSF | Cap Rate | Buyer | Seller\nThen one row per comp. These will be automatically extracted and stored in the RIDGE comp database.\n';
       return p;
 
     case 'loi':
