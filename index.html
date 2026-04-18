@@ -1524,6 +1524,21 @@ var TOOLS = [
     shortDesc:'Proprietary lease comp database — import, search, manage.',
     uploads:[], fields:[], steps:[], system:'', prompt:null,
     standalone: true  // rendered with custom panel HTML, not buildPanelHTML
+  },
+  {
+    id:'dd-tracker', num:'16', icon:'📋', name:'DD TRACKER',
+    badge:'Due Diligence',
+    desc:'Generate and track a full due diligence checklist for an active acquisition. Checklist persists to Supabase with status tracking and overdue alerts.',
+    shortDesc:'Generate DD checklist, track completion, get overdue alerts.',
+    uploads:[],
+    fields:[
+      {row:[{id:'addr',label:'Property Address *',ph:'e.g. 123 Industrial Blvd, Atlanta, GA'},{id:'type',label:'Asset Type',type:'select',opts:['Industrial','Flex Industrial','Mixed-Use','Office']}]},
+      {row:[{id:'close_date',label:'Target Close Date',ph:'e.g. 06/30/2026'},{id:'dd_end',label:'DD Period End',ph:'e.g. 05/15/2026'}]},
+      {row:[{id:'notes',label:'Deal Notes',type:'textarea',ph:'Key deal context, special concerns, known issues...'}]}
+    ],
+    steps:['Building due diligence checklist...','Organizing by category...','Identifying critical path items...','Saving to RIDGE database...'],
+    system:'You are an institutional CRE acquisitions officer building a rigorous due diligence checklist. Be specific, thorough, and prioritize items that could kill a deal or create liability.',
+    prompt:null
   }
 ];
 
@@ -3889,6 +3904,18 @@ If CONDITIONAL: state exactly what must be verified before proceeding
       p += 'One paragraph: Is this lease a net positive or negative for an acquisition at current pricing? What are the two or three most important things Entrada must address before closing or during asset management?';
       return p;
 
+    case 'dd-tracker':
+      p = 'You are an institutional CRE acquisitions officer managing due diligence for ' + (d.addr||'the subject property') + '.\n';
+      p += 'Asset type: ' + (d.type||'Industrial') + '. Target close: ' + (d.close_date||'TBD') + '. DD period ends: ' + (d.dd_end||'TBD') + '.\n';
+      if (d.notes) p += 'Deal context: ' + d.notes + '\n';
+      p += '\nGenerate a comprehensive due diligence checklist organized into these exact categories:\n';
+      p += '## LEGAL & TITLE\n## FINANCIAL & LEASES\n## PHYSICAL & ENVIRONMENTAL\n## ZONING & ENTITLEMENTS\n## INSURANCE & RISK\n## CLOSING & FINANCING\n\n';
+      p += 'For each category, list 6-10 specific actionable items as a numbered list.\n';
+      p += 'Each item should be specific to a ' + (d.type||'industrial') + ' acquisition.\n';
+      p += 'Format each item as: [CATEGORY] Item description — why it matters for this deal type.\n';
+      p += 'After the checklist, write a ## CRITICAL PATH section identifying the 3 highest-risk items that could kill the deal.\n';
+      return p;
+
     case 'pipeline':
       return '';
 
@@ -4047,8 +4074,154 @@ async function _fetchDealMemory(address) {
   }
 }
 
+// ── DD Tracker: load checklist items from Supabase ───────────────────────────
+async function _ddLoadChecklist(address) {
+  if (!_sb || !_sbOk || !address) return [];
+  try {
+    var { data, error } = await _sb.from('dd_checklists')
+      .select('*')
+      .ilike('address', '%' + address.split(',')[0].trim() + '%')
+      .order('category')
+      .order('due_date', { ascending: true, nullsFirst: false });
+    if (error) { console.warn('[RIDGE] DD load error:', error.message); return []; }
+    return data || [];
+  } catch(e) {
+    console.warn('[RIDGE] _ddLoadChecklist error:', e.message);
+    return [];
+  }
+}
 
+// ── DD Tracker: save checklist items to Supabase ─────────────────────────────
+async function _ddSaveChecklist(address, items) {
+  if (!_sb || !_sbOk || !address || !items || !items.length) return;
+  try {
+    var rows = items.map(function(item) {
+      return {
+        address:  address,
+        category: item.category || 'General',
+        item:     item.text || item.item,
+        status:   item.status || 'pending',
+        due_date: item.due_date || null,
+        notes:    item.notes || null
+      };
+    });
+    var { error } = await _sb.from('dd_checklists').insert(rows);
+    if (error) console.warn('[RIDGE] DD save error:', error.message);
+    else console.log('[RIDGE] DD Tracker saved', rows.length, 'items for', address);
+  } catch(e) {
+    console.warn('[RIDGE] _ddSaveChecklist error:', e.message);
+  }
+}
 
+// ── DD Tracker: parse checklist sections from Claude output ──────────────────
+function _ddParseChecklist(text, address) {
+  if (!text) return [];
+  var items = [];
+  var currentCategory = 'General';
+  var categoryMap = {
+    'LEGAL': 'Legal & Title', 'TITLE': 'Legal & Title',
+    'FINANCIAL': 'Financial & Leases', 'LEASE': 'Financial & Leases',
+    'PHYSICAL': 'Physical & Environmental', 'ENVIRONMENTAL': 'Physical & Environmental',
+    'ZONING': 'Zoning & Entitlements', 'ENTITLEMENT': 'Zoning & Entitlements',
+    'INSURANCE': 'Insurance & Risk', 'RISK': 'Insurance & Risk',
+    'CLOSING': 'Closing & Financing', 'FINANCING': 'Closing & Financing',
+    'CRITICAL': 'Critical Path'
+  };
+  text.split('\n').forEach(function(line) {
+    line = line.trim();
+    if (!line) return;
+    if (line.startsWith('##')) {
+      var hdr = line.replace(/^#+\s*/, '').toUpperCase();
+      for (var key in categoryMap) {
+        if (hdr.includes(key)) { currentCategory = categoryMap[key]; break; }
+      }
+      return;
+    }
+    var match = line.match(/^\d+\.\s+(.+)/);
+    if (match) {
+      items.push({ address: address, category: currentCategory, item: match[1].trim(), status: 'pending', due_date: null, notes: null });
+    }
+  });
+  return items;
+}
+
+// ── DD Tracker: render checklist as HTML panels ───────────────────────────────
+function _ddRenderPanel(items, address) {
+  if (!items || !items.length) return '<div style="color:#4a6a8a;font-size:12px;">No checklist items found.</div>';
+  var categories = {};
+  items.forEach(function(item) {
+    var cat = item.category || 'General';
+    if (!categories[cat]) categories[cat] = [];
+    categories[cat].push(item);
+  });
+  var statusColors = { pending: '#4a6a8a', 'in-progress': '#f0a500', complete: '#2a7a4a', blocked: '#e05c2a' };
+  var html = '<div style="font-size:11px;color:#4a6a8a;margin-bottom:10px;">DD CHECKLIST \u2014 ' + (address||'').split(',')[0].toUpperCase() + '</div>';
+  Object.keys(categories).forEach(function(cat) {
+    var catItems = categories[cat];
+    var doneCount = catItems.filter(function(i) { return i.status === 'complete'; }).length;
+    html += '<div style="margin-bottom:8px;border:1px solid #1a2d42;border-radius:6px;overflow:hidden;">' +
+      '<div style="background:#0d2137;padding:7px 12px;font-size:11px;font-weight:600;color:#e0e8f0;display:flex;justify-content:space-between;">' +
+      '<span>' + cat.toUpperCase() + '</span><span style="color:#4a6a8a;">' + doneCount + '/' + catItems.length + '</span></div>' +
+      '<div style="background:#0a1628;">';
+    catItems.forEach(function(item, idx) {
+      var sc = statusColors[item.status] || '#4a6a8a';
+      var isOverdue = item.due_date && new Date(item.due_date) < new Date() && item.status !== 'complete';
+      html += '<div style="padding:7px 12px;border-bottom:1px solid #0d1f33;display:flex;align-items:flex-start;gap:8px;" data-dd-id="' + (item.id||idx) + '">' +
+        '<select onchange="_ddUpdateStatus(this)" data-id="' + (item.id||'') + '" style="font-size:10px;background:#0d1f33;border:1px solid ' + sc + ';color:' + sc + ';border-radius:3px;padding:1px 3px;">' +
+        ['pending','in-progress','complete','blocked'].map(function(s) {
+          return '<option value="' + s + '"' + (item.status===s?' selected':'') + '>' + s + '</option>';
+        }).join('') + '</select>' +
+        '<div style="flex:1;"><div style="font-size:12px;color:' + (item.status==='complete'?'#2a4a3a':'#c0d0e0') + ';' +
+        (item.status==='complete'?'text-decoration:line-through;':'') + '">' + item.item + '</div>' +
+        (item.due_date ? '<div style="font-size:10px;color:' + (isOverdue?'#e05c2a':'#4a6a8a') + ';margin-top:2px;">\ud83d\udcc5 ' + item.due_date + (isOverdue?' \u2014 OVERDUE':'') + '</div>' : '') +
+        '</div></div>';
+    });
+    html += '</div></div>';
+  });
+  return html;
+}
+
+// ── DD Tracker: update item status via Supabase ───────────────────────────────
+async function _ddUpdateStatus(selectEl) {
+  var id = selectEl.dataset.id;
+  var newStatus = selectEl.value;
+  if (!id || !_sb || !_sbOk) return;
+  try {
+    var { error } = await _sb.from('dd_checklists')
+      .update({ status: newStatus, updated_at: new Date().toISOString() })
+      .eq('id', id);
+    if (error) console.warn('[RIDGE] DD status update error:', error.message);
+    else {
+      var _ddColors = { pending:'#4a6a8a','in-progress':'#f0a500',complete:'#2a7a4a',blocked:'#e05c2a' };
+      selectEl.style.borderColor = _ddColors[newStatus] || '#4a6a8a';
+      selectEl.style.color = selectEl.style.borderColor;
+      console.log('[RIDGE] DD item', id, 'updated to', newStatus);
+    }
+  } catch(e) { console.warn('[RIDGE] _ddUpdateStatus error:', e.message); }
+}
+
+// ── DD Tracker: schedule browser push notifications for upcoming due dates ────
+function _ddScheduleNotifications(items) {
+  if (!items || !items.length) return;
+  if (!('Notification' in window)) return;
+  Notification.requestPermission().then(function(permission) {
+    if (permission !== 'granted') return;
+    var now = new Date();
+    items.forEach(function(item) {
+      if (!item.due_date || item.status === 'complete') return;
+      var due = new Date(item.due_date);
+      var daysUntil = Math.ceil((due - now) / (1000*60*60*24));
+      if (daysUntil === 3 || daysUntil === 1) {
+        setTimeout(function() {
+          new Notification('RIDGE DD Alert \u2014 ' + daysUntil + ' day' + (daysUntil>1?'s':'') + ' remaining', {
+            body: item.item + '\n' + (item.address||''),
+            icon: '/favicon.ico'
+          });
+        }, 1000);
+      }
+    });
+  });
+}
 
 // ── LEASE TABLE PARSER ───────────────────────────────────────
 // Parses pipe-delimited rent roll / comp tables from Claude output.
@@ -7691,6 +7864,25 @@ async function runRidgeAPI(skillName, prompt, runInputs, runToolId) {
           source:    'NAPKIN',
           conviction: 'Needs More Data'
         });
+      }
+      // ── DD TRACKER: parse, save, and render checklist ──
+      if (_lastRunToolId === 'dd-tracker' && _sbOk) {
+        try {
+          var _ddAddr = (_lastRunInputs && (_lastRunInputs.addr || _lastRunInputs.address)) || '';
+          var _ddItems = _ddParseChecklist(accumulated, _ddAddr);
+          if (_ddItems.length) {
+            await _ddSaveChecklist(_ddAddr, _ddItems);
+            _ddScheduleNotifications(_ddItems);
+            var _ddContentEl = document.getElementById('ridge-panel-content');
+            if (_ddContentEl) {
+              var _ddHTML = _ddRenderPanel(_ddItems, _ddAddr);
+              _ddContentEl.innerHTML += '<div style="margin-top:16px;border-top:1px solid #1a2d42;padding-top:16px;">' +
+                '<div style="font-size:11px;color:#4a6a8a;letter-spacing:0.05em;margin-bottom:10px;">RIDGE DD TRACKER</div>' +
+                _ddHTML + '</div>';
+            }
+            showToast('\ud83d\udccb DD Checklist saved \u2014 ' + _ddItems.length + ' items tracked');
+          }
+        } catch(e) { console.warn('[RIDGE] DD post-run error:', e.message); }
       }
     }
   } catch(e) {
