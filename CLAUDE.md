@@ -14,6 +14,15 @@ Workflow for all git operations:
 The PreToolUse hook allows pushes only when the commit message contains `[approved]`.
 Never add `[approved]` to a commit message without user authorization.
 
+## ⚠️ BRANCH RULES — mandatory, no exceptions
+
+1. **Never commit directly to main.** Always create or switch to a feature branch before making any commits.
+2. **Feature branch naming convention:** `claude/phase-{phase}-{short-description}` (e.g. `claude/phase-6-isr-call2`)
+3. **Full approval workflow:**
+   - Commit to feature branch → report hash → wait for "approved" → amend with `[approved]` → push feature branch to origin → merge to main → confirm final main hash → stop.
+4. **If already on main when starting work**, create a feature branch immediately before making any edits: `git checkout -b claude/phase-{phase}-{short-description}`
+5. **Never push to origin/main directly.** Merges to main only happen after explicit approval.
+
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 ## What This Is
