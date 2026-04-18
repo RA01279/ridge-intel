@@ -13,6 +13,8 @@
 <script src="https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/mammoth@1.6.0/mammoth.browser.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <style>
 :root {
   --bg:#0d1117;--surface:#161b22;--surface2:#1c2128;--border:#30363d;
@@ -1539,6 +1541,25 @@ var TOOLS = [
     steps:['Building due diligence checklist...','Organizing by category...','Identifying critical path items...','Saving to RIDGE database...'],
     system:'You are an institutional CRE acquisitions officer building a rigorous due diligence checklist. Be specific, thorough, and prioritize items that could kill a deal or create liability.',
     prompt:null
+  },
+  {
+    id:'portfolio-map', num:'17', icon:'🗺️', name:'PORTFOLIO MAP',
+    badge:'Portfolio Intelligence',
+    desc:'Interactive map of all properties in the RIDGE database. Color-coded by conviction tier. Click any pin to view property details and launch LENS or Napkin.',
+    shortDesc:'Map your portfolio — conviction pins, owner intel, one-click analysis.',
+    uploads:[],
+    fields:[
+      {row:[
+        {id:'market',label:'Market Filter',type:'select',opts:['All','Atlanta','Savannah','DFW','Houston','Austin']},
+        {id:'tier',label:'Conviction Tier',type:'select',opts:['All','High Conviction','Needs More Data','Watch List']}
+      ]},
+      {row:[
+        {id:'min_score',label:'Min Signal Score (0–15)',ph:'e.g. 5'}
+      ]}
+    ],
+    steps:['Loading properties from RIDGE database...','Geocoding addresses...','Rendering map...'],
+    system:'',
+    prompt:null
   }
 ];
 
@@ -1858,7 +1879,7 @@ function buildPanelHTML(tool) {
     </div>
     ${tool.id==='napkin'?'<div class="napkin-live" id="napkin-live"><div style="font-size:10px;font-weight:700;letter-spacing:1px;color:#4ade80;margin-bottom:6px;">LIVE MATH</div><div class="nl-grid" id="nl-grid"></div></div>':''}
     <div class="btn-row">
-      <button class="btn btn-p" id="run-btn-${tool.id}" onclick="runTool('${tool.id}')">↗ Run ${tool.name}</button>
+      <button class="btn btn-p" id="run-btn-${tool.id}" onclick="${tool.id === 'portfolio-map' ? '_portfolioMapLoad()' : 'runTool(\'' + tool.id + '\')'}">↗ Run ${tool.name}</button>
       <button class="btn btn-o" onclick="clearTool('${tool.id}')">Clear</button>
       ${tool.id === 'daily-signal' ? exportSection : ''}
       ${tool.id==='loi'?'<button class="btn btn-g" onclick="generateLOI()" style="margin-left:8px;">⬇ Generate LOI</button>':''}
@@ -3202,6 +3223,7 @@ function showParsedKPIs(toolId, m) {
 //  RUN TOOL
 // ═══════════════════════════════════════════════════════════
 async function runTool(toolId) {
+  if (toolId === 'portfolio-map') { _portfolioMapLoad(); return; }
   var tool = TOOLS.find(t => t.id === toolId);
 
   // Gather field values
@@ -3916,6 +3938,9 @@ If CONDITIONAL: state exactly what must be verified before proceeding
       p += 'After the checklist, write a ## CRITICAL PATH section identifying the 3 highest-risk items that could kill the deal.\n';
       return p;
 
+    case 'portfolio-map':
+      return '';
+
     case 'pipeline':
       return '';
 
@@ -4221,6 +4246,199 @@ function _ddScheduleNotifications(items) {
       }
     });
   });
+}
+
+// ── Portfolio Map: in-session geocode cache ──────────────────────────────────
+var _ridgeGeoCache = {};
+
+async function _portfolioMapLoad() {
+  var marketEl  = document.getElementById('f-portfolio-map-market');
+  var tierEl    = document.getElementById('f-portfolio-map-tier');
+  var scoreEl   = document.getElementById('f-portfolio-map-min_score');
+  var market    = marketEl  ? marketEl.value.trim()    : '';
+  var tier      = tierEl    ? tierEl.value             : '';
+  var minScore  = scoreEl   ? parseFloat(scoreEl.value) || 0 : 0;
+
+  var loadEl  = document.getElementById('loading-portfolio-map');
+  var pstepEl = document.getElementById('pstep-portfolio-map');
+  var pfillEl = document.getElementById('pfill-portfolio-map');
+  var llblEl  = document.getElementById('llbl-portfolio-map');
+  var resEl   = document.getElementById('results-portfolio-map');
+  var routEl  = document.getElementById('rout-portfolio-map');
+
+  if (loadEl)  loadEl.classList.add('show');
+  if (resEl)   resEl.classList.remove('show');
+  if (llblEl)  llblEl.textContent = 'Loading portfolio...';
+  if (pfillEl) pfillEl.style.width = '5%';
+  if (pstepEl) pstepEl.textContent = '';
+
+  if (!_sbOk || !_sb) {
+    showToast('[RIDGE] Supabase not connected — cannot load portfolio map');
+    if (loadEl) loadEl.classList.remove('show');
+    return;
+  }
+
+  try {
+    var q = _sb.from('properties')
+      .select('address,city,market,submarket,asset_class,building_sf,signal_score,conviction_tier,owner_name,for_sale,asking_rent_psf,vacancy_pct')
+      .order('signal_score', { ascending: false })
+      .limit(101);
+    if (market && market !== 'All')          q = q.ilike('market', '%' + market + '%');
+    if (tier   && tier   !== 'All')          q = q.eq('conviction_tier', tier);
+    if (minScore > 0)                        q = q.gte('signal_score', minScore);
+
+    var { data, error } = await q;
+    if (error) throw error;
+
+    var props = data || [];
+    var capped = props.length > 100;
+    if (capped) {
+      props = props.slice(0, 100);
+      showToast('[RIDGE] Showing top 100 properties — refine filters to narrow results');
+    }
+
+    if (!props.length) {
+      if (loadEl) loadEl.classList.remove('show');
+      if (routEl) routEl.innerHTML = '<div style="color:var(--muted);padding:20px;font-size:13px;">No properties found. Sync a CoStar folder first or adjust filters.</div>';
+      if (resEl)  resEl.classList.add('show');
+      return;
+    }
+
+    // Geocode each address via Nominatim (in-session cache, 1.1s between network requests)
+    if (llblEl) llblEl.textContent = 'Geocoding properties...';
+    var geocoded = [];
+    var networkRequests = 0;
+    for (var i = 0; i < props.length; i++) {
+      var p = props[i];
+      if (!p.address) continue;
+      if (pstepEl) pstepEl.textContent = 'Geocoding ' + (i + 1) + ' / ' + props.length + '\u2026';
+      if (pfillEl) pfillEl.style.width = Math.round(10 + (i / props.length) * 70) + '%';
+
+      var cacheKey = p.address.toLowerCase().trim();
+      if (_ridgeGeoCache[cacheKey]) {
+        geocoded.push({ prop: p, lat: _ridgeGeoCache[cacheKey].lat, lng: _ridgeGeoCache[cacheKey].lng });
+        continue;
+      }
+      try {
+        var resp = await fetch('https://nominatim.openstreetmap.org/search?format=json&limit=1&q=' + encodeURIComponent(p.address), {
+          headers: { 'Accept': 'application/json', 'User-Agent': 'RIDGE-Intelligence/1.0' }
+        });
+        var geo = await resp.json();
+        if (geo && geo[0]) {
+          var lat = parseFloat(geo[0].lat), lng = parseFloat(geo[0].lon);
+          _ridgeGeoCache[cacheKey] = { lat: lat, lng: lng };
+          geocoded.push({ prop: p, lat: lat, lng: lng });
+        }
+      } catch(e) { /* skip un-geocodeable */ }
+      networkRequests++;
+      await new Promise(function(r) { setTimeout(r, 1100); });
+    }
+
+    if (!geocoded.length) {
+      if (loadEl) loadEl.classList.remove('show');
+      showToast('[RIDGE] No properties could be geocoded — check address formats');
+      return;
+    }
+
+    // Build map container in results panel
+    if (pstepEl) pstepEl.textContent = 'Rendering map\u2026';
+    if (pfillEl) pfillEl.style.width = '92%';
+    var mapDivId = 'pm-leaflet-' + Date.now();
+    if (routEl) {
+      routEl.innerHTML =
+        '<div id="' + mapDivId + '" style="height:520px;width:100%;border-radius:6px;overflow:hidden;"></div>' +
+        '<div style="font-size:11px;color:var(--muted);margin-top:8px;padding:0 2px;display:flex;gap:16px;flex-wrap:wrap;">' +
+        '<span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#f59e0b;margin-right:5px;vertical-align:middle;"></span>High Conviction</span>' +
+        '<span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#3b82f6;margin-right:5px;vertical-align:middle;"></span>Needs More Data</span>' +
+        '<span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#22c55e;margin-right:5px;vertical-align:middle;"></span>Watch List</span>' +
+        '<span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#6b7280;margin-right:5px;vertical-align:middle;"></span>Unscored</span>' +
+        '</div>';
+    }
+    await new Promise(function(r) { setTimeout(r, 60); }); // Allow DOM paint before Leaflet init
+
+    if (window._ridgePortfolioMap) {
+      try { window._ridgePortfolioMap.remove(); } catch(e) {}
+      window._ridgePortfolioMap = null;
+    }
+
+    var center = [geocoded[0].lat, geocoded[0].lng];
+    var map = L.map(mapDivId).setView(center, 9);
+    window._ridgePortfolioMap = map;
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '\u00a9 <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+      maxZoom: 19
+    }).addTo(map);
+
+    function _pmColor(convTier, score) {
+      if (convTier === 'High Conviction')  return '#f59e0b';
+      if (convTier === 'Needs More Data')  return '#3b82f6';
+      if (convTier === 'Watch List')       return '#22c55e';
+      if (score >= 8)  return '#f59e0b';
+      if (score >= 5)  return '#3b82f6';
+      return '#6b7280';
+    }
+
+    geocoded.forEach(function(item) {
+      var pr = item.prop;
+      var col = _pmColor(pr.conviction_tier, pr.signal_score || 0);
+      var dot = L.divIcon({
+        className: '',
+        html: '<div style="width:14px;height:14px;border-radius:50%;background:' + col +
+              ';border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.5);"></div>',
+        iconSize: [14, 14],
+        iconAnchor: [7, 7]
+      });
+      var addrEsc = (pr.address || '').replace(/\\/g, '\\\\').replace(/'/g, '\\\'');
+      var popup =
+        '<div style="font-size:12px;min-width:230px;">' +
+        '<div style="font-weight:700;font-size:13px;margin-bottom:3px;">' + _hEsc(pr.address || '') + '</div>' +
+        (pr.conviction_tier
+          ? '<div style="color:' + col + ';font-size:10px;font-weight:700;letter-spacing:.5px;margin-bottom:4px;">' +
+            _hEsc(pr.conviction_tier).toUpperCase() + (pr.signal_score ? ' \u00b7 ' + pr.signal_score + ' pts' : '') + '</div>'
+          : '') +
+        (pr.asset_class
+          ? '<div style="color:#8b949e;font-size:11px;">' + _hEsc(pr.asset_class) +
+            (pr.building_sf ? ' \u00b7 ' + Number(pr.building_sf).toLocaleString() + ' SF' : '') + '</div>'
+          : '') +
+        (pr.owner_name
+          ? '<div style="font-size:11px;margin-top:3px;">Owner: <strong>' + _hEsc(pr.owner_name) + '</strong></div>'
+          : '') +
+        (pr.vacancy_pct != null
+          ? '<div style="font-size:11px;">Vacancy: ' + pr.vacancy_pct + '%</div>'
+          : '') +
+        (pr.asking_rent_psf
+          ? '<div style="font-size:11px;">Asking: $' + pr.asking_rent_psf + ' PSF</div>'
+          : '') +
+        '<div style="margin-top:8px;display:flex;gap:6px;">' +
+        '<button onclick="_portfolioRunLens(\'' + addrEsc + '\')" style="font-size:10px;background:#1e2761;color:#fff;border:none;border-radius:3px;padding:3px 8px;cursor:pointer;">\u26a1 LENS</button>' +
+        '<button onclick="_portfolioRunNapkin(\'' + addrEsc + '\')" style="font-size:10px;background:#1e2761;color:#fff;border:none;border-radius:3px;padding:3px 8px;cursor:pointer;">\u26a1 Napkin</button>' +
+        '</div></div>';
+      L.marker([item.lat, item.lng], { icon: dot }).bindPopup(popup).addTo(map);
+    });
+
+    if (loadEl)  loadEl.classList.remove('show');
+    if (pfillEl) pfillEl.style.width = '100%';
+    if (resEl)   resEl.classList.add('show');
+    showToast('\ud83d\udccd Portfolio Map \u2014 ' + geocoded.length + ' properties plotted' + (capped ? ' (top 100)' : ''));
+
+  } catch(e) {
+    if (loadEl) loadEl.classList.remove('show');
+    console.warn('[RIDGE] _portfolioMapLoad error:', e.message);
+    showToast('[RIDGE] Portfolio Map error: ' + e.message);
+  }
+}
+
+function _portfolioRunLens(address) {
+  var el = document.getElementById('f-lens-addr');
+  if (el) { el.value = address; togglePanel('lens'); }
+  else showToast('[RIDGE] Open the LENS panel and enter: ' + address);
+}
+
+function _portfolioRunNapkin(address) {
+  var el = document.getElementById('f-napkin-addr');
+  if (el) { el.value = address; togglePanel('napkin'); }
+  else showToast('[RIDGE] Open the Napkin panel and enter: ' + address);
 }
 
 // ── LEASE TABLE PARSER ───────────────────────────────────────
