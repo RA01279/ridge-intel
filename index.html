@@ -3649,6 +3649,8 @@ If CONDITIONAL: state exactly what must be verified before proceeding
           }
         } catch(e) { console.warn('[RIDGE] ISR market benchmark fetch error:', e.message); }
       }
+      p += '\n\n## SALE COMPS\nIMPORTANT: List all comparable sale transactions from the OM or your market knowledge as a pipe-delimited table with this exact header row first:\nAddress | SF | Sale Date | Sale Price | Price PSF | Cap Rate | Buyer | Seller\nThen one row per comp. These will be automatically extracted and stored in the RIDGE comp database.\n';
+      p += '\nIMPORTANT: Your response must include a ## SALE COMPS section and a ## LEASE COMP ANALYSIS section with any comparable transactions mentioned in the OM or your market knowledge. Format as pipe-delimited tables. These will be automatically extracted and stored in the RIDGE comp database.\n';
       return p;
 
     case 'loi':
@@ -5741,7 +5743,8 @@ async function _isrExtractJSON(memoText) {
             JSON.stringify({
               thesis: 'array of {headline, body}',
               market: '{vacancy, avg_rent, new_supply, replacement_cost, narrative}',
-              lease_comps: 'array of {property, sf, rate, term, type, date}',
+              lease_comps: 'array of {tenant, address, sf, lease_type, commencement_date, expiration_date, base_rent_psf, clear_height, dock_high_doors, source}',
+              sale_comps: 'array of {address, sf, sale_date, sale_price, price_psf, cap_rate, buyer, seller, source}',
               rent_roll: 'array of {tenant, sf, pct_nra, expiration, rent_psf, mkt_psf}',
               sensitivity: '{hold_rows: [{price, irr_36, irr_48, irr_60}], cap_rows: [{price, irr_600, irr_625, irr_650}]}',
               risks: 'array of {factor, severity, mitigant}',
@@ -7701,7 +7704,7 @@ async function runRidgeAPI(skillName, prompt, runInputs, runToolId) {
     if (_lastRunToolId === 'isr') {
       var _isrBtn2 = document.getElementById('pptx-btn-isr');
       if (_isrBtn2) { _isrBtn2.disabled = true; _isrBtn2.textContent = '⏳ Extracting data...'; }
-      var _isrSections = ['RENT ROLL ANALYSIS','LEASE COMP ANALYSIS','SENSITIVITY ANALYSIS','RISK MATRIX','IC RECOMMENDATION','ENTRADA HURDLE CONFIRMATION'];
+      var _isrSections = ['RENT ROLL ANALYSIS','LEASE COMP ANALYSIS','SALE COMPS','SENSITIVITY ANALYSIS','RISK MATRIX','IC RECOMMENDATION','ENTRADA HURDLE CONFIRMATION'];
       var _trimmedMemo = _isrSections.map(function(s){ return _extractKeySection(accumulated, s); }).filter(Boolean).map(function(s){ return s.slice(0, 1500); }).join('\n\n').slice(0, 10000);
       _isrExtractJSON(_trimmedMemo);
       // ── PIPELINE: auto-add from ISR run ──
@@ -7943,6 +7946,12 @@ async function runRidgeAPI(skillName, prompt, runInputs, runToolId) {
               } catch(e) {}
             }
             await _writeLeaseRows(_lRows, _lAddr, _lastRunToolId.toUpperCase());
+            // Supplemental: write structured lease comps from ISR Call 2 JSON (catches what text parser misses)
+            if (_lastRunToolId === 'isr' && _isrParsedData && _isrParsedData.lease_comps && _isrParsedData.lease_comps.length) {
+              var _isrLcAddr = _lAddr || '';
+              await _writeLeaseRows(_isrParsedData.lease_comps, _isrLcAddr, 'ISR');
+              console.log('[RIDGE] ISR wrote', _isrParsedData.lease_comps.length, 'lease comps to DB');
+            }
             // Sale comps — ISR: from structured _isrParsedData; LENS: parse from text output
             if (_lastRunToolId === 'isr' && _isrParsedData && _isrParsedData.sale_comps && _isrParsedData.sale_comps.length) {
               _writeSaleComps(_isrParsedData.sale_comps, 'ISR', 5);
