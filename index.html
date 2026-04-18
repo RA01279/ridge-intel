@@ -3643,6 +3643,21 @@ If CONDITIONAL: state exactly what must be verified before proceeding
         } catch(e) { console.warn('[RIDGE] ISR market benchmark fetch error:', e.message); }
       }
       p += '\n\n## SALE COMPS\nList all comparable sale transactions from the OM or your market knowledge as a pipe-delimited table with this exact header row first:\nAddress | SF | Sale Date | Sale Price | Price PSF | Cap Rate | Buyer | Seller\nThen one row per comp. These will be automatically extracted and stored in the RIDGE comp database.\n';
+      try {
+        var _isrModelCache = {
+          irr:       d.irr   || null,
+          em:        d.em    || null,
+          cap:       d.cap   || null,
+          yoc:       d.yoc   || null,
+          hold:      d.hold  || null,
+          ask:       d.ask   || null,
+          sf:        d.sf    || null,
+          cached_at: new Date().toISOString()
+        };
+        sessionStorage.setItem('ridge_isr_model', JSON.stringify(_isrModelCache));
+      } catch(e) {
+        console.warn('[RIDGE] ISR model cache write error:', e.message);
+      }
       return p;
 
     case 'loi':
@@ -4744,6 +4759,44 @@ async function _isrFetchMarketRent(params) {
   };
 }
 
+function _isrVerifySensitivity(parsed, modelData) {
+  if (!parsed || !parsed.sensitivity || !modelData) return null;
+  var holdRows = parsed.sensitivity.hold_rows || [];
+  if (!holdRows.length) return null;
+
+  var modelIRR = {
+    36: modelData.irr_36 || modelData.irr3yr || modelData['3yr_irr'] || null,
+    48: modelData.irr_48 || modelData.irr4yr || modelData['4yr_irr'] || null,
+    60: modelData.irr_60 || modelData.irr5yr || modelData['5yr_irr'] || null
+  };
+
+  var flags = [];
+  // hold_rows schema: [{price, irr_36, irr_48, irr_60}] — one row per price point
+  // aggregate the base-price row (first row) for comparison
+  var baseRow = holdRows[0] || {};
+  var checks = [
+    { hold: 36, claudeIRR: parseFloat(baseRow.irr_36) || null },
+    { hold: 48, claudeIRR: parseFloat(baseRow.irr_48) || null },
+    { hold: 60, claudeIRR: parseFloat(baseRow.irr_60) || null }
+  ];
+  checks.forEach(function(c) {
+    var mIRR = modelIRR[c.hold];
+    if (!c.claudeIRR || !mIRR) return;
+    var delta = Math.abs(c.claudeIRR - mIRR);
+    if (delta > 0.005) {
+      flags.push({
+        hold: c.hold,
+        claude_irr: c.claudeIRR,
+        model_irr: mIRR,
+        delta_bps: Math.round(delta * 10000),
+        direction: c.claudeIRR > mIRR ? 'overstated' : 'understated'
+      });
+    }
+  });
+
+  return flags.length ? flags : null;
+}
+
 // ── Sale comp pipe-table parser (mirrors _parseLeaseTable) ──────────────────
 // Looks for a pipe-delimited table whose header row contains ADDRESS/PROPERTY/
 // COMP alongside a sale-specific keyword (PRICE, PSF, CAP, DATE, SALE).
@@ -5752,6 +5805,32 @@ async function _isrExtractJSON(memoText) {
     _isrParsedData = JSON.parse(clean);
     try { sessionStorage.setItem('ridge_isr_parsed', JSON.stringify(_isrParsedData)); } catch(e) { console.warn('[RIDGE] sessionStorage write failed:', e.message); }
     console.log('[RIDGE] Call 2 extraction complete:', Object.keys(_isrParsedData));
+    // Change 2: load model inputs from sessionStorage for cross-check
+    var _isrModelData = null;
+    try {
+      var _isrModelRaw = sessionStorage.getItem('ridge_isr_model');
+      if (_isrModelRaw) _isrModelData = JSON.parse(_isrModelRaw);
+    } catch(e) {
+      console.warn('[RIDGE] ISR model sessionStorage read error:', e.message);
+    }
+    // Change 3: run sensitivity verification and inject flags into output
+    var _isrSensFlags = _isrVerifySensitivity(_isrParsedData, _isrModelData);
+    if (_isrSensFlags && _isrSensFlags.length) {
+      console.warn('[RIDGE] ISR sensitivity discrepancies detected:', _isrSensFlags);
+      var _contentEl = document.getElementById('ridge-panel-content');
+      if (_contentEl) {
+        var _flagHtml = '<div style="margin-top:12px;padding:10px 14px;background:#1a0800;' +
+          'border:1px solid #e05c2a;border-radius:6px;font-size:12px;">' +
+          '<strong style="color:#e05c2a;">\u26a0 ISR Sensitivity Verification \u2014 Discrepancies Detected</strong><br><br>' +
+          _isrSensFlags.map(function(f) {
+            return '\u2022 ' + f.hold + '-month hold: Claude output ' + (f.claude_irr * 100).toFixed(2) + '% IRR vs model ' +
+              (f.model_irr * 100).toFixed(2) + '% (' + f.delta_bps + 'bps ' + f.direction + ')';
+          }).join('<br>') +
+          '<br><br><span style="color:#4a6a8a;">Review sensitivity table in the IC deck against your Excel model before distributing.</span>' +
+          '</div>';
+        _contentEl.innerHTML += _flagHtml;
+      }
+    }
   } catch(e) {
     console.warn('[RIDGE] Call 2 extraction failed:', e.message);
   } finally {
