@@ -4461,8 +4461,9 @@ function _ridgeChatToggle() {
 
 async function _ridgeChatRetrieve(query) {
   if (!_sb || !_sbOk || !query) return { leases: [], properties: [], skillOutputs: [], comps: [] };
-  var vec = await _generateEmbedding(query);
-  if (!vec) return { leases: [], properties: [], skillOutputs: [], comps: [] };
+  var raw = await _generateEmbedding(query);
+  if (!raw) return { leases: [], properties: [], skillOutputs: [], comps: [] };
+  var vec = Array.isArray(raw) ? raw : Array.from(raw);
   var results = await Promise.allSettled([
     _sb.rpc('match_leases', { query_embedding: vec, match_threshold: 0.62, match_count: 5 }),
     _sb.rpc('match_properties', { query_embedding: vec, match_threshold: 0.62, match_count: 5 }),
@@ -4555,7 +4556,8 @@ async function _ridgeChatSend(text) {
       headers: {
         'Content-Type': 'application/json',
         'x-api-key': _apiKey,
-        'anthropic-version': '2023-06-01'
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
       },
       body: JSON.stringify({
         model: 'claude-sonnet-4-20250514',
