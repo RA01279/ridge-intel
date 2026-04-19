@@ -1,5 +1,2 @@
-# Local Netlify folder
-.netlify
-
 # MCP config (may contain secrets)
 .mcp.json
