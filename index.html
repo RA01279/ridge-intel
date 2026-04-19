@@ -4450,6 +4450,159 @@ function _portfolioRunNapkin(address) {
   else showToast('[RIDGE] Open the Napkin panel and enter: ' + address);
 }
 
+function _ridgeChatToggle() {
+  var drawer = document.getElementById('ridge-chat-drawer');
+  var btn = document.getElementById('ridge-chat-btn');
+  if (!drawer) return;
+  var isOpen = drawer.style.display === 'flex';
+  drawer.style.display = isOpen ? 'none' : 'flex';
+  btn.style.transform = isOpen ? '' : 'rotate(90deg)';
+}
+
+async function _ridgeChatRetrieve(query) {
+  if (!_sb || !_sbOk || !query) return { leases: [], properties: [], skillOutputs: [], comps: [] };
+  var vec = await _generateEmbedding(query);
+  if (!vec) return { leases: [], properties: [], skillOutputs: [], comps: [] };
+  var results = await Promise.allSettled([
+    _sb.rpc('match_leases', { query_embedding: vec, match_threshold: 0.62, match_count: 5 }),
+    _sb.rpc('match_properties', { query_embedding: vec, match_threshold: 0.62, match_count: 5 }),
+    _sb.rpc('match_skill_outputs', { query_embedding: vec, match_threshold: 0.62, match_count: 5 }),
+    _sb.rpc('match_sale_comps', { query_embedding: vec, match_threshold: 0.62, match_count: 5 })
+  ]);
+  return {
+    leases:       (results[0].status === 'fulfilled' && results[0].value.data) || [],
+    properties:   (results[1].status === 'fulfilled' && results[1].value.data) || [],
+    skillOutputs: (results[2].status === 'fulfilled' && results[2].value.data) || [],
+    comps:        (results[3].status === 'fulfilled' && results[3].value.data) || []
+  };
+}
+
+function _ridgeChatBuildContext(retrieved) {
+  var parts = [];
+  if (retrieved.leases && retrieved.leases.length) {
+    parts.push('LEASE COMPS FROM RIDGE DATABASE:\n' +
+      retrieved.leases.map(function(l) {
+        return '• ' + (l.tenant||'Unknown') + ' | ' + (l.address||'') + ' | ' +
+          (l.sf ? Math.round(l.sf).toLocaleString() + ' SF' : '') + ' | ' +
+          (l.base_rent_psf ? '$' + l.base_rent_psf + ' PSF' : '') + ' | ' +
+          (l.lease_type||'') + ' | ' + (l.commencement_date||'');
+      }).join('\n'));
+  }
+  if (retrieved.properties && retrieved.properties.length) {
+    parts.push('PROPERTIES FROM RIDGE DATABASE:\n' +
+      retrieved.properties.map(function(p) {
+        return '• ' + (p.address||'') + ' | ' + (p.market||'') + ' | ' +
+          (p.building_sf ? Math.round(p.building_sf).toLocaleString() + ' SF' : '') + ' | ' +
+          'Vacancy: ' + (p.vacancy_pct != null ? p.vacancy_pct + '%' : 'N/A') + ' | ' +
+          (p.conviction_tier||'') + ' | Signal: ' + (p.signal_score||'N/A') + ' | ' +
+          'Owner: ' + (p.owner_name||'Unknown');
+      }).join('\n'));
+  }
+  if (retrieved.skillOutputs && retrieved.skillOutputs.length) {
+    parts.push('PRIOR RIDGE ANALYSIS:\n' +
+      retrieved.skillOutputs.map(function(s) {
+        return '• ' + (s.skill_name||'') + ' on ' + (s.address||'') + ' (' +
+          new Date(s.created_at).toLocaleDateString() + '): ' +
+          (s.output ? s.output.slice(0, 300) + '...' : '');
+      }).join('\n'));
+  }
+  if (retrieved.comps && retrieved.comps.length) {
+    parts.push('SALE COMPS FROM RIDGE DATABASE:\n' +
+      retrieved.comps.map(function(c) {
+        return '• ' + (c.address||'') + ' | ' + (c.sale_date||'') + ' | ' +
+          (c.price_psf ? '$' + c.price_psf + ' PSF' : '') + ' | ' +
+          (c.going_in_cap ? c.going_in_cap + '% cap' : '') + ' | ' +
+          'Buyer: ' + (c.buyer||'Unknown');
+      }).join('\n'));
+  }
+  return parts.length ? parts.join('\n\n') : 'No matching data found in RIDGE database for this query.';
+}
+
+async function _ridgeChatSend(text) {
+  var input = document.getElementById('ridge-chat-input');
+  var messages = document.getElementById('ridge-chat-messages');
+  var suggestions = document.getElementById('ridge-chat-suggestions');
+  var query = text || (input ? input.value.trim() : '');
+  if (!query) return;
+  if (input) input.value = '';
+  if (suggestions) suggestions.style.display = 'none';
+
+  var userMsg = document.createElement('div');
+  userMsg.style.cssText = 'padding:8px 10px;background:#0d2137;border-radius:6px;font-size:12px;color:#e0e8f0;align-self:flex-end;max-width:85%;';
+  userMsg.textContent = query;
+  messages.appendChild(userMsg);
+
+  var assistMsg = document.createElement('div');
+  assistMsg.style.cssText = 'padding:8px 10px;background:#060e1a;border:1px solid #1a2d42;border-radius:6px;font-size:12px;color:#c0d0e0;align-self:flex-start;max-width:90%;';
+  assistMsg.innerHTML = '<span style="color:#4a6a8a;">⏳ Searching RIDGE database...</span>';
+  messages.appendChild(assistMsg);
+  messages.scrollTop = messages.scrollHeight;
+
+  try {
+    var retrieved = await _ridgeChatRetrieve(query);
+    var context = _ridgeChatBuildContext(retrieved);
+
+    var systemPrompt = 'You are RIDGE Assistant, an AI analyst for Entrada Partners, ' +
+      'an institutional private equity firm focused on industrial and flex CRE acquisitions. ' +
+      'You have access to Entrada\'s proprietary deal database including lease comps, sale comps, ' +
+      'active pipeline properties, and prior deal analysis. ' +
+      'Answer concisely and specifically. Lead with data from the database. ' +
+      'If data is insufficient, say so directly. Never hallucinate comp figures.\n\n' +
+      'RIDGE DATABASE CONTEXT:\n' + context;
+
+    var _resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': _apiKey,
+        'anthropic-version': '2023-06-01'
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1024,
+        stream: true,
+        system: systemPrompt,
+        messages: [{ role: 'user', content: query }]
+      })
+    });
+
+    assistMsg.innerHTML = '';
+    var reader = _resp.body.getReader();
+    var decoder = new TextDecoder();
+    var buffer = '';
+    var fullText = '';
+
+    while (true) {
+      var _chunk = await reader.read();
+      if (_chunk.done) break;
+      buffer += decoder.decode(_chunk.value, { stream: true });
+      var lines = buffer.split('\n');
+      buffer = lines.pop();
+      for (var line of lines) {
+        if (!line.startsWith('data: ')) continue;
+        var data = line.slice(6).trim();
+        if (data === '[DONE]') continue;
+        try {
+          var parsed = JSON.parse(data);
+          if (parsed.type === 'content_block_delta' && parsed.delta && parsed.delta.text) {
+            fullText += parsed.delta.text;
+            assistMsg.innerHTML = fullText.replace(/\n/g, '<br>');
+            messages.scrollTop = messages.scrollHeight;
+          }
+        } catch(e) {}
+      }
+    }
+
+    if (!fullText) assistMsg.innerHTML = '<span style="color:#4a6a8a;">No response generated.</span>';
+
+  } catch(e) {
+    assistMsg.innerHTML = '<span style="color:#e05c2a;">Error: ' + e.message + '</span>';
+    console.warn('[RIDGE] Chat error:', e.message);
+  }
+
+  messages.scrollTop = messages.scrollHeight;
+}
+
 // ── LEASE TABLE PARSER ───────────────────────────────────────
 // Parses pipe-delimited rent roll / comp tables from Claude output.
 // Handles: TENANT|SF|LEASE EXP|IN-PLACE RENT|MARKET RENT|DELTA
@@ -11670,5 +11823,50 @@ _sbInit().then(async function() {
 </script>
 
 <script type="module" src="./shared/bridge.js"></script>
+
+<!-- RIDGE Assistant Chat Widget -->
+<div id="ridge-chat-btn" onclick="_ridgeChatToggle()"
+  style="position:fixed;bottom:24px;right:24px;width:48px;height:48px;border-radius:50%;
+  background:#1a4a6b;border:2px solid #2a7abf;cursor:pointer;z-index:9999;
+  display:flex;align-items:center;justify-content:center;font-size:20px;
+  box-shadow:0 4px 12px rgba(0,0,0,0.4);transition:transform 0.2s;"
+  title="RIDGE Assistant">💬</div>
+
+<div id="ridge-chat-drawer"
+  style="position:fixed;bottom:84px;right:24px;width:380px;height:560px;
+  background:#0a1628;border:1px solid #1a4a6b;border-radius:12px;
+  box-shadow:0 8px 32px rgba(0,0,0,0.6);z-index:9998;
+  display:none;flex-direction:column;overflow:hidden;">
+
+  <div style="background:#0d2137;padding:12px 16px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #1a2d42;">
+    <div>
+      <div style="font-size:13px;font-weight:700;color:#e0e8f0;">RIDGE Assistant</div>
+      <div style="font-size:10px;color:#4a6a8a;">Semantic search across all RIDGE data</div>
+    </div>
+    <span onclick="_ridgeChatToggle()" style="color:#4a6a8a;cursor:pointer;font-size:18px;">✕</span>
+  </div>
+
+  <div id="ridge-chat-messages"
+    style="flex:1;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:8px;">
+    <div id="ridge-chat-suggestions" style="display:flex;flex-direction:column;gap:6px;margin-top:auto;">
+      <div style="font-size:10px;color:#4a6a8a;margin-bottom:4px;">SUGGESTED QUERIES</div>
+      <div class="ridge-chat-suggestion" onclick="_ridgeChatSend(this.textContent)" style="padding:7px 10px;background:#0d1f33;border:1px solid #1a2d42;border-radius:6px;font-size:11px;color:#7ab3d4;cursor:pointer;">Find dock-high industrial comps under 25K SF in Atlanta</div>
+      <div class="ridge-chat-suggestion" onclick="_ridgeChatSend(this.textContent)" style="padding:7px 10px;background:#0d1f33;border:1px solid #1a2d42;border-radius:6px;font-size:11px;color:#7ab3d4;cursor:pointer;">What deals are on the watch list right now?</div>
+      <div class="ridge-chat-suggestion" onclick="_ridgeChatSend(this.textContent)" style="padding:7px 10px;background:#0d1f33;border:1px solid #1a2d42;border-radius:6px;font-size:11px;color:#7ab3d4;cursor:pointer;">Show me high conviction properties in Savannah</div>
+      <div class="ridge-chat-suggestion" onclick="_ridgeChatSend(this.textContent)" style="padding:7px 10px;background:#0d1f33;border:1px solid #1a2d42;border-radius:6px;font-size:11px;color:#7ab3d4;cursor:pointer;">What is market rent PSF for flex in DFW?</div>
+    </div>
+  </div>
+
+  <div style="padding:10px 12px;border-top:1px solid #1a2d42;display:flex;gap:8px;">
+    <input id="ridge-chat-input" type="text"
+      placeholder="Ask anything about your deals or comps..."
+      onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();_ridgeChatSend();}"
+      style="flex:1;padding:8px 10px;background:#0d1f33;border:1px solid #2a3f55;
+      border-radius:6px;color:#e0e8f0;font-size:12px;outline:none;" />
+    <button onclick="_ridgeChatSend()"
+      style="padding:8px 12px;background:#1a4a6b;border:1px solid #2a7abf;
+      border-radius:6px;color:#e0e8f0;font-size:12px;cursor:pointer;">Send</button>
+  </div>
+</div>
 
 </body></html>
