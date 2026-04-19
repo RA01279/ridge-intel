@@ -1,5 +1,11 @@
 # CLAUDE.md
 
+## Working Directory
+Always run commands from: /c/Users/RhettAnderson/OneDrive - Entrada Management Services/Desktop/Claude/ridge-intel
+
+At the start of every session, if not already in this directory, run:
+cd "/c/Users/RhettAnderson/OneDrive - Entrada Management Services/Desktop/Claude/ridge-intel"
+
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 ## What This Is
