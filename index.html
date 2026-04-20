@@ -9628,6 +9628,61 @@ function _extractDebtTerms() {
   }
 }
 
+// ═══════════════════════════════════════════════════════════
+//  PPTX QA HARNESS — pre-export slide assertion (Phase 7.2)
+// ═══════════════════════════════════════════════════════════
+function _isrQACheck(jd) {
+  if (!jd) return [{ slide: 'ALL', field: 'jd', issue: 'No parsed data available — deck may be empty' }];
+  var failures = [];
+
+  function check(slide, field, value, label) {
+    if (value === null || value === undefined || value === '' || value === 'N/A') {
+      failures.push({ slide: slide, field: field, issue: label + ' is missing or blank' });
+    }
+  }
+
+  // Slide 1 — Deal Summary
+  check('Slide 1', 'address', jd.address, 'Property address');
+  check('Slide 1', 'asking_price', jd.asking_price || jd.price, 'Asking price');
+
+  // Slide 2 — Investment Thesis
+  if (!jd.thesis || !jd.thesis.length) {
+    failures.push({ slide: 'Slide 2', field: 'thesis', issue: 'Investment thesis is empty' });
+  }
+
+  // Slide 5 — Market
+  check('Slide 5', 'market.vacancy', jd.market && jd.market.vacancy, 'Market vacancy rate');
+  check('Slide 5', 'market.avg_rent', jd.market && jd.market.avg_rent, 'Market avg rent');
+
+  // Slide 6 — Lease Comps
+  check('Slide 6', 'lease_comps', jd.lease_comps && jd.lease_comps.length, 'Lease comp table');
+
+  // Slide 7 — Sale Comps
+  check('Slide 7', 'sale_comps', jd.sale_comps && jd.sale_comps.length, 'Sale comp table');
+
+  // Slide 8 — Sensitivity
+  if (!jd.sensitivity || !jd.sensitivity.hold_rows || !jd.sensitivity.hold_rows.length) {
+    failures.push({ slide: 'Slide 8', field: 'sensitivity', issue: 'Sensitivity table is empty — IRR rows missing' });
+  }
+
+  // Slide 9 — Hurdle Confirmation
+  if (!jd.recommendation || !jd.recommendation.verdict) {
+    failures.push({ slide: 'Slide 9', field: 'recommendation.verdict', issue: 'IC verdict is missing (PURSUE/CONDITIONAL/PASS)' });
+  }
+
+  // Slide 10 — Rent Roll
+  if (!jd.rent_roll || !jd.rent_roll.length) {
+    failures.push({ slide: 'Slide 10', field: 'rent_roll', issue: 'Rent roll is empty — Slide 10 will be blank' });
+  }
+
+  // Slide 11 — Risks
+  if (!jd.risks || !jd.risks.length) {
+    failures.push({ slide: 'Slide 11', field: 'risks', issue: 'Risk matrix is empty' });
+  }
+
+  return failures;
+}
+
 async function ridgeExportPPT() {
   console.log('ridgeExportPPT fired — skillName:', document.getElementById('ridge-panel-skill-name').textContent, '| _lastRunInputs:', _lastRunInputs ? 'present' : 'null', '| PptxGenJS:', typeof PptxGenJS);
   if (typeof PptxGenJS === 'undefined') {
@@ -9941,6 +9996,22 @@ async function ridgeExportPPT() {
       }
     }
     console.log('[RIDGE] ridgeExportPPT jd:', jd ? Object.keys(jd) : 'NULL');
+
+    // ── QA HARNESS ──
+    var _qaFailures = _isrQACheck(jd);
+    if (_qaFailures && _qaFailures.length) {
+      console.warn('[RIDGE] PPTX QA failures:', _qaFailures);
+      var _qaHtml = '<div style="margin-bottom:12px;padding:10px 14px;background:#1a0800;' +
+        'border:1px solid #e05c2a;border-radius:6px;font-size:12px;">' +
+        '<strong style="color:#e05c2a;">⚠ PPTX QA — ' + _qaFailures.length + ' issue(s) detected</strong><br><br>' +
+        _qaFailures.map(function(f) {
+          return '• <strong>' + f.slide + '</strong>: ' + f.issue;
+        }).join('<br>') +
+        '<br><br><span style="color:#4a6a8a;">Deck will still export — review flagged slides before distributing.</span>' +
+        '</div>';
+      var _contentEl = document.getElementById('ridge-panel-content');
+      if (_contentEl) _contentEl.innerHTML = _qaHtml + _contentEl.innerHTML;
+    }
 
     function extractSection(text, heading) {
       var re = new RegExp('##\\s*' + heading + '[\\s\\S]*?(?=##|$)', 'i');
