@@ -4,8 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>RIDGE — Real Intelligence for Deal Generation & Evaluation</title>
-<link rel="icon" type="image/png" href="favicon.png">
-<link rel="shortcut icon" href="favicon.png">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230d1f33'/><text x='50%25' y='50%25' dominant-baseline='central' text-anchor='middle' font-family='monospace' font-weight='700' font-size='18' fill='%232a7abf'>R</text></svg>">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/pptxgenjs@3.11.0/dist/pptxgen.bundle.js"></script>
@@ -586,6 +585,7 @@ footer{border-top:1px solid var(--border);padding:20px 24px;text-align:center;co
     <button class="btn btn-o" onclick="showLeaseLibrary()" style="font-size:11px;padding:5px 12px;border-radius:4px;">📋 Leases</button>
     <button class="btn btn-o" onclick="pickMarketIntelFolder()" style="font-size:11px;padding:5px 12px;border-radius:4px;">📊 Sync Market Intel</button>
     <button class="btn btn-o" onclick="showApiKeyModal()" style="font-size:11px;padding:5px 12px;border-radius:4px;">API Key</button>
+    <button onclick="_ridgeForceReset()" title="Force reset all RIDGE state" style="font-size:11px;padding:3px 8px;background:#1a0800;border:1px solid #4a1a00;color:#e05c2a;border-radius:4px;cursor:pointer;">⟳ Reset</button>
     <span id="sb-dot" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--faint);flex-shrink:0;" title="Supabase initializing…"></span>
     <span id="token-count" style="font-size:11px;color:var(--faint);cursor:default;" title="Session tokens — in: 0 · out: 0">0 tok</span>
     <span style="font-size:11px;color:var(--muted)">14 Skills Active · v5.3</span>
@@ -6102,6 +6102,20 @@ function downloadBlob(buffer, filename) {
   document.body.appendChild(a); a.click();
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
+}
+
+function _ridgeForceReset() {
+  if (!confirm('Reset all RIDGE session data? This clears cached ISR data, pipeline state, and all local state. The page will reload.')) return;
+  try {
+    sessionStorage.removeItem('ridge_isr_parsed');
+    sessionStorage.removeItem('ridge_isr_model');
+    sessionStorage.removeItem('ridge_auth');
+    localStorage.removeItem('ridge_pipeline');
+    localStorage.removeItem('ridge_daily_state_v1');
+    Object.keys(sessionStorage).filter(function(k) { return k.startsWith('ridge_'); }).forEach(function(k) { sessionStorage.removeItem(k); });
+    Object.keys(localStorage).filter(function(k) { return k.startsWith('ridge_'); }).forEach(function(k) { localStorage.removeItem(k); });
+  } catch(e) {}
+  location.reload();
 }
 
 // Shared ExcelJS color palette
@@ -11702,7 +11716,19 @@ async function _llLoadLeases() {
     return;
   }
   _llTotal = res.count || 0;
-  _llRenderTable(res.data || []);
+  var _llRaw = res.data || [];
+  var _llPreDedup = _llRaw.length;
+  var _seen = new Set();
+  var _llDeduped = _llRaw.filter(function(r) {
+    var key = (r.tenant_normalized || (r.tenant||'').toLowerCase().trim()) + '|' +
+      (r.address||'').split(',')[0].toLowerCase().trim() + '|' +
+      (r.commencement_date||'');
+    if (_seen.has(key)) return false;
+    _seen.add(key);
+    return true;
+  });
+  console.log('[RIDGE] Lease Library dedup: kept', _llDeduped.length, 'of', _llPreDedup, 'records');
+  _llRenderTable(_llDeduped);
   _llRenderStats();
 }
 
