@@ -3840,7 +3840,7 @@ If CONDITIONAL: state exactly what must be verified before proceeding
       var amds = ['amd1','amd2','amd3','amd4','amd5','amd6','amd7','amd8','amd9','amd10'];
       var amdCount = amds.filter(function(a){ return !!d[a+'_text']; }).length;
       console.log('LEASE-STACK buildTrigger:', {addr:d.addr, tenant:d.tenant, master:!!d.master_text, amendments:amdCount});
-      p  = 'You are a senior CRE attorney and acquisitions officer at Entrada Partners performing a full lease stack review.\n\n';
+      p  = 'You are RIDGE Assistant — an expert full-stack developer and institutional CRE analyst embedded at Entrada Partners, a private equity firm focused on industrial and flex acquisitions. You are performing a full lease stack review.\n\n';
       p += 'PROPERTY: '         + (d.addr       || '[not provided]') + '\n';
       p += 'TENANT: '           + (d.tenant     || '[not provided]') + '\n';
       p += 'MASTER LEASE DATE: '+ (d.exec_date  || '[not provided]') + '\n';
@@ -3940,6 +3940,14 @@ If CONDITIONAL: state exactly what must be verified before proceeding
 
       p += '## VERDICT\n';
       p += 'One paragraph: Is this lease a net positive or negative for an acquisition at current pricing? What are the two or three most important things Entrada must address before closing or during asset management?';
+
+      p += '\n\n## LEASE COMP TABLE\n';
+      p += 'Produce a pipe-delimited table with these exact columns:\n';
+      p += '| tenant | suite | sf | lease_type | commencement_date | expiration_date | base_rent_psf | annual_rent | options | notes |\n';
+      p += 'One row per tenant. Use YYYY-MM-DD for dates. Use NNN, Gross, MG, or MTM for lease_type. This table is required — _parseLeaseTable() reads it to write to the RIDGE leases database.\n';
+
+      p += '\n\n## RIDGE EXTRACTION JSON\n';
+      p += 'After the table, output a valid JSON array (no markdown fences) of lease objects. Each object must have these exact keys: tenant, suite, sf, lease_type, commencement_date, expiration_date, base_rent_psf, annual_rent, options, notes. Null for any missing field. This JSON is machine-read — do not add commentary inside the array.\n';
       return p;
 
     case 'dd-tracker':
@@ -8295,6 +8303,45 @@ async function runRidgeAPI(skillName, prompt, runInputs, runToolId) {
                 source:    'LEASE_STACK',
                 conviction: 'Needs More Data'
               });
+            }
+            // ── SKILL OUTPUTS: persist lease-stack run ──
+            if (_sbOk && _sb) {
+              try {
+                var _lsAddr = _lAddr || (_lastRunInputs && (_lastRunInputs.addr || _lastRunInputs.address)) || '';
+                var { data: _lsOut } = await _sb.from('skill_outputs').insert({
+                  skill_name: 'LEASE STACK ANALYZER',
+                  output: accumulated,
+                  inputs: _lastRunInputs || {},
+                  address: _lsAddr,
+                  market: _detectMarket(_lastRunInputs),
+                  tags: ['lease-stack'],
+                  loi_generated: false,
+                  run_by: _getSessionUser()
+                }).select('id').single();
+                if (_lsOut && _lsOut.id) {
+                  console.log('[RIDGE] Lease Stack skill_outputs written:', _lsOut.id);
+                  var _lsEmbed = await _generateEmbedding(_lsAddr + ' lease stack ' + accumulated.slice(0, 500));
+                  if (_lsEmbed && _lsOut.id) {
+                    await _sb.from('skill_outputs').update({ embedding: _lsEmbed }).eq('id', _lsOut.id);
+                  }
+                }
+              } catch(e) {
+                console.warn('[RIDGE] Lease Stack skill_outputs error:', e.message);
+              }
+            }
+            // ── DEAL CONTEXT: update for lease-stack run ──
+            if (_sbOk && _sb && _lsAddr) {
+              try {
+                await _sb.from('deal_context').upsert({
+                  address: _lsAddr,
+                  last_skill_run: 'LEASE STACK ANALYZER',
+                  last_run_at: new Date().toISOString(),
+                  updated_at: new Date().toISOString()
+                }, { onConflict: 'address' });
+                console.log('[RIDGE] deal_context updated for:', _lsAddr);
+              } catch(e) {
+                console.warn('[RIDGE] deal_context upsert error:', e.message);
+              }
             }
           } else if (_lastRunToolId === 'lease-compare') {
             _lRows = _parseLeaseTable(accumulated);
