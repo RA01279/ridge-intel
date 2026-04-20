@@ -430,6 +430,8 @@ footer{border-top:1px solid var(--border);padding:20px 24px;text-align:center;co
   if(sessionStorage.getItem('ridge_auth')==='true'){
     var s=document.getElementById('ridge-auth-hide');
     if(s)s.parentNode.removeChild(s);
+    var _su=sessionStorage.getItem('ridge_run_by');
+    if(_su){var _uel=document.getElementById('ridge-session-user');if(_uel)_uel.textContent=_su;}
   } else {
     document.getElementById('ridge-gate').classList.add('active');
   }
@@ -586,6 +588,7 @@ footer{border-top:1px solid var(--border);padding:20px 24px;text-align:center;co
     <button class="btn btn-o" onclick="pickMarketIntelFolder()" style="font-size:11px;padding:5px 12px;border-radius:4px;">📊 Sync Market Intel</button>
     <button class="btn btn-o" onclick="showApiKeyModal()" style="font-size:11px;padding:5px 12px;border-radius:4px;">API Key</button>
     <button onclick="_ridgeForceReset()" title="Force reset all RIDGE state" style="font-size:11px;padding:3px 8px;background:#1a0800;border:1px solid #4a1a00;color:#e05c2a;border-radius:4px;cursor:pointer;">⟳ Reset</button>
+    <span id="ridge-session-user" style="font-size:10px;color:#4a6a8a;padding:3px 6px;"></span>
     <span id="sb-dot" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--faint);flex-shrink:0;" title="Supabase initializing…"></span>
     <span id="token-count" style="font-size:11px;color:var(--faint);cursor:default;" title="Session tokens — in: 0 · out: 0">0 tok</span>
     <span style="font-size:11px;color:var(--muted)">14 Skills Active · v5.3</span>
@@ -3999,6 +4002,7 @@ async function _sbInit() {
   } catch(e) { _sbOk = false; }
   _sbSetIndicator(_sbOk);
   if (_sbOk) { await _sbLoadDeals(); _sbSubscribe(); }
+  console.log('[RIDGE] Session started — user:', _getSessionUser(), '| Supabase:', _sbOk ? 'connected' : 'offline');
 }
 
 function _sbSubscribe() {
@@ -7160,6 +7164,9 @@ async function loadApiKey() {
       _officerName = nr.data.data.officerName;
     }
   } catch(e) {}
+  if (!_officerName || _officerName === '') {
+    _officerName = _getSessionUser();
+  }
 }
 
 async function saveApiKey() {
@@ -11214,12 +11221,14 @@ function ridgeGateSubmit() {
     window.scrollTo(0, 0);
     var _sessionUser = sessionStorage.getItem('ridge_run_by');
     if (!_sessionUser) {
-      var _nameInput = prompt('Welcome to RIDGE. Who is this session?\n\nEnter your name:', '');
+      var _nameInput = prompt('Welcome to RIDGE.\n\nWho is this session?\n\n• Rhett\n• Dan\n\nEnter your name:', '');
       if (_nameInput && _nameInput.trim()) {
         sessionStorage.setItem('ridge_run_by', _nameInput.trim());
         _sessionUser = _nameInput.trim();
       }
     }
+    var _userEl = document.getElementById('ridge-session-user');
+    if (_userEl) _userEl.textContent = _sessionUser || '';
     console.log('[RIDGE] Session user:', _sessionUser || 'unknown');
   } else {
     inp.classList.remove('shake');
