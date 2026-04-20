@@ -3654,7 +3654,7 @@ If CONDITIONAL: state exactly what must be verified before proceeding
           sf:        d.sf    || null,
           cached_at: new Date().toISOString()
         };
-        sessionStorage.setItem('ridge_isr_model', JSON.stringify(_isrModelCache));
+        sessionStorage.setItem('ridge_isr_model', JSON.stringify({ schema_version: 1, data: _isrModelCache, cached_at: new Date().toISOString() }));
       } catch(e) {
         console.warn('[RIDGE] ISR model cache write error:', e.message);
       }
@@ -5481,9 +5481,14 @@ var _plEditId = null;
 var PL_STAGES = ['Initial Screen','Napkin Run','Full Underwrite','LOI Submitted','Under Contract','Due Diligence','Closing','Watch List','Dead'];
 
 function getPipelineDeals() {
-  try { return JSON.parse(localStorage.getItem('ridge_pipeline') || '[]'); } catch(e) { return []; }
+  try {
+    var _raw = localStorage.getItem('ridge_pipeline');
+    var _deals = _raw ? JSON.parse(_raw) : [];
+    return _deals.filter(function(d) { return d && d.id; });
+  } catch(e) { return []; }
 }
 function savePipelineDeals(arr) {
+  arr.forEach(function(deal) { deal.schema_version = 1; });
   localStorage.setItem('ridge_pipeline', JSON.stringify(arr));
 }
 async function plUpdateDeal(id, updates) {
@@ -5953,18 +5958,31 @@ async function _isrExtractJSON(memoText) {
         }]
       })
     });
+    if (!resp.ok) {
+      var _errText = await resp.text();
+      console.warn('[RIDGE] ISR Call 2 failed:', resp.status, _errText.slice(0, 200));
+      showToast('⚠ ISR Call 2 failed (' + resp.status + ') — check console for details');
+      return;
+    }
     var data = await resp.json();
     if (data.usage) { _trackTokens(data.usage.input_tokens, data.usage.output_tokens); }
     var raw = data.content[0].text;
     var clean = raw.replace(/```json|```/g, '').trim();
     _isrParsedData = JSON.parse(clean);
-    try { sessionStorage.setItem('ridge_isr_parsed', JSON.stringify(_isrParsedData)); } catch(e) { console.warn('[RIDGE] sessionStorage write failed:', e.message); }
+    try { sessionStorage.setItem('ridge_isr_parsed', JSON.stringify({ schema_version: 1, data: _isrParsedData, cached_at: new Date().toISOString() })); } catch(e) { console.warn('[RIDGE] sessionStorage write failed:', e.message); }
     console.log('[RIDGE] Call 2 extraction complete:', Object.keys(_isrParsedData));
     // Change 2: load model inputs from sessionStorage for cross-check
     var _isrModelData = null;
     try {
       var _isrModelRaw = sessionStorage.getItem('ridge_isr_model');
-      if (_isrModelRaw) _isrModelData = JSON.parse(_isrModelRaw);
+      if (_isrModelRaw) {
+        var _isrModelCached = JSON.parse(_isrModelRaw);
+        if (!_isrModelCached || _isrModelCached.schema_version !== 1) {
+          sessionStorage.removeItem('ridge_isr_model');
+        } else {
+          _isrModelData = _isrModelCached.data;
+        }
+      }
     } catch(e) {
       console.warn('[RIDGE] ISR model sessionStorage read error:', e.message);
     }
@@ -9910,7 +9928,7 @@ async function ridgeExportPPT() {
     // Parse structured JSON — prefer already-extracted _isrParsedData, then re-parse raw output
     var jd = _isrParsedData || null;
     if (!jd) {
-      try { var _ssP = sessionStorage.getItem('ridge_isr_parsed'); if (_ssP) { jd = JSON.parse(_ssP); console.log('[RIDGE] jd restored from sessionStorage'); } } catch(e) {}
+      try { var _ssP = sessionStorage.getItem('ridge_isr_parsed'); if (_ssP) { var _ssCached = JSON.parse(_ssP); if (!_ssCached || _ssCached.schema_version !== 1) { sessionStorage.removeItem('ridge_isr_parsed'); } else { jd = _ssCached.data; console.log('[RIDGE] jd restored from sessionStorage'); } } } catch(e) {}
     }
     if (!jd) {
       var _rawText = _skillRawOutputs['isr'] || '';
@@ -10596,19 +10614,7 @@ async function ridgeExportPPT() {
         }catch(_le11){console.warn('[RIDGE] Lease DB fallback failed:',_le11);}
       }
     }
-    // sessionStorage fallback (ridge_isr_jd key)
-    if(!rr11.length){
-      try{
-        var _storedJD11=sessionStorage.getItem('ridge_isr_jd');
-        if(_storedJD11){
-          var _parsedStored11=JSON.parse(_storedJD11);
-          if(_parsedStored11&&Array.isArray(_parsedStored11.rent_roll)&&_parsedStored11.rent_roll.length){
-            rr11=_parsedStored11.rent_roll;
-            console.log('[RIDGE] Slide 11 restored from sessionStorage:',rr11.length);
-          }
-        }
-      }catch(e){console.warn('[RIDGE] Slide 11 sessionStorage fallback failed:',e.message);}
-    }
+    // ridge_isr_jd fallback removed — dead key, never written (Phase 7.1)
     console.log('[RIDGE] Slide 11 rr11 final length:',rr11?rr11.length:0);
     var curYr11=new Date().getFullYear();
     var curMo11=new Date().getMonth()+1; // 1-12
