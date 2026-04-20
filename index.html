@@ -6110,12 +6110,18 @@ function _ridgeForceReset() {
     sessionStorage.removeItem('ridge_isr_parsed');
     sessionStorage.removeItem('ridge_isr_model');
     sessionStorage.removeItem('ridge_auth');
+    sessionStorage.removeItem('ridge_run_by');
     localStorage.removeItem('ridge_pipeline');
     localStorage.removeItem('ridge_daily_state_v1');
     Object.keys(sessionStorage).filter(function(k) { return k.startsWith('ridge_'); }).forEach(function(k) { sessionStorage.removeItem(k); });
     Object.keys(localStorage).filter(function(k) { return k.startsWith('ridge_'); }).forEach(function(k) { localStorage.removeItem(k); });
   } catch(e) {}
   location.reload();
+}
+
+function _getSessionUser() {
+  try { return sessionStorage.getItem('ridge_run_by') || 'unknown'; }
+  catch(e) { return 'unknown'; }
 }
 
 // Shared ExcelJS color palette
@@ -8056,7 +8062,8 @@ async function runRidgeAPI(skillName, prompt, runInputs, runToolId) {
           address: _soAddr,
           market: _detectMarket(_lastRunInputs),
           tags: autoTags,
-          loi_generated: skillNameSaved.toLowerCase().includes('loi')
+          loi_generated: skillNameSaved.toLowerCase().includes('loi'),
+          run_by: _getSessionUser()
         }).select('id').single();
         var _soId = _soInsert.data && _soInsert.data.id;
         // Fire-and-forget embedding generation
@@ -11205,6 +11212,15 @@ function ridgeGateSubmit() {
     var s = document.getElementById('ridge-auth-hide');
     if (s) s.parentNode.removeChild(s);
     window.scrollTo(0, 0);
+    var _sessionUser = sessionStorage.getItem('ridge_run_by');
+    if (!_sessionUser) {
+      var _nameInput = prompt('Welcome to RIDGE. Who is this session?\n\nEnter your name:', '');
+      if (_nameInput && _nameInput.trim()) {
+        sessionStorage.setItem('ridge_run_by', _nameInput.trim());
+        _sessionUser = _nameInput.trim();
+      }
+    }
+    console.log('[RIDGE] Session user:', _sessionUser || 'unknown');
   } else {
     inp.classList.remove('shake');
     void inp.offsetWidth; // force reflow to restart animation
