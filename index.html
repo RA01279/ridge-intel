@@ -3261,6 +3261,31 @@ async function runTool(toolId) {
     d.notes  = document.getElementById('pl-notes').value.trim();
   }
 
+  // Market Pulse — pre-fetch benchmark context before prompt assembly
+  _mpBenchmarkContext = '';
+  if (toolId === 'market-pulse' && _sbOk && _sb) {
+    try {
+      var _mpMkt = (STATE['market-pulse'] && STATE['market-pulse'].fields && STATE['market-pulse'].fields['mkt']) || d.mkt || '';
+      var _mpSub = (STATE['market-pulse'] && STATE['market-pulse'].fields && STATE['market-pulse'].fields['sub']) || d.sub || '';
+      var _mpBench = await _fetchMarketBenchmark(_mpMkt, 'Industrial', _mpSub);
+      if (_mpBench && _mpBench.length) {
+        _mpBenchmarkContext = '\n\n[RIDGE MARKET INTELLIGENCE DATABASE — REAL COSTAR DATA]\n' +
+          _mpBench.map(function(b) {
+            return '• Report date: ' + (b.report_date||'unknown') +
+              (b.submarket ? ' | Submarket: ' + b.submarket : '') +
+              ' | Vacancy: ' + (b.vacancy_rate != null ? b.vacancy_rate + '%' : 'N/A') +
+              ' | Asking rent: ' + (b.asking_rent_psf != null ? '$' + b.asking_rent_psf + ' PSF' : 'N/A') +
+              ' | Absorption: ' + (b.absorption_sf != null ? b.absorption_sf.toLocaleString() + ' SF' : 'N/A') +
+              ' | New supply: ' + (b.new_supply_sf != null ? b.new_supply_sf.toLocaleString() + ' SF' : 'N/A') +
+              (b.market_summary ? '\n  ' + b.market_summary : '');
+          }).join('\n') +
+          '\nUse this real data. Do not estimate figures already provided above.\n';
+      }
+    } catch(e) {
+      console.warn('[RIDGE] Market Pulse benchmark pre-fetch error:', e.message);
+    }
+  }
+
   var prompt = await buildTrigger(toolId, d);
   var skillName = tool ? tool.name : 'PIPELINE';
   runRidgeAPI(skillName, prompt, d, toolId);
@@ -3421,25 +3446,15 @@ async function buildTrigger(toolId, d) {
       return p;
 
     case 'market-pulse':
-      var _mpBenchmarks = null;
-      if (_sbOk && _sb && d.mkt) {
-        try { _mpBenchmarks = await _fetchMarketBenchmark(d.mkt, 'Industrial'); } catch(e) {}
-      }
+      // benchmark injection handled pre-run via _mpBenchmarkContext in runRidgeAPI
       p = 'You are a senior acquisitions officer at Entrada Partners. Run a comprehensive market intelligence report.\n\n';
       p += 'MODE: ' + (d.mode||'Full Market') + '\nMARKET: ' + (d.mkt||'') + '\nSUBMARKET: ' + (d.sub||'') + '\nACTIVE DEAL: ' + (d.deal||'None') + '\n\n';
-      p += (_mpBenchmarks && _mpBenchmarks.length ?
-        '[RIDGE MARKET INTELLIGENCE DATABASE]\n' +
-        'Real CoStar market data for ' + _mpBenchmarks[0].market + ':\n' +
-        _mpBenchmarks.map(function(b) {
-          return '\u2022 Report date: ' + (b.report_date || 'unknown') +
-            ' | Vacancy: ' + (b.vacancy_rate != null ? b.vacancy_rate + '%' : 'N/A') +
-            ' | Asking rent: ' + (b.asking_rent_psf != null ? '$' + b.asking_rent_psf + ' PSF' : 'N/A') +
-            ' | Absorption: ' + (b.absorption_sf != null ? b.absorption_sf.toLocaleString() + ' SF' : 'N/A') +
-            (b.market_summary ? '\n  Summary: ' + b.market_summary : '');
-        }).join('\n') +
-        '\nUse this real data in your analysis. Do not estimate figures that are provided above.\n\n'
-        : '');
       p += 'Produce:\n## MARKET DASHBOARD\nTable: Vacancy | Asking Rent (Class A/B/C) | Net Absorption (TTM) | New Supply (Under Construction) | Cap Rate Range | YoY Rent Growth\n\n## SUBMARKET DEEP DIVE\nFor the specific submarket: vacancy trend (24-month direction), largest recent leases signed, active tenants in the market, key demand drivers, new supply risk.\n\n## COMPARABLE TRANSACTIONS\nLast 6 months: minimum 5 industrial/flex sales. For each: address, SF, sale price, PSF, cap rate, buyer, seller, date. Bold the most relevant comp to active deal if provided.\n\n## RENT FORECAST\n12-month and 24-month rent trajectory. What drives it — supply/demand balance, tenant demand, macro. Be specific.\n\n## ACQUISITION IMPLICATIONS\nFor Entrada specifically: where are the best basis opportunities right now? Which submarkets are showing motivated seller activity? Where are rents running ahead of cap rate compression?\n\n## CONVICTION CALL\nOne paragraph: if Entrada is buying industrial/flex in this market today, what is the specific thesis and where exactly should we be looking?';
+      p += '\n\n## RIDGE MARKET DATA\n';
+      p += 'After your analysis, output a single valid JSON object (no markdown fences) with these exact keys:\n';
+      p += '{"market":"<string>","submarket":"<string or null>","asset_class":"Industrial","report_date":"<YYYY-MM-DD>","vacancy_rate":<number or null>,"asking_rent_psf":<number or null>,"effective_rent_psf":<number or null>,"absorption_sf":<number or null>,"new_supply_sf":<number or null>,"cap_rate":<number or null>,"market_summary":"<2-3 sentences>"}\n';
+      p += 'This JSON is machine-read and will be stored in the RIDGE market database. Output it on its own line at the very end of your response.\n';
+      p += _mpBenchmarkContext;
       return p;
 
     case 'lease-comp':
@@ -3987,6 +4002,7 @@ var _sb = null;
 var _sbOk = false;
 var _lastRunInputs = null;
 var _lastRunToolId  = null;
+var _mpBenchmarkContext = '';
 var _isrParsedData  = null;  // structured JSON extracted from ISR response — used by PPTX builder
 var _isrModelBuffer = null;  // raw ArrayBuffer of uploaded ISR model — persists across PPTX export
 var _skillRawOutputs = {};   // keyed by tool id: 'napkin', 'gavel', 'isr', etc. — full response only, never compressed
@@ -5428,20 +5444,41 @@ async function _writeMarketBenchmark(metrics) {
 }
 
 // ── Market Intelligence: fetch latest benchmarks from Supabase ───────────────
-async function _fetchMarketBenchmark(market, assetClass) {
+async function _fetchMarketBenchmark(market, assetClass, submarket) {
   if (!_sb || !_sbOk || !market) return null;
   try {
-    var { data, error } = await _sb.from('market_benchmarks')
+    var query = _sb.from('market_benchmarks')
       .select('*')
       .ilike('market', '%' + market + '%')
       .eq('asset_class', assetClass || 'Industrial')
       .order('report_date', { ascending: false })
       .limit(3);
+    if (submarket && submarket.trim()) {
+      query = query.ilike('submarket', '%' + submarket.trim() + '%');
+    }
+    var { data, error } = await query;
     if (error || !data || !data.length) return null;
-    console.log('[RIDGE] Market benchmark fetched:', data.length, 'records for', market);
+    console.log('[RIDGE] Market benchmark fetched:', data.length, 'records for', market, submarket||'');
     return data;
   } catch(e) {
     console.warn('[RIDGE] _fetchMarketBenchmark error:', e.message);
+    return null;
+  }
+}
+
+function _parseMarketPulseJSON(text) {
+  if (!text) return null;
+  try {
+    var _idx = text.lastIndexOf('## RIDGE MARKET DATA');
+    if (_idx === -1) return null;
+    var _tail = text.slice(_idx).replace('## RIDGE MARKET DATA', '').trim();
+    var _jsonStr = _tail.replace(/```json|```/g, '').trim();
+    var _firstBrace = _jsonStr.indexOf('{');
+    var _lastBrace = _jsonStr.lastIndexOf('}');
+    if (_firstBrace === -1 || _lastBrace === -1) return null;
+    return JSON.parse(_jsonStr.slice(_firstBrace, _lastBrace + 1));
+  } catch(e) {
+    console.warn('[RIDGE] _parseMarketPulseJSON error:', e.message);
     return null;
   }
 }
@@ -8087,6 +8124,7 @@ async function runRidgeAPI(skillName, prompt, runInputs, runToolId) {
       var outputText = document.getElementById('ridge-panel-content').innerText;
       var skillNameSaved = document.getElementById('ridge-panel-skill-name').textContent;
       console.log('Supabase post-run block entered — skill:', skillNameSaved, '| _sbOk:', _sbOk, '| _sb:', !!_sb);
+      if (_lastRunToolId !== 'market-pulse') {
       try {
         var autoTags = [skillNameSaved];
         if (skillNameSaved.toLowerCase().includes('loi')) {
@@ -8163,6 +8201,7 @@ async function runRidgeAPI(skillName, prompt, runInputs, runToolId) {
           } catch(e) { console.warn('signal_reports save failed:', e); }
         }
       } catch(e) { console.warn('Supabase skill_outputs save failed:', e); showToast('Output could not be saved to history.'); }
+      } // end if (_lastRunToolId !== 'market-pulse')
       // Update/insert leases row after Gavel run — independent try so skill_outputs errors don't block it
       if (skillNameSaved.toLowerCase().includes('gavel')) {
       try {
@@ -8498,6 +8537,38 @@ async function runRidgeAPI(skillName, prompt, runInputs, runToolId) {
             showToast('\ud83d\udccb DD Checklist saved \u2014 ' + _ddItems.length + ' items tracked');
           }
         } catch(e) { console.warn('[RIDGE] DD post-run error:', e.message); }
+      }
+      // ── MARKET PULSE: dedicated post-run ──
+      if (_lastRunToolId === 'market-pulse' && _sbOk && _sb) {
+        try {
+          var _mpParsed = _parseMarketPulseJSON(accumulated);
+          if (_mpParsed && _mpParsed.market) {
+            await _writeMarketBenchmark(_mpParsed);
+            console.log('[RIDGE] Market Pulse wrote benchmark:', _mpParsed.market, _mpParsed.submarket);
+          }
+
+          var _mpAddr = (_lastRunInputs && (_lastRunInputs.deal || _lastRunInputs.addr)) || '';
+          var _mpMktName = (_lastRunInputs && _lastRunInputs.mkt) || '';
+          var { data: _mpOut } = await _sb.from('skill_outputs').insert({
+            skill_name: 'MARKET PULSE',
+            output: accumulated,
+            inputs: _lastRunInputs || {},
+            address: _mpAddr || ('Market Pulse — ' + _mpMktName),
+            market: _mpMktName || null,
+            tags: ['market-pulse'],
+            loi_generated: false,
+            run_by: _getSessionUser()
+          }).select('id').single();
+          if (_mpOut && _mpOut.id) {
+            console.log('[RIDGE] Market Pulse skill_outputs written:', _mpOut.id);
+            var _mpEmbed = await _generateEmbedding((_mpMktName || '') + ' market pulse ' + accumulated.slice(0, 500));
+            if (_mpEmbed) {
+              await _sb.from('skill_outputs').update({ embedding: _mpEmbed }).eq('id', _mpOut.id);
+            }
+          }
+        } catch(e) {
+          console.warn('[RIDGE] Market Pulse post-run error:', e.message);
+        }
       }
     }
   } catch(e) {
