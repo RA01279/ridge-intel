@@ -11794,6 +11794,25 @@ async function _llConfirmImport() {
     if (written > 0) {
       await _writeLeaseRows(toWrite, address, 'LEASE_LIBRARY');
     }
+    if (_sbOk && _sb) {
+      try {
+        var { data: _llOut } = await _sb.from('skill_outputs').insert({
+          skill_name: 'LEASE LIBRARY',
+          output: 'Batch import: ' + written + ' lease records ingested.',
+          inputs: { source: 'LEASE_LIBRARY', row_count: written },
+          address: address || 'Lease Library Batch Import',
+          market: _detectMarket({ addr: address }),
+          tags: ['lease-library', 'batch-import'],
+          loi_generated: false,
+          run_by: _getSessionUser()
+        }).select('id').single();
+        if (_llOut && _llOut.id) {
+          console.log('[RIDGE] Lease Library skill_outputs written:', _llOut.id);
+        }
+      } catch(e) {
+        console.warn('[RIDGE] Lease Library skill_outputs error:', e.message);
+      }
+    }
     showToast('[RIDGE] Lease Library: ' + written + ' rows imported, ' + skipped + ' skipped (higher priority exists)');
     document.getElementById('ll-preview-section').style.display = 'none';
     _llParsedRows = [];
