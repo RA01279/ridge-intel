@@ -4455,6 +4455,24 @@ async function _portfolioMapLoad() {
     if (resEl)   resEl.classList.add('show');
     showToast('\ud83d\udccd Portfolio Map \u2014 ' + geocoded.length + ' properties plotted' + (capped ? ' (top 100)' : ''));
 
+    if (_sbOk && _sb) {
+      try {
+        await _sb.from('skill_outputs').insert({
+          skill_name: 'PORTFOLIO MAP',
+          output: 'Portfolio map rendered: ' + props.length + ' properties loaded. Filters \u2014 market: ' + (market||'All') + ', tier: ' + (tier||'All') + ', min score: ' + minScore + '.',
+          inputs: { market: market, tier: tier, min_score: minScore, property_count: props.length },
+          address: 'Portfolio Map \u2014 ' + (market !== 'All' ? market : 'All Markets'),
+          market: market !== 'All' ? market : null,
+          tags: ['portfolio-map'],
+          loi_generated: false,
+          run_by: _getSessionUser()
+        });
+        console.log('[RIDGE] Portfolio Map skill_outputs logged:', props.length, 'properties');
+      } catch(e) {
+        console.warn('[RIDGE] Portfolio Map skill_outputs error:', e.message);
+      }
+    }
+
   } catch(e) {
     if (loadEl) loadEl.classList.remove('show');
     console.warn('[RIDGE] _portfolioMapLoad error:', e.message);
