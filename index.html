@@ -3286,6 +3286,29 @@ async function runTool(toolId) {
     }
   }
 
+  // Napkin — pre-fetch benchmark context before prompt assembly
+  _napkinBenchmarkContext = '';
+  if (toolId === 'napkin' && _sbOk && _sb) {
+    try {
+      var _napkinMkt = _detectMarket(d) || '';
+      var _napkinSub = (STATE['napkin'] && STATE['napkin'].fields && STATE['napkin'].fields['submarket']) || d.submarket || d.sub || '';
+      var _napkinBench = await _fetchMarketBenchmark(_napkinMkt, 'Industrial', _napkinSub);
+      if (_napkinBench && _napkinBench.length) {
+        _napkinBenchmarkContext = '\n\n[RIDGE MARKET INTELLIGENCE — REAL COSTAR DATA]\n' +
+          _napkinBench.map(function(b) {
+            return '• Report date: ' + (b.report_date||'unknown') +
+              (b.submarket ? ' | Submarket: ' + b.submarket : '') +
+              ' | Vacancy: ' + (b.vacancy_rate != null ? b.vacancy_rate + '%' : 'N/A') +
+              ' | Asking rent: ' + (b.asking_rent_psf != null ? '$' + b.asking_rent_psf + ' PSF' : 'N/A') +
+              ' | Absorption: ' + (b.absorption_sf != null ? b.absorption_sf.toLocaleString() + ' SF' : 'N/A');
+          }).join('\n') +
+          '\nUse this data to validate rent and vacancy assumptions. Do not estimate figures already provided above.\n';
+      }
+    } catch(e) {
+      console.warn('[RIDGE] Napkin benchmark pre-fetch error:', e.message);
+    }
+  }
+
   var prompt = await buildTrigger(toolId, d);
   var skillName = tool ? tool.name : 'PIPELINE';
   runRidgeAPI(skillName, prompt, d, toolId);
@@ -3333,7 +3356,7 @@ async function buildTrigger(toolId, d) {
 
     case 'napkin':
       var calc = _napkinCalc(d);
-      var p = 'You are RIDGE, a senior acquisitions officer at Entrada Partners. Apply the full RIDGE investment framework to this deal screen.\n\n';
+      var p = 'You are RIDGE Assistant — an expert full-stack developer and institutional CRE analyst embedded at Entrada Partners, a private equity firm focused on industrial and flex acquisitions. You are running a 60-second back-of-envelope acquisition screen.\n\n';
       p += 'ENTRADA INVESTMENT CRITERIA:\n';
       p += '- Asset types: Industrial, Flex Industrial, Single-story Office (conversion only)\n';
       p += '- Target markets: Atlanta (primary), Savannah (primary), DFW, Houston\n';
@@ -3419,6 +3442,7 @@ async function buildTrigger(toolId, d) {
           }
         } catch(e) { console.warn('[RIDGE] Napkin rent roll parse error:', e.message); }
       }
+      p += _napkinBenchmarkContext;
       return p;
 
     case 'waterfall':
@@ -4003,6 +4027,7 @@ var _sbOk = false;
 var _lastRunInputs = null;
 var _lastRunToolId  = null;
 var _mpBenchmarkContext = '';
+var _napkinBenchmarkContext = '';
 var _isrParsedData  = null;  // structured JSON extracted from ISR response — used by PPTX builder
 var _isrModelBuffer = null;  // raw ArrayBuffer of uploaded ISR model — persists across PPTX export
 var _skillRawOutputs = {};   // keyed by tool id: 'napkin', 'gavel', 'isr', etc. — full response only, never compressed
