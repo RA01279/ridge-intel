@@ -3347,6 +3347,31 @@ async function runTool(toolId) {
     }
   }
 
+  // ISR — pre-fetch lease comp context before prompt assembly
+  if (toolId === 'isr' && _sbOk && _sb) {
+    try {
+      var _isrMktDetect = _detectMarket(d) || '';
+      var _isrSubDetect = d.submarket || d.sub || '';
+      var _isrComps = await _fetchLensComps(_isrMktDetect, 'Industrial', _isrSubDetect);
+      if (_isrComps && _isrComps.length) {
+        _isrLensContext = '\n\n[RIDGE LEASE DATABASE — EXECUTED COMPS]\n' +
+          _isrComps.map(function(c) {
+            return '• ' + (c.tenant||'Unknown') + ' | ' + (c.address||'') +
+              ' | ' + (c.sf ? c.sf.toLocaleString() + ' SF' : 'N/A') +
+              ' | ' + (c.lease_type||'N/A') +
+              ' | $' + (c.base_rent_psf != null ? c.base_rent_psf + ' PSF' : 'N/A') +
+              ' | ' + (c.commencement_date||'N/A');
+          }).join('\n') +
+          '\nUse these executed comps to populate the ## LEASE COMP ANALYSIS section. These are real transactions from the RIDGE database — prioritize them over OM-stated comps.\n';
+      } else {
+        _isrLensContext = '';
+      }
+    } catch(e) {
+      console.warn('[RIDGE] ISR lease comp pre-fetch error:', e.message);
+      _isrLensContext = '';
+    }
+  }
+
   var prompt = await buildTrigger(toolId, d);
   var skillName = tool ? tool.name : 'PIPELINE';
   runRidgeAPI(skillName, prompt, d, toolId);
@@ -3743,6 +3768,7 @@ If CONDITIONAL: state exactly what must be verified before proceeding
       } catch(e) {
         console.warn('[RIDGE] ISR model cache write error:', e.message);
       }
+      p += _isrLensContext;
       return p;
 
     case 'loi':
@@ -4068,6 +4094,7 @@ var _lastRunToolId  = null;
 var _mpBenchmarkContext = '';
 var _napkinBenchmarkContext = '';
 var _lensBenchmarkContext = '';
+var _isrLensContext = '';
 var _isrParsedData  = null;  // structured JSON extracted from ISR response — used by PPTX builder
 var _isrModelBuffer = null;  // raw ArrayBuffer of uploaded ISR model — persists across PPTX export
 var _skillRawOutputs = {};   // keyed by tool id: 'napkin', 'gavel', 'isr', etc. — full response only, never compressed
@@ -8301,6 +8328,23 @@ async function runRidgeAPI(skillName, prompt, runInputs, runToolId) {
         }
       } catch(e) { console.warn('Supabase skill_outputs save failed:', e); showToast('Output could not be saved to history.'); }
       } // end if (_lastRunToolId !== 'market-pulse')
+      if (_lastRunToolId === 'isr' && _sbOk && _sb) {
+        try {
+          var _isrDcAddr = (_soAddr) || (_lastRunInputs && (_lastRunInputs.addr || _lastRunInputs.address)) || '';
+          if (_isrDcAddr) {
+            await _sb.from('deal_context').upsert({
+              address: _isrDcAddr,
+              last_skill_run: 'ISR',
+              last_run_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+              isr_run_id: (_soId || null)
+            }, { onConflict: 'address' });
+            console.log('[RIDGE] deal_context updated for ISR:', _isrDcAddr);
+          }
+        } catch(e) {
+          console.warn('[RIDGE] ISR deal_context upsert error:', e.message);
+        }
+      }
       // Update/insert leases row after Gavel run — independent try so skill_outputs errors don't block it
       if (skillNameSaved.toLowerCase().includes('gavel')) {
       try {
