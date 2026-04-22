@@ -3309,6 +3309,44 @@ async function runTool(toolId) {
     }
   }
 
+  // LENS — pre-fetch market benchmark + lease comp context before prompt assembly
+  _lensBenchmarkContext = '';
+  if (toolId === 'lens' && _sbOk && _sb) {
+    try {
+      var _lensMkt = _detectMarket(d) || '';
+      var _lensSub = (STATE['lens'] && STATE['lens'].fields && STATE['lens'].fields['submarket']) || d.submarket || d.sub || '';
+      var _lensBench = await _fetchMarketBenchmark(_lensMkt, 'Industrial', _lensSub);
+      var _lensComps = await _fetchLensComps(_lensMkt, 'Industrial', _lensSub);
+      var _lensCtx = '';
+      if (_lensBench && _lensBench.length) {
+        _lensCtx += '\n\n[RIDGE MARKET INTELLIGENCE — REAL COSTAR DATA]\n' +
+          _lensBench.map(function(b) {
+            return '• Report date: ' + (b.report_date||'unknown') +
+              (b.submarket ? ' | Submarket: ' + b.submarket : '') +
+              ' | Vacancy: ' + (b.vacancy_rate != null ? b.vacancy_rate + '%' : 'N/A') +
+              ' | Asking rent: ' + (b.asking_rent_psf != null ? '$' + b.asking_rent_psf + ' PSF' : 'N/A') +
+              ' | Absorption: ' + (b.absorption_sf != null ? b.absorption_sf.toLocaleString() + ' SF' : 'N/A');
+          }).join('\n') +
+          '\n';
+      }
+      if (_lensComps && _lensComps.length) {
+        _lensCtx += '\n\n[RIDGE LEASE COMP DATABASE — EXECUTED COMPS]\n' +
+          _lensComps.map(function(c) {
+            return '• ' + (c.tenant||'Unknown') + ' | ' + (c.address||'') +
+              ' | ' + (c.sf ? c.sf.toLocaleString() + ' SF' : 'N/A') +
+              ' | ' + (c.lease_type||'N/A') +
+              ' | $' + (c.base_rent_psf != null ? c.base_rent_psf + ' PSF' : 'N/A') +
+              ' | ' + (c.commencement_date||'N/A');
+          }).join('\n') +
+          '\nUse these executed comps to stress-test the broker\'s rent assumptions. Flag any spread > 10% between broker claim and comp evidence.\n';
+      }
+      _lensBenchmarkContext = _lensCtx;
+    } catch(e) {
+      console.warn('[RIDGE] LENS pre-fetch error:', e.message);
+      _lensBenchmarkContext = '';
+    }
+  }
+
   var prompt = await buildTrigger(toolId, d);
   var skillName = tool ? tool.name : 'PIPELINE';
   runRidgeAPI(skillName, prompt, d, toolId);
@@ -3343,7 +3381,7 @@ function copyAndLaunch() {
 async function buildTrigger(toolId, d) {
   switch(toolId) {
     case 'lens':
-      p = 'You are a senior acquisitions officer at Entrada Partners reviewing a broker OM. Your job is to strip the narrative, stress-test every assumption, and tell the IC whether this deal is real.\n\n';
+      p = 'You are RIDGE Assistant — an expert full-stack developer and institutional CRE analyst embedded at Entrada Partners, a private equity firm focused on industrial and flex acquisitions. You are performing an institutional-grade broker OM teardown.\n\n';
       p += 'PROPERTY: ' + (d.addr||'') + '\nASSET TYPE: ' + (d.type||'') + '\nSIZE: ' + (d.sf||'') + ' SF\nASKING: $' + (d.ask||'') + '\nCONTEXT: ' + (d.notes||'') + '\n\n';
       p += 'ENTRADA CRITERIA: $10M-$70M | Atlanta/Savannah/DFW/Houston | 14.75%+ levered IRR | 7.5-8.0% YOC Yr3/4 | 95% off-market\n\n';
       p += 'Produce:\n## BROKER NARRATIVE vs REALITY\nWhat the broker is claiming vs what the data actually supports. Be specific and cite numbers.\n\n## RE-UNDERWRITE\nRebuild the return stack from scratch using RIDGE assumptions (60-65% LTV, market debt terms, realistic vacancy, market exit cap). Show your math.\n\n## STRESS TEST\n3 scenarios: Base / Downside (-15% NOI, +50bps exit cap) / Severe (-25% NOI, +100bps exit cap). IRR and EM for each.\n\n## WHAT THE BROKER IS HIDING\nFlag every assumption that is aggressive, missing, or impossible to verify. Be direct.\n\n## MAX ENTRY PRICE\nThe exact price where this deal clears 14.75% IRR under RIDGE assumptions. Dollar amount and PSF.\n\n## VERDICT\nPURSUE | CONDITIONAL | PASS — one word, then one paragraph defending it. If CONDITIONAL, state exactly what has to be true.';
@@ -3352,6 +3390,7 @@ async function buildTrigger(toolId, d) {
         'Focus your response on: (1) investment thesis strength, (2) key risks and how to mitigate them, ' +
         '(3) your recommended entry price and why, (4) what additional diligence is needed before LOI. ' +
         'Do not restate property specs — those will be extracted automatically.\n';
+      p += _lensBenchmarkContext;
       return p;
 
     case 'napkin':
@@ -4028,6 +4067,7 @@ var _lastRunInputs = null;
 var _lastRunToolId  = null;
 var _mpBenchmarkContext = '';
 var _napkinBenchmarkContext = '';
+var _lensBenchmarkContext = '';
 var _isrParsedData  = null;  // structured JSON extracted from ISR response — used by PPTX builder
 var _isrModelBuffer = null;  // raw ArrayBuffer of uploaded ISR model — persists across PPTX export
 var _skillRawOutputs = {};   // keyed by tool id: 'napkin', 'gavel', 'isr', etc. — full response only, never compressed
@@ -5504,6 +5544,40 @@ function _parseMarketPulseJSON(text) {
     return JSON.parse(_jsonStr.slice(_firstBrace, _lastBrace + 1));
   } catch(e) {
     console.warn('[RIDGE] _parseMarketPulseJSON error:', e.message);
+    return null;
+  }
+}
+
+async function _fetchLensComps(market, assetClass, submarket) {
+  if (!_sb || !_sbOk || !market) return null;
+  try {
+    var query = _sb.from('leases')
+      .select('tenant, address, sf, lease_type, base_rent_psf, commencement_date, expiration_date, source_priority')
+      .eq('market', market)
+      .not('base_rent_psf', 'is', null)
+      .order('source_priority', { ascending: true })
+      .order('commencement_date', { ascending: false })
+      .limit(10);
+    if (submarket && submarket.trim()) {
+      query = query.ilike('submarket', '%' + submarket.trim() + '%');
+    }
+    var { data, error } = await query;
+    if (error || !data || !data.length) {
+      var q2 = _sb.from('leases')
+        .select('tenant, address, sf, lease_type, base_rent_psf, commencement_date, expiration_date, source_priority')
+        .ilike('address', '%' + market + '%')
+        .not('base_rent_psf', 'is', null)
+        .order('source_priority', { ascending: true })
+        .order('commencement_date', { ascending: false })
+        .limit(10);
+      var { data: data2 } = await q2;
+      data = data2;
+    }
+    if (!data || !data.length) return null;
+    console.log('[RIDGE] LENS lease comps fetched:', data.length, 'records for', market);
+    return data;
+  } catch(e) {
+    console.warn('[RIDGE] _fetchLensComps error:', e.message);
     return null;
   }
 }
