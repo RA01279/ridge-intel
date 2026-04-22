@@ -8420,6 +8420,23 @@ async function runRidgeAPI(skillName, prompt, runInputs, runToolId) {
             }
           } catch(e) { console.warn('leases update/insert failed:', e); showToast('Lease data could not be saved to database.'); }
       } catch(e) { console.warn('Gavel leases block failed:', e); showToast('Lease data could not be saved to database.'); }
+      if (_sbOk && _sb) {
+        try {
+          var _gavelDcAddr = (_lastRunInputs && (_lastRunInputs.addr || _lastRunInputs.address)) ||
+            (document.getElementById('f-gavel-addr') ? document.getElementById('f-gavel-addr').value : '') || '';
+          if (_gavelDcAddr) {
+            await _sb.from('deal_context').upsert({
+              address: _gavelDcAddr,
+              last_skill_run: 'GAVEL',
+              last_run_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            }, { onConflict: 'address' });
+            console.log('[RIDGE] deal_context updated for GAVEL:', _gavelDcAddr);
+          }
+        } catch(e) {
+          console.warn('[RIDGE] GAVEL deal_context upsert error:', e.message);
+        }
+      }
       }
       // ── LEASE DB: post-run wiring for lens, isr, lease-comp, lease-stack, lease-compare, legal ──
       if (_lastRunToolId && ['lens','isr','lease-comp','lease-stack','lease-compare','legal'].indexOf(_lastRunToolId) !== -1) {
