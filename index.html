@@ -8511,6 +8511,22 @@ async function runRidgeAPI(skillName, prompt, runInputs, runToolId) {
                   conviction: 'Needs More Data'
                 });
               }
+              if (_sbOk && _sb) {
+                try {
+                  var _lensDcAddr = _lAddr || '';
+                  if (_lensDcAddr) {
+                    await _sb.from('deal_context').upsert({
+                      address: _lensDcAddr,
+                      last_skill_run: 'LENS',
+                      last_run_at: new Date().toISOString(),
+                      updated_at: new Date().toISOString()
+                    }, { onConflict: 'address' });
+                    console.log('[RIDGE] deal_context updated for LENS:', _lensDcAddr);
+                  }
+                } catch(e) {
+                  console.warn('[RIDGE] LENS deal_context upsert error:', e.message);
+                }
+              }
             }
           } else if (_lastRunToolId === 'lease-comp') {
             _lRows = _parseLeaseTable(accumulated);
