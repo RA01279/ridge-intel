@@ -8694,6 +8694,22 @@ async function runRidgeAPI(skillName, prompt, runInputs, runToolId) {
           source:    'NAPKIN',
           conviction: 'Needs More Data'
         });
+        if (_sbOk && _sb) {
+          try {
+            var _napkinDcAddr = _napAddr2 || '';
+            if (_napkinDcAddr) {
+              await _sb.from('deal_context').upsert({
+                address: _napkinDcAddr,
+                last_skill_run: 'NAPKIN',
+                last_run_at: new Date().toISOString(),
+                updated_at: new Date().toISOString()
+              }, { onConflict: 'address' });
+              console.log('[RIDGE] deal_context updated for NAPKIN:', _napkinDcAddr);
+            }
+          } catch(e) {
+            console.warn('[RIDGE] NAPKIN deal_context upsert error:', e.message);
+          }
+        }
       }
       // ── DD TRACKER: parse, save, and render checklist ──
       if (_lastRunToolId === 'dd-tracker' && _sbOk) {
