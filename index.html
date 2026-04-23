@@ -8344,6 +8344,22 @@ async function runRidgeAPI(skillName, prompt, runInputs, runToolId) {
         }
       } catch(e) { console.warn('Supabase skill_outputs save failed:', e); showToast('Output could not be saved to history.'); }
       } // end if (_lastRunToolId !== 'market-pulse')
+      if (_lastRunToolId === 'canvas' && _sbOk && _sb) {
+        try {
+          var _canvasDcAddr = _soAddr || (_lastRunInputs && (_lastRunInputs.addr || _lastRunInputs.address)) || '';
+          if (_canvasDcAddr) {
+            await _sb.from('deal_context').upsert({
+              address: _canvasDcAddr,
+              last_skill_run: 'CANVAS',
+              last_run_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            }, { onConflict: 'address' });
+            console.log('[RIDGE] deal_context updated for CANVAS:', _canvasDcAddr);
+          }
+        } catch(e) {
+          console.warn('[RIDGE] CANVAS deal_context upsert error:', e.message);
+        }
+      }
       if (_lastRunToolId === 'isr' && _sbOk && _sb) {
         try {
           var _isrDcAddr = (_soAddr) || (_lastRunInputs && (_lastRunInputs.addr || _lastRunInputs.address)) || '';
