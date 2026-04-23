@@ -5575,6 +5575,41 @@ function _parseMarketPulseJSON(text) {
   }
 }
 
+function _parseDailySignalProspects(text) {
+  if (!text) return [];
+  try {
+    var prospects = [];
+    var lines = text.split('\n');
+    var inTable = false;
+    var headers = [];
+    for (var i = 0; i < lines.length; i++) {
+      var line = lines[i].trim();
+      if (!inTable && line.match(/address|property|owner|signal|tier/i) && line.includes('|')) {
+        headers = line.split('|').map(function(h) { return h.trim().toLowerCase(); });
+        inTable = true;
+        i++; // skip separator line
+        continue;
+      }
+      if (inTable && line.includes('|')) {
+        var cells = line.split('|').map(function(c) { return c.trim(); });
+        if (cells.length >= 2 && cells[0]) {
+          var prospect = {};
+          for (var j = 0; j < headers.length; j++) {
+            prospect[headers[j]] = cells[j] || '';
+          }
+          prospects.push(prospect);
+        }
+      } else if (inTable && !line.includes('|') && line.length > 0) {
+        inTable = false;
+      }
+    }
+    return prospects;
+  } catch(e) {
+    console.warn('[RIDGE] _parseDailySignalProspects error:', e.message);
+    return [];
+  }
+}
+
 async function _fetchLensComps(market, assetClass, submarket) {
   if (!_sb || !_sbOk || !market) return null;
   try {
@@ -8337,7 +8372,7 @@ async function runRidgeAPI(skillName, prompt, runInputs, runToolId) {
               market: _detectMarket(_lastRunInputs),
               submarket: (_lastRunInputs && _lastRunInputs.notes) ? _lastRunInputs.notes.slice(0,100) : null,
               report_date: new Date().toISOString().slice(0,10),
-              prospects: [],
+              prospects: _parseDailySignalProspects(outputText),
               raw_data: { output: outputText.slice(0, 5000), inputs: _lastRunInputs }
             });
           } catch(e) { console.warn('signal_reports save failed:', e); }
