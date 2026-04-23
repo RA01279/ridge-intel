@@ -8680,6 +8680,22 @@ async function runRidgeAPI(skillName, prompt, runInputs, runToolId) {
               }
             }
             await _writeLeaseRows(_lRows, _lAddr, 'LEGAL_REVIEW');
+            if (_sbOk && _sb) {
+              try {
+                var _legalDcAddr = _lAddr || '';
+                if (_legalDcAddr) {
+                  await _sb.from('deal_context').upsert({
+                    address: _legalDcAddr,
+                    last_skill_run: 'LEGAL',
+                    last_run_at: new Date().toISOString(),
+                    updated_at: new Date().toISOString()
+                  }, { onConflict: 'address' });
+                  console.log('[RIDGE] deal_context updated for LEGAL:', _legalDcAddr);
+                }
+              } catch(e) {
+                console.warn('[RIDGE] LEGAL deal_context upsert error:', e.message);
+              }
+            }
           }
         } catch(e) { console.warn('[RIDGE] lease post-run failed:', e.message); }
       }
