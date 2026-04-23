@@ -8314,6 +8314,22 @@ async function runRidgeAPI(skillName, prompt, runInputs, runToolId) {
             }, { onConflict: 'entity' }).catch(function(e) { console.warn('contacts save failed:', e); });
           }
         }
+        if (_lastRunToolId === 'scout' && _sbOk && _sb) {
+          try {
+            var _scoutAddr = _soAddr || (_lastRunInputs && (_lastRunInputs.addr || _lastRunInputs.address)) || '';
+            if (_scoutAddr) {
+              await _sb.from('deal_context').upsert({
+                address: _scoutAddr,
+                last_skill_run: 'SCOUT',
+                last_run_at: new Date().toISOString(),
+                updated_at: new Date().toISOString()
+              }, { onConflict: 'address' });
+              console.log('[RIDGE] deal_context updated for SCOUT:', _scoutAddr);
+            }
+          } catch(e) {
+            console.warn('[RIDGE] SCOUT deal_context upsert error:', e.message);
+          }
+        }
         // Auto-save to signal_reports table from Daily Signal runs
         if (skillNameSaved.toLowerCase().includes('signal')) {
           try {
