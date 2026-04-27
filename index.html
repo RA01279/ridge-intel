@@ -10542,42 +10542,53 @@ async function ridgeExportPPT() {
     }
 
     var pptx = new PptxGenJS();
-    pptx.layout = 'LAYOUT_WIDE';
+    pptx.defineLayout({ name: 'RIDGE_WIDE', width: 20, height: 11.25 });
+    pptx.layout = 'RIDGE_WIDE';
 
     try {
 
-    var BG    = 'FFFFFF';
-    var COVER = '1E3A5F';
-    var HDR   = '1E3A5F';
-    var NAVY  = '1E2761';
-    var DKGRN = '1B5E20';
-    var TEXT  = '1A2332';
-    var TEXT2 = '4A5568';
-    var MUTED = '8A9BB0';
-    var LGREY = 'F4F6F9';
-    var MGREY = 'DDE3EC';
-    var BLUE  = '2E5FA3';
-    var GOLD  = 'A07E35';
-    var RBGX  = 'FEF3F2';
-    var YBGX  = 'FFFBEA';
+    // ── Entrada Executive palette ──────────────────────────────
+    var BG    = 'FAF8F6';
+    var NAVY  = '002D72';
+    var BLUE  = '005EB8';
+    var BODY  = '0D1314';
+    var MUTED = 'C7C1BB';
+    var PASS  = '1E6B3C';
+    var WARN  = '8B6914';
+    var FLOOR = '1A3A5C';
+    var FAIL  = '8A1F1F';
     var WHITE = 'FFFFFF';
-    var KPIBG = 'EBF4FF';
-    var GRNG  = '0D2818';
-    var YELG  = '2D2600';
-    var REDG  = '2D0A0A';
+    var RULE  = '0D1314';
+    // ── compat aliases — updated in Pass 2 when slide bodies are restyled ──
+    var HDR   = NAVY;
+    var COVER = BG;
+    var TEXT  = BODY;
+    var TEXT2 = BODY;
+    var LGREY = 'F4F2F0';
+    var MGREY = 'C7C1BB';
+    var DKGRN = PASS;
+    var GOLD  = WARN;
+    var KPIBG = BG;
+    var GRNG  = PASS;
+    var YELG  = WARN;
+    var REDG  = FAIL;
+    var RBGX  = 'F4F2F0';
+    var YBGX  = 'F4F2F0';
 
     var addr  = d.addr || 'Subject Property';
     var TOTAL = 15;
     var dateStr = new Date().toLocaleDateString('en-US',{month:'long',year:'numeric'});
 
     function addHdr(sl,title,n){
-      sl.addShape(pptx.ShapeType.rect,{x:0,y:0,w:13.33,h:0.65,fill:{color:HDR},line:{color:HDR}});
-      sl.addText(title,{x:0.4,y:0,w:11.4,h:0.65,fontSize:20,color:WHITE,bold:true,valign:'middle',fontFace:'Cambria'});
-      sl.addText(n+' / '+TOTAL,{x:12.1,y:0,w:1.1,h:0.65,fontSize:9,color:MUTED,align:'right',valign:'middle'});
+      sl.background={color:BG};
+      sl.addText(('SECTION '+String(n).padStart(2,'0')+' · '+title).toUpperCase(),{x:1,y:0.83,w:16,h:0.4,fontSize:13.5,color:BLUE,bold:true,valign:'middle'});
+      sl.addText(title,{x:1,y:1.24,w:17,h:0.9,fontSize:45,color:NAVY,bold:false,valign:'middle'});
+      sl.addShape(pptx.ShapeType.rect,{x:1,y:2.11,w:18,h:0.02,fill:{color:RULE},line:{color:RULE}});
+      sl.addText(n+' / '+TOTAL,{x:17.5,y:0.83,w:1.5,h:0.4,fontSize:9,color:BODY,align:'right',valign:'middle'});
     }
     function addFtr(sl){
-      sl.addShape(pptx.ShapeType.rect,{x:0,y:7.28,w:13.33,h:0.014,fill:{color:MGREY},line:{color:MGREY}});
-      sl.addText(addr+' · ENTRADA PARTNERS · CONFIDENTIAL',{x:0.4,y:7.3,w:12.5,h:0.18,fontSize:7.5,color:MUTED});
+      sl.addShape(pptx.ShapeType.rect,{x:1,y:10.59,w:18,h:0.02,fill:{color:RULE},line:{color:RULE}});
+      sl.addText(addr+' · ENTRADA PARTNERS · CONFIDENTIAL & PROPRIETARY',{x:1,y:10.75,w:18,h:0.3,fontSize:12,color:BODY,bold:true});
     }
     // ISSUE 3: kpiCard accepts optional bgColor/txtColor for navy/green rows
     function kpiCard(sl,x,y,w,h,val,label,bgColor,txtColor,fontSize){
@@ -10588,7 +10599,7 @@ async function ridgeExportPPT() {
       sl.addText(label,{x:x,y:y+h-0.35,w:w,h:0.3,fontSize:8.5,color:lc,align:'center',charSpacing:1.5});
     }
     function tblH(cells){
-      return cells.map(function(c){return {text:c,options:{bold:true,color:WHITE,fill:{color:HDR},fontSize:10,align:'center'}};});
+      return cells.map(function(c){return {text:c,options:{bold:true,color:NAVY,fill:{color:BG},fontSize:10,align:'center'}};});
     }
     function tblR(cells,alt){
       var bg=alt?LGREY:BG;
@@ -10596,29 +10607,33 @@ async function ridgeExportPPT() {
     }
     function sensCell(v){
       var n=parseFloat(String(v||'').replace(/[%\s]/g,''));
-      if(isNaN(n)||v===undefined||v===null||v==='') return {text:'—',options:{fontSize:10,color:TEXT2,fill:{color:BG},align:'center'}};
-      var bg=n>=14?'1B5E20':(n>=12?'E65100':'B71C1C');
-      return {text:pct2(n),options:{fontSize:10,color:WHITE,bold:true,fill:{color:bg},align:'center'}};
+      if(isNaN(n)||v===undefined||v===null||v==='') return {text:'—',options:{fontSize:10,color:BODY,fill:{color:BG},align:'center'}};
+      var bg,tc;
+      if(n>=14.75){bg='E8F5EC';tc=PASS;}
+      else if(n>=13.5){bg='FEF3C7';tc=WARN;}
+      else if(n>=12){bg='EBF4FF';tc=FLOOR;}
+      else{bg='FFE8E8';tc=FAIL;}
+      return {text:pct2(n),options:{fontSize:10,color:tc,bold:true,fill:{color:bg},align:'center'}};
     }
 
     // ── SLIDE 1 — Cover ───────────────────────────────────────
-    var s1=pptx.addSlide(); s1.background={color:COVER};
+    var s1=pptx.addSlide(); s1.background={color:BG};
     console.log('[RIDGE] PPTX building slide 1...');
     s1.addShape(pptx.ShapeType.rect,{x:0,y:0,w:0.2,h:7.5,fill:{color:GOLD},line:{color:GOLD}});
-    s1.addText('INVESTMENT COMMITTEE',{x:0.5,y:0.85,w:12,h:0.32,fontSize:11,bold:true,color:MUTED,charSpacing:3});
-    s1.addText(addr,{x:0.5,y:1.22,w:12.3,h:1.10,fontSize:38,bold:true,color:WHITE,wrap:true,fontFace:'Cambria'});
-    s1.addText((d.type||'Industrial / Flex').toUpperCase()+'  ·  '+dateStr,{x:0.5,y:2.40,w:10,h:0.30,fontSize:11,color:MUTED,charSpacing:1.5});
+    s1.addText('INVESTMENT COMMITTEE',{x:0.5,y:0.85,w:12,h:0.32,fontSize:11,bold:true,color:BODY,charSpacing:3});
+    s1.addText(addr,{x:0.5,y:1.22,w:12.3,h:1.10,fontSize:38,bold:true,color:NAVY,wrap:true,fontFace:'Cambria'});
+    s1.addText((d.type||'Industrial / Flex').toUpperCase()+'  ·  '+dateStr,{x:0.5,y:2.40,w:10,h:0.30,fontSize:11,color:BODY,charSpacing:1.5});
     s1.addShape(pptx.ShapeType.rect,{x:0.5,y:2.78,w:5,h:0.012,fill:{color:GOLD},line:{color:GOLD}});
     [{v:fmtUSD(d.price),l:'PURCHASE PRICE'},{v:(d.sf||'—')+' SF',l:'BUILDING SIZE'},{v:pct2(d.cap),l:'GOING-IN CAP'}].forEach(function(st,i){
-      s1.addText(st.v,{x:0.5+i*4.1,y:2.95,w:3.9,h:0.55,fontSize:26,color:WHITE,bold:true,align:'center'});
+      s1.addText(st.v,{x:0.5+i*4.1,y:2.95,w:3.9,h:0.55,fontSize:26,color:NAVY,bold:true,align:'center'});
       s1.addText(st.l,{x:0.5+i*4.1,y:3.50,w:3.9,h:0.24,fontSize:8.5,color:GOLD,align:'center',charSpacing:2});
     });
     // Bottom strip: 5 items — Hold/IRR/EM labeled as (PROJ), Asset Type and Date are not projected
     [{l:'ASSET TYPE',v:d.type||'Flex Industrial'},{l:'HOLD PERIOD (PROJ)',v:d.hold||'5 Years'},{l:'LEVERED IRR (PROJ)',v:pct2(d.irr)},{l:'EQUITY MULTIPLE (PROJ)',v:mult2(d.em)},{l:'DATE',v:dateStr}].forEach(function(m2,i){
-      s1.addText(m2.l,{x:0.5+i*2.47,y:3.88,w:2.37,h:0.22,fontSize:7.5,color:MUTED,charSpacing:1.5});
-      s1.addText(m2.v,{x:0.5+i*2.47,y:4.12,w:2.37,h:0.32,fontSize:13,color:WHITE,bold:true});
+      s1.addText(m2.l,{x:0.5+i*2.47,y:3.88,w:2.37,h:0.22,fontSize:7.5,color:BODY,charSpacing:1.5});
+      s1.addText(m2.v,{x:0.5+i*2.47,y:4.12,w:2.37,h:0.32,fontSize:13,color:NAVY,bold:true});
     });
-    s1.addText('ENTRADA PARTNERS  ·  CONFIDENTIAL & PROPRIETARY',{x:0.5,y:7.05,w:12.3,h:0.28,fontSize:8.5,color:MUTED,align:'center'});
+    s1.addText('ENTRADA PARTNERS  ·  CONFIDENTIAL & PROPRIETARY',{x:0.5,y:7.05,w:12.3,h:0.28,fontSize:8.5,color:BODY,align:'center'});
 
     // ── SLIDE 2 — Deal Snapshot ───────────────────────────────
     var s2=pptx.addSlide(); s2.background={color:BG}; addHdr(s2,'Deal Snapshot',2);
