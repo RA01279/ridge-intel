@@ -1,0 +1,88 @@
+<!doctype html><html><head><meta charset="utf-8"><link rel="stylesheet" href="../colors_and_type.css">
+<style>
+html,body{margin:0;background:var(--bg);font-family:var(--font-system);color:var(--text);}
+body{width:760px;padding:24px;box-sizing:border-box;}
+.title{font-family:var(--font-mono);font-size:11px;letter-spacing:2px;color:var(--text-muted);text-transform:uppercase;margin:0 0 14px;}
+.section{margin-bottom:26px;}
+.scale-row{display:flex;align-items:flex-end;gap:18px;border-bottom:1px solid var(--border);padding-bottom:14px;}
+.scale-cell{display:flex;flex-direction:column;align-items:flex-start;gap:6px;}
+.scale-bar{background:var(--blue);border-radius:2px;}
+.scale-meta{font:600 10px var(--font-mono);letter-spacing:1px;color:var(--text-muted);text-transform:uppercase;}
+.scale-px{font:400 10px var(--font-mono);color:var(--text-faint);}
+
+.radius-row{display:flex;gap:18px;align-items:flex-end;}
+.radius-cell{display:flex;flex-direction:column;align-items:center;gap:8px;}
+.radius-swatch{width:88px;height:60px;background:var(--surface);border:1px solid var(--border-strong);}
+
+.elev{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;}
+.elev-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:18px;min-height:88px;}
+.elev-card.modal{box-shadow:var(--shadow-modal);}
+.elev-card.toast{box-shadow:var(--shadow-toast);background:var(--navy);border-color:var(--blue);}
+.elev-name{font:700 11px var(--font-mono);letter-spacing:1.5px;text-transform:uppercase;color:var(--text-muted);margin-bottom:6px;}
+.elev-spec{font:400 11px var(--font-mono);color:var(--text-faint);margin-top:8px;}
+.elev-card.toast .elev-name,.elev-card.toast .elev-spec{color:var(--ice);}
+
+.iconrow{display:grid;grid-template-columns:repeat(8,1fr);gap:14px;}
+.icon{display:flex;flex-direction:column;align-items:center;gap:6px;}
+.icon svg{width:24px;height:24px;stroke:var(--text);fill:none;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;}
+.icon .lbl{font:500 9px var(--font-mono);color:var(--text-muted);letter-spacing:.5px;text-transform:uppercase;}
+.icon-spec{font:500 11px var(--font-mono);color:var(--text-faint);margin-top:8px;}
+</style></head><body>
+
+<div class="section">
+  <div class="title">Spacing scale (4px base)</div>
+  <div class="scale-row">
+    <div class="scale-cell"><div class="scale-bar" style="width:4px;height:36px;"></div><div class="scale-meta">--space-1</div><div class="scale-px">4px</div></div>
+    <div class="scale-cell"><div class="scale-bar" style="width:8px;height:36px;"></div><div class="scale-meta">--space-2</div><div class="scale-px">8px</div></div>
+    <div class="scale-cell"><div class="scale-bar" style="width:12px;height:36px;"></div><div class="scale-meta">--space-3</div><div class="scale-px">12px</div></div>
+    <div class="scale-cell"><div class="scale-bar" style="width:16px;height:36px;"></div><div class="scale-meta">--space-4</div><div class="scale-px">16px</div></div>
+    <div class="scale-cell"><div class="scale-bar" style="width:20px;height:36px;"></div><div class="scale-meta">--space-5</div><div class="scale-px">20px</div></div>
+    <div class="scale-cell"><div class="scale-bar" style="width:24px;height:36px;"></div><div class="scale-meta">--space-6</div><div class="scale-px">24px</div></div>
+    <div class="scale-cell"><div class="scale-bar" style="width:32px;height:36px;"></div><div class="scale-meta">--space-8</div><div class="scale-px">32px</div></div>
+    <div class="scale-cell"><div class="scale-bar" style="width:48px;height:36px;"></div><div class="scale-meta">--space-12</div><div class="scale-px">48px</div></div>
+  </div>
+</div>
+
+<div class="section">
+  <div class="title">Radius — borders carry hierarchy, not shadows</div>
+  <div class="radius-row">
+    <div class="radius-cell"><div class="radius-swatch" style="border-radius:0"></div><div class="scale-meta">none</div><div class="scale-px">0 · table cells</div></div>
+    <div class="radius-cell"><div class="radius-swatch" style="border-radius:3px"></div><div class="scale-meta">--radius-sm</div><div class="scale-px">3px · risk pills</div></div>
+    <div class="radius-cell"><div class="radius-swatch" style="border-radius:6px"></div><div class="scale-meta">--radius</div><div class="scale-px">6px · cards · inputs</div></div>
+    <div class="radius-cell"><div class="radius-swatch" style="border-radius:10px"></div><div class="scale-meta">--radius-pill</div><div class="scale-px">10px · conviction badges</div></div>
+  </div>
+</div>
+
+<div class="section">
+  <div class="title">Elevation — overlays only</div>
+  <div class="elev">
+    <div class="elev-card"><div class="elev-name">Card</div>Border-only. No shadow.<div class="elev-spec">1px var(--border)</div></div>
+    <div class="elev-card toast"><div class="elev-name">Toast</div>Bottom-right floating notice.<div class="elev-spec">0 4px 20px rgba(0,0,0,.4)</div></div>
+    <div class="elev-card modal"><div class="elev-name">Modal</div>Centered overlay backdrop.<div class="elev-spec">0 10px 40px rgba(0,0,0,.6)</div></div>
+  </div>
+</div>
+
+<div class="section">
+  <div class="title">Iconography — line, 24px, 1.6 stroke, current color</div>
+  <div class="iconrow">
+    <div class="icon"><svg viewBox="0 0 24 24"><path d="M3 21V8l9-5 9 5v13"/><path d="M9 21v-7h6v7"/></svg><span class="lbl">Property</span></div>
+    <div class="icon"><svg viewBox="0 0 24 24"><path d="M4 18V6"/><path d="M4 6h12l-3 4 3 4H4"/></svg><span class="lbl">Sourcing</span></div>
+    <div class="icon"><svg viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="M7 14l4-4 3 3 5-7"/></svg><span class="lbl">Returns</span></div>
+    <div class="icon"><svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="14" rx="2"/><path d="M3 10h18"/><path d="M8 6V3"/><path d="M16 6V3"/></svg><span class="lbl">Calendar</span></div>
+    <div class="icon"><svg viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg><span class="lbl">Market</span></div>
+    <div class="icon"><svg viewBox="0 0 24 24"><path d="M12 3l9 4-9 4-9-4 9-4z"/><path d="M3 11l9 4 9-4"/><path d="M3 15l9 4 9-4"/></svg><span class="lbl">Capital</span></div>
+    <div class="icon"><svg viewBox="0 0 24 24"><path d="M12 2l9 4v6c0 5-4 9-9 10-5-1-9-5-9-10V6l9-4z"/></svg><span class="lbl">Conviction</span></div>
+    <div class="icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg><span class="lbl">Hold Period</span></div>
+
+    <div class="icon"><svg viewBox="0 0 24 24"><path d="M14 3v6h6"/><path d="M20 9v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h8z"/><path d="M8 13h8"/><path d="M8 17h5"/></svg><span class="lbl">OM</span></div>
+    <div class="icon"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg><span class="lbl">Rent Roll</span></div>
+    <div class="icon"><svg viewBox="0 0 24 24"><path d="M3 3l18 18"/><path d="M21 3L3 21"/></svg><span class="lbl">Dead Deal</span></div>
+    <div class="icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 8v4"/><path d="M12 16h.01"/></svg><span class="lbl">Risk</span></div>
+    <div class="icon"><svg viewBox="0 0 24 24"><path d="M5 12l5 5L20 7"/></svg><span class="lbl">Pass</span></div>
+    <div class="icon"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.5-4.5"/></svg><span class="lbl">Search</span></div>
+    <div class="icon"><svg viewBox="0 0 24 24"><path d="M12 2v20"/><path d="M5 9h14"/><path d="M5 15h14"/></svg><span class="lbl">Pipeline</span></div>
+    <div class="icon"><svg viewBox="0 0 24 24"><path d="M4 4h16v6H4z"/><path d="M4 14h16v6H4z"/><circle cx="8" cy="7" r="1"/><circle cx="8" cy="17" r="1"/></svg><span class="lbl">Capital Stack</span></div>
+  </div>
+</div>
+
+</body></html>
