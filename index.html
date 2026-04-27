@@ -10592,7 +10592,7 @@ async function ridgeExportPPT() {
     }
     // ISSUE 3: kpiCard accepts optional bgColor/txtColor for navy/green rows
     function kpiCard(sl,x,y,w,h,val,label,bgColor,txtColor,fontSize){
-      var bg=bgColor||KPIBG, tc=txtColor||HDR, lc=bgColor?WHITE:MUTED;
+      var bg=bgColor||BG, tc=txtColor||NAVY, lc=bgColor?WHITE:MUTED;
       var vs=String(val||'—'); var fs=fontSize||(vs.length>18?13:vs.length>12?16:22);
       sl.addShape(pptx.ShapeType.rect,{x:x,y:y,w:w,h:h,fill:{color:bg},line:{color:MGREY,w:0.5}});
       sl.addText(vs,{x:x,y:y+0.05,w:w,h:h-0.38,fontSize:fs,color:tc,bold:true,align:'center',valign:'middle'});
@@ -10638,17 +10638,23 @@ async function ridgeExportPPT() {
     // ── SLIDE 2 — Deal Snapshot ───────────────────────────────
     var s2=pptx.addSlide(); s2.background={color:BG}; addHdr(s2,'Deal Snapshot',2);
     console.log('[RIDGE] PPTX building slide 2...');
-    [{v:fmtUSD(d.price),l:'PURCHASE PRICE'},{v:fmtPSF(d.psf),l:'PRICE PER SF'},{v:pct2(d.cap),l:'GOING-IN CAP RATE'}].forEach(function(k,i){
-      kpiCard(s2,0.22+i*4.36,0.85,4.15,1.52,k.v,k.l,'1E2761','FFFFFF');
+    var kpi1=[{v:fmtUSD(d.price),l:'PURCHASE PRICE',s:fmtPSF(d.psf)+' / SF'},{v:pctx2(d.cap),l:'GOING-IN CAP',s:'NOI Yr 1 '+fmtUSD(d.noi)},{v:pct2(d.irr),l:'LEVERED IRR',s:'Floor 14.75%'}];
+    kpi1.forEach(function(k,i){
+      var xv=1+i*4.36;
+      if(i>0) s2.addShape(pptx.ShapeType.rect,{x:xv-0.01,y:2.7,w:0.02,h:1.43,fill:{color:RULE},line:{color:RULE}});
+      s2.addText(k.l,{x:xv,y:2.7, w:4.15,h:0.28,fontSize:10.5,color:BODY,bold:true, align:'left',valign:'middle'});
+      s2.addText(k.v,{x:xv,y:3.05,w:4.15,h:0.75,fontSize:38,  color:NAVY,bold:false,align:'left',valign:'middle'});
+      s2.addText(k.s,{x:xv,y:3.86,w:4.15,h:0.31,fontSize:10,  color:BODY,bold:false,align:'left',valign:'middle'});
     });
-    [{v:pct2(d.irr),l:'LEVERED IRR'},{v:mult2(d.em),l:'EQUITY MULTIPLE'},{v:pct2(d.ltv),l:'LTV'}].forEach(function(k,i){
-      kpiCard(s2,0.22+i*4.36,2.47,4.15,1.52,k.v,k.l,'1B5E20','FFFFFF');
+    var kpi2=[{v:mult2(d.em),l:'EQUITY MULTIPLE',s:'Floor 1.50×'},{v:pct2(d.yoc),l:'YOC YEAR 3',s:'Anchor 7.50%'},{v:pct2(d.ltv),l:'LTV',s:'Senior debt '+fmtUSD(d.debt)},{v:(d.hold||'4')+' Years',l:'HOLD PERIOD',s:'Exit '+(d.exitDate||'TBD')}];
+    kpi2.forEach(function(k,i){
+      var xv=1+i*4.36;
+      if(i>0) s2.addShape(pptx.ShapeType.rect,{x:xv-0.01,y:4.71,w:0.02,h:1.43,fill:{color:RULE},line:{color:RULE}});
+      s2.addText(k.l,{x:xv,y:4.71,w:4.15,h:0.28,fontSize:10.5,color:BODY,bold:true, align:'left',valign:'middle'});
+      s2.addText(k.v,{x:xv,y:5.06,w:4.15,h:0.75,fontSize:38,  color:NAVY,bold:false,align:'left',valign:'middle'});
+      s2.addText(k.s,{x:xv,y:5.87,w:4.15,h:0.31,fontSize:10,  color:BODY,bold:false,align:'left',valign:'middle'});
     });
-    s2.addShape(pptx.ShapeType.rect,{x:0.22,y:4.15,w:12.9,h:0.012,fill:{color:MGREY},line:{color:MGREY}});
-    [{l:'YOC YR 3',v:pct2(d.yoc)},{l:'NOI YR 1',v:m.noi?'$'+Math.round(Number(m.noi)).toLocaleString('en-US'):'—'},{l:'HOLD PERIOD',v:(d.hold||'—')},{l:'ASSET TYPE',v:(d.type||'—')}].forEach(function(ss,i){
-      s2.addText(ss.v,{x:0.22+i*3.28,y:4.30,w:3.1,h:1.95,fontSize:28,color:TEXT,bold:true,align:'center',valign:'middle'});
-      s2.addText(ss.l,{x:0.22+i*3.28,y:6.28,w:3.1,h:0.44,fontSize:9.5,color:MUTED,align:'center',charSpacing:1.5});
-    });
+    s2.addShape(pptx.ShapeType.rect,{x:1,y:4.65,w:18,h:0.01,fill:{color:RULE},line:{color:RULE}});
     addFtr(s2);
 
     // ── SLIDE 3 — Acquisition Team Notes ─────────────────────
