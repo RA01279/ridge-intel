@@ -264,3 +264,19 @@ After every PPTX generation, execute in order:
 | Date | Change |
 |---|---|
 | 2026-03-30 | Initial version created |
+
+---
+
+## Multi-output rendering standard
+
+Every skill that produces more than one export format must follow this rule:
+
+**One data extraction object. Multiple renderers. Zero divergence.**
+
+1. Extract all data into a single structured object immediately after the skill run completes.
+2. Every export format (PDF, XLSX, PPTX, DOCX) reads from that object — never from a second extraction pass.
+3. PDF = narrative + full data. Self-contained. Includes any map or chart visual plus the complete data table. A partner must be able to read it without opening RIDGE.
+4. XLSX = raw working data. Sortable, filterable, model-ready. Same numbers as the PDF — no additions, no omissions.
+5. If a number appears in the PDF, it must appear identically in the XLSX. If it does not exist in the extraction object, it does not appear in any export.
+
+Skills with multiple outputs: Gavel (PDF + XLSX), SCOUT (PDF + XLSX), Market Pulse (PDF + XLSX), Lease Comp Map (PDF + XLSX).
