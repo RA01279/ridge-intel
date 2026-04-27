@@ -1,0 +1,48 @@
+<!doctype html><html><head><meta charset="utf-8"><link rel="stylesheet" href="../colors_and_type.css">
+<style>
+html,body{margin:0;background:var(--bg);font-family:var(--font-system);color:var(--text);}
+body{width:700px;padding:20px 22px;box-sizing:border-box;}
+
+.title{font:700 11px var(--font-mono);letter-spacing:2px;text-transform:uppercase;color:var(--text-muted);margin:0 0 14px;}
+
+.list{display:grid;grid-template-columns:1fr 1fr;gap:8px 14px;}
+
+/* Each row: a colored chip on the left, dark info panel on the right.
+   Text always sits on a known dark surface — no contrast guessing. */
+.row{
+  display:grid;
+  grid-template-columns:88px 1fr;
+  align-items:stretch;
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:6px;
+  overflow:hidden;
+}
+.chip{
+  /* fill set inline; thin outline so darkest chips remain visible against surface */
+  border-right:1px solid var(--border);
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.04);
+}
+.info{padding:10px 12px;display:flex;flex-direction:column;justify-content:center;gap:3px;min-height:64px;}
+.name{font:700 11px var(--font-mono);letter-spacing:1px;text-transform:uppercase;color:var(--text);}
+.hex{font:500 10.5px var(--font-mono);color:var(--text-muted);letter-spacing:.5px;}
+.role{font:400 10.5px var(--font-system);color:var(--text-muted);line-height:1.3;}
+</style></head><body>
+
+<div class="title">Neutrals — Surfaces · Borders · Text on dark</div>
+
+<div class="list">
+  <div class="row"><div class="chip" style="background:#0D1117"></div><div class="info"><div class="name">BG</div><div class="hex">#0D1117</div><div class="role">Page background</div></div></div>
+  <div class="row"><div class="chip" style="background:#161B22"></div><div class="info"><div class="name">Surface</div><div class="hex">#161B22</div><div class="role">Cards · panels</div></div></div>
+
+  <div class="row"><div class="chip" style="background:#1C2128"></div><div class="info"><div class="name">Surface 2</div><div class="hex">#1C2128</div><div class="role">Hover · nested</div></div></div>
+  <div class="row"><div class="chip" style="background:#30363D"></div><div class="info"><div class="name">Border</div><div class="hex">#30363D</div><div class="role">Default 1px rule</div></div></div>
+
+  <div class="row"><div class="chip" style="background:#484F58"></div><div class="info"><div class="name">Faint</div><div class="hex">#484F58</div><div class="role">Disabled · meta</div></div></div>
+  <div class="row"><div class="chip" style="background:#8B949E"></div><div class="info"><div class="name">Muted</div><div class="hex">#8B949E</div><div class="role">Secondary text</div></div></div>
+
+  <div class="row"><div class="chip" style="background:#E6EDF3"></div><div class="info"><div class="name">Text</div><div class="hex">#E6EDF3</div><div class="role">Primary on dark</div></div></div>
+  <div class="row"><div class="chip" style="background:#C7C1BB"></div><div class="info"><div class="name">Stone</div><div class="hex">#C7C1BB</div><div class="role">Entrada warm neutral</div></div></div>
+</div>
+
+</body></html>

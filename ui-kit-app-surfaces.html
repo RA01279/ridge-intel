@@ -1,0 +1,146 @@
+<!doctype html><html><head><meta charset="utf-8"><link rel="stylesheet" href="../colors_and_type.css">
+<style>
+html,body{margin:0;background:var(--bg);font-family:var(--font-system);color:var(--text);}
+body{width:760px;padding:24px;box-sizing:border-box;}
+.title{font-family:var(--font-mono);font-size:11px;letter-spacing:2px;color:var(--text-muted);text-transform:uppercase;margin:24px 0 14px;}
+.title:first-child{margin-top:0;}
+
+/* Buttons */
+.btn{display:inline-flex;align-items:center;gap:8px;padding:9px 16px;border-radius:var(--radius);font:600 13px var(--font-system);border:1px solid transparent;cursor:pointer;transition:all var(--t-hover);}
+.btn-primary{background:var(--blue);color:#fff;}
+.btn-primary:hover{background:var(--blue-dim);}
+.btn-secondary{background:transparent;color:var(--text);border-color:var(--border-strong);}
+.btn-ghost{background:transparent;color:var(--text-muted);}
+.btn-danger{background:transparent;color:var(--red);border-color:var(--red);}
+.btn-mono{font-family:var(--font-mono);font-size:11px;letter-spacing:1px;text-transform:uppercase;padding:7px 14px;}
+.btn-row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;}
+
+/* Inputs */
+.input{background:var(--surface-2);border:1px solid var(--border);border-radius:var(--radius);padding:9px 12px;color:var(--text);font:400 13px var(--font-system);width:240px;}
+.input:focus{outline:none;border-color:var(--blue);}
+.input-row{display:flex;gap:10px;align-items:center;}
+.label{font:700 10px var(--font-mono);letter-spacing:1.5px;text-transform:uppercase;color:var(--text-muted);display:block;margin-bottom:6px;}
+
+/* KPI box */
+.kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;}
+.kpi-box{background:var(--navy);border-radius:var(--radius);padding:16px 14px;color:#fff;}
+.kpi-box.green{background:#1B5E20;}
+.kpi-box .lbl{font:600 10px var(--font-mono);letter-spacing:1.5px;text-transform:uppercase;color:var(--ice);margin-bottom:6px;}
+.kpi-box .val{font:700 28px var(--font-mono);letter-spacing:-.01em;}
+.kpi-box .sub{font:500 9.5px var(--font-mono);color:var(--ice);opacity:.75;margin-top:4px;}
+
+/* Pills */
+.pill-row{display:flex;flex-wrap:wrap;gap:8px;}
+
+/* Table */
+table{width:100%;border-collapse:collapse;font:400 12px var(--font-system);}
+th{background:var(--navy);color:#fff;text-align:left;padding:9px 12px;font:700 11px var(--font-mono);letter-spacing:.5px;text-transform:uppercase;}
+td{padding:9px 12px;border-top:1px solid var(--border);}
+tr:nth-child(odd) td{background:rgba(33,150,243,.04);}
+.num{font-family:var(--font-mono);text-align:right;}
+.delta-pos{color:var(--green-bright);}
+.delta-neg{color:var(--red);}
+
+/* Cards */
+.deal-card{background:var(--surface);border:1px solid var(--border);border-left-width:4px;border-radius:var(--radius);padding:14px 16px;display:grid;grid-template-columns:1fr auto;gap:8px 12px;align-items:center;}
+.deal-card.high{border-left-color:var(--gold);}
+.deal-card.needs{border-left-color:var(--blue);}
+.deal-card.watch{border-left-color:var(--watch-mint);}
+.deal-card .addr{font:600 14px var(--font-system);color:var(--text);}
+.deal-card .meta{font:400 12px var(--font-mono);color:var(--text-muted);grid-column:1;}
+.deal-card .stats{display:flex;gap:14px;font-family:var(--font-mono);font-size:11px;}
+.stat-num{color:var(--text);font-weight:700;font-size:13px;}
+.stat-lbl{color:var(--text-faint);font-size:9px;letter-spacing:1px;text-transform:uppercase;}
+
+/* Toast */
+.toast{display:inline-flex;align-items:center;gap:10px;background:var(--navy);border:1px solid var(--blue);color:var(--text);padding:13px 20px;border-radius:var(--radius);font-size:13px;box-shadow:var(--shadow-toast);}
+.toast .dot{width:8px;height:8px;border-radius:50%;background:var(--green-bright);}
+
+/* Verdict banner */
+.verdict{padding:14px 18px;border-radius:var(--radius);display:flex;align-items:center;justify-content:space-between;color:#fff;}
+.verdict.pass{background:#1B5E20;}
+.verdict.cond{background:#D97706;}
+.verdict.miss{background:var(--red);}
+.verdict .v{font:800 13px var(--font-mono);letter-spacing:2px;text-transform:uppercase;}
+.verdict .why{font:400 12px var(--font-system);opacity:.92;}
+</style></head><body>
+
+<div class="title">Buttons</div>
+<div class="btn-row">
+  <button class="btn btn-primary">Run Napkin Screen</button>
+  <button class="btn btn-secondary">Upload OM</button>
+  <button class="btn btn-ghost">Cancel</button>
+  <button class="btn btn-danger">Mark Dead</button>
+  <button class="btn btn-primary btn-mono">EXPORT IC DECK</button>
+</div>
+
+<div class="title">Inputs</div>
+<div class="input-row">
+  <div><span class="label">Address</span><input class="input" value="2810 Riverside Pkwy, Atlanta GA"></div>
+  <div><span class="label">Going-In Cap</span><input class="input" style="width:120px;font-family:var(--font-mono)" value="6.25%"></div>
+</div>
+
+<div class="title">Conviction Badges</div>
+<div class="pill-row">
+  <span class="badge-conviction high">High Conviction</span>
+  <span class="badge-conviction needs">Needs More Data</span>
+  <span class="badge-conviction watch">Watch List</span>
+</div>
+
+<div class="title">Risk Pills</div>
+<div class="pill-row">
+  <span class="risk-pill high">High</span>
+  <span class="risk-pill medium">Medium</span>
+  <span class="risk-pill low">Low</span>
+</div>
+
+<div class="title">KPI Callouts</div>
+<div class="kpi-grid">
+  <div class="kpi-box green"><div class="lbl">Levered IRR</div><div class="val">14.75%</div><div class="sub">Hurdle ≥ 14.75%</div></div>
+  <div class="kpi-box green"><div class="lbl">Equity Mult.</div><div class="val">1.77x</div><div class="sub">Floor 1.70x</div></div>
+  <div class="kpi-box green"><div class="lbl">YOC Yr 3</div><div class="val">7.50%</div><div class="sub">Target 7.50–8.00%</div></div>
+  <div class="kpi-box"><div class="lbl">DSCR</div><div class="val">1.47x</div><div class="sub">Min 1.25x</div></div>
+</div>
+
+<div class="title">Returns Table</div>
+<table>
+  <tr><th>Metric</th><th class="num">Value</th><th class="num">Hurdle</th><th class="num">Status</th></tr>
+  <tr><td>Levered IRR</td><td class="num">14.75%</td><td class="num">14.75%</td><td class="num"><span class="risk-pill medium">At Floor</span></td></tr>
+  <tr><td>Equity Multiple</td><td class="num">1.77x</td><td class="num">1.70x</td><td class="num"><span class="risk-pill low">Pass</span></td></tr>
+  <tr><td>YOC Year 3</td><td class="num">7.50%</td><td class="num">7.50%</td><td class="num"><span class="risk-pill low">Pass</span></td></tr>
+  <tr><td>DSCR</td><td class="num">1.47x</td><td class="num">1.25x</td><td class="num"><span class="risk-pill low">Pass</span></td></tr>
+</table>
+
+<div class="title">Deal Cards (left-border conviction)</div>
+<div style="display:flex;flex-direction:column;gap:8px;">
+  <div class="deal-card high">
+    <div class="addr">2810 Riverside Pkwy · Atlanta, GA</div>
+    <span class="badge-conviction high">High</span>
+    <div class="meta">154,066 SF · Industrial · $26.5M ask</div>
+    <div class="stats"><div><div class="stat-num">14.75%</div><div class="stat-lbl">IRR</div></div><div><div class="stat-num">1.77x</div><div class="stat-lbl">EM</div></div><div><div class="stat-num">7.50%</div><div class="stat-lbl">YOC</div></div></div>
+  </div>
+  <div class="deal-card needs">
+    <div class="addr">5440 Pooler Pkwy · Savannah, GA</div>
+    <span class="badge-conviction needs">Needs Data</span>
+    <div class="meta">98,200 SF · Flex · Off-market</div>
+    <div class="stats"><div><div class="stat-num">—</div><div class="stat-lbl">IRR</div></div><div><div class="stat-num">—</div><div class="stat-lbl">EM</div></div><div><div class="stat-num">8.10%</div><div class="stat-lbl">YOC</div></div></div>
+  </div>
+  <div class="deal-card watch">
+    <div class="addr">12150 Stemmons Fwy · DFW</div>
+    <span class="badge-conviction watch">Watch</span>
+    <div class="meta">220,400 SF · Industrial · Re-trade pending</div>
+    <div class="stats"><div><div class="stat-num">12.40%</div><div class="stat-lbl">IRR</div></div><div><div class="stat-num">1.55x</div><div class="stat-lbl">EM</div></div><div><div class="stat-num">7.10%</div><div class="stat-lbl">YOC</div></div></div>
+  </div>
+</div>
+
+<div class="title">Verdict Banners (IC slide 13)</div>
+<div style="display:flex;flex-direction:column;gap:8px;">
+  <div class="verdict pass"><span class="v">✓ Pass · Pursue</span><span class="why">All hurdles cleared · 14.75% IRR / 1.77x EM</span></div>
+  <div class="verdict cond"><span class="v">⚠ Pass with Conditions</span><span class="why">At-floor IRR — needs re-trade or rate buy-down</span></div>
+  <div class="verdict miss"><span class="v">✕ Pass — Decline</span><span class="why">YOC 6.80% vs 7.50% floor · cannot bridge to thesis</span></div>
+</div>
+
+<div class="title">Toast</div>
+<div class="toast"><span class="dot"></span><span>OM parsed — 14 tenants, 154,066 SF, expiry stack ready.</span></div>
+
+</body></html>

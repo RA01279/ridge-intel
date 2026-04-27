@@ -1,0 +1,32 @@
+<!doctype html><html><head><meta charset="utf-8"><link rel="stylesheet" href="../colors_and_type.css">
+<style>html,body{margin:0;background:var(--bg);font-family:var(--font-system);}body{width:700px;padding:18px 22px;box-sizing:border-box;}
+.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;}
+.sw{border-radius:6px;padding:14px 12px;min-height:96px;display:flex;flex-direction:column;justify-content:space-between;color:#fff;}
+.n{font:700 11px var(--font-mono);letter-spacing:1px;text-transform:uppercase;}
+.h{font:500 10px var(--font-mono);opacity:.9;}
+.r{font:400 10px var(--font-system);opacity:.8;margin-top:3px;}
+.cap{display:inline-block;padding:2px 10px;border-radius:10px;font:700 10px var(--font-mono);letter-spacing:.5px;text-transform:uppercase;border:1px solid currentColor;}
+.section{font:700 10px var(--font-mono);letter-spacing:2px;color:#8B949E;text-transform:uppercase;margin:6px 2px 4px;}
+</style></head><body>
+<div class="section">Status</div>
+<div class="grid">
+<div class="sw" style="background:#1B7A34;"><div><div class="n">Green</div><div class="r">Pass · positive</div></div><div class="h">#1B7A34</div></div>
+<div class="sw" style="background:#2EA043;"><div><div class="n">Green Bright</div><div class="r">Loaded · success</div></div><div class="h">#2EA043</div></div>
+<div class="sw" style="background:#D97706;"><div><div class="n">Amber</div><div class="r">At floor · warn</div></div><div class="h">#D97706</div></div>
+<div class="sw" style="background:#C0392B;"><div><div class="n">Red</div><div class="r">Miss · error</div></div><div class="h">#C0392B</div></div>
+</div>
+<div class="section" style="margin-top:14px">Risk Encoding (filled rectangle, never plain text)</div>
+<div class="grid">
+<div class="sw" style="background:#C0392B;"><div><div class="n">High</div><div class="r">Risk badge</div></div><div class="h">#C0392B</div></div>
+<div class="sw" style="background:#E67E22;"><div><div class="n">Medium</div><div class="r">Risk badge</div></div><div class="h">#E67E22</div></div>
+<div class="sw" style="background:#27AE60;"><div><div class="n">Low</div><div class="r">Risk badge</div></div><div class="h">#27AE60</div></div>
+<div class="sw" style="background:#1E2761;border:1px solid #30363D;"><div><div class="n" style="color:#CADCFC">Hurdle Bg</div><div class="r" style="color:#CADCFC">Returns table</div></div><div class="h" style="color:#CADCFC">#1B5E20*</div></div>
+</div>
+<div class="section" style="margin-top:14px">Conviction (left-border on deal cards)</div>
+<div class="grid">
+<div class="sw" style="background:#1C2128;border-left:4px solid #C9A84C;"><div><div class="n" style="color:#C9A84C">High Conviction</div><div class="r">Push to action</div></div><div class="h">#C9A84C</div></div>
+<div class="sw" style="background:#1C2128;border-left:4px solid #2196F3;"><div><div class="n" style="color:#93C5FD">Needs More Data</div><div class="r">Close gap</div></div><div class="h">#2196F3</div></div>
+<div class="sw" style="background:#1C2128;border-left:4px solid #6EE7B0;"><div><div class="n" style="color:#6EE7B0">Watch List</div><div class="r">Define trigger</div></div><div class="h">#6EE7B0</div></div>
+<div class="sw" style="background:#1C2128;border-left:4px solid #4B5563;"><div><div class="n" style="color:#9CA3AF">Dead</div><div class="r">Retired</div></div><div class="h">#4B5563</div></div>
+</div>
+</body></html>
