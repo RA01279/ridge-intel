@@ -1,0 +1,143 @@
+<!doctype html><html><head><meta charset="utf-8"><link rel="stylesheet" href="../colors_and_type.css">
+<style>
+html,body{margin:0;background:var(--bg);font-family:var(--font-system);color:var(--text);}
+body{width:760px;padding:24px;box-sizing:border-box;}
+
+.title{font:700 11px var(--font-mono);letter-spacing:2px;color:var(--text-muted);text-transform:uppercase;margin:0 0 14px;}
+.title.spaced{margin-top:24px;}
+
+.row{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+.row-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;}
+
+.box{
+  border:1px solid var(--border);
+  border-radius:var(--radius);
+  padding:24px 22px;
+  background:var(--surface);
+  min-height:180px;
+  display:flex;flex-direction:column;justify-content:space-between;
+}
+.box.deep   { background: var(--navy-deep); }
+.box.navy   { background: var(--navy);      }
+.box.paper  { background: #FFFFFF; color: var(--entrada-ink); border-color:#E5E7EB; }
+.box.stone  { background: var(--entrada-stone); color: var(--entrada-ink); border-color: #B8B0A8; }
+
+.lock{
+  font:700 9.5px var(--font-mono);
+  letter-spacing:2px;text-transform:uppercase;
+  color:var(--text-muted);
+  margin-bottom:18px;
+}
+.box.deep .lock,.box.navy .lock{ color: var(--ice); }
+.box.paper .lock,.box.stone .lock{ color:#6B7280; }
+
+.meta{
+  font:500 9.5px var(--font-mono);
+  letter-spacing:.5px;color:var(--text-muted);
+  margin-top:14px;display:flex;gap:14px;flex-wrap:wrap;
+}
+.box.deep .meta,.box.navy .meta{ color: var(--text-on-navy-soft); }
+.box.paper .meta,.box.stone .meta{ color:#6B7280; }
+
+img.wm{ display:block; margin:0 auto; }
+.entrada-h     { width: 240px; height:auto; }
+.entrada-h-sm  { width: 200px; height:auto; }
+.entrada-v     { width: 130px; height:auto; }
+.entrada-mark  { width: 72px;  height:auto; }
+.ridge-wm      { width: 220px; height:auto; }
+
+.fav{display:flex;gap:14px;align-items:center;margin-bottom:14px;}
+.fav img{width:48px;height:48px;border-radius:8px;}
+.fav .small{width:24px;height:24px;border-radius:4px;}
+.fav .tiny{width:16px;height:16px;border-radius:2px;}
+
+.center{display:flex;align-items:center;justify-content:center;flex:1;}
+</style></head><body>
+
+<div class="title">Brand · RIDGE Wordmark</div>
+<div class="row">
+  <div class="box deep">
+    <div>
+      <div class="lock">RIDGE — App / Web</div>
+      <div class="center"><img src="../assets/ridge-wordmark.svg" class="wm ridge-wm" alt="RIDGE"></div>
+    </div>
+    <div class="meta"><span>On navy-deep #0B0F1A</span><span>Mono · 4px tracking</span></div>
+  </div>
+  <div class="box">
+    <div>
+      <div class="lock">RIDGE — On surface</div>
+      <div class="center"><img src="../assets/ridge-wordmark.svg" class="wm ridge-wm" alt="RIDGE"></div>
+    </div>
+    <div class="meta"><span>On surface #161B22</span><span>Action blue mark</span></div>
+  </div>
+</div>
+
+<div class="title spaced">Brand · Entrada Master Lockups (from Brand Style Guide)</div>
+<div class="row-3">
+  <div class="box paper">
+    <div>
+      <div class="lock">Main — Vertical</div>
+      <div class="center"><img src="../assets/entrada-logo-vertical.png" class="wm entrada-v" alt="Entrada Partners"></div>
+    </div>
+    <div class="meta"><span>Primary lockup</span></div>
+  </div>
+  <div class="box paper">
+    <div>
+      <div class="lock">Horizontal</div>
+      <div class="center"><img src="../assets/entrada-logo-horizontal.png" class="wm entrada-h-sm" alt="Entrada Partners"
+        style="filter: invert(1) hue-rotate(180deg) saturate(1);"></div>
+    </div>
+    <div class="meta"><span>Wide formats · letterhead</span></div>
+  </div>
+  <div class="box paper">
+    <div>
+      <div class="lock">Secondary — E-mark</div>
+      <div class="center"><img src="../assets/entrada-emark.png" class="wm entrada-mark" alt="Entrada"></div>
+    </div>
+    <div class="meta"><span>Favicon · social · stamp</span></div>
+  </div>
+</div>
+
+<div class="title spaced">Brand · Entrada on Dark Surfaces</div>
+<div class="row">
+  <div class="box navy">
+    <div>
+      <div class="lock">Horizontal — Knockout</div>
+      <div class="center"><img src="../assets/entrada-logo-h-knockout.png" class="wm entrada-h" alt="Entrada Partners"></div>
+    </div>
+    <div class="meta"><span>On navy #1E2761</span><span>Master knockout PNG</span></div>
+  </div>
+  <div class="box deep">
+    <div>
+      <div class="lock">Knockout on navy-deep</div>
+      <div class="center"><img src="../assets/entrada-logo-h-knockout.png" class="wm entrada-h" alt="Entrada Partners"></div>
+    </div>
+    <div class="meta"><span>On navy-deep #0B0F1A</span><span>IC cover slides</span></div>
+  </div>
+</div>
+
+<div class="title spaced">Brand · App Mark &amp; Tagline</div>
+<div class="row">
+  <div class="box">
+    <div>
+      <div class="lock">Favicon — sized</div>
+      <div class="fav">
+        <img src="../assets/ridge-favicon.svg" alt="">
+        <img src="../assets/ridge-favicon.svg" class="small" alt="">
+        <img src="../assets/ridge-favicon.svg" class="tiny" alt="">
+      </div>
+    </div>
+    <div class="meta"><span>48 / 24 / 16</span><span>R-mark · navy</span></div>
+  </div>
+  <div class="box paper">
+    <div>
+      <div class="lock">RIDGE Tagline — locked form</div>
+      <div style="font:600 11px var(--font-mono);letter-spacing:2.4px;color:#005EB8;line-height:1.7;">
+        REAL INTELLIGENCE FOR<br>DEAL GENERATION &amp; EVALUATION
+      </div>
+    </div>
+    <div class="meta"><span>Never abbreviate</span><span>Mono · uppercase only</span></div>
+  </div>
+</div>
+
+</body></html>

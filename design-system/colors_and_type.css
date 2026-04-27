@@ -1,0 +1,178 @@
+/* ═══════════════════════════════════════════════════════════════════════
+   RIDGE × ENTRADA — Design Tokens
+   Single source of truth for color, type, spacing, shadow.
+   The system runs in two paired modes:
+     • Web (RIDGE Intelligence app)   → dark surface, blue/navy execution
+     • Print/Brand (Entrada Partners) → light surface, navy + ice tones
+   ═════════════════════════════════════════════════════════════════════ */
+
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+
+/* Juana is a licensed Latinotype face — Fraunces is the closest
+   Google Fonts substitute (transitional serif, slight contrast).
+   Replace @font-face below with the licensed Juana .woff2 when available. */
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&display=swap');
+
+:root {
+  /* ── BRAND CORE (from Entrada Brand Guide PDF) ─────────────── */
+  --entrada-pms-300:        #005EB8;   /* PMS 300 C  — primary blue */
+  --entrada-pms-288:        #002D72;   /* PMS 288 C  — deep navy */
+  --entrada-stone:          #C7C1BB;   /* MP4929     — warm grey */
+  --entrada-ink:            #0D1314;   /* MP33653    — near-black */
+  --entrada-paper:          #FFFFFF;
+
+  /* ── RIDGE WEB SURFACE (from index.html / config.js) ───────── */
+  --bg:                     #0D1117;   /* page bg */
+  --surface:                #161B22;   /* card */
+  --surface-2:              #1C2128;   /* nested card / hover */
+  --border:                 #30363D;
+  --border-strong:          #484F58;
+
+  --navy:                   #1E2761;   /* RIDGE navy — exec callouts */
+  --navy-deep:              #0B0F1A;   /* gate / cover slide */
+  --navy-edge:              #2D3A7A;   /* navy panel border */
+  --blue:                   #2196F3;   /* primary action / accent */
+  --blue-dim:               #1565C0;   /* hover */
+  --ice:                    #CADCFC;   /* labels on dark */
+  --ice-row:                #F0F4FF;   /* alternating table rows */
+
+  /* ── SEMANTIC: status & risk ───────────────────────────────── */
+  --green:                  #1B7A34;   /* return / pass */
+  --green-bright:           #2EA043;
+  --green-mitigant:         #27AE60;
+  --amber:                  #D97706;   /* watch / at floor */
+  --amber-warm:             #E67E22;   /* risk medium */
+  --red:                    #C0392B;   /* miss / risk high */
+  --gold:                   #C9A84C;   /* high-conviction badge */
+  --watch-mint:             #6EE7B0;   /* watch list */
+
+  /* ── TEXT (dark surface) ───────────────────────────────────── */
+  --text:                   #E6EDF3;
+  --text-muted:             #8B949E;
+  --text-faint:             #484F58;
+  --text-on-navy:           #FFFFFF;
+  --text-on-navy-soft:      #CADCFC;
+
+  /* ── TYPOGRAPHY ────────────────────────────────────────────── */
+  --font-display:           "Fraunces", "Juana", Georgia, serif;
+  --font-sans:              "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-system:            -apple-system, BlinkMacSystemFont, "Segoe UI", "Plus Jakarta Sans", sans-serif;
+  --font-mono:              "JetBrains Mono", "SF Mono", "Fira Code", ui-monospace, monospace;
+
+  /* Scale — paired (web px) and print (pt). Web is the floor. */
+  --fs-hero:                44px;   /* RIDGE wordmark */
+  --fs-h1:                  28px;
+  --fs-h2:                  22px;
+  --fs-h3:                  17px;
+  --fs-body:                14px;
+  --fs-body-sm:             13px;
+  --fs-label:               11px;   /* uppercase eyebrow */
+  --fs-micro:               10px;   /* table mono / num */
+  --fs-kpi:                 42px;
+  --fs-kpi-hero:            52px;
+
+  --lh-tight:               1.15;
+  --lh-snug:                1.4;
+  --lh-body:                1.6;
+  --lh-loose:               1.85;
+
+  --ls-mono:                2px;    /* RIDGE wordmark, system labels */
+  --ls-eyebrow:             1.5px;  /* uppercase 10–11px labels */
+  --ls-tight:               .5px;
+
+  /* ── SPACING / RADIUS / SHADOW ─────────────────────────────── */
+  --space-1:                4px;
+  --space-2:                8px;
+  --space-3:                12px;
+  --space-4:                16px;
+  --space-5:                20px;
+  --space-6:                24px;
+  --space-8:                32px;
+  --space-10:               40px;
+  --space-12:               48px;
+
+  --radius:                 6px;     /* canonical RIDGE radius */
+  --radius-sm:              3px;
+  --radius-pill:            10px;
+
+  /* No drop shadows on cards — RIDGE leans on borders for elevation.
+     Reserve shadow for floating overlays (toast, modals). */
+  --shadow-toast:           0 4px 20px rgba(0,0,0,.4);
+  --shadow-modal:           0 10px 40px rgba(0,0,0,.6);
+  --shadow-print:           0 1px 2px rgba(13,19,20,.08);
+
+  /* ── TIMING ────────────────────────────────────────────────── */
+  --t-hover:                .15s;
+  --t-panel:                .2s;
+  --ease:                   ease;
+}
+
+/* ═════════════════════════════════════════════════════════════
+   SEMANTIC ELEMENT STYLES
+   Use these so HTML stays clean. Each maps to design intent.
+   ═════════════════════════════════════════════════════════════ */
+
+.ridge-wordmark {
+  font-family: var(--font-mono);
+  font-weight: 800;
+  font-size: var(--fs-hero);
+  letter-spacing: 4px;
+  color: var(--blue);
+}
+
+.ridge-eyebrow {
+  font-family: var(--font-mono);
+  font-size: var(--fs-label);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: var(--ls-eyebrow);
+  color: var(--text-muted);
+}
+
+.ridge-eyebrow-blue { color: var(--blue); }
+.ridge-eyebrow-ice  { color: var(--ice); }
+
+h1, .h1 { font: 800 var(--fs-h1)/var(--lh-tight) var(--font-sans); color: var(--text); letter-spacing: -.01em; }
+h2, .h2 { font: 700 var(--fs-h2)/var(--lh-snug)  var(--font-sans); color: var(--blue); }
+h3, .h3 { font: 700 var(--fs-h3)/var(--lh-snug)  var(--font-sans); color: var(--text); }
+
+p,  .p  { font: 400 var(--fs-body)/var(--lh-body) var(--font-system); color: var(--text); }
+.lede   { font: 500 var(--fs-h3)/var(--lh-body) var(--font-system); color: var(--text); }
+.muted  { color: var(--text-muted); }
+.faint  { color: var(--text-faint); }
+
+/* Mono — used for KPIs, tickers, addresses, code. The "RIDGE voice". */
+.mono   { font-family: var(--font-mono); }
+.kpi    { font: 700 var(--fs-kpi)/1     var(--font-mono); color: var(--text); }
+.kpi-l  { font: 700 var(--fs-kpi-hero)/1 var(--font-mono); color: var(--text); letter-spacing: -.02em; }
+.kpi-label { font-size: var(--fs-micro); color: var(--text-on-navy-soft); letter-spacing: var(--ls-eyebrow); text-transform: uppercase; }
+
+/* Display serif — Entrada print + cover slides only.
+   Pair with navy or ink, never blue. */
+.display { font-family: var(--font-display); font-weight: 500; letter-spacing: -.01em; }
+
+/* Conviction badges — RIDGE's three-state output */
+.badge-conviction {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-family: var(--font-mono);
+  font-size: var(--fs-label); font-weight: 700;
+  letter-spacing: var(--ls-tight);
+  text-transform: uppercase;
+  padding: 3px 10px;
+  border-radius: var(--radius-pill);
+  border: 1px solid currentColor;
+}
+.badge-conviction.high  { color: var(--gold);       background: rgba(201,168,76,.12); }
+.badge-conviction.needs { color: #93C5FD;           background: rgba(33,150,243,.12); }
+.badge-conviction.watch { color: var(--watch-mint); background: rgba(110,231,176,.10); }
+
+/* Risk pills — match output-standard/STANDARD.md */
+.risk-pill {
+  display: inline-block; padding: 2px 10px;
+  font-family: var(--font-mono); font-size: var(--fs-micro);
+  font-weight: 700; letter-spacing: 1px; text-transform: uppercase;
+  color: #fff; border-radius: 3px;
+}
+.risk-pill.high   { background: var(--red); }
+.risk-pill.medium { background: var(--amber-warm); }
+.risk-pill.low    { background: var(--green-mitigant); }
