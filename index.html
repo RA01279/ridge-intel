@@ -4091,6 +4091,37 @@ var _sb = null;
 var _sbOk = false;
 var _lastRunInputs = null;
 var _lastRunToolId  = null;
+function _updateExportButtons() {
+  var id = _lastRunToolId || '';
+  var map = {
+    'isr':           { pdf:false, ppt:true,  xls:false },
+    'acq':           { pdf:false, ppt:true,  xls:false },
+    'lens':          { pdf:true,  ppt:false, xls:false },
+    'gavel':         { pdf:true,  ppt:false, xls:true  },
+    'napkin':        { pdf:true,  ppt:false, xls:false },
+    'scout':         { pdf:true,  ppt:false, xls:true  },
+    'daily-signal':  { pdf:true,  ppt:false, xls:true  },
+    'canvas':        { pdf:true,  ppt:false, xls:false },
+    'market-pulse':  { pdf:true,  ppt:false, xls:true  },
+    'debt':          { pdf:true,  ppt:false, xls:true  },
+    'dd-tracker':    { pdf:true,  ppt:false, xls:true  },
+    'legal':         { pdf:true,  ppt:false, xls:false },
+    'loi':           { pdf:false, ppt:false, xls:false },
+    'lease-comp':    { pdf:true,  ppt:false, xls:true  },
+    'waterfall':     { pdf:true,  ppt:false, xls:true  },
+    'lease-neg':     { pdf:true,  ppt:false, xls:false },
+    'lease-stack':   { pdf:true,  ppt:false, xls:true  },
+    'lease-library': { pdf:true,  ppt:false, xls:true  },
+    'portfolio-map': { pdf:true,  ppt:false, xls:false },
+  };
+  var cfg = map[id] || { pdf:false, ppt:false, xls:false };
+  var pdfBtn = document.getElementById('ridge-pdf-btn');
+  var pptBtn = document.getElementById('ridge-ppt-btn');
+  var xlsBtn = document.getElementById('ridge-xls-btn');
+  if (pdfBtn) pdfBtn.style.display = cfg.pdf  ? '' : 'none';
+  if (pptBtn) pptBtn.style.display = cfg.ppt  ? '' : 'none';
+  if (xlsBtn) xlsBtn.style.display = cfg.xls  ? '' : 'none';
+}
 var _mpBenchmarkContext = '';
 var _napkinBenchmarkContext = '';
 var _lensBenchmarkContext = '';
@@ -7760,6 +7791,8 @@ function histView(id) {
   document.getElementById('ridge-pdf-btn').disabled = false;
   document.getElementById('ridge-ppt-btn').disabled = false;
   document.getElementById('ridge-xls-btn').disabled = false;
+  _lastRunToolId = (row.tool_id || row.skill_name || '').toLowerCase().replace(/\s+/g, '-') || _lastRunToolId;
+  _updateExportButtons();
 }
 
 async function histDelete(id) {
@@ -8055,6 +8088,7 @@ async function runRidgeAPI(skillName, prompt, runInputs, runToolId) {
   // Reset per-run state at the boundary so no prior tool's data bleeds in
   _lastRunInputs = runInputs || null;
   _lastRunToolId = runToolId || null;
+  _updateExportButtons();
   if (!_apiKey) {
     showApiKeyModal();
     return;
@@ -8239,6 +8273,7 @@ async function runRidgeAPI(skillName, prompt, runInputs, runToolId) {
     document.getElementById('ridge-pdf-btn').disabled = false;
     document.getElementById('ridge-ppt-btn').disabled = false;
     document.getElementById('ridge-xls-btn').disabled = false;
+    _updateExportButtons();
     // Waterfall shortcut after Napkin run
     if (document.getElementById('ridge-panel-skill-name').textContent.toLowerCase().includes('napkin') && _lastRunInputs) {
       var napkinCalcResult = _napkinCalc(_lastRunInputs);
