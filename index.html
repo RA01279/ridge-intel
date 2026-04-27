@@ -4741,7 +4741,7 @@ async function _ridgeChatSend(text) {
             assistMsg.innerHTML = fullText.replace(/\n/g, '<br>');
             messages.scrollTop = messages.scrollHeight;
           }
-        } catch(e) {}
+        } catch(e) { console.warn('[RIDGE]', e.message); }
       }
     }
 
@@ -6355,7 +6355,7 @@ function _ridgeForceReset() {
     localStorage.removeItem('ridge_daily_state_v1');
     Object.keys(sessionStorage).filter(function(k) { return k.startsWith('ridge_'); }).forEach(function(k) { sessionStorage.removeItem(k); });
     Object.keys(localStorage).filter(function(k) { return k.startsWith('ridge_'); }).forEach(function(k) { localStorage.removeItem(k); });
-  } catch(e) {}
+  } catch(e) { console.warn('[RIDGE]', e.message); }
   location.reload();
 }
 
@@ -7399,7 +7399,7 @@ async function loadApiKey() {
     if (!nr.error && nr.data && nr.data.data && nr.data.data.officerName) {
       _officerName = nr.data.data.officerName;
     }
-  } catch(e) {}
+  } catch(e) { console.warn('[RIDGE]', e.message); }
   if (!_officerName || _officerName === '') {
     _officerName = _getSessionUser();
   }
@@ -8186,7 +8186,7 @@ async function runRidgeAPI(skillName, prompt, runInputs, runToolId) {
               panelBody.scrollTop = panelBody.scrollHeight;
             }
           }
-        } catch(e) {}
+        } catch(e) { console.warn('[RIDGE]', e.message); }
       }
     }
     contentEl.innerHTML = parseMarkdown(accumulated);
@@ -8535,7 +8535,7 @@ async function runRidgeAPI(skillName, prompt, runInputs, runToolId) {
                 (_dRes.data || []).forEach(function(doc) {
                   if (!_lRows.length) _lRows = _parseLeaseTable(doc.extracted_text || '');
                 });
-              } catch(e) {}
+              } catch(e) { console.warn('[RIDGE]', e.message); }
             }
             await _writeLeaseRows(_lRows, _lAddr, _lastRunToolId.toUpperCase());
             // Supplemental: write structured lease comps from ISR Call 2 JSON (catches what text parser misses)
@@ -9308,7 +9308,7 @@ function ridgeExportPDF() {
         });
         if (cLines.length) convPara = cLines[0];
       }
-    } catch(e) {}
+    } catch(e) { console.warn('[RIDGE]', e.message); }
 
     var convColor = calc.meetsIRR ? '#1B5E20' : '#7B0000';
     var convBg    = calc.meetsIRR ? '#E8F5E9' : '#FFEBEE';
@@ -10206,6 +10206,10 @@ function _isrQACheck(jd) {
 }
 
 async function ridgeExportPPT() {
+  if (!_isrModelBuffer) {
+    showToast('Model file lost on refresh — re-upload your acquisition model Excel and re-run ISR, then export.', 'warn');
+    return;
+  }
   console.log('ridgeExportPPT fired — skillName:', document.getElementById('ridge-panel-skill-name').textContent, '| _lastRunInputs:', _lastRunInputs ? 'present' : 'null', '| PptxGenJS:', typeof PptxGenJS);
   if (typeof PptxGenJS === 'undefined') {
     alert('PptxGenJS library not loaded — please refresh the page and try again.');
@@ -10505,7 +10509,7 @@ async function ridgeExportPPT() {
     // Parse structured JSON — prefer already-extracted _isrParsedData, then re-parse raw output
     var jd = _isrParsedData || null;
     if (!jd) {
-      try { var _ssP = sessionStorage.getItem('ridge_isr_parsed'); if (_ssP) { var _ssCached = JSON.parse(_ssP); if (!_ssCached || _ssCached.schema_version !== 1) { sessionStorage.removeItem('ridge_isr_parsed'); } else { jd = _ssCached.data; console.log('[RIDGE] jd restored from sessionStorage'); } } } catch(e) {}
+      try { var _ssP = sessionStorage.getItem('ridge_isr_parsed'); if (_ssP) { var _ssCached = JSON.parse(_ssP); if (!_ssCached || _ssCached.schema_version !== 1) { sessionStorage.removeItem('ridge_isr_parsed'); } else { jd = _ssCached.data; console.log('[RIDGE] jd restored from sessionStorage'); } } } catch(e) { console.warn('[RIDGE]', e.message); }
     }
     if (!jd) {
       var _rawText = _skillRawOutputs['isr'] || '';
