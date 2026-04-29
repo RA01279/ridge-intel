@@ -10677,7 +10677,7 @@ async function ridgeExportPPT() {
     // ── SLIDE 2 — Deal Snapshot ───────────────────────────────
     var s2=pptx.addSlide(); s2.background={color:BG}; addHdr(s2,'Deal Snapshot',2);
     console.log('[RIDGE] PPTX building slide 2...');
-    var kpi1=[{v:fmtUSD(d.price),l:'PURCHASE PRICE',s:fmtPSF(d.psf)+' / SF'},{v:pctx2(d.cap),l:'GOING-IN CAP',s:'NOI Yr 1 '+fmtUSD(d.noi)},{v:pct2(d.irr),l:'LEVERED IRR',s:'Floor 14.75%'}];
+    var kpi1=[{v:fmtUSD(d.price),l:'PURCHASE PRICE',s:fmtPSF(d.psf)+' / SF'},{v:pct2(d.cap),l:'GOING-IN CAP',s:'NOI Yr 1 '+fmtUSD(d.noi)},{v:pct2(d.irr),l:'LEVERED IRR',s:'Floor 14.75%'}];
     kpi1.forEach(function(k,i){
       var xv=1+i*4.36;
       if(i>0) s2.addShape(pptx.ShapeType.rect,{x:xv-0.01,y:2.7,w:0.02,h:1.43,fill:{color:RULE},line:{color:RULE}});
