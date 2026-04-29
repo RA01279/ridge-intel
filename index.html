@@ -4899,6 +4899,12 @@ async function _writeLeaseRows(rows, address, source) {
       row.dock_high_doors   = row.dock_high_doors  != null ? parseInt(row.dock_high_doors)  : null;
       row.grade_level_doors = row.grade_level_doors != null ? parseInt(row.grade_level_doors) : null;
       row.clear_height      = row.clear_height     != null ? parseFloat(row.clear_height)   : null;
+        // Metadata tags
+        row.source = source || null;
+        row.asset_class = row.asset_class || null;
+        row.submarket = row.submarket || null;
+        row.record_type = row.record_type || (['GAVEL','LEASE_COMP_MAP','LEGAL_REVIEW','LEASE_LIBRARY','LEASE_STACK','LEASE_COMPARE'].indexOf(source) !== -1 ? 'comp' : 'rent_roll');
+        row.confidence = row.record_type === 'comp' ? 'high' : (['ISR','LENS','NAPKIN'].indexOf(source) !== -1 ? 'medium' : 'low');
       return row;
     });
     // Skip rows missing both address and tenant
@@ -4906,6 +4912,25 @@ async function _writeLeaseRows(rows, address, source) {
       var ok = row.address && row.address.trim() && row.tenant && row.tenant.trim();
       if (!ok) console.warn('[RIDGE] Skipping incomplete lease row (missing address or tenant):', row);
       return ok;
+    });
+    // Quality gate — drop rows missing core financial data
+    inserts = inserts.filter(function(row) {
+      if (!row.base_rent_psf || !row.sf) {
+        console.warn('[RIDGE] Skipping lease row — missing rent PSF or SF:', row.tenant);
+        return false;
+      }
+      return true;
+    });
+    // Junk pattern filter — drop non-tenant strings
+    var _junkPatterns = [/^\*\*/, /PASSES/i, /FAILS/i, /Senior Debt/i, /Operating/i,
+      /CapEx/i, /Total Sources/i, /Total Uses/i, /Equity\s*—/i, /Reserve/i,
+      /Working Capital/i, /Loan Draw/i, /PSF all-in/i, /compression/i,
+      /accretive/i, /program size/i, /ceiling/i, /presented as/i,
+      /Portfolio Total/i, /Weighted Avg/i, /WTD/i, /WAVG/i, /Capitalization/i];
+    inserts = inserts.filter(function(row) {
+      var isJunk = _junkPatterns.some(function(p) { return p.test(row.tenant || ''); });
+      if (isJunk) console.warn('[RIDGE] Skipping junk tenant row:', row.tenant);
+      return !isJunk;
     });
     // Deduplicate address+tenant before upsert — the same tenant in multiple suites
     // would hit the unique constraint twice in one batch, causing a Postgres conflict error.
@@ -4946,7 +4971,9 @@ async function _writeLeaseRows(rows, address, source) {
       if (!_er.address || !_er.tenant) return;
       var _embedText = [
         _er.address, _er.tenant, _er.asset_class || '',
-        _er.lease_type || '', _er.base_rent_psf || ''
+        _er.submarket || '', _er.lease_type || '',
+        _er.base_rent_psf || '', _er.sf || '',
+        _er.market || '', _er.record_type || ''
       ].join(' ').trim();
       _generateEmbedding(_embedText).then(function(_vec) {
         if (!_vec) return;
