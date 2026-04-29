@@ -1751,6 +1751,7 @@ function _buildStandalonePanelHTML(id) {
         <div class="ll-sec-title" style="margin:0;">LEASE DATABASE</div>
         <span id="ll-row-count" style="background:#1E2761;color:#CADCFC;font-size:10px;font-weight:700;padding:2px 9px;border-radius:10px;letter-spacing:.04em;">0 comps</span>
         <button class="btn btn-o" onclick="_llLoadLeases()" style="font-size:11px;padding:3px 10px;margin-left:auto;">↺ Refresh</button>
+        <button class="btn btn-o" onclick="_bulkEmbedLeases()" style="font-size:11px;padding:3px 10px;" title="Generate embeddings for rows missing semantic search vectors">⚡ Embed Missing</button>
       </div>
       <div id="ll-stats" style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px;"></div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;align-items:center;">
@@ -7542,6 +7543,53 @@ async function _generateEmbedding(text) {
     console.error('Voyage embedding error:', e.message);
     return null;
   }
+}
+
+async function _bulkEmbedLeases() {
+  if (!_sb || !_sbOk || !_voyageKey) {
+    showToast('Supabase or Voyage not connected — cannot embed.', 'warn');
+    return;
+  }
+  // Fetch all rows missing embeddings
+  var { data: rows, error } = await _sb.from('leases')
+    .select('id, address, tenant, asset_class, submarket, lease_type, base_rent_psf, sf, market, record_type')
+    .is('embedding', null)
+    .limit(200);
+  if (error) { console.warn('[RIDGE] bulkEmbed fetch error:', error.message); return; }
+  if (!rows || !rows.length) { showToast('All lease rows already have embeddings.', 'info'); return; }
+  console.log('[RIDGE] bulkEmbedLeases — ' + rows.length + ' rows to embed');
+  showToast('Embedding ' + rows.length + ' lease rows — this may take a minute...', 'info');
+  var success = 0, failed = 0;
+  for (var i = 0; i < rows.length; i++) {
+    var r = rows[i];
+    var embedText = [
+      r.address || '', r.tenant || '', r.asset_class || '',
+      r.submarket || '', r.lease_type || '',
+      r.base_rent_psf || '', r.sf || '',
+      r.market || '', r.record_type || ''
+    ].join(' ').trim();
+    // Retry up to 3x with backoff on 429
+    var vec = null;
+    for (var attempt = 0; attempt < 3; attempt++) {
+      if (attempt > 0) await new Promise(function(res) { setTimeout(res, 2000 * attempt); });
+      vec = await _generateEmbedding(embedText);
+      if (vec) break;
+    }
+    if (vec) {
+      var { error: upErr } = await _sb.from('leases')
+        .update({ embedding: vec })
+        .eq('id', r.id);
+      if (upErr) { console.warn('[RIDGE] embed update failed for', r.tenant, upErr.message); failed++; }
+      else success++;
+    } else {
+      console.warn('[RIDGE] embed failed after retries for:', r.tenant);
+      failed++;
+    }
+    // Throttle — 300ms between calls to avoid Voyage 429
+    await new Promise(function(res) { setTimeout(res, 300); });
+  }
+  showToast('Embedding complete — ' + success + ' succeeded, ' + failed + ' failed.', success > 0 ? 'success' : 'warn');
+  console.log('[RIDGE] bulkEmbedLeases done — success:', success, 'failed:', failed);
 }
 
 async function leaseSemanticSearch() {
