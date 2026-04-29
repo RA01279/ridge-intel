@@ -10708,26 +10708,52 @@ async function ridgeExportPPT() {
     });
     s1.addText('ENTRADA PARTNERS  ·  CONFIDENTIAL & PROPRIETARY',{x:0.5,y:7.05,w:12.3,h:0.28,fontSize:8.5,color:BODY,align:'center'});
 
+    var cfModelRows = await _extractCashFlows();
+
     // ── SLIDE 2 — Deal Snapshot ───────────────────────────────
     var s2=pptx.addSlide(); s2.background={color:BG}; addHdr(s2,'Deal Snapshot',2);
     console.log('[RIDGE] PPTX building slide 2...');
-    var kpi1=[{v:fmtUSD(d.price),l:'PURCHASE PRICE',s:fmtPSF(d.psf)+' / SF'},{v:pct2(d.cap),l:'GOING-IN CAP',s:'NOI Yr 1 '+fmtUSD(d.noi)},{v:pct2(d.irr),l:'LEVERED IRR',s:'Floor 14.75%'}];
-    kpi1.forEach(function(k,i){
-      var xv=1+i*4.36;
-      if(i>0) s2.addShape(pptx.ShapeType.rect,{x:xv-0.01,y:2.7,w:0.02,h:1.43,fill:{color:RULE},line:{color:RULE}});
-      s2.addText(k.l,{x:xv,y:2.7, w:4.15,h:0.28,fontSize:10.5,color:BODY,bold:true, align:'left',valign:'middle'});
-      s2.addText(k.v,{x:xv,y:3.05,w:4.15,h:0.75,fontSize:38,  color:NAVY,bold:false,align:'left',valign:'middle'});
-      s2.addText(k.s,{x:xv,y:3.86,w:4.15,h:0.31,fontSize:10,  color:BODY,bold:false,align:'left',valign:'middle'});
+
+    // Pull exit data from _extractCashFlows (already awaited as cfModelRows above)
+    var _s2ExitNOI   = cfModelRows && cfModelRows.exitNOI   ? cfModelRows.exitNOI   : null;
+    var _s2ExitCap   = cfModelRows && cfModelRows.exitCap   ? cfModelRows.exitCap   : null;
+    var _s2ExitPrice = cfModelRows && cfModelRows.exitSalePrice ? cfModelRows.exitSalePrice : null;
+    var _s2NOI1      = cfModelRows && cfModelRows.rows && cfModelRows.rows[0] ? cfModelRows.rows[0].noi : null;
+    var _s2HoldYrs   = cfModelRows && cfModelRows.holdYears ? cfModelRows.holdYears : null;
+
+    // Row 1 — 4 KPIs: Purchase Price / Going-In Cap / Levered IRR / Exit Sale Price
+    var kpi2r1 = [
+      {v:fmtUSD(d.price),         l:'PURCHASE PRICE',  s:fmtPSF(d.psf)+' / SF'},
+      {v:pct2(d.cap),             l:'GOING-IN CAP',    s:'NOI Yr 1 '+(_s2NOI1 ? fmtUSD(_s2NOI1) : (m.noi ? fmtUSD(m.noi) : '—'))},
+      {v:pct2(d.irr),             l:'LEVERED IRR',     s:'Floor 14.75%'},
+      {v:_s2ExitPrice ? fmtUSD(_s2ExitPrice) : '—', l:'EXIT SALE PRICE', s:_s2ExitCap ? 'At '+pct2(_s2ExitCap)+' exit cap' : 'Exit cap TBD'}
+    ];
+    kpi2r1.forEach(function(k,i){
+      var xv = 0.5 + i*4.78;
+      if(i>0) s2.addShape(pptx.ShapeType.rect,{x:xv-0.01,y:2.55,w:0.02,h:1.6,fill:{color:RULE},line:{color:RULE}});
+      s2.addText(k.l,{x:xv,y:2.55,w:4.65,h:0.28,fontSize:10.5,color:BODY,bold:true, align:'left',valign:'middle'});
+      s2.addText(k.v,{x:xv,y:2.90,w:4.65,h:0.75,fontSize:36,  color:NAVY,bold:false,align:'left',valign:'middle'});
+      s2.addText(k.s,{x:xv,y:3.71,w:4.65,h:0.31,fontSize:10,  color:BODY,bold:false,align:'left',valign:'middle'});
     });
-    var kpi2=[{v:mult2(d.em),l:'EQUITY MULTIPLE',s:'Floor 1.50×'},{v:pct2(d.yoc),l:'YOC YEAR 3',s:'Anchor 7.50%'},{v:pct2(d.ltv),l:'LTV',s:'Senior debt '+fmtUSD(d.debt)},{v:(d.hold||'4')+' Years',l:'HOLD PERIOD',s:'Exit '+(d.exitDate||'TBD')}];
-    kpi2.forEach(function(k,i){
-      var xv=1+i*4.36;
-      if(i>0) s2.addShape(pptx.ShapeType.rect,{x:xv-0.01,y:4.71,w:0.02,h:1.43,fill:{color:RULE},line:{color:RULE}});
-      s2.addText(k.l,{x:xv,y:4.71,w:4.15,h:0.28,fontSize:10.5,color:BODY,bold:true, align:'left',valign:'middle'});
-      s2.addText(k.v,{x:xv,y:5.06,w:4.15,h:0.75,fontSize:38,  color:NAVY,bold:false,align:'left',valign:'middle'});
-      s2.addText(k.s,{x:xv,y:5.87,w:4.15,h:0.31,fontSize:10,  color:BODY,bold:false,align:'left',valign:'middle'});
+
+    // Horizontal rule between rows
+    s2.addShape(pptx.ShapeType.rect,{x:0.5,y:4.15,w:18.5,h:0.01,fill:{color:RULE},line:{color:RULE}});
+
+    // Row 2 — 4 KPIs: Equity Multiple / YOC Year 3 / NOI Year 1 / Exit NOI
+    var kpi2r2 = [
+      {v:mult2(d.em),  l:'EQUITY MULTIPLE', s:'Floor 1.50×'},
+      {v:pct2(d.yoc),  l:'YOC YEAR 3',      s:'Anchor 7.50%'},
+      {v:_s2NOI1 ? fmtUSD(_s2NOI1) : (m.noi ? fmtUSD(m.noi) : '—'), l:'NOI YEAR 1', s:'In-place stabilized'},
+      {v:_s2ExitNOI ? fmtUSD(_s2ExitNOI) : '—', l:'EXIT NOI', s:_s2HoldYrs ? 'Year '+(_s2HoldYrs+1)+' (capitalized)' : 'Capitalized at sale'}
+    ];
+    kpi2r2.forEach(function(k,i){
+      var xv = 0.5 + i*4.78;
+      if(i>0) s2.addShape(pptx.ShapeType.rect,{x:xv-0.01,y:4.30,w:0.02,h:1.6,fill:{color:RULE},line:{color:RULE}});
+      s2.addText(k.l,{x:xv,y:4.30,w:4.65,h:0.28,fontSize:10.5,color:BODY,bold:true, align:'left',valign:'middle'});
+      s2.addText(k.v,{x:xv,y:4.65,w:4.65,h:0.75,fontSize:36,  color:NAVY,bold:false,align:'left',valign:'middle'});
+      s2.addText(k.s,{x:xv,y:5.46,w:4.65,h:0.31,fontSize:10,  color:BODY,bold:false,align:'left',valign:'middle'});
     });
-    s2.addShape(pptx.ShapeType.rect,{x:1,y:4.65,w:18,h:0.01,fill:{color:RULE},line:{color:RULE}});
+
     addFtr(s2);
 
     // ── SLIDE 3 — Acquisition Team Notes ─────────────────────
@@ -10979,7 +11005,7 @@ async function ridgeExportPPT() {
     // ── SLIDE 8 — Cash Flow Summary ───────────────────────────
     var s8=pptx.addSlide(); s8.background={color:BG}; addHdr(s8,'Cash Flow Summary',8);
     console.log('[RIDGE] PPTX building slide 8...');
-    var cfModelRows = await _extractCashFlows();
+    // cfModelRows hoisted above — see Slide 2 block
     if(cfModelRows && cfModelRows.rows && cfModelRows.rows.length){
       var cf8Yrs = cfModelRows.rows;
       var cf8N   = cf8Yrs.length;
