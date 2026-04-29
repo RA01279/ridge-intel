@@ -10032,29 +10032,42 @@ async function _extractCashFlows() {
   try {
     var wb = XLSX.read(modelBuffer, {type:'array'});
     var ws = wb.Sheets['DCF Model-Year'];
+    var wsGI = wb.Sheets['General Inputs'];
     if (!ws) return null;
-    var cols = ['E','F','G','H','I'];
-    var years = ['Year 1','Year 2','Year 3','Year 4','Year 5 (Exit)'];
+
+    // Read hold period from General Inputs I6 (in months)
+    var holdCell = wsGI && wsGI['I6'];
+    var holdMonths = holdCell && typeof holdCell.v === 'number' ? holdCell.v : 60;
+    var holdYears = Math.round(holdMonths / 12) || 5;
+    holdYears = Math.min(Math.max(holdYears, 1), 10); // clamp 1–10
+
+    // Columns E–N = Year 1–10
+    var allCols = ['E','F','G','H','I','J','K','L','M','N'];
+    var allLabels = ['Year 1','Year 2','Year 3','Year 4','Year 5','Year 6','Year 7','Year 8','Year 9','Year 10'];
+
     function cv(cell) {
       var c = ws[cell];
       if (!c || c.v === null || c.v === undefined) return 0;
       return typeof c.v === 'number' ? c.v : parseFloat(String(c.v).replace(/[^0-9.-]/g,'')) || 0;
     }
+
+    // Build hold-period cash flows (Years 1 through holdYears)
     var rows = [];
-    cols.forEach(function(col, i) {
+    for (var i = 0; i < holdYears; i++) {
+      var col = allCols[i];
       var interest = Math.abs(cv(col+'205'));
       var principal = Math.abs(cv(col+'206'));
       var levCFraw = cv(col+'215');
-      // For last year (exit): if levCF is near-zero, try adjacent rows for equity reversion
-      if (i === cols.length - 1 && Math.abs(levCFraw) < 1000) {
-        var exitCandidates = [218, 213, 211, 210, 198, 196];
+      // Exit year: if levCF near-zero, walk candidate rows for equity reversion
+      if (i === holdYears - 1 && Math.abs(levCFraw) < 1000) {
+        var exitCandidates = [218,213,211,210,198,196];
         for (var ec = 0; ec < exitCandidates.length; ec++) {
           var ecv = Math.abs(cv(col + exitCandidates[ec]));
           if (ecv > 50000) { levCFraw = ecv; break; }
         }
       }
       rows.push({
-        year: years[i],
+        year: allLabels[i],
         egr: cv(col+'54'),
         noi: cv(col+'123'),
         ds: interest + principal,
@@ -10062,8 +10075,29 @@ async function _extractCashFlows() {
         yoc: cv(col+'243') * 100,
         coc: cv(col+'244') * 100
       });
-    });
-    return rows;
+    }
+
+    // Exit NOI = hold year + 1 column (capitalized NOI at sale)
+    var exitColIdx = holdYears; // 0-based, so holdYears = next year
+    var exitNOI = 0;
+    if (exitColIdx < allCols.length) {
+      exitNOI = cv(allCols[exitColIdx] + '123');
+    }
+
+    // Exit cap rate from _extractSensitivity (middle cap header, row 28 col Q)
+    var exitCapCell = wsGI && wsGI['Q28'];
+    var exitCap = exitCapCell && typeof exitCapCell.v === 'number' ? exitCapCell.v : null;
+
+    // Exit sale price = exit NOI / exit cap rate
+    var exitSalePrice = (exitNOI && exitCap && exitCap > 0) ? exitNOI / exitCap : null;
+
+    return {
+      holdYears: holdYears,
+      rows: rows,
+      exitNOI: exitNOI,
+      exitCap: exitCap,
+      exitSalePrice: exitSalePrice
+    };
   } catch(e) {
     console.warn('[RIDGE] Cash flow extraction failed:', e.message);
     return null;
@@ -10946,8 +10980,8 @@ async function ridgeExportPPT() {
     var s8=pptx.addSlide(); s8.background={color:BG}; addHdr(s8,'Cash Flow Summary',8);
     console.log('[RIDGE] PPTX building slide 8...');
     var cfModelRows = await _extractCashFlows();
-    if(cfModelRows && cfModelRows.length){
-      var cf8Yrs = cfModelRows.slice(0,5);
+    if(cfModelRows && cfModelRows.rows && cfModelRows.rows.length){
+      var cf8Yrs = cfModelRows.rows;
       var cf8N   = cf8Yrs.length;
       // Header: METRIC | YR 1 | YR 2 | YR 3 | YR 4 | YR 5 (Exit)
       var hdrBase8 = {bold:true, color:WHITE, fill:{color:'1E2761'}, fontSize:10, align:'center'};
@@ -10969,7 +11003,8 @@ async function ridgeExportPPT() {
           var v=r.levCF;
           // Last year: if near-zero, try jd for exit value
           if(isLast&&Math.abs(v)<1000){
-            var _ep=jd&&(Number(jd.exit_value||0)||Number(jd.reversion_proceeds||0)||Number(jd.net_proceeds||0)||Number(jd.sale_proceeds||0));
+            var _ep=(cfModelRows&&cfModelRows.exitSalePrice)||
+              (jd&&(Number(jd.exit_value||0)||Number(jd.reversion_proceeds||0)||Number(jd.net_proceeds||0)||Number(jd.sale_proceeds||0)));
             if(_ep>50000) v=_ep;
           }
           return (isLast&&Math.abs(v)<1000)?'—*':fmtDollar8(v)+(isLast?'*':'');
