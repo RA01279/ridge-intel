@@ -6134,6 +6134,8 @@ function copyResult(toolId) {
 
 
 async function _isrExtractJSON(memoText) {
+  // Strip invalid Unicode surrogates that break JSON.stringify
+  memoText = memoText.replace(/[\uD800-\uDFFF]/g, '').replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, '');
   var _isrBtn = document.getElementById('pptx-btn-isr');
   try {
     var resp = await fetch('https://api.anthropic.com/v1/messages', {
@@ -11427,7 +11429,7 @@ async function ridgeExportPPT() {
 
     // 2. KPI boxes — fixed YOC label
     [{l:'LEVERED IRR',v:pct2(d.irr)},{l:'EQUITY MULTIPLE',v:mult2(d.em)},{l:'YOC YR 3',v:pct2(d.yoc)},{l:'LTV',v:pct2(d.ltv)}].forEach(function(k,i){
-      kpiCard(s14,0.25+i*3.23,1.55,3.12,0.95,k.v,k.l);
+      kpiCard(s14,0.25+i*3.23,1.75,3.12,0.95,k.v,k.l);
     });
 
     // 3. Recommendation summary (500 chars, truncate at sentence boundary)
