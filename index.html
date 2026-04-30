@@ -1253,6 +1253,10 @@ footer{border-top:1px solid var(--border);padding:20px 24px;text-align:center;co
 </div><!-- /#ridge-app -->
 
 <script>
+function pct2(v){var n=parseFloat(String(v||'').replace(/[%\s]/g,''));return isNaN(n)?(String(v||'')||'—'):n.toFixed(2)+'%';}
+function mult2(v){var n=parseFloat(String(v||'').replace(/[x×\s]/g,''));return isNaN(n)?(String(v||'')||'—'):n.toFixed(2)+'×';}
+function fmtUSD(v){var n=Math.round(parseFloat(String(v||'0').replace(/[^0-9.-]/g,'')));return isNaN(n)?'—':'$'+n.toLocaleString('en-US');}
+function fmtPSF(v){var n=parseFloat(String(v||'0').replace(/[^0-9.-]/g,''));return isNaN(n)?'—':'$'+n.toFixed(0)+' PSF';}
 // ─── RIDGE CONFIG ─────────────────────────────────────────────
 // Investment thresholds, model IDs, design tokens → config.js
 // Transitional phase: values still declared inline below.
@@ -9999,7 +10003,8 @@ async function _extractCashFlows() {
 
     // Exit cap rate from _extractSensitivity (middle cap header, row 28 col Q)
     var exitCapCell = wsGI && wsGI['Q28'];
-    var exitCap = exitCapCell && typeof exitCapCell.v === 'number' ? exitCapCell.v : null;
+    var exitCapRaw = exitCapCell && typeof exitCapCell.v === 'number' ? exitCapCell.v : null;
+    var exitCap = exitCapRaw !== null ? (exitCapRaw > 1 ? exitCapRaw / 100 : exitCapRaw) : null;
 
     // Exit sale price = exit NOI / exit cap rate
     var exitSalePrice = (exitNOI && exitCap && exitCap > 0) ? exitNOI / exitCap : null;
@@ -10610,7 +10615,7 @@ async function ridgeExportPPT() {
 
     // Pull exit data from _extractCashFlows (already awaited as cfModelRows above)
     var _s2ExitNOI   = cfModelRows && cfModelRows.exitNOI   ? cfModelRows.exitNOI   : null;
-    var _s2ExitCap   = cfModelRows && cfModelRows.exitCap   ? cfModelRows.exitCap   : null;
+    var _s2ExitCap   = cfModelRows && cfModelRows.exitCap   ? cfModelRows.exitCap * 100 : null;
     var _s2ExitPrice = cfModelRows && cfModelRows.exitSalePrice ? cfModelRows.exitSalePrice : null;
     var _s2NOI1      = cfModelRows && cfModelRows.rows && cfModelRows.rows[0] ? cfModelRows.rows[0].noi : null;
     var _s2HoldYrs   = cfModelRows && cfModelRows.holdYears ? cfModelRows.holdYears : null;
