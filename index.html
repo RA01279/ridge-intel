@@ -5019,9 +5019,9 @@ async function _writeLeaseRows(rows, address, source) {
     }
   } catch(e) { console.warn('[RIDGE] ' + source + ' leases exception:', e.message); showToast('Import failed — check file format and try again.'); }
 
-  // ── EMBEDDINGS: generate for newly written lease rows (throttled) ───────────
+  // ── EMBEDDINGS: generate for newly written lease rows (throttled, deferred) ──
   if (_sbOk && _sb && inserts.length) {
-    (async function() {
+    setTimeout(function() { (async function() {
       for (var _ei = 0; _ei < inserts.length; _ei++) {
         var _er = inserts[_ei];
         if (!_er.address || !_er.tenant) continue;
@@ -5049,6 +5049,7 @@ async function _writeLeaseRows(rows, address, source) {
         await new Promise(function(r){ setTimeout(r, 1200); });
       }
     })();
+    }, 60000);
   }
 }
 
