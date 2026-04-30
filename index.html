@@ -12268,7 +12268,7 @@ function _llParseRidgeTemplate(raw, market) {
     return isNaN(v) ? null : v;
   };
 
-  var SAMPLE = /technologies|logistics/i;
+  var SAMPLE = /^(tenant name|example tenant|sample tenant)$/i;
   var rows = [];
   for (var i = hdrIdx + 1; i < raw.length; i++) {
     var r = raw[i]; if (!r) continue;
@@ -12278,11 +12278,13 @@ function _llParseRidgeTemplate(raw, market) {
     if (SAMPLE.test(tenant)) continue;     // skip template sample rows
     var sfRaw = num(r, cSF);
     if (!sfRaw || sfRaw <= 0) continue;   // skip rows without valid SF
+    var vacantRaw = cSrc >= 0 ? String(r[cSrc] || '').toLowerCase() : '';
+    var isVacant = !tenant || /^vacant/i.test(tenant) || vacantRaw === 'vacant';
     var dockV  = num(r, cDock);
     var gradeV = num(r, cGrade);
     rows.push({
       address:             addr,
-      market:              market || null,
+      market:              market || _detectMarket({ addr: addr }) || null,
       tenant:              tenant,
       suite:               cSuite >= 0 ? String(r[cSuite] || '').trim() || null : null,
       sf:                  sfRaw,
@@ -12299,6 +12301,7 @@ function _llParseRidgeTemplate(raw, market) {
       notes:               cSrc >= 0 ? String(r[cSrc] || '').trim() || null : null,
       source:              'LEASE_LIBRARY',
       extracted_data:      {},
+      vacant:              isVacant,
     });
   }
   return rows; // [] signals template detected, no valid data rows
@@ -12340,7 +12343,7 @@ function _llRenderPreview(rows) {
   document.getElementById('ll-preview-info').innerHTML =
     '<strong>' + rows.length + ' rows parsed</strong> — ' + occupied + ' occupied · ' + vacant + ' vacant/speculative';
   document.getElementById('ll-confirm-btn').textContent = '✅ Confirm Import (' + rows.length + ' leases)';
-  var cols = ['Tenant','Suite','SF','Rent PSF','Expiration','Type','Status'];
+  var cols = ['Address','Tenant','Suite','SF','Rent PSF','Expiration','Type','Status'];
   var html = '<table style="width:100%;border-collapse:collapse;font-size:11px;">'
     + '<thead><tr>' + cols.map(function(c){
         return '<th style="background:#1E2761;color:#fff;padding:5px 8px;text-align:left;white-space:nowrap;">' + c + '</th>';
@@ -12356,14 +12359,15 @@ function _llRenderPreview(rows) {
     var bg = isIncomplete ? '#FFF0EE' : (i%2===1 ? '#F0F4FF' : '#FFFFFF');
     var sc = r.vacant ? '#C0560A' : '#1B5E20';
     html += '<tr style="background:' + bg + (isIncomplete ? ';border-left:3px solid #C0392B' : '') + ';">'
-      + '<td style="'+PTD+(isIncomplete?'color:#C0392B;font-style:italic;':'')+'">' + (r.tenant||'⚠ MISSING').slice(0,40) + '</td>'
-      + '<td style="'+PTD+'">' + (r.suite||'—') + '</td>'
-      + '<td style="'+PTD+'text-align:right;">' + (r.sf ? Number(r.sf).toLocaleString() : '—') + '</td>'
-      + '<td style="'+PTD+'text-align:right;">' + (r.base_rent_psf ? '$'+Number(r.base_rent_psf).toFixed(2) : '—') + '</td>'
-      + '<td style="'+PTD+'">' + (r.expiration_date||'—') + '</td>'
-      + '<td style="'+PTD+'">' + (r.lease_type||'—') + '</td>'
-      + '<td style="'+PTD+'color:'+sc+';font-weight:600;">' + (r.vacant?'Vacant':'Occupied') + '</td>'
-      + '</tr>';
+        + '<td style="'+PTD+';max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="'+(r.address||'')+'">' + (r.address||'—').slice(0,28) + '</td>'
+        + '<td style="'+PTD+(isIncomplete?'color:#C0392B;font-style:italic;':'')+'">' + (r.tenant||'⚠ MISSING').slice(0,35) + '</td>'
+        + '<td style="'+PTD+'">' + (r.suite||'—') + '</td>'
+        + '<td style="'+PTD+'text-align:right;">' + (r.sf ? Number(r.sf).toLocaleString() : '—') + '</td>'
+        + '<td style="'+PTD+'text-align:right;">' + (r.base_rent_psf ? '$'+Number(r.base_rent_psf).toFixed(2) : '—') + '</td>'
+        + '<td style="'+PTD+'">' + (r.expiration_date||'—') + '</td>'
+        + '<td style="'+PTD+'">' + (r.lease_type||'—') + '</td>'
+        + '<td style="'+PTD+'color:'+sc+';font-weight:600;">' + (r.vacant?'Vacant':'Occupied') + '</td>'
+        + '</tr>';
   });
   html += '</tbody></table>';
   document.getElementById('ll-preview-table').innerHTML = html;
