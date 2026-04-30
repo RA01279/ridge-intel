@@ -1739,6 +1739,7 @@ function _buildStandalonePanelHTML(id) {
       </div>
       <div class="btn-row">
         <button class="btn btn-p" id="ll-import-btn" onclick="_llImportClick()">📥 IMPORT RENT ROLL</button>
+        <button class="btn btn-o" id="ll-convert-btn" onclick="_llConvertClick()" style="margin-left:8px;" title="Convert messy broker files to RIDGE format">🔄 CONVERT BROKER FILE</button>
       </div>
       <div id="ll-preview-section" style="display:none;margin-top:16px;">
         <div class="ll-sec-title">IMPORT PREVIEW</div>
@@ -11979,6 +11980,175 @@ var _llTotal = 0;
 var _llSelectedFile = null; // persists file ref across async import
 
 // STATE for lease-library is initialized by the TOOLS.forEach loop above
+
+// ── BROKER FILE CONVERTER ─────────────────────────────────
+// Synonym map: maps common broker/CoStar column headers to RIDGE field names
+var _llColMap = {
+  // Address
+  'property address':'address','address':'address','property':'address','building address':'address','location':'address',
+  // Tenant
+  'tenant name':'tenant','tenant':'tenant','lessee':'tenant','occupant':'tenant','company':'tenant','tenant / occupant':'tenant',
+  // Suite
+  'suite':'suite','suite / unit':'suite','unit':'suite','space':'suite','bay':'suite','suite/unit':'suite',
+  // SF
+  'sf':'sf','sq ft':'sf','square feet':'sf','rsf':'sf','nrsf':'sf','size (sf)':'sf','leased sf':'sf','size':'sf','area (sf)':'sf','rentable sf':'sf',
+  // Lease Type
+  'lease type':'lease_type','type':'lease_type','expense type':'lease_type','lease structure':'lease_type',
+  // Commencement
+  'commencement date':'commencement_date','commencement':'commencement_date','lease start':'commencement_date','start date':'commencement_date','sign date':'commencement_date','execution date':'commencement_date',
+  // Expiration
+  'expiration date':'expiration_date','expiration':'expiration_date','lease end':'expiration_date','end date':'expiration_date','lease expiration':'expiration_date',
+  // Rent PSF
+  'base rent psf (annual)':'base_rent_psf','base rent psf':'base_rent_psf','rent psf':'base_rent_psf','annual rent psf':'base_rent_psf','asking rent':'base_rent_psf','effective rent psf':'base_rent_psf','rent/sf':'base_rent_psf','nnn rent':'base_rent_psf','lease rate':'base_rent_psf','rate psf':'base_rent_psf',
+  // Escalation
+  'escalation %':'rent_escalation_pct','escalation':'rent_escalation_pct','annual escalation':'rent_escalation_pct','rent escalation':'rent_escalation_pct','rent bumps':'rent_escalation_pct',
+  // Free Rent
+  'free rent (months)':'free_rent_months','free rent':'free_rent_months','free rent months':'free_rent_months','months free':'free_rent_months','abatement (months)':'free_rent_months',
+  // TI
+  'ti psf ($)':'ti_psf','ti psf':'ti_psf','ti allowance psf':'ti_psf','tenant improvement psf':'ti_psf','tia psf':'ti_psf',
+  // Physical
+  'dock high doors':'dock_high_doors','dock doors':'dock_high_doors','docks':'dock_high_doors',
+  'grade level doors':'grade_level_doors','grade doors':'grade_level_doors','drive-in doors':'grade_level_doors',
+  'clear height (ft)':'clear_height','clear height':'clear_height','ceiling height':'clear_height','clear ht':'clear_height',
+  // Source
+  'source':'source',
+};
+
+var _llLeaseTypeMap = {
+  'nnn':'NNN','n':'NNN','triple net':'NNN','triple-net':'NNN',
+  'gross':'Gross','full service':'Gross','fs':'Gross','fsg':'Gross',
+  'mg':'MG','modified gross':'MG','mod gross':'MG','modified':'MG',
+  'direct':'NNN','direct deal':'NNN',
+};
+
+async function _llConvertClick() {
+  var file = _llSelectedFile || (function(){
+    var el = document.getElementById('ll-file');
+    return el && el.files && el.files[0];
+  }());
+  if (!file) { showToast('Select a broker file to convert'); return; }
+  var mktEl = document.getElementById('ll-market');
+  var market = mktEl ? mktEl.value.trim() : '';
+  var btn = document.getElementById('ll-convert-btn');
+  btn.textContent = '⏳ Converting...'; btn.disabled = true;
+  try {
+    var rows = await _llConvertBrokerFile(file, market);
+    if (!rows || !rows.length) {
+      showToast('No rows extracted — check file format'); btn.textContent = '🔄 CONVERT BROKER FILE'; btn.disabled = false; return;
+    }
+    _llParsedRows = rows;
+    _llRenderPreview(rows);
+    document.getElementById('ll-preview-section').style.display = 'block';
+    showToast(rows.length + ' rows converted — review preview then confirm import', 'info');
+  } catch(e) {
+    showToast('Convert error: ' + e.message);
+    console.error('[LL] convert error:', e);
+  }
+  btn.textContent = '🔄 CONVERT BROKER FILE'; btn.disabled = false;
+}
+
+async function _llConvertBrokerFile(file, market) {
+  return new Promise(function(resolve, reject) {
+    var reader = new FileReader();
+    var fname = file.name.toLowerCase();
+    reader.onload = function(e) {
+      try {
+        var raw;
+        if (fname.endsWith('.csv')) {
+          var lines = e.target.result.split('\n').filter(function(l){ return l.trim(); });
+          raw = lines.map(function(l){
+            var cols = []; var cur = ''; var inQ = false;
+            for (var ci = 0; ci < l.length; ci++) {
+              var ch = l[ci];
+              if (ch === '"') { inQ = !inQ; }
+              else if (ch === ',' && !inQ) { cols.push(cur.trim()||null); cur = ''; }
+              else { cur += ch; }
+            }
+            cols.push(cur.trim()||null); return cols;
+          });
+        } else {
+          var wb = XLSX.read(e.target.result, { type: 'array', cellDates: false, raw: false });
+          var ws = wb.Sheets[wb.SheetNames[0]];
+          raw = XLSX.utils.sheet_to_json(ws, { header: 1, defval: null, raw: false });
+        }
+
+        // Find header row — scan first 15 rows for a row with 3+ mapped columns
+        var hdrIdx = -1, hdrMap = {};
+        for (var s = 0; s < Math.min(raw.length, 15); s++) {
+          var rowL = (raw[s]||[]).map(function(c){ return String(c||'').toLowerCase().trim(); });
+          var mapped = 0; var tmpMap = {};
+          rowL.forEach(function(h, ci) {
+            if (_llColMap[h]) { tmpMap[_llColMap[h]] = ci; mapped++; }
+          });
+          if (mapped >= 3) { hdrIdx = s; hdrMap = tmpMap; break; }
+        }
+        if (hdrIdx === -1) { resolve([]); return; }
+
+        var num = function(r, field) {
+          var ci = hdrMap[field]; if (ci == null || r[ci] == null) return null;
+          var v = parseFloat(String(r[ci]).replace(/[$,%\s]/g,''));
+          return isNaN(v) ? null : v;
+        };
+        var str = function(r, field) {
+          var ci = hdrMap[field]; if (ci == null) return null;
+          return String(r[ci]||'').trim() || null;
+        };
+
+        var seen = {}, rows = [];
+        for (var i = hdrIdx + 1; i < raw.length; i++) {
+          var r = raw[i]; if (!r) continue;
+          var addr   = str(r, 'address') || '';
+          var tenant = str(r, 'tenant')  || '';
+          if (!tenant || /^(tenant|lessee|occupant|example|sample|n\/a)$/i.test(tenant)) continue;
+          var sfRaw = num(r, 'sf');
+          if (!sfRaw || sfRaw <= 0) continue;
+
+          // Dedup on address+tenant+commencement, first occurrence wins
+          var commRaw = str(r, 'commencement_date') || '';
+          var dupKey = (addr+tenant+commRaw).toLowerCase().replace(/\s/g,'');
+          if (seen[dupKey]) continue; seen[dupKey] = true;
+
+          // Lease type normalization
+          var ltRaw = str(r, 'lease_type') || '';
+          var lt = _llLeaseTypeMap[ltRaw.toLowerCase()] || (ltRaw || 'NNN');
+
+          // Rent: detect monthly vs annual (monthly if < 5)
+          var psfRaw = num(r, 'base_rent_psf');
+          if (psfRaw && psfRaw < 5) psfRaw = psfRaw * 12;
+
+          var vacantRaw = str(r, 'source') || '';
+          var isVacant = /^vacant/i.test(tenant) || /^vacant$/i.test(vacantRaw);
+
+          rows.push({
+            address:             addr || null,
+            market:              market || _detectMarket({ addr: addr }) || null,
+            tenant:              tenant,
+            suite:               str(r, 'suite'),
+            sf:                  sfRaw,
+            lease_type:          lt,
+            commencement_date:   commRaw ? _parseLeaseDateFull(commRaw) : null,
+            expiration_date:     str(r, 'expiration_date') ? _parseLeaseDateFull(str(r, 'expiration_date')) : null,
+            base_rent_psf:       psfRaw,
+            rent_escalation_pct: num(r, 'rent_escalation_pct'),
+            free_rent_months:    num(r, 'free_rent_months'),
+            ti_psf:              num(r, 'ti_psf'),
+            dock_high_doors:     num(r, 'dock_high_doors') != null ? parseInt(num(r, 'dock_high_doors')) : null,
+            grade_level_doors:   num(r, 'grade_level_doors') != null ? parseInt(num(r, 'grade_level_doors')) : null,
+            clear_height:        num(r, 'clear_height'),
+            notes:               null,
+            source:              'LEASE_LIBRARY',
+            extracted_data:      {},
+            vacant:              isVacant,
+          });
+        }
+        resolve(rows);
+      } catch(err) { reject(err); }
+    };
+    reader.onerror = function(){ reject(new Error('File read failed')); };
+    if (fname.endsWith('.csv')) reader.readAsText(file);
+    else reader.readAsArrayBuffer(file);
+  });
+}
 
 // ── IMPORT ───────────────────────────────────────────────
 async function _llImportClick() {
