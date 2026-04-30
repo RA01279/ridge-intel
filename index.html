@@ -12424,7 +12424,16 @@ async function _llConfirmImport() {
 
     var written = toWrite.length;
     if (written > 0) {
-      await _writeLeaseRows(toWrite, address, 'LEASE_LIBRARY');
+      // Group rows by individual address — multi-property imports write each address separately
+      var _byAddr = {};
+      toWrite.forEach(function(row) {
+        var a = (row.address || address || 'Unknown').trim();
+        if (!_byAddr[a]) _byAddr[a] = [];
+        _byAddr[a].push(row);
+      });
+      for (var _a in _byAddr) {
+        await _writeLeaseRows(_byAddr[_a], _a, 'LEASE_LIBRARY');
+      }
     }
     if (_sbOk && _sb) {
       try {
@@ -12432,7 +12441,7 @@ async function _llConfirmImport() {
           skill_name: 'LEASE LIBRARY',
           output: 'Batch import: ' + written + ' lease records ingested.',
           inputs: { source: 'LEASE_LIBRARY', row_count: written },
-          address: address || 'Lease Library Batch Import',
+          address: Object.keys(_byAddr||{}).length === 1 ? Object.keys(_byAddr)[0] : 'Lease Library Batch Import (' + Object.keys(_byAddr||{}).length + ' properties)',
           market: _detectMarket({ addr: address }),
           tags: ['lease-library', 'batch-import'],
           loi_generated: false,
