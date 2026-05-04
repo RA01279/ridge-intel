@@ -12030,6 +12030,20 @@ var _llColMap = {
   'clear height (ft)':'clear_height','clear height':'clear_height','ceiling height':'clear_height','clear ht':'clear_height',
   // Source
   'source':'source',
+  // Submarket
+  'submarket':'submarket',
+  // Additional commencement synonyms
+  'sign date':'commencement_date','signed date':'commencement_date',
+  // Additional rate synonyms
+  'lease rate':'base_rent_psf','rate':'base_rent_psf','annual rate':'base_rent_psf','rate psf (annual)':'base_rent_psf',
+  // Rate type
+  'rate type':'lease_type',
+  // Additional TIA
+  'tia':'ti_psf',
+  // Additional escalation
+  'escalations':'rent_escalation_pct','annual escalation (%)':'rent_escalation_pct',
+  // Additional free rent
+  'free rent (mo)':'free_rent_months','free rent (months)':'free_rent_months',
   // Term
   'lease term (months)':'lease_term_months','lease term':'lease_term_months','term (months)':'lease_term_months','term':'lease_term_months','term months':'lease_term_months','lease length':'lease_term_months',
   // TIA synonyms
@@ -12173,6 +12187,7 @@ async function _llConvertBrokerFile(file, market) {
             dock_high_doors:     num(r, 'dock_high_doors') != null ? parseInt(num(r, 'dock_high_doors')) : null,
             grade_level_doors:   num(r, 'grade_level_doors') != null ? parseInt(num(r, 'grade_level_doors')) : null,
             clear_height:        num(r, 'clear_height'),
+            submarket:           str(r, 'submarket'),
             notes:               null,
             source:              'LEASE_LIBRARY',
             extracted_data:      {},
@@ -12577,7 +12592,7 @@ function _llRenderPreview(rows) {
   document.getElementById('ll-preview-info').innerHTML =
     '<strong>' + rows.length + ' rows parsed</strong> — ' + occupied + ' occupied · ' + vacant + ' vacant/speculative';
   document.getElementById('ll-confirm-btn').textContent = '✅ Confirm Import (' + rows.length + ' leases)';
-  var cols = ['Address','Tenant','Suite','SF','Rent PSF','Expiration','Type','Status'];
+  var cols = ['Address','Tenant','Suite','SF','Rent PSF','Expiration','TI PSF','Free Rent','Type','Status'];
   var html = '<table style="width:100%;border-collapse:collapse;font-size:11px;">'
     + '<thead><tr>' + cols.map(function(c){
         return '<th style="background:#1E2761;color:#fff;padding:5px 8px;text-align:left;white-space:nowrap;">' + c + '</th>';
@@ -12599,6 +12614,8 @@ function _llRenderPreview(rows) {
         + '<td style="'+PTD+'text-align:right;">' + (r.sf ? Number(r.sf).toLocaleString() : '—') + '</td>'
         + '<td style="'+PTD+'text-align:right;">' + (r.base_rent_psf ? '$'+Number(r.base_rent_psf).toFixed(2) : '—') + '</td>'
         + '<td style="'+PTD+'">' + (r.expiration_date||'—') + '</td>'
+        + '<td style="'+PTD+'text-align:right;">' + (r.ti_psf ? '$'+Number(r.ti_psf).toFixed(2) : '—') + '</td>'
+        + '<td style="'+PTD+'text-align:right;">' + (r.free_rent_months != null ? r.free_rent_months + ' mo' : '—') + '</td>'
         + '<td style="'+PTD+'">' + (r.lease_type||'—') + '</td>'
         + '<td style="'+PTD+'color:'+sc+';font-weight:600;">' + (r.vacant?'Vacant':'Occupied') + '</td>'
         + '</tr>';
