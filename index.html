@@ -1727,6 +1727,20 @@ function _buildStandalonePanelHTML(id) {
         <div class="fg"><label class="fl">Property Address</label><input type="text" id="ll-address" placeholder="6480 Chupp Road, Stonecrest, GA"></div>
         <div class="fg"><label class="fl">Market</label><select id="ll-market"><option>Atlanta, GA</option><option>Savannah, GA</option><option>Dallas–Fort Worth, TX</option><option>Houston, TX</option><option>Austin, TX (Watch)</option></select></div>
       </div>
+      <div class="fr two" style="margin-top:8px;">
+        <div class="fg">
+          <label class="fl">Asset Class</label>
+          <select id="ll-import-asset-class" style="width:100%;padding:6px 10px;border:1px solid #d1d9ef;border-radius:4px;font-size:12px;">
+            <option value="">— Select Asset Class —</option>
+            <option>Industrial</option>
+            <option>Flex Industrial</option>
+            <option>Flex Office</option>
+            <option>Office</option>
+            <option>Bulk / Distribution</option>
+          </select>
+        </div>
+        <div class="fg"></div>
+      </div>
       <div class="upload-group" style="margin-top:10px;">
         <label>Argus / Excel Rent Roll or CSV <span>XLSX · XLS · CSV — Argus export or generic rent roll</span></label>
         <div class="uz" id="uz-ll-file">
@@ -1746,10 +1760,6 @@ function _buildStandalonePanelHTML(id) {
         <div id="ll-preview-info" style="font-size:12px;color:#1E2761;margin-bottom:8px;padding:6px 10px;background:#F0F4FF;border-radius:4px;"></div>
         <div id="ll-preview-table" style="overflow-x:auto;max-height:300px;overflow-y:auto;border:1px solid #e0e4ef;border-radius:4px;"></div>
         <div style="display:flex;align-items:center;gap:10px;margin-top:10px;flex-wrap:wrap;">
-          <select id="ll-import-asset-class" style="font-size:12px;padding:5px 8px;border:1px solid #d1d9ef;border-radius:4px;">
-            <option value="">Asset Class (optional)</option>
-            <option>Industrial</option><option>Office</option><option>Retail</option><option>Flex</option><option>Mixed Use</option>
-          </select>
           <button class="btn btn-p" id="ll-confirm-btn" onclick="_llConfirmImport()">✅ Confirm Import</button>
           <button class="btn btn-o" onclick="document.getElementById('ll-preview-section').style.display='none'">Cancel</button>
         </div>
@@ -12755,8 +12765,8 @@ function _llRenderTable(rows) {
     wrap.innerHTML = '<div style="color:var(--faint);font-size:12px;padding:16px;">No leases found. Import a rent roll to get started.</div>';
     _llRenderPagination(); return;
   }
-  var cols = ['Address','Suite','Tenant','SF','Rent PSF','TI PSF','Free Rent (Mo)','Asset Class','Expiration','Type','Status','Market','Actions'];
-  var html = '<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:11px;min-width:1100px;">'
+  var cols = ['Address','Suite','Tenant','SF','Rent PSF','Clear Ht','Docks','GL Doors','TI PSF','Free Rent (Mo)','Asset Class','Expiration','Type','Status','Market','Actions'];
+  var html = '<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:11px;min-width:1300px;">'
     + '<thead><tr>' + cols.map(function(c){
         return '<th style="background:#1E2761;color:#fff;padding:6px 8px;text-align:left;white-space:nowrap;position:sticky;top:0;z-index:1;">' + c + '</th>';
       }).join('') + '</tr></thead><tbody>';
@@ -12774,6 +12784,9 @@ function _llRenderTable(rows) {
       + '<td style="'+TD+'max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="'+(r.tenant||'')+'">' + (r.tenant||'—').slice(0,28) + '</td>'
       + '<td style="'+TD+'text-align:right;">' + (r.sf ? Number(r.sf).toLocaleString() : '—') + '</td>'
       + '<td style="'+TD+'text-align:right;">' + (r.base_rent_psf ? '$'+Number(r.base_rent_psf).toFixed(2) : '—') + '</td>'
+      + '<td style="'+TD+'text-align:right;">' + (r.clear_height ? r.clear_height + '\'' : '—') + '</td>'
+      + '<td style="'+TD+'text-align:right;">' + (r.dock_high_doors != null ? r.dock_high_doors : '—') + '</td>'
+      + '<td style="'+TD+'text-align:right;">' + (r.grade_level_doors != null ? r.grade_level_doors : '—') + '</td>'
       + '<td style="'+TD+'text-align:right;">' + (r.ti_psf ? '$'+Number(r.ti_psf).toFixed(2) : '—') + '</td>'
       + '<td style="'+TD+'text-align:right;">' + (r.free_rent_months != null ? r.free_rent_months : '—') + '</td>'
       + '<td style="'+TD+'">' + (r.asset_class||'—') + '</td>'
