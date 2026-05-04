@@ -1745,7 +1745,11 @@ function _buildStandalonePanelHTML(id) {
         <div class="ll-sec-title">IMPORT PREVIEW</div>
         <div id="ll-preview-info" style="font-size:12px;color:#1E2761;margin-bottom:8px;padding:6px 10px;background:#F0F4FF;border-radius:4px;"></div>
         <div id="ll-preview-table" style="overflow-x:auto;max-height:300px;overflow-y:auto;border:1px solid #e0e4ef;border-radius:4px;"></div>
-        <div class="btn-row" style="margin-top:10px;">
+        <div style="display:flex;align-items:center;gap:10px;margin-top:10px;flex-wrap:wrap;">
+          <select id="ll-import-asset-class" style="font-size:12px;padding:5px 8px;border:1px solid #d1d9ef;border-radius:4px;">
+            <option value="">Asset Class (optional)</option>
+            <option>Industrial</option><option>Office</option><option>Retail</option><option>Flex</option><option>Mixed Use</option>
+          </select>
           <button class="btn btn-p" id="ll-confirm-btn" onclick="_llConfirmImport()">✅ Confirm Import</button>
           <button class="btn btn-o" onclick="document.getElementById('ll-preview-section').style.display='none'">Cancel</button>
         </div>
@@ -1773,6 +1777,10 @@ function _buildStandalonePanelHTML(id) {
         </select>
         <select id="ll-filter-status" style="font-size:12px;padding:5px 8px;border:1px solid #d1d9ef;border-radius:4px;">
           <option value="">All Status</option><option>Occupied</option><option>Vacant</option>
+        </select>
+        <select id="ll-filter-asset-class" style="font-size:12px;padding:5px 8px;border:1px solid #d1d9ef;border-radius:4px;">
+          <option value="">All Asset Classes</option>
+          <option>Industrial</option><option>Office</option><option>Retail</option><option>Flex</option><option>Mixed Use</option>
         </select>
         <input type="text" id="ll-filter-psf-min" placeholder="Min PSF" style="width:72px;padding:5px 8px;border:1px solid #d1d9ef;border-radius:4px;font-size:12px;">
         <input type="text" id="ll-filter-psf-max" placeholder="Max PSF" style="width:72px;padding:5px 8px;border:1px solid #d1d9ef;border-radius:4px;font-size:12px;">
@@ -12626,6 +12634,7 @@ async function _llConfirmImport() {
       }));
 
       // Filter: skip rows where a higher-priority (lower number) record already exists
+      var importAssetClass = (document.getElementById('ll-import-asset-class')||{}).value || '';
       toWrite = [];
       rows.forEach(function(row) {
         var tn  = _normalizeTenant(row.tenant || '');
@@ -12637,6 +12646,7 @@ async function _llConfirmImport() {
             row.tenant + ' at ' + (row.address || address));
           skipped++;
         } else {
+          if (importAssetClass) row.asset_class = importAssetClass;
           toWrite.push(row);
         }
       });
@@ -12701,6 +12711,7 @@ async function _llLoadLeases() {
   var status  = (document.getElementById('ll-filter-status')||{}).value || '';
   var psfMin  = parseFloat((document.getElementById('ll-filter-psf-min')||{}).value) || null;
   var psfMax  = parseFloat((document.getElementById('ll-filter-psf-max')||{}).value) || null;
+  var acFilter = (document.getElementById('ll-filter-asset-class')||{}).value || '';
 
   var q = _sb.from('leases').select('*', { count: 'exact' });
   if (mkt)    q = q.eq('market', mkt);
@@ -12709,6 +12720,7 @@ async function _llLoadLeases() {
   if (status === 'Vacant')   q = q.eq('vacant', true);
   if (psfMin !== null) q = q.gte('base_rent_psf', psfMin);
   if (psfMax !== null) q = q.lte('base_rent_psf', psfMax);
+  if (acFilter) q = q.eq('asset_class', acFilter);
   if (search) q = q.or('address.ilike.%' + search + '%,tenant.ilike.%' + search + '%,market.ilike.%' + search + '%,suite.ilike.%' + search + '%');
   q = q.order('created_at', { ascending: false })
        .range(_llPage * _llPageSize, (_llPage+1) * _llPageSize - 1);
