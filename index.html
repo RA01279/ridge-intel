@@ -12012,6 +12012,10 @@ var _llColMap = {
   'clear height (ft)':'clear_height','clear height':'clear_height','ceiling height':'clear_height','clear ht':'clear_height',
   // Source
   'source':'source',
+  // Term
+  'lease term (months)':'lease_term_months','lease term':'lease_term_months','term (months)':'lease_term_months','term':'lease_term_months','term months':'lease_term_months','lease length':'lease_term_months',
+  // TIA synonyms
+  'tia':'ti_psf','tia psf':'ti_psf','t.i.a.':'ti_psf','tenant improvement allowance':'ti_psf','tenant improvement allowance psf':'ti_psf',
 };
 
 var _llLeaseTypeMap = {
@@ -12127,7 +12131,23 @@ async function _llConvertBrokerFile(file, market) {
             sf:                  sfRaw,
             lease_type:          lt,
             commencement_date:   commRaw ? _parseLeaseDateFull(commRaw) : null,
-            expiration_date:     str(r, 'expiration_date') ? _parseLeaseDateFull(str(r, 'expiration_date')) : null,
+            expiration_date:     (function(){
+              var exp = str(r, 'expiration_date');
+              if (exp) return _parseLeaseDateFull(exp);
+              // Calculate from commencement + term if expiration missing
+              var comm = str(r, 'commencement_date');
+              var termMo = num(r, 'lease_term_months');
+              if (comm && termMo) {
+                var commParsed = _parseLeaseDateFull(comm);
+                if (commParsed) {
+                  var dt = new Date(commParsed);
+                  dt.setMonth(dt.getMonth() + Math.round(termMo));
+                  return dt.getUTCFullYear()+'-'+String(dt.getUTCMonth()+1).padStart(2,'0')+'-'+String(dt.getUTCDate()).padStart(2,'0');
+                }
+              }
+              return null;
+            })(),
+            lease_term_months:   num(r, 'lease_term_months'),
             base_rent_psf:       psfRaw,
             rent_escalation_pct: num(r, 'rent_escalation_pct'),
             free_rent_months:    num(r, 'free_rent_months'),
@@ -12283,14 +12303,40 @@ async function _llParseArgusExcel(file, address, market) {
   });
 }
 
-// Parses M/D/YYYY, MM/DD/YYYY, and delegates Mon-YYYY / ISO to _parseLeaseDate.
-function _parseLeaseDateFull(str) {
+function _parseLeaseDate(str) {
   if (!str) return null;
-  str = str.trim();
+  str = String(str).trim();
+  // ISO: 2024-03-01
+  if (/^\d{4}-\d{2}-\d{2}$/.test(str)) return str;
+  // M/D/YYYY or MM/DD/YYYY
   var mdy = str.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
-  if (mdy) return mdy[3] + '-' + String(mdy[1]).padStart(2,'0') + '-' + String(mdy[2]).padStart(2,'0');
-  return _parseLeaseDate(str);
+  if (mdy) return mdy[3]+'-'+String(mdy[1]).padStart(2,'0')+'-'+String(mdy[2]).padStart(2,'0');
+  // Quarter: Q1 2024, Q2-2025, 1Q24, 2Q 2025
+  var qtr = str.match(/[Qq]([1-4])[\s\-\/]*(20\d{2}|\d{2})/);
+  if (!qtr) qtr = str.match(/([1-4])[Qq][\s\-\/]*(20\d{2}|\d{2})/);
+  if (qtr) {
+    var q = parseInt(qtr[1]); var yr = qtr[2].length===2 ? '20'+qtr[2] : qtr[2];
+    var mo = [null,'01','04','07','10'][q];
+    return yr+'-'+mo+'-01';
+  }
+  // Mon-YYYY or Mon YYYY: Jan-2024, March 2025
+  var MONTHS = {jan:'01',feb:'02',mar:'03',apr:'04',may:'05',jun:'06',jul:'07',aug:'08',sep:'09',oct:'10',nov:'11',dec:'12'};
+  var myr = str.match(/^([A-Za-z]{3,9})[\s\-\/]+(20\d{2}|\d{2})$/);
+  if (myr) {
+    var mk = myr[1].slice(0,3).toLowerCase(); var yr2 = myr[2].length===2?'20'+myr[2]:myr[2];
+    if (MONTHS[mk]) return yr2+'-'+MONTHS[mk]+'-01';
+  }
+  // YYYY only: 2024
+  if (/^20\d{2}$/.test(str)) return str+'-01-01';
+  // Excel serial number
+  var serial = parseFloat(str);
+  if (!isNaN(serial) && serial > 40000 && serial < 60000) {
+    var d = new Date(Math.round((serial - 25569) * 86400 * 1000));
+    return d.getUTCFullYear()+'-'+String(d.getUTCMonth()+1).padStart(2,'0')+'-'+String(d.getUTCDate()).padStart(2,'0');
+  }
+  return null;
 }
+function _parseLeaseDateFull(str) { return _parseLeaseDate(str); }
 
 // ── GENERIC EXCEL PARSER ─────────────────────────────────
 function _llParseGeneric(raw, address, market) {
