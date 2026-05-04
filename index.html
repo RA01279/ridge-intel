@@ -12743,8 +12743,8 @@ function _llRenderTable(rows) {
     wrap.innerHTML = '<div style="color:var(--faint);font-size:12px;padding:16px;">No leases found. Import a rent roll to get started.</div>';
     _llRenderPagination(); return;
   }
-  var cols = ['Address','Suite','Tenant','SF','Rent PSF','Expiration','Type','Status','Market','Actions'];
-  var html = '<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:11px;min-width:900px;">'
+  var cols = ['Address','Suite','Tenant','SF','Rent PSF','TI PSF','Free Rent (Mo)','Asset Class','Expiration','Type','Status','Market','Actions'];
+  var html = '<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:11px;min-width:1100px;">'
     + '<thead><tr>' + cols.map(function(c){
         return '<th style="background:#1E2761;color:#fff;padding:6px 8px;text-align:left;white-space:nowrap;position:sticky;top:0;z-index:1;">' + c + '</th>';
       }).join('') + '</tr></thead><tbody>';
@@ -12762,6 +12762,9 @@ function _llRenderTable(rows) {
       + '<td style="'+TD+'max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="'+(r.tenant||'')+'">' + (r.tenant||'—').slice(0,28) + '</td>'
       + '<td style="'+TD+'text-align:right;">' + (r.sf ? Number(r.sf).toLocaleString() : '—') + '</td>'
       + '<td style="'+TD+'text-align:right;">' + (r.base_rent_psf ? '$'+Number(r.base_rent_psf).toFixed(2) : '—') + '</td>'
+      + '<td style="'+TD+'text-align:right;">' + (r.ti_psf ? '$'+Number(r.ti_psf).toFixed(2) : '—') + '</td>'
+      + '<td style="'+TD+'text-align:right;">' + (r.free_rent_months != null ? r.free_rent_months : '—') + '</td>'
+      + '<td style="'+TD+'">' + (r.asset_class||'—') + '</td>'
       + '<td style="'+TD+'">' + (r.expiration_date ? String(r.expiration_date).slice(0,10) : '—') + '</td>'
       + '<td style="'+TD+'">' + (r.lease_type||'—') + '</td>'
       + '<td style="'+TD+'color:'+sc+';font-weight:600;">' + sl + '</td>'
