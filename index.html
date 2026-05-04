@@ -12013,7 +12013,7 @@ var _llColMap = {
   // Lease Type
   'lease type':'lease_type','type':'lease_type','expense type':'lease_type','lease structure':'lease_type',
   // Commencement
-  'commencement date':'commencement_date','commencement':'commencement_date','lease start':'commencement_date','start date':'commencement_date','sign date':'commencement_date','execution date':'commencement_date','lease commencement':'commencement_date','lease commencement date':'commencement_date',
+  'commencement date':'commencement_date','commencementdate':'commencement_date','commencement':'commencement_date','lease start':'commencement_date','start date':'commencement_date','sign date':'commencement_date','execution date':'commencement_date','lease commencement':'commencement_date','lease commencement date':'commencement_date',
   // Expiration
   'expiration date':'expiration_date','expiration':'expiration_date','lease end':'expiration_date','end date':'expiration_date','lease expiration':'expiration_date',
   // Rent PSF
@@ -12109,7 +12109,7 @@ async function _llConvertBrokerFile(file, market) {
         // Find header row — scan first 15 rows for a row with 3+ mapped columns
         var hdrIdx = -1, hdrMap = {};
         for (var s = 0; s < Math.min(raw.length, 15); s++) {
-          var rowL = (raw[s]||[]).map(function(c){ return String(c||'').toLowerCase().trim().replace(/\s+/g,' ').replace(/[^\x20-\x7E]/g,'').trim(); });
+          var rowL = (raw[s]||[]).map(function(c){ return String(c||'').replace(/\u00a0/g,' ').toLowerCase().trim().replace(/\s+/g,' ').replace(/[^\x20-\x7E]/g,'').trim(); });
           var mapped = 0; var tmpMap = {};
           rowL.forEach(function(h, ci) {
             if (_llColMap[h]) { tmpMap[_llColMap[h]] = ci; mapped++; }
