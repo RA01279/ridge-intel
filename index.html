@@ -12590,7 +12590,7 @@ function _llRenderPreview(rows) {
   document.getElementById('ll-preview-info').innerHTML =
     '<strong>' + rows.length + ' rows parsed</strong> — ' + occupied + ' occupied · ' + vacant + ' vacant/speculative';
   document.getElementById('ll-confirm-btn').textContent = '✅ Confirm Import (' + rows.length + ' leases)';
-  var cols = ['Address','Tenant','Suite','SF','Rent PSF','Expiration','TI PSF','Free Rent','Type','Status'];
+  var cols = ['Address','Tenant','Suite','SF','Rent PSF','Commencement','Expiration','Term (Mo)','TI PSF','Free Rent','Asset Class','Type','Status'];
   var html = '<table style="width:100%;border-collapse:collapse;font-size:11px;">'
     + '<thead><tr>' + cols.map(function(c){
         return '<th style="background:#1E2761;color:#fff;padding:5px 8px;text-align:left;white-space:nowrap;">' + c + '</th>';
@@ -12611,9 +12611,12 @@ function _llRenderPreview(rows) {
         + '<td style="'+PTD+'">' + (r.suite||'—') + '</td>'
         + '<td style="'+PTD+'text-align:right;">' + (r.sf ? Number(r.sf).toLocaleString() : '—') + '</td>'
         + '<td style="'+PTD+'text-align:right;">' + (r.base_rent_psf ? '$'+Number(r.base_rent_psf).toFixed(2) : '—') + '</td>'
-        + '<td style="'+PTD+'">' + (r.expiration_date||'—') + '</td>'
+        + '<td style="'+PTD+'">' + (r.commencement_date ? String(r.commencement_date).slice(0,7) : '—') + '</td>'
+        + '<td style="'+PTD+'">' + (r.expiration_date ? String(r.expiration_date).slice(0,7) : '—') + '</td>'
+        + '<td style="'+PTD+'text-align:right;">' + (r.lease_term_months != null ? r.lease_term_months + ' mo' : '—') + '</td>'
         + '<td style="'+PTD+'text-align:right;">' + (r.ti_psf ? '$'+Number(r.ti_psf).toFixed(2) : '—') + '</td>'
         + '<td style="'+PTD+'text-align:right;">' + (r.free_rent_months != null ? r.free_rent_months + ' mo' : '—') + '</td>'
+        + '<td style="'+PTD+'">' + (r.asset_class||'—') + '</td>'
         + '<td style="'+PTD+'">' + (r.lease_type||'—') + '</td>'
         + '<td style="'+PTD+'color:'+sc+';font-weight:600;">' + (r.vacant?'Vacant':'Occupied') + '</td>'
         + '</tr>';
@@ -12780,8 +12783,8 @@ function _llRenderTable(rows) {
     wrap.innerHTML = '<div style="color:var(--faint);font-size:12px;padding:16px;">No leases found. Import a rent roll to get started.</div>';
     _llRenderPagination(); return;
   }
-  var cols = ['Address','Suite','Tenant','SF','Rent PSF','Clear Ht','Docks','GL Doors','TI PSF','Free Rent (Mo)','Asset Class','Expiration','Type','Status','Market','Actions'];
-  var html = '<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:11px;min-width:1300px;">'
+  var cols = ['Address','Suite','Tenant','SF','Rent PSF','Commencement','Expiration','Term (Mo)','Clear Ht','Docks','GL Doors','TI PSF','Free Rent (Mo)','Asset Class','Type','Status','Market','Actions'];
+  var html = '<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:11px;min-width:1500px;">'
     + '<thead><tr>' + cols.map(function(c){
         return '<th style="background:#1E2761;color:#fff;padding:6px 8px;text-align:left;white-space:nowrap;position:sticky;top:0;z-index:1;">' + c + '</th>';
       }).join('') + '</tr></thead><tbody>';
@@ -12799,6 +12802,9 @@ function _llRenderTable(rows) {
       + '<td style="'+TD+'max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="'+(r.tenant||'')+'">' + (r.tenant||'—').slice(0,28) + '</td>'
       + '<td style="'+TD+'text-align:right;">' + (r.sf ? Number(r.sf).toLocaleString() : '—') + '</td>'
       + '<td style="'+TD+'text-align:right;">' + (r.base_rent_psf ? '$'+Number(r.base_rent_psf).toFixed(2) : '—') + '</td>'
+      + '<td style="'+TD+'">' + (r.commencement_date ? String(r.commencement_date).slice(0,7) : '—') + '</td>'
+      + '<td style="'+TD+'">' + (r.expiration_date ? String(r.expiration_date).slice(0,7) : '—') + '</td>'
+      + '<td style="'+TD+'text-align:right;">' + (r.lease_term_months != null ? r.lease_term_months + ' mo' : '—') + '</td>'
       + '<td style="'+TD+'text-align:right;">' + (r.clear_height ? r.clear_height + '\'' : '—') + '</td>'
       + '<td style="'+TD+'text-align:right;">' + (r.dock_high_doors != null ? r.dock_high_doors : '—') + '</td>'
       + '<td style="'+TD+'text-align:right;">' + (r.grade_level_doors != null ? r.grade_level_doors : '—') + '</td>'
