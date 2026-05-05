@@ -8768,7 +8768,7 @@ async function runRidgeAPI(skillName, prompt, runInputs, runToolId) {
                         await _writeLeaseRows(_lensOMParsed.rent_roll, _lensAddr, 'LENS');
                       }
                       var _contentEl = document.getElementById('ridge-panel-content');
-                      if (_contentEl) {
+                      if (_contentEl) { _contentEl.style.display = 'block';
                         var _omHTML = _lensRenderOM(_lensOMParsed, null, _lensMarketRent);
                         _contentEl.innerHTML = '<div style="margin-top:16px;padding-top:16px;">' +
                           '<div style="font-size:11px;color:#4a6a8a;letter-spacing:0.05em;margin-bottom:10px;">RIDGE OM INTELLIGENCE</div>' +
