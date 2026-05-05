@@ -8238,6 +8238,8 @@ function _pruneSessionLog(maxEntries) {
 }
 
 async function runRidgeAPI(skillName, prompt, runInputs, runToolId) {
+  var _runBtn = document.getElementById('run-btn-' + runToolId);
+  if (_runBtn) { _runBtn.disabled = true; _runBtn.textContent = '⏳ Running...'; }
   // Reset per-run state at the boundary so no prior tool's data bleeds in
   _lastRunInputs = runInputs || null;
   _lastRunToolId = runToolId || null;
@@ -9079,6 +9081,8 @@ async function runRidgeAPI(skillName, prompt, runInputs, runToolId) {
     spinnerEl.style.display = 'none';
     contentEl.style.display = 'block';
     contentEl.textContent = 'Request failed: ' + e.message + '\n\nNote: direct browser requests to the Anthropic API may be blocked by CORS. A server-side proxy may be required.';
+  } finally {
+    if (_runBtn) { _runBtn.disabled = false; _runBtn.textContent = '⚡ Run ' + (runToolId ? runToolId.toUpperCase() : skillName); }
   }
 }
 
