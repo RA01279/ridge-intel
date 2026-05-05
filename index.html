@@ -8747,12 +8747,13 @@ async function runRidgeAPI(skillName, prompt, runInputs, runToolId) {
                     var _lensOMParsed = await _lensParseOM(_omRawText, _lastRunInputs && _lastRunInputs.ask);
                     if (_lensOMParsed) {
                       if (_lensOMParsed.rent_roll && _lensOMParsed.rent_roll.length) {
-                        await _writeLeaseRows(_lensOMParsed.rent_roll, _lAddr || '', 'LENS');
+                        var _lensAddr = (_lensOMParsed.deal_metadata && _lensOMParsed.deal_metadata.address) || _lAddr || '';
+                        await _writeLeaseRows(_lensOMParsed.rent_roll, _lensAddr, 'LENS');
                       }
                       var _contentEl = document.getElementById('ridge-panel-content');
                       if (_contentEl) {
                         var _omHTML = _lensRenderOM(_lensOMParsed, null, _lensMarketRent);
-                        _contentEl.innerHTML += '<div style="margin-top:16px;border-top:1px solid #1a2d42;padding-top:16px;">' +
+                        _contentEl.innerHTML = '<div style="margin-top:16px;padding-top:16px;">' +
                           '<div style="font-size:11px;color:#4a6a8a;letter-spacing:0.05em;margin-bottom:10px;">RIDGE OM INTELLIGENCE</div>' +
                           _omHTML + '</div>';
                       }
