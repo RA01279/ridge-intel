@@ -5036,7 +5036,14 @@ async function _writeLeaseRows(rows, address, source) {
       if (insRes.error) console.warn('[RIDGE] ' + source + ' leases insert failed:', JSON.stringify(insRes.error));
       else console.log('[RIDGE] ' + source + ' replaced with ' + inserts.length + ' leases');
     } else {
-      var res = await _sb.from('leases').upsert(inserts, { onConflict: 'address,tenant', ignoreDuplicates: false });
+      // Strip fields not in leases schema before upsert
+      var _allowed = ['address','address_normalized','asset_class','base_rent_psf','clear_height','commencement_date','confidence','dock_high_doors','expiration_date','extracted_data','free_rent_months','full_text','grade_level_doors','landlord','lease_status','lease_term_months','lease_type','market','notes','record_type','rent_escalation_pct','sf','source','source_priority','submarket','suite','tenant','tenant_normalized','ti_psf','vacant','zip_code'];
+      var _cleanInserts = inserts.map(function(row) {
+        var _cleanRow = {};
+        _allowed.forEach(function(k){ if (row[k] !== undefined) _cleanRow[k] = row[k]; });
+        return _cleanRow;
+      });
+      var res = await _sb.from('leases').upsert(_cleanInserts, { onConflict: 'address,tenant', ignoreDuplicates: false });
       if (res.error) console.warn('[RIDGE] ' + source + ' leases write failed:', JSON.stringify(res.error));
       else console.log('[RIDGE] ' + source + ' wrote ' + inserts.length + ' leases to DB');
     }
