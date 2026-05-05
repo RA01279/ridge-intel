@@ -5366,9 +5366,22 @@ async function _lensParseOM(omText, askingPrice) {
       body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 8192, messages: [{ role: 'user', content: _parsePrompt }] })
     });
     var _rj = await _resp.json();
+    var _stopReason = _rj.stop_reason || '';
     var _raw = (_rj.content && _rj.content[0] && _rj.content[0].text) || '';
+    if (_stopReason === 'max_tokens') {
+      console.warn('[RIDGE] _lensParseOM truncated — response hit max_tokens, attempting partial repair');
+      _raw = _raw + '"}}';
+    }
     var _clean = _raw.replace(/```json|```/g, '').trim();
-    return JSON.parse(_clean);
+    try { return JSON.parse(_clean); } catch(_e1) {
+      console.warn('[RIDGE] _lensParseOM full parse failed:', _e1.message);
+      try {
+        var _dmMatch = _clean.match(/"deal_metadata"\s*:\s*(\{[^}]+\})/);
+        if (_dmMatch) return { deal_metadata: JSON.parse(_dmMatch[1]), rent_roll: [], investment_highlights: [], risk_factors: [] };
+      } catch(_e2) {}
+      console.warn('[RIDGE] _lensParseOM all recovery failed');
+      return null;
+    }
   } catch(e) {
     console.warn('[RIDGE] _lensParseOM error:', e.message);
     return null;
