@@ -5359,11 +5359,11 @@ async function _lensParseOM(omText, askingPrice) {
       '  "risk_factors": ["<string>"]\n' +
       '}\n\n' +
       (askingPrice ? 'ASKING PRICE PROVIDED BY USER: $' + askingPrice + '\n\n' : '') +
-      'OM TEXT:\n' + omText.slice(0, 12000);
+      'OM TEXT:\n' + omText.slice(0, 40000);
     var _resp = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-api-key': _apiKey, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
-      body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 4096, messages: [{ role: 'user', content: _parsePrompt }] })
+      body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 8192, messages: [{ role: 'user', content: _parsePrompt }] })
     });
     var _rj = await _resp.json();
     var _raw = (_rj.content && _rj.content[0] && _rj.content[0].text) || '';
