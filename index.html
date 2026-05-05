@@ -5362,7 +5362,7 @@ async function _lensParseOM(omText, askingPrice) {
       'OM TEXT:\n' + omText.slice(0, 12000);
     var _resp = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-api-key': _apiKey, 'anthropic-version': '2023-06-01' },
+      headers: { 'Content-Type': 'application/json', 'x-api-key': _apiKey, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
       body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 4096, messages: [{ role: 'user', content: _parsePrompt }] })
     });
     var _rj = await _resp.json();
@@ -5607,7 +5607,7 @@ async function _extractMarketMetrics(reportText, filename) {
       'REPORT TEXT:\n' + reportText.slice(0, 10000);
     var _resp = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-api-key': _apiKey, 'anthropic-version': '2023-06-01' },
+      headers: { 'Content-Type': 'application/json', 'x-api-key': _apiKey, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
       body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 1024, messages: [{ role: 'user', content: _metricPrompt }] })
     });
     var _rj = await _resp.json();
