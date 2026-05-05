@@ -8308,6 +8308,13 @@ async function runRidgeAPI(skillName, prompt, runInputs, runToolId) {
   });
   // ─────────────────────────────────────────────────────────────
   try {
+  // ── LENS: skip stream if OM PDF is loaded — go straight to OM Intelligence ──
+  if (skillName === 'LENS' && STATE['lens'] && STATE['lens'].files && STATE['lens'].files['om'] && STATE['lens'].files['om'].length > 100) {
+    if (spinnerEl) spinnerEl.style.display = 'none';
+    contentEl.innerHTML = '<div style="color:var(--faint);font-size:12px;padding:16px;">⏳ Analyzing OM — please wait...</div>';
+    // Fall through to post-run block which fires _lensParseOM and renders OM Intelligence
+    accumulated = '';
+  } else {
     var resp = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
@@ -8394,6 +8401,7 @@ async function runRidgeAPI(skillName, prompt, runInputs, runToolId) {
         contentEl.innerHTML = parseMarkdown(accumulated.substring(0, _gavelStripIdx).trimEnd());
       }
     }
+  } // end else (non-LENS-OM stream path)
     // ISR — fire Call 2 JSON extraction in background; button enabled when it completes
     if (_lastRunToolId === 'isr') {
       var _isrBtn2 = document.getElementById('pptx-btn-isr');
