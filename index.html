@@ -8773,6 +8773,8 @@ async function runRidgeAPI(skillName, prompt, runInputs, runToolId) {
                         _contentEl.innerHTML = '<div style="margin-top:16px;padding-top:16px;">' +
                           '<div style="font-size:11px;color:#4a6a8a;letter-spacing:0.05em;margin-bottom:10px;">RIDGE OM INTELLIGENCE</div>' +
                           _omHTML + '</div>';
+                        document.getElementById('loading-lens').classList.remove('show');
+                        document.getElementById('results-lens').classList.add('show');
                       }
                       if (_sb && _soId) {
                         _sb.from('skill_outputs').update({ parsed_om: _lensOMParsed }).eq('id', _soId)
