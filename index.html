@@ -5422,7 +5422,7 @@ async function _lensParseOM(omText, askingPrice) {
       '    "address": "<full address or null>",\n' +
       '    "market": "<city or null>",\n' +
       '    "submarket": "<submarket or null>",\n' +
-      '    "asset_class": "<Industrial|Flex|Office|Mixed>",\n' +
+      '    "asset_class": "<Flex Industrial|Industrial / Warehouse|Single-Story Office Conversion|Multi-Tenant Industrial|Office — pick the single best fit; do not invent new values>",\n' +
       '    "asking_price": <number or null>,\n' +
       '    "price_psf": <number or null>,\n' +
       '    "building_sf": <number or null>,\n' +
@@ -8983,6 +8983,12 @@ async function runRidgeAPI(skillName, prompt, runInputs, runToolId) {
                       }
                       if (_lensOMParsed.rent_roll && _lensOMParsed.rent_roll.length) {
                         var _lensAddr = (_lensOMParsed.deal_metadata && _lensOMParsed.deal_metadata.address) || _lAddr || '';
+                        var _lensAssetClass = _lensOMParsed.deal_metadata && _lensOMParsed.deal_metadata.asset_class;
+                        if (_lensAssetClass) {
+                          _lensOMParsed.rent_roll.forEach(function(r) {
+                            if (!r.asset_class) r.asset_class = _lensAssetClass;
+                          });
+                        }
                         _ridgeUpdateLeaseStatus('writing', _lensOMParsed.rent_roll.length);
                         _writeLeaseRows(_lensOMParsed.rent_roll, _lensAddr, 'LENS')
                           .then(function(r) { _ridgeUpdateLeaseStatus('done', r && r.written); })
