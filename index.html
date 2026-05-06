@@ -4131,7 +4131,13 @@ If CONDITIONAL: state exactly what must be verified before proceeding
 // → extracted to shared/supabase.js (Phase 2) — client ref + ok flag
 var _sb = null;
 var _sbOk = false;
-var _voyageRetryQueue = [];
+var _voyageRetryQueue = (function(){
+  try {
+    var _saved = localStorage.getItem('_voyageRetryQueue');
+    return _saved ? JSON.parse(_saved) : [];
+  } catch(e) { return []; }
+})();
+var _lastVoyageStatus = 0;
 
 function _ridgeUpdateRetryButton() {
   var btn = document.getElementById('ridge-retry-btn');
@@ -4175,6 +4181,7 @@ async function _ridgeRetryVoyageQueue() {
     await new Promise(function(res){ setTimeout(res, 2000); });
   }
   _voyageRetryQueue = stillFailedItems;
+  try { localStorage.setItem('_voyageRetryQueue', JSON.stringify(_voyageRetryQueue)); } catch(e){}
   _ridgeUpdateRetryButton();
   if (btn) {
     btn.disabled = false;
@@ -5122,7 +5129,7 @@ async function _writeLeaseRows(rows, address, source) {
   if (_sbOk && _sb && inserts && inserts.length) {
     setTimeout(function() { (async function() {
       var _embedRows = inserts.filter(function(r) { return r.address && r.tenant; });
-      var _BATCH = 5, _rateFailures = 0, _useSeq = false;
+      var _BATCH = 2, _rateFailures = 0, _useSeq = false;
       async function _embedOne(r) {
         var _embedText = [
           r.address, r.tenant, r.asset_class || '',
@@ -5131,8 +5138,18 @@ async function _writeLeaseRows(rows, address, source) {
           r.market || '', r.record_type || ''
         ].join(' ').trim();
         var _vec = null;
-        for (var _att = 0; _att < 3; _att++) {
-          if (_att > 0) await new Promise(function(res){ setTimeout(res, 1500 * _att); });
+        var _maxAttempts = 3;
+        for (var _att = 0; _att < _maxAttempts; _att++) {
+          if (_att > 0) {
+            var _backoff;
+            if (_lastVoyageStatus === 429) {
+              _backoff = Math.pow(2, _att) * 1000;
+              _maxAttempts = 4;
+            } else {
+              _backoff = 1500 * _att;
+            }
+            await new Promise(function(res){ setTimeout(res, _backoff); });
+          }
           _vec = await _generateEmbedding(_embedText);
           if (_vec) break;
           _rateFailures++;
@@ -5157,6 +5174,7 @@ async function _writeLeaseRows(rows, address, source) {
               timestamp: new Date().toISOString()
             });
             _ridgeUpdateRetryButton();
+            try { localStorage.setItem('_voyageRetryQueue', JSON.stringify(_voyageRetryQueue)); } catch(e){}
           }
         }
       }
@@ -7802,11 +7820,13 @@ async function _generateEmbedding(text) {
       })
     });
     console.log('Voyage response status:', resp.status);
+    _lastVoyageStatus = resp.status;
     var data = await resp.json();
     console.log('Voyage response data keys:', Object.keys(data));
     return data.data && data.data[0] && data.data[0].embedding ? data.data[0].embedding : null;
   } catch(e) {
     console.error('Voyage embedding error:', e.message);
+    _lastVoyageStatus = 0;
     return null;
   }
 }
