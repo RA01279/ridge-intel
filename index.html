@@ -586,6 +586,7 @@ footer{border-top:1px solid var(--border);padding:20px 24px;text-align:center;co
     <button class="btn btn-o" onclick="showHistoryPanel()" style="font-size:11px;padding:5px 12px;border-radius:4px;">🕐 History</button>
     <button class="btn btn-o" onclick="showLeaseLibrary()" style="font-size:11px;padding:5px 12px;border-radius:4px;">📋 Leases</button>
     <button class="btn btn-o" onclick="pickMarketIntelFolder()" style="font-size:11px;padding:5px 12px;border-radius:4px;">📊 Sync Market Intel</button>
+    <button id="ridge-retry-btn" onclick="_ridgeRetryVoyageQueue()" style="display:none;background:#fbbf24;color:#000;padding:6px 12px;border-radius:4px;border:none;font-size:12px;font-weight:600;cursor:pointer;margin-right:8px;">⚠ Retry Failed Embeds (<span id="ridge-retry-count">0</span>)</button>
     <button class="btn btn-o" onclick="showApiKeyModal()" style="font-size:11px;padding:5px 12px;border-radius:4px;">API Key</button>
     <button onclick="_ridgeForceReset()" title="Force reset all RIDGE state" style="font-size:11px;padding:3px 8px;background:#1a0800;border:1px solid #4a1a00;color:#e05c2a;border-radius:4px;cursor:pointer;">⟳ Reset</button>
     <span id="ridge-session-user" style="font-size:10px;color:#4a6a8a;padding:3px 6px;"></span>
@@ -4130,6 +4131,57 @@ If CONDITIONAL: state exactly what must be verified before proceeding
 // → extracted to shared/supabase.js (Phase 2) — client ref + ok flag
 var _sb = null;
 var _sbOk = false;
+var _voyageRetryQueue = [];
+
+function _ridgeUpdateRetryButton() {
+  var btn = document.getElementById('ridge-retry-btn');
+  var countEl = document.getElementById('ridge-retry-count');
+  if (!btn || !countEl) return;
+  var n = (_voyageRetryQueue || []).length;
+  countEl.textContent = n;
+  btn.style.display = n > 0 ? 'inline-block' : 'none';
+}
+
+async function _ridgeRetryVoyageQueue() {
+  var queue = _voyageRetryQueue || [];
+  if (queue.length === 0) {
+    alert('No failed embeddings to retry.');
+    return;
+  }
+  var btn = document.getElementById('ridge-retry-btn');
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = '⏳ Retrying ' + queue.length + '...';
+  }
+  var recovered = 0, stillFailed = 0;
+  var stillFailedItems = [];
+  for (var i = 0; i < queue.length; i++) {
+    var item = queue[i];
+    try {
+      var emb = await _generateEmbedding(item.embedText);
+      if (emb) {
+        var addrPrefix = (item.address || '').split(',')[0];
+        var upRes = await _sb.from('leases').update({ embedding: emb })
+          .eq('tenant_normalized', item.tenant_normalized)
+          .ilike('address', '%' + addrPrefix + '%');
+        if (upRes.error) { stillFailed++; stillFailedItems.push(item); }
+        else { recovered++; }
+      } else {
+        stillFailed++; stillFailedItems.push(item);
+      }
+    } catch (e) {
+      stillFailed++; stillFailedItems.push(item);
+    }
+    await new Promise(function(res){ setTimeout(res, 2000); });
+  }
+  _voyageRetryQueue = stillFailedItems;
+  _ridgeUpdateRetryButton();
+  if (btn) {
+    btn.disabled = false;
+    btn.innerHTML = '⚠ Retry Failed Embeds (<span id="ridge-retry-count">' + stillFailedItems.length + '</span>)';
+  }
+  alert('Retry complete: ' + recovered + ' recovered, ' + stillFailed + ' still failed.');
+}
 var _lastRunInputs = null;
 var _lastRunToolId  = null;
 function _updateExportButtons() {
@@ -5092,6 +5144,15 @@ async function _writeLeaseRows(rows, address, source) {
           if (_upRes.error) console.warn('[RIDGE] lease embed update error:', _upRes.error.message);
         } else {
           console.warn('[RIDGE] lease embed failed after retries:', r.tenant);
+          _voyageRetryQueue.push({
+            tenant: r.tenant,
+            tenant_normalized: r.tenant_normalized,
+            address: r.address,
+            embedText: _embedText,
+            error: 'Voyage 429 after retries',
+            timestamp: new Date().toISOString()
+          });
+          _ridgeUpdateRetryButton();
         }
       }
       for (var _bi = 0; _bi < _embedRows.length; _bi += _BATCH) {
@@ -5549,6 +5610,7 @@ function _lensRenderOM(parsed, crossRefFlags, marketRentData) {
       '<div style="font-size:16px;font-weight:700;color:#4ade80;">$' + (parsed.implied_purchase_price >= 100000000 ? Math.round(parsed.implied_purchase_price/1000000) + 'M' : (parsed.implied_purchase_price/1000000).toFixed(1) + 'M') + '</div>' +
       '<div style="font-size:10px;color:#4a6a8a;">@ ' + parsed.going_in_cap_input.toFixed(2) + '% Cap</div></div>' : '') +
     '</div>' +
+    (parsed.noi_warning ? '<div id="ridge-noi-warning" style="margin-top:10px;padding:8px 12px;background:#fbbf24;color:#1a1a1a;border-radius:4px;font-size:12px;font-weight:600;">⚠ Cap rate entered but no in-place NOI in OM — implied price unavailable.</div>' : '') +
     '<span id="ridge-lease-status" style="display:none;margin-top:8px;padding:3px 8px;border-radius:4px;font-size:10px;font-weight:600;letter-spacing:0.05em;align-items:center;"></span>' +
     '</div>';
 
@@ -6510,6 +6572,7 @@ document.addEventListener('drop', e => {
 //  INIT
 // ═══════════════════════════════════════════════════════════
 renderTools();
+_ridgeUpdateRetryButton();
 if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
 window.scrollTo(0, 0);
 // Open LENS by default (per user preference — near top)
@@ -8834,6 +8897,10 @@ async function runRidgeAPI(skillName, prompt, runInputs, runToolId) {
                       console.log('[RIDGE] LENS implied price:', _impliedPrice, 'NOI:', _lensOMParsed.broker_underwriting && _lensOMParsed.broker_underwriting.in_place_noi, 'cap:', _lastRunInputs && _lastRunInputs.goingInCap);
                       _lensOMParsed.implied_purchase_price = _impliedPrice;
                       _lensOMParsed.going_in_cap_input = _lastRunInputs && _lastRunInputs.goingInCap;
+                      var _bu = _lensOMParsed.broker_underwriting || {};
+                      var _noiVal = _bu.in_place_noi;
+                      var _noiNum = typeof _noiVal === 'number' ? _noiVal : (_noiVal ? parseFloat(String(_noiVal).replace(/[$,\s]/g, '')) : 0);
+                      _lensOMParsed.noi_warning = !!(_lastRunInputs && _lastRunInputs.goingInCap > 0 && !(_noiNum > 0));
                       var _contentEl = document.getElementById('ridge-panel-content');
                       if (_contentEl) { _contentEl.style.display = 'block';
                         var _omHTML = _lensRenderOM(_lensOMParsed, null, _lensMarketRent);
