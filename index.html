@@ -8762,6 +8762,7 @@ async function runRidgeAPI(skillName, prompt, runInputs, runToolId) {
                       dockDoors:  0
                     });
                     var _lensOMParsed = await _lensParseOM(_omRawText, _lastRunInputs && _lastRunInputs.ask);
+                    console.log('[RIDGE] _lensParseOM result:', _lensOMParsed ? 'populated' : 'NULL', _lensOMParsed);
                     if (_lensOMParsed) {
                       if (_lensOMParsed.rent_roll && _lensOMParsed.rent_roll.length) {
                         var _lensAddr = (_lensOMParsed.deal_metadata && _lensOMParsed.deal_metadata.address) || _lAddr || '';
