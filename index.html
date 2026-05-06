@@ -5679,6 +5679,31 @@ function _lensRenderOM(parsed, crossRefFlags, marketRentData) {
       ';border-left:3px solid ' + c + ';border-radius:2px;font-size:11px;color:' + c + ';">' +
       ic + ' ' + text + '</div>';
   }
+  function scenarioCol(label, accent, bgColor, s) {
+    if (!s) return '';
+    var fmtPct = function(v, suffix) {
+      return (v != null && !isNaN(v)) ? (v + (suffix || '%')) : '\u2014';
+    };
+    var fmtPrice = function(v) {
+      return (v && v > 0) ? '$' + (v / 1000000).toFixed(1) + 'M' : '\u2014';
+    };
+    var rowStyle = 'display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid #0d1f33;';
+    var labelStyle = 'color:#4a6a8a;';
+    var rows =
+      '<div style="' + rowStyle + '"><span style="' + labelStyle + '">IRR</span><span style="color:' + accent + ';font-weight:600;">' + fmtPct(s.projected_irr) + '</span></div>' +
+      '<div style="' + rowStyle + '"><span style="' + labelStyle + '">EM</span><span style="color:' + accent + ';font-weight:600;">' + (s.projected_em != null ? s.projected_em + 'x' : '\u2014') + '</span></div>' +
+      '<div style="' + rowStyle + '"><span style="' + labelStyle + '">YoC</span><span style="color:#e0e8f0;">' + fmtPct(s.projected_yoc) + '</span></div>' +
+      '<div style="' + rowStyle + '"><span style="' + labelStyle + '">Max Entry</span><span style="color:#e0e8f0;font-weight:500;">' + fmtPrice(s.max_entry_price) + '</span></div>' +
+      '<div style="' + rowStyle + '"><span style="' + labelStyle + '">Exit Cap</span><span style="color:#c0d0e0;">' + fmtPct(s.exit_cap_pct) + '</span></div>' +
+      '<div style="' + rowStyle + '"><span style="' + labelStyle + '">Vacancy</span><span style="color:#c0d0e0;">' + fmtPct(s.vacancy_assumption_pct) + '</span></div>' +
+      '<div style="' + rowStyle + '"><span style="' + labelStyle + '">Rent Growth</span><span style="color:#c0d0e0;">' + fmtPct(s.rent_growth_pct) + '</span></div>' +
+      '<div style="' + rowStyle + '"><span style="' + labelStyle + '">Hold</span><span style="color:#c0d0e0;">' + (s.hold_years != null ? s.hold_years + ' yrs' : '\u2014') + '</span></div>';
+    var keyAssumption = s.key_assumption ?
+      '<div style="margin-top:8px;padding:6px 8px;background:#0a1628;border-left:2px solid ' + accent + ';font-size:10px;color:#7a9aba;line-height:1.4;">' + s.key_assumption + '</div>' : '';
+    return '<div style="flex:1;background:' + bgColor + ';border:1px solid ' + accent + ';border-radius:4px;padding:10px 12px;">' +
+      '<div style="font-size:11px;font-weight:700;color:' + accent + ';letter-spacing:0.05em;margin-bottom:8px;text-transform:uppercase;">' + label + '</div>' +
+      rows + keyAssumption + '</div>';
+  }
 
   var header = '<div style="background:#0d1f33;border:1px solid #1a4a6b;border-radius:8px;padding:14px 16px;margin-bottom:10px;">' +
     '<div style="font-size:15px;font-weight:700;color:#e0e8f0;">' + (dm.property_name || dm.address || 'Unnamed Property') + '</div>' +
@@ -5690,6 +5715,8 @@ function _lensRenderOM(parsed, crossRefFlags, marketRentData) {
       '<div style="font-size:16px;font-weight:700;color:#e0e8f0;">$' + dm.price_psf + '</div></div>' : '') +
     (dm.building_sf ? '<div><div style="font-size:10px;color:#4a6a8a;">BUILDING SF</div>' +
       '<div style="font-size:16px;font-weight:700;color:#e0e8f0;">' + Math.round(dm.building_sf).toLocaleString() + '</div></div>' : '') +
+    (parsed.implied_purchase_price > 0 ? '<div><div style="font-size:10px;color:#4a6a8a;">PSF</div>' +
+      '<div style="font-size:16px;font-weight:700;color:#e0e8f0;">' + (dm.building_sf > 0 ? '$' + (parsed.implied_purchase_price / dm.building_sf).toFixed(2) : '—') + '</div></div>' : '') +
     (occ.current_occupancy_pct != null ? '<div><div style="font-size:10px;color:#4a6a8a;">OCCUPANCY</div>' +
       '<div style="font-size:16px;font-weight:700;color:#e0e8f0;">' + occ.current_occupancy_pct + '%</div></div>' : '') +
     (occ.walt_years != null ? '<div><div style="font-size:10px;color:#4a6a8a;">WALT</div>' +
@@ -5741,12 +5768,9 @@ function _lensRenderOM(parsed, crossRefFlags, marketRentData) {
     uwFlags += flag('Exit cap ' + uw.exit_cap + '% tighter than going-in cap ' + uw.going_in_cap + '% — compression assumed', 'warn');
   }
   if (dbRent && uw.market_rent_psf) {
-    var delta = ((uw.market_rent_psf - dbRent) / dbRent) * 100;
-    if (delta > 10) {
-      uwFlags += flag('Broker market rent $' + uw.market_rent_psf + ' PSF is ' + delta.toFixed(1) + '% above RIDGE comp avg of $' + dbRent + ' PSF', 'warn');
-    } else {
-      uwFlags += flag('Broker market rent $' + uw.market_rent_psf + ' PSF aligns with RIDGE comp avg of $' + dbRent + ' PSF', 'ok');
-    }
+    var _delta = (uw.market_rent_psf - dbRent) / dbRent;
+    var _alignType = Math.abs(_delta) > 0.10 ? 'warn' : 'ok';
+    uwFlags += flag('Broker market rent $' + uw.market_rent_psf + ' PSF ' + _lensRentAlignmentString(uw.market_rent_psf, dbRent), _alignType);
   }
   if (crossRefFlags && crossRefFlags.length) {
     crossRefFlags.forEach(function(f) { uwFlags += flag(f.replace(/^[\u26a0\u2705]\s*/,''), f.startsWith('\u26a0') ? 'warn' : 'ok'); });
@@ -5776,13 +5800,43 @@ function _lensRenderOM(parsed, crossRefFlags, marketRentData) {
     kv('New Supply', mc.new_supply_sf ? Math.round(mc.new_supply_sf).toLocaleString() + ' SF' : null) +
     (mc.market_summary ? '<div style="margin-top:8px;color:#7ab3d4;font-size:11px;">' + mc.market_summary + '</div>' : '');
 
+  var sc = parsed.scenarios;
+  var scenarioPanel = '';
+  if (sc && sc.base) {
+    var scenContent = '<div style="display:flex;gap:8px;flex-wrap:wrap;">' +
+      scenarioCol('Bear', '#e05c2a', '#1a0500', sc.bear) +
+      scenarioCol('Base', '#4a9ade', '#0d1f2e', sc.base) +
+      scenarioCol('Bull', '#4ade80', '#001a0d', sc.bull) +
+      '</div>';
+    scenarioPanel = panel('SCENARIO ANALYSIS', '#0d1a2e', scenContent);
+  }
+
   return header +
     panel('PHYSICAL SPECIFICATIONS', '#0d2137', physContent || '<span style="color:#4a6a8a;">No physical data extracted</span>') +
     (rr.length ? panel('RENT ROLL & ROLLOVER SCHEDULE', '#0d1f2e', rrTable) : '') +
     panel('BROKER UNDERWRITING ASSUMPTIONS', '#1a1200', uwContent || '<span style="color:#4a6a8a;">No underwriting data extracted</span>') +
+    scenarioPanel +
     (hlContent ? panel('INVESTMENT HIGHLIGHTS', '#001a0d', hlContent) : '') +
     (riskContent ? panel('RISK FACTORS', '#1a0500', riskContent) : '') +
     (mcContent ? panel('MARKET CONTEXT', '#0d1a2e', mcContent) : '');
+}
+
+// ── LENS: delta-aware alignment language for broker rent vs RIDGE comp avg ──
+function _lensRentAlignmentString(brokerRent, compAvg) {
+  var b = parseFloat(brokerRent);
+  var c = parseFloat(compAvg);
+  if (!b || !c) return '';
+  var delta = (b - c) / c;
+  var pct = Math.abs(delta) * 100;
+  var dollarDelta = Math.abs(b - c).toFixed(2);
+  var compStr = '$' + c.toFixed(2);
+  if (Math.abs(delta) <= 0.05) {
+    return 'tracks RIDGE comp avg of ' + compStr + ' PSF (within 5%)';
+  } else if (delta > 0.05) {
+    return 'runs $' + dollarDelta + ' PSF above RIDGE comp avg of ' + compStr + ' PSF (broker bullish by ' + pct.toFixed(1) + '%)';
+  } else {
+    return 'runs $' + dollarDelta + ' PSF below RIDGE comp avg of ' + compStr + ' PSF (broker conservative by ' + pct.toFixed(1) + '%)';
+  }
 }
 
 // ── LENS: cross-reference broker assumptions vs market data ──────────────────
