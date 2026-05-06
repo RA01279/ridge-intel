@@ -8947,6 +8947,7 @@ async function runRidgeAPI(skillName, prompt, runInputs, runToolId) {
                       dockDoors:  0
                     });
                     var _lensOMParsed = await _lensParseOM(_omRawText, _lastRunInputs && _lastRunInputs.ask);
+                    window._lensOMParsed = _lensOMParsed;
                     console.log('[RIDGE] _lensParseOM result:', _lensOMParsed ? 'populated' : 'NULL', _lensOMParsed);
                     if (_lensOMParsed) {
                       // Compute implied purchase price from going-in cap + in-place NOI
