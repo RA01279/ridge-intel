@@ -5476,8 +5476,73 @@ async function _lensParseOM(omText, askingPrice) {
       '    "market_summary": "<2-3 sentences or null>"\n' +
       '  },\n' +
       '  "investment_highlights": ["<string>"],\n' +
-      '  "risk_factors": ["<string>"]\n' +
+      '  "risk_factors": ["<string>"],\n' +
+      '  "scenarios": {\n' +
+      '    "bear": {\n' +
+      '      "rent_growth_pct": <number, annual rent growth assumption, e.g. 2.0>,\n' +
+      '      "vacancy_assumption_pct": <number, stabilized vacancy assumption, e.g. 8.0>,\n' +
+      '      "exit_cap_pct": <number, exit cap rate assumption, e.g. 7.5>,\n' +
+      '      "hold_years": <number, hold period in years, e.g. 5>,\n' +
+      '      "projected_irr": <number, levered IRR at this scenario max entry price, e.g. 15.0>,\n' +
+      '      "projected_em": <number, equity multiple, e.g. 1.8>,\n' +
+      '      "projected_yoc": <number, year-3 yield on cost, e.g. 7.5>,\n' +
+      '      "max_entry_price": <number, the maximum total purchase price RIDGE could pay at this scenario and still hit the return thresholds — back-solved>,\n' +
+      '      "key_assumption": "<string, one sentence describing the most consequential assumption driving this scenario>"\n' +
+      '    },\n' +
+      '    "base": {\n' +
+      '      "rent_growth_pct": <number>,\n' +
+      '      "vacancy_assumption_pct": <number>,\n' +
+      '      "exit_cap_pct": <number>,\n' +
+      '      "hold_years": <number>,\n' +
+      '      "projected_irr": <number>,\n' +
+      '      "projected_em": <number>,\n' +
+      '      "projected_yoc": <number>,\n' +
+      '      "max_entry_price": <number>,\n' +
+      '      "key_assumption": "<string>"\n' +
+      '    },\n' +
+      '    "bull": {\n' +
+      '      "rent_growth_pct": <number>,\n' +
+      '      "vacancy_assumption_pct": <number>,\n' +
+      '      "exit_cap_pct": <number>,\n' +
+      '      "hold_years": <number>,\n' +
+      '      "projected_irr": <number>,\n' +
+      '      "projected_em": <number>,\n' +
+      '      "projected_yoc": <number>,\n' +
+      '      "max_entry_price": <number>,\n' +
+      '      "key_assumption": "<string>"\n' +
+      '    }\n' +
+      '  }\n' +
       '}\n\n' +
+      'SCENARIO COMPUTATION — RIDGE return anchors\n\n' +
+      'You must produce three scenarios — Bear, Base, Bull — that re-underwrite this deal at RIDGE assumptions and back-solve to the maximum entry price at each scenario.\n\n' +
+      'RIDGE return thresholds (these are the targets — back-solve max entry price to HIT these, not exceed them):\n' +
+      '- Levered IRR: 15.0% minimum (Bear/Base), 18.0%+ acceptable on Bull\n' +
+      '- Equity Multiple: 1.8x minimum (Bear), 2.0x (Base), 2.2x+ (Bull)\n' +
+      '- Year 3 YOC: 7.5% minimum (Bear), 7.75% (Base), 8.0%+ (Bull)\n' +
+      '- Hold: 5 years standard, may extend to 7 if Bull case requires\n\n' +
+      'RIDGE assumptions per scenario:\n\n' +
+      'BEAR — downside protection, deal still pencils:\n' +
+      '- Rent growth: 2.0% annual\n' +
+      '- Stabilized vacancy: market vacancy + 200 bps (penalty)\n' +
+      '- Exit cap: going-in cap + 50 bps (cap expansion)\n' +
+      '- Capex/TI: assume broker number is light, add 15% contingency\n' +
+      '- Key question: what is the maximum we could pay and still hit 15% IRR / 1.8x EM / 7.5% YOC under stressed conditions?\n\n' +
+      'BASE — RIDGE base case:\n' +
+      '- Rent growth: 3.0–3.5% annual (use submarket data if available, else 3.0%)\n' +
+      '- Stabilized vacancy: market vacancy\n' +
+      '- Exit cap: going-in cap (flat — no cap expansion or compression)\n' +
+      '- Capex/TI: broker number as stated\n' +
+      '- Key question: maximum entry price at expected market conditions hitting 15% IRR / 2.0x EM / 7.75% YOC\n\n' +
+      'BULL — upside case, justifies aggressive offer:\n' +
+      '- Rent growth: 4.0%+ annual (only if submarket supports)\n' +
+      '- Stabilized vacancy: market vacancy minus 100 bps\n' +
+      '- Exit cap: going-in cap minus 25 bps (modest compression)\n' +
+      '- Capex/TI: broker number, possibly less if value-add scope is overstated\n' +
+      '- Key question: maximum entry price assuming favorable conditions hitting 18%+ IRR / 2.2x+ EM / 8.0%+ YOC\n\n' +
+      'If implied_purchase_price was computed (broker NOI ÷ user-entered going-in cap), use that as the Base scenario anchor — Base max_entry_price should be near or below that figure if RIDGE thresholds are met at the implied price. If RIDGE thresholds are NOT met at the implied price in the Base case, max_entry_price must be lower than implied_purchase_price.\n\n' +
+      'Bear max_entry_price will typically be 10–25% below Base. Bull max_entry_price may be 5–15% above Base.\n\n' +
+      'For each scenario, key_assumption must identify the SINGLE most consequential variable driving that scenario\'s outcome — not a generic statement. Bad example: "Market conditions stay favorable." Good example: "Market rent growth holds at 3.5% as e-commerce demand absorbs Q3 2026 deliveries in submarket."\n\n' +
+      'If the OM lacks data to compute scenarios reliably (e.g., no NOI, no rent roll, no market vacancy data), set scenarios.bear/base/bull to null and add a note in risk_factors explaining what data was missing.\n\n' +
       (askingPrice ? 'ASKING PRICE PROVIDED BY USER: $' + askingPrice + '\n\n' : '') +
       'OM TEXT:\n' + omText.slice(0, 40000);
     var _resp = await fetch('https://api.anthropic.com/v1/messages', {
