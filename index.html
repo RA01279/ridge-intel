@@ -5144,15 +5144,20 @@ async function _writeLeaseRows(rows, address, source) {
           if (_upRes.error) console.warn('[RIDGE] lease embed update error:', _upRes.error.message);
         } else {
           console.warn('[RIDGE] lease embed failed after retries:', r.tenant);
-          _voyageRetryQueue.push({
-            tenant: r.tenant,
-            tenant_normalized: r.tenant_normalized,
-            address: r.address,
-            embedText: _embedText,
-            error: 'Voyage 429 after retries',
-            timestamp: new Date().toISOString()
+          var _alreadyQueued = (_voyageRetryQueue || []).some(function(item) {
+            return (item.tenant_normalized || '').toLowerCase().trim() === (r.tenant_normalized || '').toLowerCase().trim();
           });
-          _ridgeUpdateRetryButton();
+          if (!_alreadyQueued) {
+            _voyageRetryQueue.push({
+              tenant: r.tenant,
+              tenant_normalized: r.tenant_normalized,
+              address: r.address,
+              embedText: _embedText,
+              error: 'Voyage 429 after retries',
+              timestamp: new Date().toISOString()
+            });
+            _ridgeUpdateRetryButton();
+          }
         }
       }
       for (var _bi = 0; _bi < _embedRows.length; _bi += _BATCH) {
