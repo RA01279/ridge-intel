@@ -1275,6 +1275,7 @@ var TOOLS = [
     fields:[
       {row:[{id:'addr',label:'Property Address',ph:'e.g. 4200 Commerce Pkwy, Savannah, GA'},{id:'type',label:'Asset Type',type:'select',opts:['Flex Industrial','Industrial / Warehouse','Single-Story Office Conversion','Multi-Tenant Industrial']}]},
       {row:[{id:'ask',label:'Asking Price',ph:'e.g. $11,200,000'},{id:'sf',label:'Building SF',ph:'e.g. 62,000'}]},
+      {row:[{id:'cap',label:'Going-In Cap Rate',helper:'Used to back-solve implied purchase price from OM in-place NOI',type:'number',ph:'7.00',min:1,max:20,step:0.01,suffix:'%'}]},
       {row:[{id:'notes',label:'Additional Context',ph:'e.g. Off-market, owner motivated, debt maturing Q3...',type:'textarea'}]},
     ],
     steps:['Reading OM narrative...','Stripping broker assumptions...','Re-underwriting at RIDGE criteria...','Building Bear / Base / Bull scenarios...','Calculating max entry price...','Generating teardown report...'],
@@ -1937,13 +1938,23 @@ function buildFieldsHTML(tool) {
   return tool.fields.map(f => {
     var cols = f.row.length === 3 ? 'three' : f.row.length === 2 ? 'two' : 'one';
     var cells = f.row.map(field => {
+      var helperHTML = field.helper ? `<span style="font-size:10px;color:var(--faint);font-weight:400;margin-left:4px;">— ${field.helper}</span>` : '';
+      var labelHTML = `<label class="fl">${field.label}${helperHTML}</label>`;
       if (field.type === 'textarea') {
         var taStyle = field.rows ? ` style="min-height:${field.rows * 22}px"` : '';
-        return `<div class="fg"><label class="fl">${field.label}</label><textarea id="f-${tool.id}-${field.id}" placeholder="${field.ph||''}"${taStyle}></textarea></div>`;
+        return `<div class="fg">${labelHTML}<textarea id="f-${tool.id}-${field.id}" placeholder="${field.ph||''}"${taStyle}></textarea></div>`;
       } else if (field.type === 'select') {
-        return `<div class="fg"><label class="fl">${field.label}</label><select id="f-${tool.id}-${field.id}">${field.opts.map(o=>`<option>${o}</option>`).join('')}</select></div>`;
+        return `<div class="fg">${labelHTML}<select id="f-${tool.id}-${field.id}">${field.opts.map(o=>`<option>${o}</option>`).join('')}</select></div>`;
+      } else if (field.type === 'number') {
+        var minAttr  = field.min  != null ? ` min="${field.min}"`   : '';
+        var maxAttr  = field.max  != null ? ` max="${field.max}"`   : '';
+        var stepAttr = field.step != null ? ` step="${field.step}"` : '';
+        if (field.suffix) {
+          return `<div class="fg">${labelHTML}<div style="display:flex;align-items:center;gap:4px;"><input type="number" id="f-${tool.id}-${field.id}"${minAttr}${maxAttr}${stepAttr} placeholder="${field.ph||''}" style="flex:1;"><span style="color:var(--faint);font-size:13px;">${field.suffix}</span></div></div>`;
+        }
+        return `<div class="fg">${labelHTML}<input type="number" id="f-${tool.id}-${field.id}"${minAttr}${maxAttr}${stepAttr} placeholder="${field.ph||''}"></div>`;
       } else {
-        return `<div class="fg"><label class="fl">${field.label}</label><input type="text" id="f-${tool.id}-${field.id}" placeholder="${field.ph||''}"></div>`;
+        return `<div class="fg">${labelHTML}<input type="text" id="f-${tool.id}-${field.id}" placeholder="${field.ph||''}"></div>`;
       }
     }).join('');
     return `<div class="fr ${cols}">${cells}</div>`;
@@ -3335,7 +3346,7 @@ async function runTool(toolId) {
 
   // LENS — capture going-in cap rate input before prompt assembly
   if (toolId === 'lens') {
-    var _lensCapEl = document.getElementById('lens-going-in-cap');
+    var _lensCapEl = document.getElementById('f-lens-cap');
     d.goingInCap = (_lensCapEl && _lensCapEl.value) ? (parseFloat(_lensCapEl.value) || null) : null;
   }
 
