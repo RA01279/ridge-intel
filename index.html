@@ -671,7 +671,7 @@ footer{border-top:1px solid var(--border);padding:20px 24px;text-align:center;co
       <span style="color:var(--faint);font-size:11px;margin-left:4px">— auto-filled from upload where available</span>
     </div>
     <div class="manual-body" id="mbody-lens">
-      <div class="fr two"><div class="fg"><label class="fl">Property Address</label><input type="text" id="f-lens-addr" placeholder="18 Patton Road, Savannah, GA"></div><div class="fg"><label class="fl">Asset Type</label><select id="f-lens-type"><option>Flex Industrial</option><option>Industrial / Warehouse</option><option>Single-Story Office Conversion</option><option>Multi-Tenant Industrial</option></select></div></div><div class="fr two"><div class="fg"><label class="fl">Asking Price</label><input type="text" id="f-lens-ask" placeholder="$9,500,000"></div><div class="fg"><label class="fl">Building SF</label><input type="text" id="f-lens-sf" placeholder="45,500"></div></div><div class="fr one"><div class="fg"><label class="fl">Additional Context</label><textarea id="f-lens-notes" placeholder="Off-market, owner motivated, CMBS maturity in 6 months..."></textarea></div></div>
+      <div class="fr two"><div class="fg"><label class="fl">Property Address</label><input type="text" id="f-lens-addr" placeholder="18 Patton Road, Savannah, GA"></div><div class="fg"><label class="fl">Asset Type</label><select id="f-lens-type"><option>Flex Industrial</option><option>Industrial / Warehouse</option><option>Single-Story Office Conversion</option><option>Multi-Tenant Industrial</option></select></div></div><div class="fr two"><div class="fg"><label class="fl">Asking Price</label><input type="text" id="f-lens-ask" placeholder="$9,500,000"></div><div class="fg"><label class="fl">Building SF</label><input type="text" id="f-lens-sf" placeholder="45,500"></div></div><div class="fr two"><div class="fg"><label class="fl">Going-In Cap Rate <span style="font-size:10px;color:var(--faint);font-weight:400;">— Used to back-solve implied purchase price from OM in-place NOI</span></label><div style="display:flex;align-items:center;gap:4px;"><input type="number" id="lens-going-in-cap" placeholder="7.00" min="1" max="20" step="0.01" style="flex:1;"><span style="color:var(--faint);font-size:13px;">%</span></div></div><div class="fg"></div></div><div class="fr one"><div class="fg"><label class="fl">Additional Context</label><textarea id="f-lens-notes" placeholder="Off-market, owner motivated, CMBS maturity in 6 months..."></textarea></div></div>
     </div>
     <div class="btn-row">
       <button class="btn btn-p" id="run-btn-lens" onclick="runTool(&#39;lens&#39;)">⚡ Run LENS</button>
@@ -3333,6 +3333,12 @@ async function runTool(toolId) {
     }
   }
 
+  // LENS — capture going-in cap rate input before prompt assembly
+  if (toolId === 'lens') {
+    var _lensCapEl = document.getElementById('lens-going-in-cap');
+    d.goingInCap = (_lensCapEl && _lensCapEl.value) ? (parseFloat(_lensCapEl.value) || null) : null;
+  }
+
   // LENS — pre-fetch market benchmark + lease comp context before prompt assembly
   _lensBenchmarkContext = '';
   if (toolId === 'lens' && _sbOk && _sb) {
@@ -5493,6 +5499,9 @@ function _lensRenderOM(parsed, crossRefFlags, marketRentData) {
       '<div style="font-size:16px;font-weight:700;color:#e0e8f0;">' + occ.current_occupancy_pct + '%</div></div>' : '') +
     (occ.walt_years != null ? '<div><div style="font-size:10px;color:#4a6a8a;">WALT</div>' +
       '<div style="font-size:16px;font-weight:700;color:#e0e8f0;">' + occ.walt_years + ' yrs</div></div>' : '') +
+    (parsed.impliedPurchasePrice > 0 ? '<div><div style="font-size:10px;color:#4a6a8a;">IMPLIED PRICE</div>' +
+      '<div style="font-size:16px;font-weight:700;color:#4ade80;">$' + (parsed.impliedPurchasePrice >= 100000000 ? Math.round(parsed.impliedPurchasePrice/1000000) + 'M' : (parsed.impliedPurchasePrice/1000000).toFixed(1) + 'M') + '</div>' +
+      '<div style="font-size:10px;color:#4a6a8a;">@ ' + parsed.goingInCapInput.toFixed(2) + '% Cap</div></div>' : '') +
     '</div></div>';
 
   var physContent = kv('Clear Height', ph.clear_height_ft ? ph.clear_height_ft + ' ft' : null) +
@@ -8764,6 +8773,19 @@ async function runRidgeAPI(skillName, prompt, runInputs, runToolId) {
                     var _lensOMParsed = await _lensParseOM(_omRawText, _lastRunInputs && _lastRunInputs.ask);
                     console.log('[RIDGE] _lensParseOM result:', _lensOMParsed ? 'populated' : 'NULL', _lensOMParsed);
                     if (_lensOMParsed) {
+                      // Compute implied purchase price from going-in cap + in-place NOI
+                      var _impliedPrice = null;
+                      if (_lastRunInputs && _lastRunInputs.goingInCap &&
+                          _lensOMParsed.broker_underwriting && _lensOMParsed.broker_underwriting.in_place_noi) {
+                        var _noi = parseFloat(String(_lensOMParsed.broker_underwriting.in_place_noi).replace(/[$,]/g, ''));
+                        var _capDecimal = _lastRunInputs.goingInCap / 100;
+                        if (_noi > 0 && _capDecimal > 0) {
+                          _impliedPrice = Math.round(_noi / _capDecimal);
+                        }
+                      }
+                      console.log('[RIDGE] LENS implied price:', _impliedPrice, 'from NOI:', _lensOMParsed.broker_underwriting && _lensOMParsed.broker_underwriting.in_place_noi, 'cap:', _lastRunInputs && _lastRunInputs.goingInCap);
+                      _lensOMParsed.impliedPurchasePrice = _impliedPrice;
+                      _lensOMParsed.goingInCapInput = (_lastRunInputs && _lastRunInputs.goingInCap) || null;
                       if (_lensOMParsed.rent_roll && _lensOMParsed.rent_roll.length) {
                         var _lensAddr = (_lensOMParsed.deal_metadata && _lensOMParsed.deal_metadata.address) || _lAddr || '';
                         await _writeLeaseRows(_lensOMParsed.rent_roll, _lensAddr, 'LENS');
