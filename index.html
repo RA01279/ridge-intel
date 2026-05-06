@@ -4935,7 +4935,7 @@ function _normalizeTenant(name) {
 }
 
 async function _writeLeaseRows(rows, address, source) {
-  if (!rows || !rows.length || !_sbOk || !_sb) return;
+  if (!rows || !rows.length || !_sbOk || !_sb) return { written: 0, failed: 0 };
 
   // Priority ladder — determines which source wins on upsert conflict
   var _priorityMap = {
@@ -5055,37 +5055,72 @@ async function _writeLeaseRows(rows, address, source) {
     }
   } catch(e) { console.warn('[RIDGE] ' + source + ' leases exception:', e.message); showToast('Import failed — check file format and try again.'); }
 
-  // ── EMBEDDINGS: generate for newly written lease rows (throttled, deferred) ──
-  if (_sbOk && _sb && inserts.length) {
+  // ── EMBEDDINGS: generate for newly written lease rows (parallel batched, deferred) ──
+  if (_sbOk && _sb && inserts && inserts.length) {
     setTimeout(function() { (async function() {
-      for (var _ei = 0; _ei < inserts.length; _ei++) {
-        var _er = inserts[_ei];
-        if (!_er.address || !_er.tenant) continue;
+      var _embedRows = inserts.filter(function(r) { return r.address && r.tenant; });
+      var _BATCH = 5, _rateFailures = 0, _useSeq = false;
+      async function _embedOne(r) {
         var _embedText = [
-          _er.address, _er.tenant, _er.asset_class || '',
-          _er.submarket || '', _er.lease_type || '',
-          _er.base_rent_psf || '', _er.sf || '',
-          _er.market || '', _er.record_type || ''
+          r.address, r.tenant, r.asset_class || '',
+          r.submarket || '', r.lease_type || '',
+          r.base_rent_psf || '', r.sf || '',
+          r.market || '', r.record_type || ''
         ].join(' ').trim();
         var _vec = null;
         for (var _att = 0; _att < 3; _att++) {
-          if (_att > 0) await new Promise(function(r){ setTimeout(r, 3000 * _att); });
+          if (_att > 0) await new Promise(function(res){ setTimeout(res, 1500 * _att); });
           _vec = await _generateEmbedding(_embedText);
           if (_vec) break;
+          _rateFailures++;
         }
         if (_vec) {
-          var _upRes = await _sb.from('leases')
-            .update({ embedding: _vec })
-            .eq('tenant_normalized', _er.tenant_normalized)
-            .ilike('address', '%' + (_er.address || '').split(',')[0] + '%');
+          var _upRes = await _sb.from('leases').update({ embedding: _vec })
+            .eq('tenant_normalized', r.tenant_normalized)
+            .ilike('address', '%' + (r.address || '').split(',')[0] + '%');
           if (_upRes.error) console.warn('[RIDGE] lease embed update error:', _upRes.error.message);
         } else {
-          console.warn('[RIDGE] lease embed failed after retries:', _er.tenant);
+          console.warn('[RIDGE] lease embed failed after retries:', r.tenant);
         }
-        await new Promise(function(r){ setTimeout(r, 3000); });
+      }
+      for (var _bi = 0; _bi < _embedRows.length; _bi += _BATCH) {
+        if (_rateFailures >= 2) _useSeq = true;
+        var _batch = _embedRows.slice(_bi, _bi + _BATCH);
+        if (_useSeq) {
+          for (var _si = 0; _si < _batch.length; _si++) {
+            await _embedOne(_batch[_si]);
+            await new Promise(function(res){ setTimeout(res, 1500); });
+          }
+        } else {
+          await Promise.allSettled(_batch.map(_embedOne));
+        }
+        if (_bi + _BATCH < _embedRows.length) await new Promise(function(res){ setTimeout(res, 200); });
       }
     })();
     }, 60000);
+  }
+  return { written: (inserts && inserts.length) || 0, failed: 0 };
+}
+
+function _ridgeUpdateLeaseStatus(state, count) {
+  var el = document.getElementById('ridge-lease-status');
+  if (!el) return;
+  if (state === 'writing') {
+    el.style.display = 'inline-flex';
+    el.textContent = '⏳ Writing ' + (count || '') + ' leases…';
+    el.style.background = '#1a2d42'; el.style.color = '#4a9ade';
+    el.style.animation = 'ridgePulse 1.4s ease-in-out infinite';
+  } else if (state === 'done') {
+    el.style.display = 'inline-flex';
+    el.textContent = '✅ ' + (count || 0) + ' leases saved';
+    el.style.background = '#001a0d'; el.style.color = '#4ade80';
+    el.style.animation = 'none';
+    setTimeout(function() { el.style.display = 'none'; }, 5000);
+  } else {
+    el.style.display = 'inline-flex';
+    el.textContent = '⚠ Lease save failed';
+    el.style.background = '#1a0500'; el.style.color = '#e05c2a';
+    el.style.animation = 'none';
   }
 }
 
@@ -5502,7 +5537,9 @@ function _lensRenderOM(parsed, crossRefFlags, marketRentData) {
     (parsed.implied_purchase_price > 0 ? '<div><div style="font-size:10px;color:#4a6a8a;">IMPLIED PRICE</div>' +
       '<div style="font-size:16px;font-weight:700;color:#4ade80;">$' + (parsed.implied_purchase_price >= 100000000 ? Math.round(parsed.implied_purchase_price/1000000) + 'M' : (parsed.implied_purchase_price/1000000).toFixed(1) + 'M') + '</div>' +
       '<div style="font-size:10px;color:#4a6a8a;">@ ' + parsed.going_in_cap_input.toFixed(2) + '% Cap</div></div>' : '') +
-    '</div></div>';
+    '</div>' +
+    '<span id="ridge-lease-status" style="display:none;margin-top:8px;padding:3px 8px;border-radius:4px;font-size:10px;font-weight:600;letter-spacing:0.05em;align-items:center;"></span>' +
+    '</div>';
 
   var physContent = kv('Clear Height', ph.clear_height_ft ? ph.clear_height_ft + ' ft' : null) +
     kv('Dock High Doors', ph.dock_high_doors) +
@@ -8786,10 +8823,6 @@ async function runRidgeAPI(skillName, prompt, runInputs, runToolId) {
                       console.log('[RIDGE] LENS implied price:', _impliedPrice, 'NOI:', _lensOMParsed.broker_underwriting && _lensOMParsed.broker_underwriting.in_place_noi, 'cap:', _lastRunInputs && _lastRunInputs.goingInCap);
                       _lensOMParsed.implied_purchase_price = _impliedPrice;
                       _lensOMParsed.going_in_cap_input = _lastRunInputs && _lastRunInputs.goingInCap;
-                      if (_lensOMParsed.rent_roll && _lensOMParsed.rent_roll.length) {
-                        var _lensAddr = (_lensOMParsed.deal_metadata && _lensOMParsed.deal_metadata.address) || _lAddr || '';
-                        await _writeLeaseRows(_lensOMParsed.rent_roll, _lensAddr, 'LENS');
-                      }
                       var _contentEl = document.getElementById('ridge-panel-content');
                       if (_contentEl) { _contentEl.style.display = 'block';
                         var _omHTML = _lensRenderOM(_lensOMParsed, null, _lensMarketRent);
@@ -8798,6 +8831,13 @@ async function runRidgeAPI(skillName, prompt, runInputs, runToolId) {
                           _omHTML + '</div>';
                         document.getElementById('loading-lens').classList.remove('show');
                         document.getElementById('results-lens').classList.add('show');
+                      }
+                      if (_lensOMParsed.rent_roll && _lensOMParsed.rent_roll.length) {
+                        var _lensAddr = (_lensOMParsed.deal_metadata && _lensOMParsed.deal_metadata.address) || _lAddr || '';
+                        _ridgeUpdateLeaseStatus('writing', _lensOMParsed.rent_roll.length);
+                        _writeLeaseRows(_lensOMParsed.rent_roll, _lensAddr, 'LENS')
+                          .then(function(r) { _ridgeUpdateLeaseStatus('done', r && r.written); })
+                          .catch(function(e) { _ridgeUpdateLeaseStatus('error', 0); console.warn('[RIDGE] LENS _writeLeaseRows bg error:', e.message); });
                       }
                       if (_sb && _soId) {
                         _sb.from('skill_outputs').update({ parsed_om: _lensOMParsed }).eq('id', _soId)
