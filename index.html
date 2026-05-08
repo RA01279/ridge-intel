@@ -592,7 +592,7 @@ footer{border-top:1px solid var(--border);padding:20px 24px;text-align:center;co
     <span id="ridge-session-user" style="font-size:10px;color:#4a6a8a;padding:3px 6px;"></span>
     <span id="sb-dot" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--faint);flex-shrink:0;" title="Supabase initializing…"></span>
     <span id="token-count" style="font-size:11px;color:var(--faint);cursor:default;" title="Session tokens — in: 0 · out: 0">0 tok</span>
-    <span id="hdr-skill-count" style="font-size:11px;color:var(--muted)">17 Skills Active · v5.3</span>
+    <span id="hdr-skill-count" style="font-size:11px;color:var(--muted)">17 Skills Active · v5.4</span>
   </div>
 </header>
 
@@ -1590,7 +1590,7 @@ function renderTools() {
   var countLabel = document.getElementById('skill-count-label');
   if (countLabel) countLabel.textContent = TOOLS.length + ' Active · Click any tile to expand';
   var hdrCount = document.getElementById('hdr-skill-count');
-  if (hdrCount) hdrCount.textContent = TOOLS.length + ' Skills Active · v5.3';
+  if (hdrCount) hdrCount.textContent = TOOLS.length + ' Skills Active · v5.4';
   var ftrCount = document.getElementById('footer-skill-count');
   if (ftrCount) ftrCount.textContent = 'RIDGE Intelligence Platform · Entrada Partners · ' + TOOLS.length + ' Skills Active · ATL · SAV · DFW · HOU';
 
@@ -3168,30 +3168,53 @@ function handleFile(toolId, uploadId, input, type) {
                   addrEl.value = addrEl.value + ', ' + cityStateMatch[0].trim();
                 }
               }
-              // Save to leases table on upload
-              if (_sbOk && _sb) {
-                _sb.from('leases').insert({
-                  address: addrEl ? addrEl.value || null : null,
-                  tenant: tenantEl ? tenantEl.value || null : null,
+              // Save to leases table on upload — Build 5.4 fixes: placeholder guard, upsert, market, vacant, retry queue
+              var _isPlaceholder = fullText.startsWith('[PDF uploaded:') || fullText.startsWith('[PDF parse failed:');
+              if (_isPlaceholder) {
+                showToast('⚠️ Scanned PDF detected — text extraction failed. Use a text-based PDF or paste the lease directly.');
+                console.warn('[RIDGE] Gavel upload skipped DB write — placeholder text detected');
+              } else if (_sbOk && _sb) {
+                var _gAddr = addrEl ? addrEl.value || null : null;
+                var _gTenant = tenantEl ? tenantEl.value || null : null;
+                _sb.from('leases').upsert({
+                  address: _gAddr,
+                  tenant: _gTenant,
                   full_text: fullText,
                   source_priority: 1,
-                  tenant_normalized: _normalizeTenant(tenantEl ? tenantEl.value || '' : ''),
-                  zip_code: ((addrEl ? addrEl.value || '' : '').match(/\b\d{5}\b/) || [])[0] || null
-                }).select('id').single().then(function(res) {
+                  tenant_normalized: _normalizeTenant(_gTenant || ''),
+                  zip_code: ((_gAddr || '').match(/\b\d{5}\b/) || [])[0] || null,
+                  market: _detectMarket({ addr: _gAddr }) || null,
+                  vacant: false
+                }, { onConflict: 'address,tenant' }).select('id').single().then(function(res) {
                   if (res.data) {
                     if (!STATE['gavel']) STATE['gavel'] = {};
                     STATE['gavel']._leaseId = res.data.id;
-                    console.log('leases row created:', res.data.id);
+                    console.log('leases row upserted:', res.data.id);
                     // Fire-and-forget embedding
-                    var _leEmbedText = fullText.slice(0, 3500) + ' ' + (addrEl ? addrEl.value || '' : '') + ' ' + (tenantEl ? tenantEl.value || '' : '');
+                    var _leEmbedText = fullText.slice(0, 3500) + ' ' + (_gAddr || '') + ' ' + (_gTenant || '');
                     _generateEmbedding(_leEmbedText).then(async function(vec) {
                       if (vec && _sb) {
                         try { await _sb.from('leases').update({ embedding: '[' + vec.join(',') + ']' }).eq('id', res.data.id); }
                         catch(e) { console.warn('Lease embedding save failed:', e.message); }
+                      } else {
+                        var _alreadyQ = (_voyageRetryQueue || []).some(function(q) { return q.embedText === _leEmbedText; });
+                        if (!_alreadyQ) {
+                          _voyageRetryQueue.push({
+                            address: _gAddr,
+                            tenant: _gTenant,
+                            tenant_normalized: _normalizeTenant(_gTenant || ''),
+                            embedText: _leEmbedText,
+                            leaseId: res.data.id,
+                            error: 'Voyage null at upload',
+                            timestamp: new Date().toISOString()
+                          });
+                          _ridgeUpdateRetryButton();
+                          try { localStorage.setItem('_voyageRetryQueue', JSON.stringify(_voyageRetryQueue)); } catch(e){}
+                        }
                       }
                     });
                   }
-                }).catch(function(e) { console.warn('leases insert failed:', e); showToast('Lease data could not be saved.'); });
+                }).catch(function(e) { console.warn('leases upsert failed:', e); showToast('Lease data could not be saved.'); });
               }
             }
           });
@@ -3824,7 +3847,7 @@ If CONDITIONAL: state exactly what must be verified before proceeding
       p = 'You are a senior acquisitions officer at Entrada Partners reviewing a lease document for an acquisition target.\n\n';
       p += 'PROPERTY: ' + (d.addr||'') + '\nTENANT: ' + (d.tenant||'') + '\nREVIEW FOCUS: ' + (d.notes||'All material provisions') + '\n\n';
       p += 'LEASE DOCUMENT TEXT:\n' + (d.lease_text ? d.lease_text.slice(0, 20000) : '[No lease document uploaded — request the lease before proceeding]') + '\n\n';
-      p += 'Produce an institutional lease abstract and risk assessment:\n\n## LEASE ABSTRACT\nTable format — Field | Details:\nTenant | Landlord | Commencement | Expiration | Lease Term | Rentable SF | Tenant\'s Share | Base Rent Year 1 | Escalations | Options | TI Allowance | Free Rent | Security Deposit | Permitted Use | Assignment Rights\n\n## CRITICAL DATES\nTable: Date | Action Required | Risk Level (High/Medium/Low)\n\n## RENT SCHEDULE\nFull rent schedule table: Year | Months | Rate PSF | Monthly Rent | Annual Rent\n\n## RISK FLAGS\nOrganized by severity:\n🔴 CRITICAL: Provisions that could kill deal value or create major liability\n🟡 MODERATE: Provisions that affect underwriting or require negotiation\n🟢 LOW: Standard provisions, minor concerns\n\nFor each flag: specific clause reference, dollar impact if quantifiable, recommended action.\n\n## LANDLORD OBLIGATIONS\nWhat Entrada inherits as landlord. CapEx obligations, TI commitments, maintenance responsibilities, any ongoing landlord covenants.\n\n## ACQUISITION IMPACT\nTable: Factor | Impact | Assessment\nNOI contribution, mark-to-market upside/downside, rollover risk, credit quality, occupancy risk, lease structure quality.\n\n## CONVICTION STATEMENT\nOne paragraph: does this lease support or undermine the acquisition thesis? What must be true for this lease to not be a problem at exit?\n\nIMPORTANT: At the very end of your response, after all analysis, append this exact JSON block with extracted lease data (use null for any field not found):\n\n```json\n{"sf":null,"base_rent_psf":null,"lease_term_months":null,"commencement_date":null,"expiration_date":null,"lease_type":null,"ti_psf":null,"rent_escalation_pct":null,"free_rent_months":null}\n```\n\nReplace null values with actual extracted data. commencement_date and expiration_date in YYYY-MM-DD format. sf as integer. rent_escalation_pct as number only. Do not add any text after the JSON block.';
+      p += 'Produce an institutional lease abstract and risk assessment:\n\n## LEASE ABSTRACT\nTable format — Field | Details:\nTenant | Landlord | Commencement | Expiration | Lease Term | Rentable SF | Tenant\'s Share | Base Rent Year 1 | Escalations | Options | TI Allowance | Free Rent | Security Deposit | Permitted Use | Assignment Rights\n\n## CRITICAL DATES\nTable: Date | Action Required | Risk Level (High/Medium/Low)\n\n## RENT SCHEDULE\nFull rent schedule table: Year | Months | Rate PSF | Monthly Rent | Annual Rent\n\n## RISK FLAGS\nOrganized by severity:\n🔴 CRITICAL: Provisions that could kill deal value or create major liability\n🟡 MODERATE: Provisions that affect underwriting or require negotiation\n🟢 LOW: Standard provisions, minor concerns\n\nFor each flag: specific clause reference, dollar impact if quantifiable, recommended action.\n\n## LANDLORD OBLIGATIONS\nWhat Entrada inherits as landlord. CapEx obligations, TI commitments, maintenance responsibilities, any ongoing landlord covenants.\n\n## ACQUISITION IMPACT\nTable: Factor | Impact | Assessment\nNOI contribution, mark-to-market upside/downside, rollover risk, credit quality, occupancy risk, lease structure quality.\n\n## CONVICTION STATEMENT\nOne paragraph: does this lease support or undermine the acquisition thesis? What must be true for this lease to not be a problem at exit?\n\nIMPORTANT: At the very end of your response, after all analysis, append this exact JSON block with extracted lease data (use null for any field not found):\n\n```json\n{"sf":null,"base_rent_psf":null,"lease_term_months":null,"commencement_date":null,"expiration_date":null,"lease_type":null,"ti_psf":null,"rent_escalation_pct":null,"free_rent_months":null,"landlord":null,"guarantor":null,"security_deposit":null,"renewal_option_count":null,"renewal_option_terms":null,"permitted_use":null,"assignment_consent_required":null}\n```\n\nReplace null values with actual extracted data. commencement_date and expiration_date in YYYY-MM-DD format. sf as integer. rent_escalation_pct as number only. Do not add any text after the JSON block.';
       return p;
 
     case 'legal':
@@ -8912,6 +8935,13 @@ async function runRidgeAPI(skillName, prompt, runInputs, runToolId) {
               if (extracted.rent_escalation_pct) _leaseUpdate.rent_escalation_pct = extracted.rent_escalation_pct;
               if (extracted.free_rent_months !== null && extracted.free_rent_months !== undefined) _leaseUpdate.free_rent_months = extracted.free_rent_months;
               if (extracted.ti_psf) _leaseUpdate.ti_psf = extracted.ti_psf;
+              if (extracted.landlord) _leaseUpdate.landlord = String(extracted.landlord).slice(0,100);
+              if (extracted.guarantor) _leaseUpdate.extracted_data.guarantor = extracted.guarantor;
+              if (extracted.security_deposit !== null && extracted.security_deposit !== undefined) _leaseUpdate.extracted_data.security_deposit = extracted.security_deposit;
+              if (extracted.renewal_option_count !== null && extracted.renewal_option_count !== undefined) _leaseUpdate.extracted_data.renewal_option_count = extracted.renewal_option_count;
+              if (extracted.renewal_option_terms) _leaseUpdate.extracted_data.renewal_option_terms = extracted.renewal_option_terms;
+              if (extracted.permitted_use) _leaseUpdate.extracted_data.permitted_use = extracted.permitted_use;
+              if (extracted.assignment_consent_required !== null && extracted.assignment_consent_required !== undefined) _leaseUpdate.extracted_data.assignment_consent_required = extracted.assignment_consent_required;
               console.log('Gavel JSON extracted:', extracted);
             } catch(e) {
               console.warn('Gavel JSON parse failed:', e.message);
@@ -8919,18 +8949,6 @@ async function runRidgeAPI(skillName, prompt, runInputs, runToolId) {
           } else {
             console.warn('Gavel JSON block not found in output');
           }
-          // Term fallback regex — if JSON missing or lease_term_months not populated
-          if (!_leaseUpdate.lease_term_months) {
-            var termMatch = gavelOutput.match(/([0-9]+)(?:st|nd|rd|th)\s+full\s+calendar\s+month/i);
-            if (!termMatch) termMatch = gavelOutput.match(/Lease\s+Term[\s\t]+([0-9]+)\s*months/i);
-            if (!termMatch) termMatch = gavelOutput.match(/Expiration[\s\t][^0-9]*([0-9]+)\s*(?:full\s+)?months/i);
-            if (!termMatch) termMatch = gavelOutput.match(/([0-9]+)\s*(?:full\s+)?months\s+from\s+commencement/i);
-            if (!termMatch) termMatch = gavelOutput.match(/Term[:\s\t]+([0-9]+)\s*months/i);
-            if (termMatch) { _leaseUpdate.lease_term_months = parseInt(termMatch[1]); console.log('Term fallback match:', termMatch[1]); }
-          }
-          // Landlord (still regex — not in JSON schema)
-          var _llMatch = gavelOutput.match(/landlord[:\s|]+([^\n|]{3,60})/i);
-          if (_llMatch) _leaseUpdate.landlord = _llMatch[1].trim().slice(0,100);
           // Address/tenant from form fields
           var _addrFinal = document.getElementById('f-gavel-addr');
           var _tenantFinal = document.getElementById('f-gavel-tenant');
@@ -8940,6 +8958,8 @@ async function runRidgeAPI(skillName, prompt, runInputs, runToolId) {
           _leaseUpdate.source_priority   = 1;
           _leaseUpdate.tenant_normalized = _normalizeTenant(_leaseUpdate.tenant || '');
           _leaseUpdate.zip_code          = ((_leaseUpdate.address || '').match(/\b\d{5}\b/) || [])[0] || null;
+          _leaseUpdate.market            = _detectMarket({ addr: _leaseUpdate.address }) || null;
+          _leaseUpdate.vacant            = false;
           try {
             var _embedRowId = _leaseId;
             if (_leaseId) {
@@ -8961,6 +8981,21 @@ async function runRidgeAPI(skillName, prompt, runInputs, runToolId) {
                 if (vec && _sb) {
                   try { await _sb.from('leases').update({ embedding: '[' + vec.join(',') + ']' }).eq('id', _embedRowId); }
                   catch(e) { console.warn('Lease embedding update failed:', e.message); }
+                } else {
+                  var _alreadyQ = (_voyageRetryQueue || []).some(function(q) { return q.embedText === _leEmbedUpdate; });
+                  if (!_alreadyQ) {
+                    _voyageRetryQueue.push({
+                      address: _leaseUpdate.address || null,
+                      tenant: _leaseUpdate.tenant || null,
+                      tenant_normalized: _normalizeTenant(_leaseUpdate.tenant || ''),
+                      embedText: _leEmbedUpdate,
+                      leaseId: _embedRowId,
+                      error: 'Voyage null at postrun',
+                      timestamp: new Date().toISOString()
+                    });
+                    _ridgeUpdateRetryButton();
+                    try { localStorage.setItem('_voyageRetryQueue', JSON.stringify(_voyageRetryQueue)); } catch(e){}
+                  }
                 }
               });
             }
