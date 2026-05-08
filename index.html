@@ -592,7 +592,7 @@ footer{border-top:1px solid var(--border);padding:20px 24px;text-align:center;co
     <span id="ridge-session-user" style="font-size:10px;color:#4a6a8a;padding:3px 6px;"></span>
     <span id="sb-dot" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--faint);flex-shrink:0;" title="Supabase initializing…"></span>
     <span id="token-count" style="font-size:11px;color:var(--faint);cursor:default;" title="Session tokens — in: 0 · out: 0">0 tok</span>
-    <span id="hdr-skill-count" style="font-size:11px;color:var(--muted)">17 Skills Active · v5.4</span>
+    <span id="hdr-skill-count" style="font-size:11px;color:var(--muted)">17 Skills Active · v5.5</span>
   </div>
 </header>
 
@@ -1590,7 +1590,7 @@ function renderTools() {
   var countLabel = document.getElementById('skill-count-label');
   if (countLabel) countLabel.textContent = TOOLS.length + ' Active · Click any tile to expand';
   var hdrCount = document.getElementById('hdr-skill-count');
-  if (hdrCount) hdrCount.textContent = TOOLS.length + ' Skills Active · v5.4';
+  if (hdrCount) hdrCount.textContent = TOOLS.length + ' Skills Active · v5.5';
   var ftrCount = document.getElementById('footer-skill-count');
   if (ftrCount) ftrCount.textContent = 'RIDGE Intelligence Platform · Entrada Partners · ' + TOOLS.length + ' Skills Active · ATL · SAV · DFW · HOU';
 
@@ -3370,7 +3370,7 @@ async function runTool(toolId) {
 
   // LENS — capture going-in cap rate input before prompt assembly
   if (toolId === 'lens') {
-    var _lensCapEl = document.getElementById('f-lens-cap');
+    var _lensCapEl = document.getElementById('lens-going-in-cap');
     d.goingInCap = (_lensCapEl && _lensCapEl.value) ? (parseFloat(_lensCapEl.value) || null) : null;
   }
 
@@ -4190,9 +4190,20 @@ async function _ridgeRetryVoyageQueue() {
       var emb = await _generateEmbedding(item.embedText);
       if (emb) {
         var addrPrefix = (item.address || '').split(',')[0];
-        var upRes = await _sb.from('leases').update({ embedding: emb })
-          .eq('tenant_normalized', item.tenant_normalized)
-          .ilike('address', '%' + addrPrefix + '%');
+        var upRes;
+        if (item.table === 'sale_comps') {
+          upRes = await _sb.from('sale_comps').update({ embedding: emb })
+            .eq('address', item.address)
+            .eq('sale_date', item.sale_date);
+        } else if (item.table === 'skill_outputs') {
+          upRes = await _sb.from('skill_outputs').update({ embedding: '[' + emb.join(',') + ']' })
+            .eq('id', item.skillOutputId);
+        } else {
+          // default: leases — handles legacy v5.4 queue items that have no table field
+          upRes = await _sb.from('leases').update({ embedding: emb })
+            .eq('tenant_normalized', item.tenant_normalized)
+            .ilike('address', '%' + addrPrefix + '%');
+        }
         if (upRes.error) { stillFailed++; stillFailedItems.push(item); }
         else { recovered++; }
       } else {
@@ -6101,7 +6112,7 @@ async function _writeSaleComps(comps, source, priority) {
   try {
     var { error } = await _sb.from('sale_comps').upsert(inserts,
       { onConflict: 'address,sale_date' });
-    if (error) console.warn('[RIDGE] sale_comps write failed:', error.message);
+    if (error) { console.warn('[RIDGE] sale_comps write failed:', error.message); showToast('⚠️ Sale comps save failed: ' + error.message); }
     else console.log('[RIDGE]', source, 'wrote', inserts.length, 'sale comps to DB');
   } catch(e) {
     console.warn('[RIDGE] _writeSaleComps error:', e.message);
@@ -6117,14 +6128,29 @@ async function _writeSaleComps(comps, source, priority) {
           _row.sale_date || '', _row.price_psf || '', _row.source || ''
         ].join(' ').trim();
         _generateEmbedding(_embedText).then(function(_vec) {
-          if (!_vec) return;
-          _sb.from('sale_comps')
-            .update({ embedding: _vec })
-            .eq('address', _row.address)
-            .eq('sale_date', _row.sale_date)
-            .then(function(r) {
-              if (r.error) console.warn('[RIDGE] sale_comp embed error:', r.error.message);
-            });
+          if (_vec && _sb) {
+            _sb.from('sale_comps')
+              .update({ embedding: _vec })
+              .eq('address', _row.address)
+              .eq('sale_date', _row.sale_date)
+              .then(function(r) {
+                if (r.error) console.warn('[RIDGE] sale_comp embed error:', r.error.message);
+              });
+          } else {
+            var _alreadyQ = (_voyageRetryQueue || []).some(function(q) { return q.embedText === _embedText; });
+            if (!_alreadyQ) {
+              _voyageRetryQueue.push({
+                address:   _row.address,
+                sale_date: _row.sale_date,
+                embedText: _embedText,
+                table:     'sale_comps',
+                error:     'Voyage null at sale_comps write',
+                timestamp: new Date().toISOString()
+              });
+              _ridgeUpdateRetryButton();
+              try { localStorage.setItem('_voyageRetryQueue', JSON.stringify(_voyageRetryQueue)); } catch(e) {}
+            }
+          }
         });
       })(_sc);
     });
@@ -8800,7 +8826,24 @@ async function runRidgeAPI(skillName, prompt, runInputs, runToolId) {
         if (_soId) {
           var _embedText = outputText.slice(0, 3000) + ' ' + skillNameSaved + ' ' + (_soAddr || '');
           _generateEmbedding(_embedText).then(function(vec) {
-            if (vec && _sb) { try { _sb.from('skill_outputs').update({ embedding: '[' + vec.join(',') + ']' }).eq('id', _soId); } catch(e) { console.warn('[RIDGE] embedding DB update failed:', e.message); } }
+            if (vec && _sb) {
+              try { _sb.from('skill_outputs').update({ embedding: '[' + vec.join(',') + ']' }).eq('id', _soId); } catch(e) { console.warn('[RIDGE] embedding DB update failed:', e.message); }
+            } else {
+              var _alreadyQ = (_voyageRetryQueue || []).some(function(q) { return q.embedText === _embedText; });
+              if (!_alreadyQ) {
+                _voyageRetryQueue.push({
+                  address:       _soAddr || '',
+                  skill_name:    skillNameSaved,
+                  embedText:     _embedText,
+                  skillOutputId: _soId,
+                  table:         'skill_outputs',
+                  error:         'Voyage null at skill_outputs write',
+                  timestamp:     new Date().toISOString()
+                });
+                _ridgeUpdateRetryButton();
+                try { localStorage.setItem('_voyageRetryQueue', JSON.stringify(_voyageRetryQueue)); } catch(e) {}
+              }
+            }
           }).catch(function(e) { console.warn('[RIDGE] embedding generation failed:', e.message); });
           // Save raw document text to skill_output_documents (fire-and-forget)
           (function(_sid, _tid) {
@@ -9053,7 +9096,11 @@ async function runRidgeAPI(skillName, prompt, runInputs, runToolId) {
               if (_sbOk) {
                 try {
                   var _omRawText = (STATE['lens'] && STATE['lens'].files && STATE['lens'].files['om']) || '';
-                  if (_omRawText && _omRawText.length > 100) {
+                  var _isPlaceholderOM = _omRawText.startsWith('[PDF uploaded:') || _omRawText.startsWith('[PDF parse failed:');
+                  if (_isPlaceholderOM) {
+                    showToast('⚠️ Scanned OM detected — text extraction failed. Use a text-based PDF or paste the OM directly.');
+                    console.warn('[RIDGE] LENS OM Intelligence skipped — placeholder text detected');
+                  } else if (_omRawText && _omRawText.length > 100) {
                     var _lensMarketRent = await _isrFetchMarketRent({
                       address:    _lAddr || '',
                       assetClass: (_lastRunInputs && _lastRunInputs.type) || 'Industrial',
@@ -9105,8 +9152,10 @@ async function runRidgeAPI(skillName, prompt, runInputs, runToolId) {
                           .catch(function(e) { _ridgeUpdateLeaseStatus('error', 0); console.warn('[RIDGE] LENS _writeLeaseRows bg error:', e.message); });
                       }
                       if (_sb && _soId) {
-                        _sb.from('skill_outputs').update({ parsed_om: _lensOMParsed }).eq('id', _soId)
-                          .then(function(r) { if (r.error) console.warn('[RIDGE] parsed_om save error:', r.error.message); });
+                        try {
+                          var _pomRes = await _sb.from('skill_outputs').update({ parsed_om: _lensOMParsed }).eq('id', _soId);
+                          if (_pomRes.error) console.warn('[RIDGE] LENS parsed_om save failed:', _pomRes.error.message);
+                        } catch(e) { console.warn('[RIDGE] LENS parsed_om save failed:', e.message); }
                       }
                     }
                   }
