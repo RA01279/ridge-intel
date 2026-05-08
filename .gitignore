@@ -1,2 +1,12 @@
 # MCP config (may contain secrets)
 .mcp.json
+
+# Runtime user data — uploaded via browser folder picker, not source code
+CoStar Reports/
+RIDGE Daily Reports/
+
+# Ephemeral agent worktrees
+.claude/worktrees/
+
+# Local branch snapshot scratch file
+branch-snapshot.txt
