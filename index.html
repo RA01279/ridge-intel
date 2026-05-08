@@ -586,13 +586,12 @@ footer{border-top:1px solid var(--border);padding:20px 24px;text-align:center;co
     <button class="btn btn-o" onclick="showHistoryPanel()" style="font-size:11px;padding:5px 12px;border-radius:4px;">🕐 History</button>
     <button class="btn btn-o" onclick="showLeaseLibrary()" style="font-size:11px;padding:5px 12px;border-radius:4px;">📋 Leases</button>
     <button class="btn btn-o" onclick="pickMarketIntelFolder()" style="font-size:11px;padding:5px 12px;border-radius:4px;">📊 Sync Market Intel</button>
-    <button id="ridge-retry-btn" onclick="_ridgeRetryVoyageQueue()" style="display:none;background:#fbbf24;color:#000;padding:6px 12px;border-radius:4px;border:none;font-size:12px;font-weight:600;cursor:pointer;margin-right:8px;">⚠ Retry Failed Embeds (<span id="ridge-retry-count">0</span>)</button>
     <button class="btn btn-o" onclick="showApiKeyModal()" style="font-size:11px;padding:5px 12px;border-radius:4px;">API Key</button>
     <button onclick="_ridgeForceReset()" title="Force reset all RIDGE state" style="font-size:11px;padding:3px 8px;background:#1a0800;border:1px solid #4a1a00;color:#e05c2a;border-radius:4px;cursor:pointer;">⟳ Reset</button>
     <span id="ridge-session-user" style="font-size:10px;color:#4a6a8a;padding:3px 6px;"></span>
     <span id="sb-dot" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--faint);flex-shrink:0;" title="Supabase initializing…"></span>
     <span id="token-count" style="font-size:11px;color:var(--faint);cursor:default;" title="Session tokens — in: 0 · out: 0">0 tok</span>
-    <span id="hdr-skill-count" style="font-size:11px;color:var(--muted)">17 Skills Active · v5.5</span>
+    <span id="hdr-skill-count" style="font-size:11px;color:var(--muted)">17 Skills Active · v5.6</span>
   </div>
 </header>
 
@@ -1590,7 +1589,7 @@ function renderTools() {
   var countLabel = document.getElementById('skill-count-label');
   if (countLabel) countLabel.textContent = TOOLS.length + ' Active · Click any tile to expand';
   var hdrCount = document.getElementById('hdr-skill-count');
-  if (hdrCount) hdrCount.textContent = TOOLS.length + ' Skills Active · v5.5';
+  if (hdrCount) hdrCount.textContent = TOOLS.length + ' Skills Active · v5.6';
   var ftrCount = document.getElementById('footer-skill-count');
   if (ftrCount) ftrCount.textContent = 'RIDGE Intelligence Platform · Entrada Partners · ' + TOOLS.length + ' Skills Active · ATL · SAV · DFW · HOU';
 
@@ -3077,25 +3076,29 @@ async function loadFolderFiles(toolId, uploadId, dirHandle) {
       else {
         console.log('[RIDGE] Synced', _propInserts.length, 'properties from', folderName);
         showToast('✅ Synced ' + _propInserts.length + ' properties from ' + folderName + ' → RIDGE database');
-        // ── EMBEDDINGS: generate for synced properties ────────────────────────
+        // ── EMBEDDINGS: generate for synced properties (sequential, 1200ms/item) ──
         if (_sbOk && _sb) {
-          _propInserts.forEach(function(_prop) {
-            if (!_prop.address) return;
-            var _embedText = [
-              _prop.address, _prop.market || '',
-              _prop.asset_class || '', _prop.submarket || '',
-              _prop.owner_name || '', _prop.conviction_tier || ''
-            ].join(' ').trim();
-            _generateEmbedding(_embedText).then(function(_vec) {
-              if (!_vec) return;
-              _sb.from('properties')
-                .update({ embedding: _vec })
-                .ilike('address', '%' + _prop.address.split(',')[0] + '%')
-                .then(function(r) {
-                  if (r.error) console.warn('[RIDGE] property embed error:', r.error.message);
-                });
-            });
-          });
+          (async function() {
+            for (var _pi = 0; _pi < _propInserts.length; _pi++) {
+              var _prop = _propInserts[_pi];
+              if (!_prop.address) continue;
+              var _embedText = [
+                _prop.address, _prop.market || '',
+                _prop.asset_class || '', _prop.submarket || '',
+                _prop.owner_name || '', _prop.conviction_tier || ''
+              ].join(' ').trim();
+              var _vec = await _generateEmbedding(_embedText);
+              if (_vec) {
+                var _r = await _sb.from('properties').update({ embedding: _vec })
+                  .ilike('address', '%' + _prop.address.split(',')[0] + '%');
+                if (_r.error) console.warn('[RIDGE] property embed error:', _r.error.message);
+              } else {
+                showToast('Property embed failed — ' + _prop.address.split(',')[0], 'warn');
+              }
+              if (_pi < _propInserts.length - 1)
+                await new Promise(function(r){ setTimeout(r, 1200); });
+            }
+          })();
         }
       }
     } catch(e) {
@@ -3185,34 +3188,19 @@ function handleFile(toolId, uploadId, input, type) {
                   zip_code: ((_gAddr || '').match(/\b\d{5}\b/) || [])[0] || null,
                   market: _detectMarket({ addr: _gAddr }) || null,
                   vacant: false
-                }, { onConflict: 'address,tenant' }).select('id').single().then(function(res) {
+                }, { onConflict: 'address,tenant' }).select('id').single().then(async function(res) {
                   if (res.data) {
                     if (!STATE['gavel']) STATE['gavel'] = {};
                     STATE['gavel']._leaseId = res.data.id;
                     console.log('leases row upserted:', res.data.id);
-                    // Fire-and-forget embedding
                     var _leEmbedText = fullText.slice(0, 3500) + ' ' + (_gAddr || '') + ' ' + (_gTenant || '');
-                    _generateEmbedding(_leEmbedText).then(async function(vec) {
-                      if (vec && _sb) {
-                        try { await _sb.from('leases').update({ embedding: '[' + vec.join(',') + ']' }).eq('id', res.data.id); }
-                        catch(e) { console.warn('Lease embedding save failed:', e.message); }
-                      } else {
-                        var _alreadyQ = (_voyageRetryQueue || []).some(function(q) { return q.embedText === _leEmbedText; });
-                        if (!_alreadyQ) {
-                          _voyageRetryQueue.push({
-                            address: _gAddr,
-                            tenant: _gTenant,
-                            tenant_normalized: _normalizeTenant(_gTenant || ''),
-                            embedText: _leEmbedText,
-                            leaseId: res.data.id,
-                            error: 'Voyage null at upload',
-                            timestamp: new Date().toISOString()
-                          });
-                          _ridgeUpdateRetryButton();
-                          try { localStorage.setItem('_voyageRetryQueue', JSON.stringify(_voyageRetryQueue)); } catch(e){}
-                        }
-                      }
-                    });
+                    var _leVec = await _generateEmbedding(_leEmbedText);
+                    if (_leVec && _sb) {
+                      try { await _sb.from('leases').update({ embedding: '[' + _leVec.join(',') + ']' }).eq('id', res.data.id); }
+                      catch(e) { console.warn('Lease embedding save failed:', e.message); }
+                    } else {
+                      showToast('Lease embed failed — will not retry', 'warn');
+                    }
                   }
                 }).catch(function(e) { console.warn('leases upsert failed:', e); showToast('Lease data could not be saved.'); });
               }
@@ -4154,180 +4142,8 @@ If CONDITIONAL: state exactly what must be verified before proceeding
 // → extracted to shared/supabase.js (Phase 2) — client ref + ok flag
 var _sb = null;
 var _sbOk = false;
-var _voyageRetryQueue = (function(){
-  try {
-    var _saved = localStorage.getItem('_voyageRetryQueue');
-    return _saved ? JSON.parse(_saved) : [];
-  } catch(e) { return []; }
-})();
 var _lastVoyageStatus = 0;
 
-function _ridgeUpdateRetryButton() {
-  var btn = document.getElementById('ridge-retry-btn');
-  var countEl = document.getElementById('ridge-retry-count');
-  if (!btn || !countEl) return;
-  var n = (_voyageRetryQueue || []).length;
-  countEl.textContent = n;
-  btn.style.display = n > 0 ? 'inline-block' : 'none';
-}
-
-async function _ridgeRetryVoyageQueue() {
-  var queue = _voyageRetryQueue || [];
-  if (queue.length === 0) {
-    alert('No failed embeddings to retry.');
-    return;
-  }
-  if (_voyageDrainInProgress) {
-    alert('Auto-drain already in progress — please wait for it to finish.');
-    return;
-  }
-  var btn = document.getElementById('ridge-retry-btn');
-  if (btn) {
-    btn.disabled = true;
-    btn.textContent = '⏳ Retrying ' + queue.length + '...';
-  }
-  var recovered = 0, stillFailed = 0;
-  var stillFailedItems = [];
-  for (var i = 0; i < queue.length; i++) {
-    var item = queue[i];
-    try {
-      var emb = await _generateEmbedding(item.embedText);
-      if (emb) {
-        var addrPrefix = (item.address || '').split(',')[0];
-        var upRes;
-        if (item.table === 'sale_comps') {
-          upRes = await _sb.from('sale_comps').update({ embedding: emb })
-            .eq('address', item.address)
-            .eq('sale_date', item.sale_date);
-        } else if (item.table === 'skill_outputs') {
-          upRes = await _sb.from('skill_outputs').update({ embedding: '[' + emb.join(',') + ']' })
-            .eq('id', item.skillOutputId);
-        } else {
-          // default: leases — handles legacy v5.4 queue items that have no table field
-          upRes = await _sb.from('leases').update({ embedding: emb })
-            .eq('tenant_normalized', item.tenant_normalized)
-            .ilike('address', '%' + addrPrefix + '%');
-        }
-        if (upRes.error) { stillFailed++; stillFailedItems.push(item); }
-        else { recovered++; }
-      } else {
-        stillFailed++; stillFailedItems.push(item);
-      }
-    } catch (e) {
-      stillFailed++; stillFailedItems.push(item);
-    }
-    await new Promise(function(res){ setTimeout(res, 2000); });
-  }
-  _voyageRetryQueue = stillFailedItems;
-  try { localStorage.setItem('_voyageRetryQueue', JSON.stringify(_voyageRetryQueue)); } catch(e){}
-  _ridgeUpdateRetryButton();
-  if (btn) {
-    btn.disabled = false;
-    btn.innerHTML = '⚠ Retry Failed Embeds (<span id="ridge-retry-count">' + stillFailedItems.length + '</span>)';
-  }
-  alert('Retry complete: ' + recovered + ' recovered, ' + stillFailed + ' still failed.');
-}
-
-// ═══════════════════════════════════════════════════════════
-// v5.6 Phase 1 — Safe drain function for stranded queue items.
-// Snapshots the queue, drains at 1200ms/item (≤50 RPM, safe for all
-// Voyage tiers), max 2 retries per item with exponential backoff,
-// gives up fast on persistent 429 to avoid hammering rate-limited API.
-// Auto-invoked on page load when queue has items. Existing button stays
-// as fallback during this phase. Phase 3 will tear down the subsystem
-// once legacy queues have drained on every active session.
-// ═══════════════════════════════════════════════════════════
-var _voyageDrainInProgress = false;
-
-async function _ridgeDrainVoyageQueue(opts) {
-  opts = opts || {};
-  var rateLimit = opts.rateLimit || 1200;
-  var maxRetries = opts.maxRetries || 2;
-
-  if (_voyageDrainInProgress) {
-    console.warn('[RIDGE] Drain already running — skipping duplicate invocation');
-    return { recovered: 0, failed: 0, stillQueued: (_voyageRetryQueue || []).length, skipped: true };
-  }
-
-  var queue = (_voyageRetryQueue || []).slice();
-  if (!queue.length) return { recovered: 0, failed: 0, stillQueued: 0 };
-
-  _voyageDrainInProgress = true;
-  console.log('[RIDGE] v5.6 drain starting — ' + queue.length + ' items, ~' + Math.round(queue.length * rateLimit / 1000) + 's at ' + rateLimit + 'ms/item');
-
-  var recovered = 0, failed = 0;
-  var stillFailed = [];
-
-  try {
-    for (var i = 0; i < queue.length; i++) {
-      var item = queue[i];
-      var emb = null;
-      var attempt = 0;
-
-      while (attempt <= maxRetries && !emb) {
-        if (attempt > 0) {
-          var backoff = Math.pow(2, attempt) * 1000;
-          await new Promise(function(r){ setTimeout(r, backoff); });
-        }
-        emb = await _generateEmbedding(item.embedText);
-        if (!emb && _lastVoyageStatus === 429) {
-          console.warn('[RIDGE] Drain item ' + (i+1) + '/' + queue.length + ' hit 429 — moving on');
-          break;
-        }
-        attempt++;
-      }
-
-      if (emb) {
-        var addrPrefix = (item.address || '').split(',')[0];
-        var upRes;
-        try {
-          if (item.table === 'sale_comps') {
-            upRes = await _sb.from('sale_comps').update({ embedding: emb })
-              .eq('address', item.address)
-              .eq('sale_date', item.sale_date);
-          } else if (item.table === 'skill_outputs') {
-            upRes = await _sb.from('skill_outputs').update({ embedding: '[' + emb.join(',') + ']' })
-              .eq('id', item.skillOutputId);
-          } else {
-            upRes = await _sb.from('leases').update({ embedding: emb })
-              .eq('tenant_normalized', item.tenant_normalized)
-              .ilike('address', '%' + addrPrefix + '%');
-          }
-          if (upRes && upRes.error) {
-            console.warn('[RIDGE] Drain DB write failed for item ' + (i+1) + ':', upRes.error.message);
-            stillFailed.push(item); failed++;
-          } else {
-            recovered++;
-            console.log('[RIDGE] Drain recovered ' + (i+1) + '/' + queue.length + ': ' + (item.address || item.tenant_normalized || 'unknown'));
-          }
-        } catch (dispatchErr) {
-          console.warn('[RIDGE] Drain dispatch error for item ' + (i+1) + ':', dispatchErr.message);
-          stillFailed.push(item); failed++;
-        }
-      } else {
-        stillFailed.push(item); failed++;
-      }
-
-      if (i < queue.length - 1) {
-        await new Promise(function(r){ setTimeout(r, rateLimit); });
-      }
-    }
-
-    _voyageRetryQueue = stillFailed;
-    if (stillFailed.length === 0) {
-      try { localStorage.removeItem('_voyageRetryQueue'); } catch(e){}
-      console.log('[RIDGE] Drain complete — queue empty, localStorage key removed');
-    } else {
-      try { localStorage.setItem('_voyageRetryQueue', JSON.stringify(stillFailed)); } catch(e){}
-      console.log('[RIDGE] Drain complete — ' + stillFailed.length + ' items still failing, retained for manual retry');
-    }
-    _ridgeUpdateRetryButton();
-    console.log('[RIDGE] Drain summary: recovered ' + recovered + ', failed ' + failed + ', stillQueued ' + stillFailed.length);
-    return { recovered: recovered, failed: failed, stillQueued: stillFailed.length };
-  } finally {
-    _voyageDrainInProgress = false;
-  }
-}
 var _lastRunInputs = null;
 var _lastRunToolId  = null;
 function _updateExportButtons() {
@@ -5299,22 +5115,7 @@ async function _writeLeaseRows(rows, address, source) {
             .ilike('address', '%' + (r.address || '').split(',')[0] + '%');
           if (_upRes.error) console.warn('[RIDGE] lease embed update error:', _upRes.error.message);
         } else {
-          console.warn('[RIDGE] lease embed failed after retries:', r.tenant);
-          var _alreadyQueued = (_voyageRetryQueue || []).some(function(item) {
-            return (item.tenant_normalized || '').toLowerCase().trim() === (r.tenant_normalized || '').toLowerCase().trim();
-          });
-          if (!_alreadyQueued) {
-            _voyageRetryQueue.push({
-              tenant: r.tenant,
-              tenant_normalized: r.tenant_normalized,
-              address: r.address,
-              embedText: _embedText,
-              error: 'Voyage 429 after retries',
-              timestamp: new Date().toISOString()
-            });
-            _ridgeUpdateRetryButton();
-            try { localStorage.setItem('_voyageRetryQueue', JSON.stringify(_voyageRetryQueue)); } catch(e){}
-          }
+          showToast('Lease embed failed — ' + (r.tenant || r.address || 'unknown'), 'warn');
         }
       }
       for (var _bi = 0; _bi < _embedRows.length; _bi += _BATCH) {
@@ -6223,42 +6024,28 @@ async function _writeSaleComps(comps, source, priority) {
     console.warn('[RIDGE] _writeSaleComps error:', e.message);
   }
 
-  // ── EMBEDDINGS: generate for newly written sale comp rows ──────────────────
+  // ── EMBEDDINGS: generate for newly written sale comp rows (sequential, 1200ms/item) ──
   if (_sbOk && _sb) {
-    inserts.forEach(function(_sc) {
-      if (!_sc.address) return;
-      (function(_row) {
+    (async function() {
+      for (var _sci = 0; _sci < inserts.length; _sci++) {
+        var _sc = inserts[_sci];
+        if (!_sc.address) continue;
         var _embedText = [
-          _row.address, _row.asset_type || '',
-          _row.sale_date || '', _row.price_psf || '', _row.source || ''
+          _sc.address, _sc.asset_type || '',
+          _sc.sale_date || '', _sc.price_psf || '', _sc.source || ''
         ].join(' ').trim();
-        _generateEmbedding(_embedText).then(function(_vec) {
-          if (_vec && _sb) {
-            _sb.from('sale_comps')
-              .update({ embedding: _vec })
-              .eq('address', _row.address)
-              .eq('sale_date', _row.sale_date)
-              .then(function(r) {
-                if (r.error) console.warn('[RIDGE] sale_comp embed error:', r.error.message);
-              });
-          } else {
-            var _alreadyQ = (_voyageRetryQueue || []).some(function(q) { return q.embedText === _embedText; });
-            if (!_alreadyQ) {
-              _voyageRetryQueue.push({
-                address:   _row.address,
-                sale_date: _row.sale_date,
-                embedText: _embedText,
-                table:     'sale_comps',
-                error:     'Voyage null at sale_comps write',
-                timestamp: new Date().toISOString()
-              });
-              _ridgeUpdateRetryButton();
-              try { localStorage.setItem('_voyageRetryQueue', JSON.stringify(_voyageRetryQueue)); } catch(e) {}
-            }
-          }
-        });
-      })(_sc);
-    });
+        var _vec = await _generateEmbedding(_embedText);
+        if (_vec && _sb) {
+          var _r = await _sb.from('sale_comps').update({ embedding: _vec })
+            .eq('address', _sc.address).eq('sale_date', _sc.sale_date);
+          if (_r.error) console.warn('[RIDGE] sale_comp embed error:', _r.error.message);
+        } else {
+          showToast('Sale comp embed failed — ' + _sc.address.split(',')[0], 'warn');
+        }
+        if (_sci < inserts.length - 1)
+          await new Promise(function(r){ setTimeout(r, 1200); });
+      }
+    })();
   }
 }
 
@@ -6868,12 +6655,6 @@ document.addEventListener('drop', e => {
 //  INIT
 // ═══════════════════════════════════════════════════════════
 renderTools();
-_ridgeUpdateRetryButton();
-// v5.6 Phase 1 — auto-drain stranded queue items at safe rate (1200ms/item, max 2 retries)
-if ((_voyageRetryQueue || []).length > 0) {
-  console.log('[RIDGE] v5.6 auto-drain: found ' + _voyageRetryQueue.length + ' items in legacy retry queue');
-  _ridgeDrainVoyageQueue().catch(function(e) { console.warn('[RIDGE] Auto-drain error:', e.message); });
-}
 if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
 window.scrollTo(0, 0);
 // Open LENS by default (per user preference — near top)
@@ -8932,29 +8713,15 @@ async function runRidgeAPI(skillName, prompt, runInputs, runToolId) {
           run_by: _getSessionUser()
         }).select('id').single();
         var _soId = _soInsert.data && _soInsert.data.id;
-        // Fire-and-forget embedding generation
         if (_soId) {
           var _embedText = outputText.slice(0, 3000) + ' ' + skillNameSaved + ' ' + (_soAddr || '');
-          _generateEmbedding(_embedText).then(function(vec) {
-            if (vec && _sb) {
-              try { _sb.from('skill_outputs').update({ embedding: '[' + vec.join(',') + ']' }).eq('id', _soId); } catch(e) { console.warn('[RIDGE] embedding DB update failed:', e.message); }
-            } else {
-              var _alreadyQ = (_voyageRetryQueue || []).some(function(q) { return q.embedText === _embedText; });
-              if (!_alreadyQ) {
-                _voyageRetryQueue.push({
-                  address:       _soAddr || '',
-                  skill_name:    skillNameSaved,
-                  embedText:     _embedText,
-                  skillOutputId: _soId,
-                  table:         'skill_outputs',
-                  error:         'Voyage null at skill_outputs write',
-                  timestamp:     new Date().toISOString()
-                });
-                _ridgeUpdateRetryButton();
-                try { localStorage.setItem('_voyageRetryQueue', JSON.stringify(_voyageRetryQueue)); } catch(e) {}
-              }
-            }
-          }).catch(function(e) { console.warn('[RIDGE] embedding generation failed:', e.message); });
+          var _soVec = await _generateEmbedding(_embedText);
+          if (_soVec && _sb) {
+            try { await _sb.from('skill_outputs').update({ embedding: '[' + _soVec.join(',') + ']' }).eq('id', _soId); }
+            catch(e) { console.warn('[RIDGE] embedding DB update failed:', e.message); }
+          } else {
+            showToast('Skill output embed failed — will not retry', 'warn');
+          }
           // Save raw document text to skill_output_documents (fire-and-forget)
           (function(_sid, _tid) {
             if (!_tid) return;
@@ -9127,30 +8894,15 @@ async function runRidgeAPI(skillName, prompt, runInputs, runToolId) {
                 console.log('leases row inserted (fallback):', _embedRowId);
               }
             }
-            // Fire-and-forget embedding after fields are written
             if (_embedRowId) {
               var _leEmbedUpdate = [_leaseUpdate.address, _leaseUpdate.tenant, _leaseUpdate.lease_type, outputText.slice(0, 2000)].filter(Boolean).join(' ');
-              _generateEmbedding(_leEmbedUpdate).then(async function(vec) {
-                if (vec && _sb) {
-                  try { await _sb.from('leases').update({ embedding: '[' + vec.join(',') + ']' }).eq('id', _embedRowId); }
-                  catch(e) { console.warn('Lease embedding update failed:', e.message); }
-                } else {
-                  var _alreadyQ = (_voyageRetryQueue || []).some(function(q) { return q.embedText === _leEmbedUpdate; });
-                  if (!_alreadyQ) {
-                    _voyageRetryQueue.push({
-                      address: _leaseUpdate.address || null,
-                      tenant: _leaseUpdate.tenant || null,
-                      tenant_normalized: _normalizeTenant(_leaseUpdate.tenant || ''),
-                      embedText: _leEmbedUpdate,
-                      leaseId: _embedRowId,
-                      error: 'Voyage null at postrun',
-                      timestamp: new Date().toISOString()
-                    });
-                    _ridgeUpdateRetryButton();
-                    try { localStorage.setItem('_voyageRetryQueue', JSON.stringify(_voyageRetryQueue)); } catch(e){}
-                  }
-                }
-              });
+              var _leVec = await _generateEmbedding(_leEmbedUpdate);
+              if (_leVec && _sb) {
+                try { await _sb.from('leases').update({ embedding: '[' + _leVec.join(',') + ']' }).eq('id', _embedRowId); }
+                catch(e) { console.warn('Lease embedding update failed:', e.message); }
+              } else {
+                showToast('Lease embed failed — will not retry', 'warn');
+              }
             }
           } catch(e) { console.warn('leases update/insert failed:', e); showToast('Lease data could not be saved to database.'); }
       } catch(e) { console.warn('Gavel leases block failed:', e); showToast('Lease data could not be saved to database.'); }
