@@ -8019,30 +8019,40 @@ function showApiKeyModal() {
 //   order by similarity desc limit match_count;
 // $$;
 async function _generateEmbedding(text) {
-  console.log('_generateEmbedding called — voyageKey:', _voyageKey ? 'present (length ' + _voyageKey.length + ')' : 'MISSING');
   if (!_voyageKey || !text) return null;
-  try {
-    var resp = await fetch('https://api.voyageai.com/v1/embeddings', {
-      method: 'POST',
-      headers: {
-        'content-type': 'application/json',
-        'Authorization': 'Bearer ' + _voyageKey
-      },
-      body: JSON.stringify({
-        model: 'voyage-large-2',
-        input: [text.slice(0, 4000)]
-      })
-    });
-    console.log('Voyage response status:', resp.status);
-    _lastVoyageStatus = resp.status;
-    var data = await resp.json();
-    console.log('Voyage response data keys:', Object.keys(data));
-    return data.data && data.data[0] && data.data[0].embedding ? data.data[0].embedding : null;
-  } catch(e) {
-    console.error('Voyage embedding error:', e.message);
-    _lastVoyageStatus = 0;
-    return null;
+  var maxAttempts = 3;
+  var lastStatus = 0;  // local copy — prevents concurrent callers clobbering backoff decision
+  for (var attempt = 0; attempt < maxAttempts; attempt++) {
+    if (attempt > 0) {
+      // 429 → longer backoff (4s, 8s); 5xx/net → shorter (1s, 2s)
+      // Reads lastStatus (local), not _lastVoyageStatus (module-level) to avoid race condition
+      var backoff = (lastStatus === 429)
+        ? Math.pow(2, attempt) * 2000
+        : Math.pow(2, attempt) * 500;
+      await new Promise(function(r) { setTimeout(r, backoff); });
+    }
+    try {
+      var resp = await fetch('https://api.voyageai.com/v1/embeddings', {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'Authorization': 'Bearer ' + _voyageKey
+        },
+        body: JSON.stringify({
+          model: 'voyage-large-2',
+          input: [text.slice(0, 4000)]
+        })
+      });
+      lastStatus = resp.status; _lastVoyageStatus = resp.status;
+      if (resp.status === 429 || resp.status >= 500) continue;
+      if (!resp.ok) return null;
+      var data = await resp.json();
+      return (data.data && data.data[0] && data.data[0].embedding) || null;
+    } catch(e) {
+      lastStatus = 0; _lastVoyageStatus = 0;
+    }
   }
+  return null;
 }
 
 async function _bulkEmbedLeases() {
