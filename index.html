@@ -4177,6 +4177,10 @@ async function _ridgeRetryVoyageQueue() {
     alert('No failed embeddings to retry.');
     return;
   }
+  if (_voyageDrainInProgress) {
+    alert('Auto-drain already in progress — please wait for it to finish.');
+    return;
+  }
   var btn = document.getElementById('ridge-retry-btn');
   if (btn) {
     btn.disabled = true;
@@ -4222,6 +4226,107 @@ async function _ridgeRetryVoyageQueue() {
     btn.innerHTML = '⚠ Retry Failed Embeds (<span id="ridge-retry-count">' + stillFailedItems.length + '</span>)';
   }
   alert('Retry complete: ' + recovered + ' recovered, ' + stillFailed + ' still failed.');
+}
+
+// ═══════════════════════════════════════════════════════════
+// v5.6 Phase 1 — Safe drain function for stranded queue items.
+// Snapshots the queue, drains at 1200ms/item (≤50 RPM, safe for all
+// Voyage tiers), max 2 retries per item with exponential backoff,
+// gives up fast on persistent 429 to avoid hammering rate-limited API.
+// Auto-invoked on page load when queue has items. Existing button stays
+// as fallback during this phase. Phase 3 will tear down the subsystem
+// once legacy queues have drained on every active session.
+// ═══════════════════════════════════════════════════════════
+var _voyageDrainInProgress = false;
+
+async function _ridgeDrainVoyageQueue(opts) {
+  opts = opts || {};
+  var rateLimit = opts.rateLimit || 1200;
+  var maxRetries = opts.maxRetries || 2;
+
+  if (_voyageDrainInProgress) {
+    console.warn('[RIDGE] Drain already running — skipping duplicate invocation');
+    return { recovered: 0, failed: 0, stillQueued: (_voyageRetryQueue || []).length, skipped: true };
+  }
+
+  var queue = (_voyageRetryQueue || []).slice();
+  if (!queue.length) return { recovered: 0, failed: 0, stillQueued: 0 };
+
+  _voyageDrainInProgress = true;
+  console.log('[RIDGE] v5.6 drain starting — ' + queue.length + ' items, ~' + Math.round(queue.length * rateLimit / 1000) + 's at ' + rateLimit + 'ms/item');
+
+  var recovered = 0, failed = 0;
+  var stillFailed = [];
+
+  try {
+    for (var i = 0; i < queue.length; i++) {
+      var item = queue[i];
+      var emb = null;
+      var attempt = 0;
+
+      while (attempt <= maxRetries && !emb) {
+        if (attempt > 0) {
+          var backoff = Math.pow(2, attempt) * 1000;
+          await new Promise(function(r){ setTimeout(r, backoff); });
+        }
+        emb = await _generateEmbedding(item.embedText);
+        if (!emb && _lastVoyageStatus === 429) {
+          console.warn('[RIDGE] Drain item ' + (i+1) + '/' + queue.length + ' hit 429 — moving on');
+          break;
+        }
+        attempt++;
+      }
+
+      if (emb) {
+        var addrPrefix = (item.address || '').split(',')[0];
+        var upRes;
+        try {
+          if (item.table === 'sale_comps') {
+            upRes = await _sb.from('sale_comps').update({ embedding: emb })
+              .eq('address', item.address)
+              .eq('sale_date', item.sale_date);
+          } else if (item.table === 'skill_outputs') {
+            upRes = await _sb.from('skill_outputs').update({ embedding: '[' + emb.join(',') + ']' })
+              .eq('id', item.skillOutputId);
+          } else {
+            upRes = await _sb.from('leases').update({ embedding: emb })
+              .eq('tenant_normalized', item.tenant_normalized)
+              .ilike('address', '%' + addrPrefix + '%');
+          }
+          if (upRes && upRes.error) {
+            console.warn('[RIDGE] Drain DB write failed for item ' + (i+1) + ':', upRes.error.message);
+            stillFailed.push(item); failed++;
+          } else {
+            recovered++;
+            console.log('[RIDGE] Drain recovered ' + (i+1) + '/' + queue.length + ': ' + (item.address || item.tenant_normalized || 'unknown'));
+          }
+        } catch (dispatchErr) {
+          console.warn('[RIDGE] Drain dispatch error for item ' + (i+1) + ':', dispatchErr.message);
+          stillFailed.push(item); failed++;
+        }
+      } else {
+        stillFailed.push(item); failed++;
+      }
+
+      if (i < queue.length - 1) {
+        await new Promise(function(r){ setTimeout(r, rateLimit); });
+      }
+    }
+
+    _voyageRetryQueue = stillFailed;
+    if (stillFailed.length === 0) {
+      try { localStorage.removeItem('_voyageRetryQueue'); } catch(e){}
+      console.log('[RIDGE] Drain complete — queue empty, localStorage key removed');
+    } else {
+      try { localStorage.setItem('_voyageRetryQueue', JSON.stringify(stillFailed)); } catch(e){}
+      console.log('[RIDGE] Drain complete — ' + stillFailed.length + ' items still failing, retained for manual retry');
+    }
+    _ridgeUpdateRetryButton();
+    console.log('[RIDGE] Drain summary: recovered ' + recovered + ', failed ' + failed + ', stillQueued ' + stillFailed.length);
+    return { recovered: recovered, failed: failed, stillQueued: stillFailed.length };
+  } finally {
+    _voyageDrainInProgress = false;
+  }
 }
 var _lastRunInputs = null;
 var _lastRunToolId  = null;
@@ -6764,6 +6869,11 @@ document.addEventListener('drop', e => {
 // ═══════════════════════════════════════════════════════════
 renderTools();
 _ridgeUpdateRetryButton();
+// v5.6 Phase 1 — auto-drain stranded queue items at safe rate (1200ms/item, max 2 retries)
+if ((_voyageRetryQueue || []).length > 0) {
+  console.log('[RIDGE] v5.6 auto-drain: found ' + _voyageRetryQueue.length + ' items in legacy retry queue');
+  _ridgeDrainVoyageQueue().catch(function(e) { console.warn('[RIDGE] Auto-drain error:', e.message); });
+}
 if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
 window.scrollTo(0, 0);
 // Open LENS by default (per user preference — near top)
