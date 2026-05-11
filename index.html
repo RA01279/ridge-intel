@@ -591,7 +591,7 @@ footer{border-top:1px solid var(--border);padding:20px 24px;text-align:center;co
     <span id="ridge-session-user" style="font-size:10px;color:#4a6a8a;padding:3px 6px;"></span>
     <span id="sb-dot" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--faint);flex-shrink:0;" title="Supabase initializing…"></span>
     <span id="token-count" style="font-size:11px;color:var(--faint);cursor:default;" title="Session tokens — in: 0 · out: 0">0 tok</span>
-    <span id="hdr-skill-count" style="font-size:11px;color:var(--muted)">17 Skills Active · v5.10</span>
+    <span id="hdr-skill-count" style="font-size:11px;color:var(--muted)">17 Skills Active · v5.11</span>
   </div>
 </header>
 
@@ -1589,7 +1589,7 @@ function renderTools() {
   var countLabel = document.getElementById('skill-count-label');
   if (countLabel) countLabel.textContent = TOOLS.length + ' Active · Click any tile to expand';
   var hdrCount = document.getElementById('hdr-skill-count');
-  if (hdrCount) hdrCount.textContent = TOOLS.length + ' Skills Active · v5.10';
+  if (hdrCount) hdrCount.textContent = TOOLS.length + ' Skills Active · v5.11';
   var ftrCount = document.getElementById('footer-skill-count');
   if (ftrCount) ftrCount.textContent = 'RIDGE Intelligence Platform · Entrada Partners · ' + TOOLS.length + ' Skills Active · ATL · SAV · DFW · HOU';
 
@@ -12303,6 +12303,8 @@ var _llColMap = {
   'clear height (ft)':'clear_height','clear height':'clear_height','ceiling height':'clear_height','clear ht':'clear_height',
   // Source
   'source':'source',
+  // Market
+  'market':'market','★ market':'market',
   // Submarket
   'submarket':'submarket','sub market':'submarket','sub-market':'submarket','subarea':'submarket',
   // Asset Class
@@ -12468,7 +12470,17 @@ async function _llConvertBrokerFile(file, market) {
               }
               return null;
             })(),
-            lease_term_months:   num(r, 'lease_term_months'),
+            lease_term_months:   (function() {
+              var _t = num(r, 'lease_term_months');
+              if (_t) return _t;
+              var _comm = commRaw ? _parseLeaseDateFull(commRaw) : null;
+              var _exp  = str(r, 'expiration_date') ? _parseLeaseDateFull(str(r, 'expiration_date')) : null;
+              if (_comm && _exp) {
+                var _d = new Date(_exp) - new Date(_comm);
+                if (_d > 0) return Math.round(_d / (1000*60*60*24*365/12));
+              }
+              return null;
+            })(),
             base_rent_psf:       psfRaw,
             rent_escalation_pct: num(r, 'rent_escalation_pct'),
             free_rent_months:    num(r, 'free_rent_months'),
@@ -12833,21 +12845,23 @@ function _llParseRidgeTemplate(raw, market) {
   var hdr = (raw[hdrIdx] || []).map(function(c){ return String(c||'').toLowerCase().trim(); });
   function fc(term) { var i = hdr.indexOf(term); return i !== -1 ? i : -1; }
 
-  var cAddr  = fc('property address');
-  var cSuite = fc('suite / unit');
-  var cTen   = fc('tenant name');
-  var cSF    = fc('sf');
-  var cType  = fc('lease type');
-  var cStart = fc('commencement date');
-  var cEnd   = fc('expiration date');
-  var cPSF   = fc('base rent psf (annual)');
-  var cEsc   = fc('escalation %');
-  var cFree  = fc('free rent (months)');
-  var cTI    = fc('ti psf ($)');
-  var cDock  = fc('dock high doors');
-  var cGrade = fc('grade level doors');
-  var cClear = fc('clear height (ft)');
-  var cSrc   = fc('source');
+  var cAddr   = fc('property address');
+  var cSuite  = fc('suite / unit');
+  var cTen    = fc('tenant name');
+  var cSF     = fc('sf');
+  var cType   = fc('lease type');
+  var cStart  = fc('commencement date');
+  var cEnd    = fc('expiration date');
+  var cPSF    = fc('base rent psf (annual)');
+  var cEsc    = fc('escalation %');
+  var cFree   = fc('free rent (months)');
+  var cTI     = fc('ti psf ($)');
+  var cDock   = fc('dock high doors');
+  var cGrade  = fc('grade level doors');
+  var cClear  = fc('clear height (ft)');
+  var cSrc    = fc('source');
+  var cMarket = fc('★ market');
+  var cTerm   = fc('lease term (months)');
   // 'Annual Rent ($)' intentionally ignored — calculated field
 
   if (cAddr === -1 || cTen === -1) return []; // template detected but required columns missing
@@ -12874,7 +12888,7 @@ function _llParseRidgeTemplate(raw, market) {
     var gradeV = num(r, cGrade);
     rows.push({
       address:             addr,
-      market:              market || _detectMarket({ addr: addr }) || null,
+      market:              (cMarket >= 0 && r[cMarket] ? String(r[cMarket]).trim() : null) || market || _detectMarket({ addr: addr }) || null,
       tenant:              tenant,
       suite:               cSuite >= 0 ? String(r[cSuite] || '').trim() || null : null,
       sf:                  sfRaw,
@@ -12884,6 +12898,17 @@ function _llParseRidgeTemplate(raw, market) {
       base_rent_psf:       num(r, cPSF),
       rent_escalation_pct: num(r, cEsc),
       free_rent_months:    num(r, cFree),
+      lease_term_months:   (function() {
+        var _t = num(r, cTerm);
+        if (_t) return _t;
+        var _cs = cStart >= 0 && r[cStart] ? _parseLeaseDateFull(String(r[cStart])) : null;
+        var _ce = cEnd   >= 0 && r[cEnd]   ? _parseLeaseDateFull(String(r[cEnd]))   : null;
+        if (_cs && _ce) {
+          var _d = new Date(_ce) - new Date(_cs);
+          if (_d > 0) return Math.round(_d / (1000*60*60*24*365/12));
+        }
+        return null;
+      })(),
       ti_psf:              num(r, cTI),
       dock_high_doors:     dockV  != null ? parseInt(dockV)  : null,
       grade_level_doors:   gradeV != null ? parseInt(gradeV) : null,
@@ -12954,8 +12979,8 @@ function _llRenderPreview(rows) {
         + '<td style="'+PTD+'">' + (r.suite||'—') + '</td>'
         + '<td style="'+PTD+'text-align:right;">' + (r.sf ? Number(r.sf).toLocaleString() : '—') + '</td>'
         + '<td style="'+PTD+'text-align:right;">' + (r.base_rent_psf ? '$'+Number(r.base_rent_psf).toFixed(2) : '—') + '</td>'
-        + '<td style="'+PTD+'">' + (r.commencement_date ? String(r.commencement_date).slice(0,7) : '—') + '</td>'
-        + '<td style="'+PTD+'">' + (r.expiration_date ? String(r.expiration_date).slice(0,7) : '—') + '</td>'
+        + '<td style="'+PTD+'">' + (r.commencement_date ? String(r.commencement_date).slice(0,10) : '—') + '</td>'
+        + '<td style="'+PTD+'">' + (r.expiration_date ? String(r.expiration_date).slice(0,10) : '—') + '</td>'
         + '<td style="'+PTD+'text-align:right;">' + (r.lease_term_months != null ? r.lease_term_months + ' mo' : '—') + '</td>'
         + '<td style="'+PTD+'text-align:right;">' + (r.ti_psf ? '$'+Number(r.ti_psf).toFixed(2) : '—') + '</td>'
         + '<td style="'+PTD+'text-align:right;">' + (r.free_rent_months != null ? r.free_rent_months + ' mo' : '—') + '</td>'
