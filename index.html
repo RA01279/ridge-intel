@@ -591,7 +591,7 @@ footer{border-top:1px solid var(--border);padding:20px 24px;text-align:center;co
     <span id="ridge-session-user" style="font-size:10px;color:#4a6a8a;padding:3px 6px;"></span>
     <span id="sb-dot" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--faint);flex-shrink:0;" title="Supabase initializing…"></span>
     <span id="token-count" style="font-size:11px;color:var(--faint);cursor:default;" title="Session tokens — in: 0 · out: 0">0 tok</span>
-    <span id="hdr-skill-count" style="font-size:11px;color:var(--muted)">17 Skills Active · v5.6</span>
+    <span id="hdr-skill-count" style="font-size:11px;color:var(--muted)">17 Skills Active · v5.7</span>
   </div>
 </header>
 
@@ -1589,7 +1589,7 @@ function renderTools() {
   var countLabel = document.getElementById('skill-count-label');
   if (countLabel) countLabel.textContent = TOOLS.length + ' Active · Click any tile to expand';
   var hdrCount = document.getElementById('hdr-skill-count');
-  if (hdrCount) hdrCount.textContent = TOOLS.length + ' Skills Active · v5.6';
+  if (hdrCount) hdrCount.textContent = TOOLS.length + ' Skills Active · v5.7';
   var ftrCount = document.getElementById('footer-skill-count');
   if (ftrCount) ftrCount.textContent = 'RIDGE Intelligence Platform · Entrada Partners · ' + TOOLS.length + ' Skills Active · ATL · SAV · DFW · HOU';
 
@@ -5092,23 +5092,7 @@ async function _writeLeaseRows(rows, address, source) {
           r.base_rent_psf || '', r.sf || '',
           r.market || '', r.record_type || ''
         ].join(' ').trim();
-        var _vec = null;
-        var _maxAttempts = 3;
-        for (var _att = 0; _att < _maxAttempts; _att++) {
-          if (_att > 0) {
-            var _backoff;
-            if (_lastVoyageStatus === 429) {
-              _backoff = Math.pow(2, _att) * 1000;
-              _maxAttempts = 4;
-            } else {
-              _backoff = 1500 * _att;
-            }
-            await new Promise(function(res){ setTimeout(res, _backoff); });
-          }
-          _vec = await _generateEmbedding(_embedText);
-          if (_vec) break;
-          _rateFailures++;
-        }
+        var _vec = await _generateEmbedding(_embedText);
         if (_vec) {
           var _upRes = await _sb.from('leases').update({ embedding: _vec })
             .eq('tenant_normalized', r.tenant_normalized)
@@ -5124,7 +5108,7 @@ async function _writeLeaseRows(rows, address, source) {
         if (_useSeq) {
           for (var _si = 0; _si < _batch.length; _si++) {
             await _embedOne(_batch[_si]);
-            await new Promise(function(res){ setTimeout(res, 1500); });
+            await new Promise(function(res){ setTimeout(res, 1200); });
           }
         } else {
           await Promise.allSettled(_batch.map(_embedOne));
