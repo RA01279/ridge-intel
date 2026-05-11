@@ -591,7 +591,7 @@ footer{border-top:1px solid var(--border);padding:20px 24px;text-align:center;co
     <span id="ridge-session-user" style="font-size:10px;color:#4a6a8a;padding:3px 6px;"></span>
     <span id="sb-dot" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--faint);flex-shrink:0;" title="Supabase initializing…"></span>
     <span id="token-count" style="font-size:11px;color:var(--faint);cursor:default;" title="Session tokens — in: 0 · out: 0">0 tok</span>
-    <span id="hdr-skill-count" style="font-size:11px;color:var(--muted)">17 Skills Active · v5.7</span>
+    <span id="hdr-skill-count" style="font-size:11px;color:var(--muted)">17 Skills Active · v5.8</span>
   </div>
 </header>
 
@@ -1589,7 +1589,7 @@ function renderTools() {
   var countLabel = document.getElementById('skill-count-label');
   if (countLabel) countLabel.textContent = TOOLS.length + ' Active · Click any tile to expand';
   var hdrCount = document.getElementById('hdr-skill-count');
-  if (hdrCount) hdrCount.textContent = TOOLS.length + ' Skills Active · v5.7';
+  if (hdrCount) hdrCount.textContent = TOOLS.length + ' Skills Active · v5.8';
   var ftrCount = document.getElementById('footer-skill-count');
   if (ftrCount) ftrCount.textContent = 'RIDGE Intelligence Platform · Entrada Partners · ' + TOOLS.length + ' Skills Active · ATL · SAV · DFW · HOU';
 
@@ -8682,7 +8682,7 @@ async function runRidgeAPI(skillName, prompt, runInputs, runToolId) {
       var outputText = document.getElementById('ridge-panel-content').innerText;
       var skillNameSaved = document.getElementById('ridge-panel-skill-name').textContent;
       console.log('Supabase post-run block entered — skill:', skillNameSaved, '| _sbOk:', _sbOk, '| _sb:', !!_sb);
-      if (_lastRunToolId !== 'market-pulse') {
+      if (_lastRunToolId !== 'market-pulse' && _lastRunToolId !== 'lease-stack' && _lastRunToolId !== 'lease-compare') {
       try {
         var autoTags = [skillNameSaved];
         if (skillNameSaved.toLowerCase().includes('loi')) {
@@ -9080,7 +9080,7 @@ async function runRidgeAPI(skillName, prompt, runInputs, runToolId) {
                   console.log('[RIDGE] Lease Stack skill_outputs written:', _lsOut.id);
                   var _lsEmbed = await _generateEmbedding(_lsAddr + ' lease stack ' + accumulated.slice(0, 500));
                   if (_lsEmbed && _lsOut.id) {
-                    await _sb.from('skill_outputs').update({ embedding: _lsEmbed }).eq('id', _lsOut.id);
+                    await _sb.from('skill_outputs').update({ embedding: '[' + _lsEmbed.join(',') + ']' }).eq('id', _lsOut.id);
                   }
                 }
               } catch(e) {
@@ -9124,7 +9124,7 @@ async function runRidgeAPI(skillName, prompt, runInputs, runToolId) {
             // ── SKILL OUTPUTS: persist lease-compare run ──
             if (_sbOk && _sb) {
               try {
-                var _lcAddr = _lAddr || (_lastRunInputs && (_lastRunInputs.addr || _lastRunInputs.address)) || '';
+                var _lcAddr = _lAddr || (_lastRunInputs && (_lastRunInputs.doc1_label || _lastRunInputs.addr || '')) || '';
                 var { data: _lcOut } = await _sb.from('skill_outputs').insert({
                   skill_name: 'LEASE NEGOTIATION ANALYZER',
                   output: accumulated,
@@ -9139,7 +9139,7 @@ async function runRidgeAPI(skillName, prompt, runInputs, runToolId) {
                   console.log('[RIDGE] Lease Compare skill_outputs written:', _lcOut.id);
                   var _lcEmbed = await _generateEmbedding(_lcAddr + ' lease negotiation ' + accumulated.slice(0, 500));
                   if (_lcEmbed) {
-                    await _sb.from('skill_outputs').update({ embedding: _lcEmbed }).eq('id', _lcOut.id);
+                    await _sb.from('skill_outputs').update({ embedding: '[' + _lcEmbed.join(',') + ']' }).eq('id', _lcOut.id);
                   }
                 }
               } catch(e) {
