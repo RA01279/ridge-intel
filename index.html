@@ -591,7 +591,7 @@ footer{border-top:1px solid var(--border);padding:20px 24px;text-align:center;co
     <span id="ridge-session-user" style="font-size:10px;color:#4a6a8a;padding:3px 6px;"></span>
     <span id="sb-dot" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--faint);flex-shrink:0;" title="Supabase initializing…"></span>
     <span id="token-count" style="font-size:11px;color:var(--faint);cursor:default;" title="Session tokens — in: 0 · out: 0">0 tok</span>
-    <span id="hdr-skill-count" style="font-size:11px;color:var(--muted)">17 Skills Active · v5.9</span>
+    <span id="hdr-skill-count" style="font-size:11px;color:var(--muted)">17 Skills Active · v5.10</span>
   </div>
 </header>
 
@@ -1589,7 +1589,7 @@ function renderTools() {
   var countLabel = document.getElementById('skill-count-label');
   if (countLabel) countLabel.textContent = TOOLS.length + ' Active · Click any tile to expand';
   var hdrCount = document.getElementById('hdr-skill-count');
-  if (hdrCount) hdrCount.textContent = TOOLS.length + ' Skills Active · v5.9';
+  if (hdrCount) hdrCount.textContent = TOOLS.length + ' Skills Active · v5.10';
   var ftrCount = document.getElementById('footer-skill-count');
   if (ftrCount) ftrCount.textContent = 'RIDGE Intelligence Platform · Entrada Partners · ' + TOOLS.length + ' Skills Active · ATL · SAV · DFW · HOU';
 
@@ -3364,12 +3364,20 @@ async function runTool(toolId) {
 
   // LENS — pre-fetch market benchmark + lease comp context before prompt assembly
   _lensBenchmarkContext = '';
+  _lensMarketRent = null;
   if (toolId === 'lens' && _sbOk && _sb) {
     try {
       var _lensMkt = _detectMarket(d) || '';
       var _lensSub = (STATE['lens'] && STATE['lens'].fields && STATE['lens'].fields['submarket']) || d.submarket || d.sub || '';
-      var _lensBench = await _fetchMarketBenchmark(_lensMkt, 'Industrial', _lensSub);
-      var _lensComps = await _fetchLensComps(_lensMkt, 'Industrial', _lensSub);
+      var _lensBench = await _fetchMarketBenchmark(_lensMkt, d.type || 'Industrial', _lensSub);
+      var _lensComps = await _fetchLensComps(_lensMkt, d.type || 'Industrial', _lensSub);
+      _lensMarketRent = await _isrFetchMarketRent({
+        address:     d.addr || '',
+        assetClass:  d.type || 'Industrial',
+        sf:          parseFloat((d.sf || '').replace(/[^0-9.]/g, '')) || 50000,
+        clearHeight: 0,
+        dockDoors:   0
+      });
       var _lensCtx = '';
       if (_lensBench && _lensBench.length) {
         _lensCtx += '\n\n[RIDGE MARKET INTELLIGENCE — REAL COSTAR DATA]\n' +
@@ -3392,6 +3400,10 @@ async function runTool(toolId) {
               ' | ' + (c.commencement_date||'N/A');
           }).join('\n') +
           '\nUse these executed comps to stress-test the broker\'s rent assumptions. Flag any spread > 10% between broker claim and comp evidence.\n';
+      }
+      if (_lensMarketRent && _lensMarketRent.marketRentPSF) {
+        _lensCtx += '\n[RIDGE DB WEIGHTED AVG MARKET RENT: $' + _lensMarketRent.marketRentPSF +
+          ' PSF — recency-weighted from ' + _lensMarketRent.compCount + ' executed comps]\n';
       }
       _lensBenchmarkContext = _lensCtx;
     } catch(e) {
@@ -4180,6 +4192,7 @@ function _updateExportButtons() {
 var _mpBenchmarkContext = '';
 var _napkinBenchmarkContext = '';
 var _lensBenchmarkContext = '';
+var _lensMarketRent = null;
 var _isrLensContext = '';
 var _isrParsedData  = null;  // structured JSON extracted from ISR response — used by PPTX builder
 var _isrModelBuffer = null;  // raw ArrayBuffer of uploaded ISR model — persists across PPTX export
@@ -5009,7 +5022,7 @@ async function _writeLeaseRows(rows, address, source) {
       row.clear_height      = row.clear_height     != null ? parseFloat(row.clear_height)   : null;
         // Metadata tags
         row.source = source || null;
-        row.asset_class = row.asset_class || null;
+        row.asset_class = row.asset_class || 'Industrial';
         row.submarket = row.submarket || null;
         row.record_type = row.record_type || (['GAVEL','LEASE_COMP_MAP','LEGAL_REVIEW','LEASE_LIBRARY','LEASE_STACK','LEASE_COMPARE'].indexOf(source) !== -1 ? 'comp' : 'rent_roll');
         row.confidence = row.record_type === 'comp' ? 'high' : (['ISR','LENS','NAPKIN'].indexOf(source) !== -1 ? 'medium' : 'low');
@@ -5621,14 +5634,18 @@ function _lensRenderOM(parsed, crossRefFlags, marketRentData) {
       rows + keyAssumption + '</div>';
   }
 
+  var _displayPSF = dm.price_psf ||
+    (dm.asking_price && dm.building_sf > 0
+      ? (dm.asking_price / dm.building_sf).toFixed(2)
+      : null);
   var header = '<div style="background:#0d1f33;border:1px solid #1a4a6b;border-radius:8px;padding:14px 16px;margin-bottom:10px;">' +
     '<div style="font-size:15px;font-weight:700;color:#e0e8f0;">' + (dm.property_name || dm.address || 'Unnamed Property') + '</div>' +
     '<div style="font-size:12px;color:#4a6a8a;margin-top:2px;">' + (dm.address || '') + '</div>' +
     '<div style="display:flex;gap:16px;margin-top:10px;flex-wrap:wrap;">' +
     (dm.asking_price ? '<div><div style="font-size:10px;color:#4a6a8a;">ASKING PRICE</div>' +
       '<div style="font-size:16px;font-weight:700;color:#f0a500;">$' + (dm.asking_price/1000000).toFixed(2) + 'M</div></div>' : '') +
-    (dm.price_psf ? '<div><div style="font-size:10px;color:#4a6a8a;">PRICE PSF</div>' +
-      '<div style="font-size:16px;font-weight:700;color:#e0e8f0;">$' + dm.price_psf + '</div></div>' : '') +
+    (_displayPSF ? '<div><div style="font-size:10px;color:#4a6a8a;">PRICE PSF</div>' +
+      '<div style="font-size:16px;font-weight:700;color:#e0e8f0;">$' + _displayPSF + '</div></div>' : '') +
     (dm.building_sf ? '<div><div style="font-size:10px;color:#4a6a8a;">BUILDING SF</div>' +
       '<div style="font-size:16px;font-weight:700;color:#e0e8f0;">' + Math.round(dm.building_sf).toLocaleString() + '</div></div>' : '') +
     (parsed.implied_purchase_price > 0 ? '<div><div style="font-size:10px;color:#4a6a8a;">PSF</div>' +
@@ -5928,6 +5945,7 @@ async function _fetchLensComps(market, assetClass, submarket) {
     var query = _sb.from('leases')
       .select('tenant, address, sf, lease_type, base_rent_psf, commencement_date, expiration_date, source_priority')
       .eq('market', market)
+      .eq('asset_class', assetClass || 'Industrial')
       .not('base_rent_psf', 'is', null)
       .order('source_priority', { ascending: true })
       .order('commencement_date', { ascending: false })
@@ -8865,6 +8883,8 @@ async function runRidgeAPI(skillName, prompt, runInputs, runToolId) {
           _leaseUpdate.tenant_normalized = _normalizeTenant(_leaseUpdate.tenant || '');
           _leaseUpdate.zip_code          = ((_leaseUpdate.address || '').match(/\b\d{5}\b/) || [])[0] || null;
           _leaseUpdate.market            = _detectMarket({ addr: _leaseUpdate.address }) || null;
+          _leaseUpdate.asset_class       = 'Industrial';
+          _leaseUpdate.submarket         = null;
           _leaseUpdate.vacant            = false;
           try {
             var _embedRowId = _leaseId;
@@ -8949,13 +8969,6 @@ async function runRidgeAPI(skillName, prompt, runInputs, runToolId) {
                     showToast('⚠️ Scanned OM detected — text extraction failed. Use a text-based PDF or paste the OM directly.');
                     console.warn('[RIDGE] LENS OM Intelligence skipped — placeholder text detected');
                   } else if (_omRawText && _omRawText.length > 100) {
-                    var _lensMarketRent = await _isrFetchMarketRent({
-                      address:    _lAddr || '',
-                      assetClass: (_lastRunInputs && _lastRunInputs.type) || 'Industrial',
-                      sf:         parseFloat((_lastRunInputs && _lastRunInputs.sf) || 0) || 50000,
-                      clearHeight: 0,
-                      dockDoors:  0
-                    });
                     var _lensOMParsed = await _lensParseOM(_omRawText, _lastRunInputs && _lastRunInputs.ask);
                     window._lensOMParsed = _lensOMParsed;
                     console.log('[RIDGE] _lensParseOM result:', _lensOMParsed ? 'populated' : 'NULL', _lensOMParsed);
@@ -12291,7 +12304,9 @@ var _llColMap = {
   // Source
   'source':'source',
   // Submarket
-  'submarket':'submarket',
+  'submarket':'submarket','sub market':'submarket','sub-market':'submarket','subarea':'submarket',
+  // Asset Class
+  'asset class':'asset_class','asset_class':'asset_class','property type':'asset_class','building type':'asset_class',
   // Additional rate synonyms
   'lease rate':'base_rent_psf','rate':'base_rent_psf','annual rate':'base_rent_psf','rate psf (annual)':'base_rent_psf',
   // Rate type
@@ -12461,6 +12476,7 @@ async function _llConvertBrokerFile(file, market) {
             dock_high_doors:     num(r, 'dock_high_doors') != null ? parseInt(num(r, 'dock_high_doors')) : null,
             grade_level_doors:   num(r, 'grade_level_doors') != null ? parseInt(num(r, 'grade_level_doors')) : null,
             clear_height:        num(r, 'clear_height'),
+            asset_class:         str(r, 'asset_class') || null,
             submarket:           str(r, 'submarket'),
             notes:               null,
             source:              'LEASE_LIBRARY',
