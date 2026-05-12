@@ -591,7 +591,7 @@ footer{border-top:1px solid var(--border);padding:20px 24px;text-align:center;co
     <span id="ridge-session-user" style="font-size:10px;color:#4a6a8a;padding:3px 6px;"></span>
     <span id="sb-dot" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--faint);flex-shrink:0;" title="Supabase initializing…"></span>
     <span id="token-count" style="font-size:11px;color:var(--faint);cursor:default;" title="Session tokens — in: 0 · out: 0">0 tok</span>
-    <span id="hdr-skill-count" style="font-size:11px;color:var(--muted)">17 Skills Active · v5.12</span>
+    <span id="hdr-skill-count" style="font-size:11px;color:var(--muted)">17 Skills Active · v5.13</span>
   </div>
 </header>
 
@@ -1589,7 +1589,7 @@ function renderTools() {
   var countLabel = document.getElementById('skill-count-label');
   if (countLabel) countLabel.textContent = TOOLS.length + ' Active · Click any tile to expand';
   var hdrCount = document.getElementById('hdr-skill-count');
-  if (hdrCount) hdrCount.textContent = TOOLS.length + ' Skills Active · v5.11';
+  if (hdrCount) hdrCount.textContent = TOOLS.length + ' Skills Active · v5.13';
   var ftrCount = document.getElementById('footer-skill-count');
   if (ftrCount) ftrCount.textContent = 'RIDGE Intelligence Platform · Entrada Partners · ' + TOOLS.length + ' Skills Active · ATL · SAV · DFW · HOU';
 
@@ -7802,8 +7802,9 @@ async function _generateEmbedding(text) {
       // 429 → longer backoff (4s, 8s); 5xx/net → shorter (1s, 2s)
       // Reads lastStatus (local), not _lastVoyageStatus (module-level) to avoid race condition
       var backoff = (lastStatus === 429)
-        ? Math.pow(2, attempt) * 2000
+        ? Math.pow(2, attempt) * 5000
         : Math.pow(2, attempt) * 500;
+      if (attempt === maxAttempts - 1 && lastStatus === 429) return null;
       await new Promise(function(r) { setTimeout(r, backoff); });
     }
     try {
@@ -7814,7 +7815,7 @@ async function _generateEmbedding(text) {
           'Authorization': 'Bearer ' + _voyageKey
         },
         body: JSON.stringify({
-          model: 'voyage-large-2',
+          model: 'voyage-3-lite',
           input: [text.slice(0, 4000)]
         })
       });
@@ -7868,7 +7869,7 @@ async function _bulkEmbedLeases() {
       console.warn('[RIDGE] embed failed for:', r.tenant);
       failed++;
     }
-    await new Promise(function(res) { setTimeout(res, 2000); });
+    await new Promise(function(res) { setTimeout(res, 3000); });
   }
   showToast('Embedding complete — ' + success + ' succeeded, ' + failed + ' failed.', failed === 0 ? 'success' : 'warn');
   console.log('[RIDGE] bulkEmbedLeases done — success:', success, 'failed:', failed);
