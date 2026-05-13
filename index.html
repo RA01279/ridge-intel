@@ -591,7 +591,7 @@ footer{border-top:1px solid var(--border);padding:20px 24px;text-align:center;co
     <span id="ridge-session-user" style="font-size:10px;color:#4a6a8a;padding:3px 6px;"></span>
     <span id="sb-dot" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--faint);flex-shrink:0;" title="Supabase initializing…"></span>
     <span id="token-count" style="font-size:11px;color:var(--faint);cursor:default;" title="Session tokens — in: 0 · out: 0">0 tok</span>
-    <span id="hdr-skill-count" style="font-size:11px;color:var(--muted)">17 Skills Active · v5.16</span>
+    <span id="hdr-skill-count" style="font-size:11px;color:var(--muted)">17 Skills Active · v5.17</span>
   </div>
 </header>
 
@@ -1589,7 +1589,7 @@ function renderTools() {
   var countLabel = document.getElementById('skill-count-label');
   if (countLabel) countLabel.textContent = TOOLS.length + ' Active · Click any tile to expand';
   var hdrCount = document.getElementById('hdr-skill-count');
-  if (hdrCount) hdrCount.textContent = TOOLS.length + ' Skills Active · v5.16';
+  if (hdrCount) hdrCount.textContent = TOOLS.length + ' Skills Active · v5.17';
   var ftrCount = document.getElementById('footer-skill-count');
   if (ftrCount) ftrCount.textContent = 'RIDGE Intelligence Platform · Entrada Partners · ' + TOOLS.length + ' Skills Active · ATL · SAV · DFW · HOU';
 
@@ -13313,23 +13313,40 @@ function _llEditLease(id) {
 }
 
 async function _llSaveEdit(id) {
-  var tenant = (document.getElementById('lle-tenant')||{}).value || '';
-  var sf     = parseFloat((document.getElementById('lle-sf')||{}).value)  || null;
-  var psf    = parseFloat((document.getElementById('lle-psf')||{}).value) || null;
-  var comm   = (document.getElementById('lle-comm')||{}).value   || '';
-  var exp    = (document.getElementById('lle-exp')||{}).value    || '';
-  var type   = (document.getElementById('lle-type')||{}).value   || '';
-  var market = (document.getElementById('lle-market')||{}).value || '';
-  var ac     = (document.getElementById('lle-ac')||{}).value     || '';
   if (!_sbOk || !_sb) return;
-  var payload = { id: id, tenant: tenant, sf: sf, base_rent_psf: psf,
-    commencement_date: comm ? _parseLeaseDate(comm) : null,
-    expiration_date:   exp  ? _parseLeaseDate(exp)  : null,
-    lease_type: type,
-    market:     market || null,
-    asset_class: ac || null };
+  var tenant = (document.getElementById('lle-tenant')||{}).value || '';
+  var sf     = (document.getElementById('lle-sf')||{}).value || '';
+  var psf    = (document.getElementById('lle-psf')||{}).value || '';
+  var comm   = (document.getElementById('lle-comm')||{}).value || '';
+  var exp    = (document.getElementById('lle-exp')||{}).value || '';
+  var type   = (document.getElementById('lle-type')||{}).value || '';
+  var market = (document.getElementById('lle-market')||{}).value || '';
+  var ac     = (document.getElementById('lle-ac')||{}).value || '';
+
+  var payload = { id: id };
+  if (tenant) payload.tenant = tenant;
+  if (sf)     payload.sf = parseFloat(sf) || null;
+  if (psf)    payload.base_rent_psf = parseFloat(psf) || null;
+  if (comm)   payload.commencement_date = _parseLeaseDate(comm);
+  if (exp)    payload.expiration_date = _parseLeaseDate(exp);
+  if (type)   payload.lease_type = type;
+  if (market) payload.market = market;
+  if (ac)     payload.asset_class = ac;
+
   var res = await _sb.from('leases').upsert([payload], { onConflict: 'id' });
   if (res.error) { showToast('Save failed: ' + res.error.message); return; }
+
+  if (payload.commencement_date || payload.expiration_date || payload.lease_type) {
+    var row = await _sb.from('leases').select('commencement_date,expiration_date,lease_term_months').eq('id',id).single();
+    if (row.data) {
+      var c = row.data.commencement_date, e = row.data.expiration_date;
+      if (c && e) {
+        var months = Math.round((new Date(e) - new Date(c)) / (1000*60*60*24*365/12));
+        await _sb.from('leases').update({ lease_term_months: months }).eq('id', id);
+      }
+    }
+  }
+
   showToast('Updated');
   _llLoadLeases();
 }
