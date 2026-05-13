@@ -591,7 +591,7 @@ footer{border-top:1px solid var(--border);padding:20px 24px;text-align:center;co
     <span id="ridge-session-user" style="font-size:10px;color:#4a6a8a;padding:3px 6px;"></span>
     <span id="sb-dot" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--faint);flex-shrink:0;" title="Supabase initializing…"></span>
     <span id="token-count" style="font-size:11px;color:var(--faint);cursor:default;" title="Session tokens — in: 0 · out: 0">0 tok</span>
-    <span id="hdr-skill-count" style="font-size:11px;color:var(--muted)">17 Skills Active · v5.19</span>
+    <span id="hdr-skill-count" style="font-size:11px;color:var(--muted)">17 Skills Active · v5.20</span>
   </div>
 </header>
 
@@ -1589,7 +1589,7 @@ function renderTools() {
   var countLabel = document.getElementById('skill-count-label');
   if (countLabel) countLabel.textContent = TOOLS.length + ' Active · Click any tile to expand';
   var hdrCount = document.getElementById('hdr-skill-count');
-  if (hdrCount) hdrCount.textContent = TOOLS.length + ' Skills Active · v5.19';
+  if (hdrCount) hdrCount.textContent = TOOLS.length + ' Skills Active · v5.20';
   var ftrCount = document.getElementById('footer-skill-count');
   if (ftrCount) ftrCount.textContent = 'RIDGE Intelligence Platform · Entrada Partners · ' + TOOLS.length + ' Skills Active · ATL · SAV · DFW · HOU';
 
@@ -13413,6 +13413,8 @@ async function _llSaveEdit(id) {
   if (market) payload.market = market;
   if (ac)     payload.asset_class = ac;
 
+  payload.embedding = null;
+
   var res = await _sb.from('leases').upsert([payload], { onConflict: 'id' });
   if (res.error) { showToast('Save failed: ' + res.error.message); return; }
 
@@ -13434,13 +13436,17 @@ async function _llSaveEdit(id) {
 // ── EXPORT ───────────────────────────────────────────────
 async function _llExportLeases() {
   if (!_sbOk || !_sb) { showToast('Supabase not connected'); return; }
-  var search = (document.getElementById('ll-search')||{}).value || '';
-  var mkt    = (document.getElementById('ll-filter-market')||{}).value || '';
-  var status = (document.getElementById('ll-filter-status')||{}).value || '';
-  var psfMin = parseFloat((document.getElementById('ll-filter-psf-min')||{}).value) || null;
-  var psfMax = parseFloat((document.getElementById('ll-filter-psf-max')||{}).value) || null;
+  var search   = (document.getElementById('ll-search')||{}).value || '';
+  var mkt      = (document.getElementById('ll-filter-market')||{}).value || '';
+  var atype    = (document.getElementById('ll-filter-type')||{}).value || '';
+  var acFilter = (document.getElementById('ll-filter-asset-class')||{}).value || '';
+  var status   = (document.getElementById('ll-filter-status')||{}).value || '';
+  var psfMin   = parseFloat((document.getElementById('ll-filter-psf-min')||{}).value) || null;
+  var psfMax   = parseFloat((document.getElementById('ll-filter-psf-max')||{}).value) || null;
   var q = _sb.from('leases').select('*');
-  if (mkt)    q = q.eq('market', mkt);
+  if (mkt)      q = q.eq('market', mkt);
+  if (atype)    q = q.eq('lease_type', atype);
+  if (acFilter) q = q.eq('asset_class', acFilter);
   if (status==='Occupied') q = q.eq('vacant', false);
   if (status==='Vacant')   q = q.eq('vacant', true);
   if (psfMin!==null) q = q.gte('base_rent_psf', psfMin);
@@ -13453,11 +13459,20 @@ async function _llExportLeases() {
   var occ = all.filter(function(r){ return !r.vacant; });
   var vac = all.filter(function(r){ return  r.vacant; });
   function toRows(data) {
-    var hdr = ['Address','Suite','Tenant','SF','Rent PSF','Commencement','Expiration','Lease Type','Status','Market','Notes','Source'];
+    var hdr = ['Address','Suite','Tenant','SF','Rent PSF','Commencement','Expiration',
+      'Term (Mo)','Clear Ht','Docks','GL Doors','TI PSF','Free Rent (Mo)',
+      'Asset Class','Lease Type','Status','Market','Notes','Source'];
     var rows = [hdr];
     data.forEach(function(r){ rows.push([r.address||'',r.suite||'',r.tenant||'',
       r.sf?Number(r.sf):'',r.base_rent_psf?Number(r.base_rent_psf):'',
-      r.commencement_date||'',r.expiration_date||'',r.lease_type||'',
+      r.commencement_date||'',r.expiration_date||'',
+      r.lease_term_months?Number(r.lease_term_months):'',
+      r.clear_height?Number(r.clear_height):'',
+      r.dock_high_doors?Number(r.dock_high_doors):'',
+      r.grade_level_doors?Number(r.grade_level_doors):'',
+      r.ti_psf?Number(r.ti_psf):'',
+      r.free_rent_months?Number(r.free_rent_months):'',
+      r.asset_class||'',r.lease_type||'',
       r.vacant?'Vacant':'Occupied',r.market||'',r.notes||'',r.source||'']); });
     return rows;
   }
