@@ -591,7 +591,7 @@ footer{border-top:1px solid var(--border);padding:20px 24px;text-align:center;co
     <span id="ridge-session-user" style="font-size:10px;color:#4a6a8a;padding:3px 6px;"></span>
     <span id="sb-dot" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--faint);flex-shrink:0;" title="Supabase initializing…"></span>
     <span id="token-count" style="font-size:11px;color:var(--faint);cursor:default;" title="Session tokens — in: 0 · out: 0">0 tok</span>
-    <span id="hdr-skill-count" style="font-size:11px;color:var(--muted)">17 Skills Active · v5.20</span>
+    <span id="hdr-skill-count" style="font-size:11px;color:var(--muted)">17 Skills Active · v5.21</span>
   </div>
 </header>
 
@@ -1292,7 +1292,8 @@ var TOOLS = [
       {id:'rentroll',label:'Rent Roll (optional)',hint:'Upload rent roll to auto-calculate in-place NOI',icon:'📋',accept:'.xlsx,.csv',type:'mixed'}
     ],
     fields:[
-      {row:[{id:'addr',label:'Property Address *',ph:'e.g. 7100 Distribution Dr, Dallas, TX'},{id:'type',label:'Asset Type',type:'select',opts:['Flex Industrial','Industrial / Warehouse','Single-Story Office Conversion','Multi-Tenant Industrial','Office']}]},
+      {row:[{id:'addr',label:'Property Address *',ph:'e.g. 7100 Distribution Dr, Dallas, TX'},{id:'type',label:'Asset Type',type:'select',opts:['Flex Industrial','Industrial / Warehouse','Single-Story Office Conversion','Multi-Tenant Industrial / Small Bay','Office']}]},
+      {row:[{id:'sub',label:'Submarket (Optional)',ph:'e.g. South Atlanta, North DFW'}]},
       {row:[{id:'ask',label:'Asking Price *',ph:'e.g. $16,800,000'},{id:'sf',label:'Building SF *',ph:'e.g. 94,000'}]},
       {row:[{id:'occ',label:'Current Occupancy',ph:'e.g. 74%'},{id:'noi',label:'In-Place NOI (if known)',ph:'e.g. $810,000'}]},
       {row:[{id:'mktrent',label:'Market Rent PSF',ph:'e.g. $13.75 NNN'},{id:'inplace',label:'In-Place Rent PSF',ph:'e.g. $10.50 NNN'}]},
@@ -1589,7 +1590,7 @@ function renderTools() {
   var countLabel = document.getElementById('skill-count-label');
   if (countLabel) countLabel.textContent = TOOLS.length + ' Active · Click any tile to expand';
   var hdrCount = document.getElementById('hdr-skill-count');
-  if (hdrCount) hdrCount.textContent = TOOLS.length + ' Skills Active · v5.20';
+  if (hdrCount) hdrCount.textContent = TOOLS.length + ' Skills Active · v5.21';
   var ftrCount = document.getElementById('footer-skill-count');
   if (ftrCount) ftrCount.textContent = 'RIDGE Intelligence Platform · Entrada Partners · ' + TOOLS.length + ' Skills Active · ATL · SAV · DFW · HOU';
 
@@ -3335,13 +3336,23 @@ async function runTool(toolId) {
 
   // Napkin — pre-fetch benchmark context before prompt assembly
   _napkinBenchmarkContext = '';
+  _napkinPanelBanner = '';
+  _napkinMarketRent = null;
   if (toolId === 'napkin' && _sbOk && _sb) {
     try {
       var _napkinMkt = _detectMarket(d) || '';
-      var _napkinSub = (STATE['napkin'] && STATE['napkin'].fields && STATE['napkin'].fields['submarket']) || d.submarket || d.sub || '';
+      var _napkinSub = d.sub || d.submarket || '';
       var _napkinBench = await _fetchMarketBenchmark(_napkinMkt, 'Industrial', _napkinSub);
+      _napkinMarketRent = await _isrFetchMarketRent({
+        address:     d.addr || '',
+        assetClass:  d.type || 'Industrial',
+        sf:          parseFloat((d.sf || '').replace(/[^0-9.]/g, '')) || 50000,
+        clearHeight: 0,
+        dockDoors:   0
+      });
+      var _napkinCtx = '';
       if (_napkinBench && _napkinBench.length) {
-        _napkinBenchmarkContext = '\n\n[RIDGE MARKET INTELLIGENCE — REAL COSTAR DATA]\n' +
+        _napkinCtx += '\n\n[RIDGE MARKET INTELLIGENCE — REAL COSTAR DATA]\n' +
           _napkinBench.map(function(b) {
             return '• Report date: ' + (b.report_date||'unknown') +
               (b.submarket ? ' | Submarket: ' + b.submarket : '') +
@@ -3350,6 +3361,25 @@ async function runTool(toolId) {
               ' | Absorption: ' + (b.absorption_sf != null ? b.absorption_sf.toLocaleString() + ' SF' : 'N/A');
           }).join('\n') +
           '\nUse this data to validate rent and vacancy assumptions. Do not estimate figures already provided above.\n';
+      }
+      if (_napkinMarketRent && _napkinMarketRent.marketRentPSF) {
+        _napkinCtx += '\n[RIDGE DB WEIGHTED AVG MARKET RENT: $' + _napkinMarketRent.marketRentPSF +
+          ' PSF — recency-weighted from ' + _napkinMarketRent.compCount + ' executed comps]\n';
+      }
+      _napkinBenchmarkContext = _napkinCtx;
+
+      var _benchCount = (_napkinBench && _napkinBench.length) || 0;
+      var _compCount  = (_napkinMarketRent && _napkinMarketRent.compCount) || 0;
+      if (_benchCount > 0 || _compCount > 0) {
+        _napkinPanelBanner = '<div style="background:#0d2137;border:1px solid #1a4a6b;border-radius:6px;' +
+          'padding:10px 14px;margin-bottom:12px;font-size:12px;color:#7ab3d4;">' +
+          '<strong style="color:#4a9fd4;">✓ Market data loaded</strong> &nbsp;·&nbsp; ' +
+          _benchCount + ' CoStar benchmark(s) &nbsp;·&nbsp; ' +
+          _compCount + ' lease comp(s) &nbsp;·&nbsp; ' +
+          _hEsc(_napkinMkt || 'market unspecified') +
+          (_napkinSub ? ' / ' + _hEsc(_napkinSub) : '') +
+          ' &nbsp;·&nbsp; ' + _hEsc(d.type || 'Industrial') +
+          '</div>';
       }
     } catch(e) {
       console.warn('[RIDGE] Napkin benchmark pre-fetch error:', e.message);
@@ -4191,6 +4221,8 @@ function _updateExportButtons() {
 }
 var _mpBenchmarkContext = '';
 var _napkinBenchmarkContext = '';
+var _napkinPanelBanner = '';
+var _napkinMarketRent = null;
 var _lensBenchmarkContext = '';
 var _lensMarketRent = null;
 var _isrLensContext = '';
@@ -8507,6 +8539,12 @@ async function runRidgeAPI(skillName, prompt, runInputs, runToolId) {
       '</div>';
     contentEl.innerHTML = _memBanner;
   }
+  // Aggregate any pre-stream banners so they persist through streaming render
+  var _runBanners = (contentEl.innerHTML || '');
+  if (_lastRunToolId === 'napkin' && _napkinPanelBanner) {
+    _runBanners += _napkinPanelBanner;
+    contentEl.innerHTML = _runBanners;
+  }
   var isISRRun = skillName.toLowerCase().includes('acquisition investment');
   // ── SESSION LOG: user turn ────────────────────────────────────
   _ridgeSessionLog.push({
@@ -8584,7 +8622,7 @@ async function runRidgeAPI(skillName, prompt, runInputs, runToolId) {
             }
             if (_lastRunToolId) { _skillRawOutputs[_lastRunToolId] = accumulated; }
             if (_chunkCount % 8 === 0) {
-              contentEl.innerHTML = parseMarkdown(accumulated);
+              contentEl.innerHTML = _runBanners + parseMarkdown(accumulated);
               var panelBody = document.getElementById('ridge-response-panel').querySelector('.ridge-panel-body');
               panelBody.scrollTop = panelBody.scrollHeight;
             }
@@ -8592,7 +8630,7 @@ async function runRidgeAPI(skillName, prompt, runInputs, runToolId) {
         } catch(e) { console.warn('[RIDGE]', e.message); }
       }
     }
-    contentEl.innerHTML = parseMarkdown(accumulated);
+    contentEl.innerHTML = _runBanners + parseMarkdown(accumulated);
     copyBtn.disabled = false;
     // Persist completed output so exporters can access it
     if (_lastRunToolId && STATE[_lastRunToolId]) {
