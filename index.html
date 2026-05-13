@@ -591,7 +591,7 @@ footer{border-top:1px solid var(--border);padding:20px 24px;text-align:center;co
     <span id="ridge-session-user" style="font-size:10px;color:#4a6a8a;padding:3px 6px;"></span>
     <span id="sb-dot" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--faint);flex-shrink:0;" title="Supabase initializing…"></span>
     <span id="token-count" style="font-size:11px;color:var(--faint);cursor:default;" title="Session tokens — in: 0 · out: 0">0 tok</span>
-    <span id="hdr-skill-count" style="font-size:11px;color:var(--muted)">17 Skills Active · v5.17</span>
+    <span id="hdr-skill-count" style="font-size:11px;color:var(--muted)">17 Skills Active · v5.18</span>
   </div>
 </header>
 
@@ -1589,7 +1589,7 @@ function renderTools() {
   var countLabel = document.getElementById('skill-count-label');
   if (countLabel) countLabel.textContent = TOOLS.length + ' Active · Click any tile to expand';
   var hdrCount = document.getElementById('hdr-skill-count');
-  if (hdrCount) hdrCount.textContent = TOOLS.length + ' Skills Active · v5.17';
+  if (hdrCount) hdrCount.textContent = TOOLS.length + ' Skills Active · v5.18';
   var ftrCount = document.getElementById('footer-skill-count');
   if (ftrCount) ftrCount.textContent = 'RIDGE Intelligence Platform · Entrada Partners · ' + TOOLS.length + ' Skills Active · ATL · SAV · DFW · HOU';
 
@@ -1979,7 +1979,7 @@ function togglePanel(id) {
     setTimeout(() => panel.scrollIntoView({ behavior:'smooth', block:'start' }), 50);
     if (id === 'daily-signal') updateDSMemCount();
     if (id === 'pipeline') renderPipeline();
-    if (id === 'lease-library') _llLoadLeases();
+    if (id === 'lease-library') { _llInitFilterOptions(); _llLoadLeases(); }
   }
 }
 
@@ -12267,8 +12267,47 @@ var _llPage = 0;
 var _llPageSize = 25;
 var _llTotal = 0;
 var _llSelectedFile = null; // persists file ref across async import
+var _llFilterMarkets = [];
+var _llFilterTypes = [];
+var _llFilterStatuses = ['Occupied', 'Vacant'];
+var _llFilterAssetClasses = [];
 
 // STATE for lease-library is initialized by the TOOLS.forEach loop above
+
+async function _llInitFilterOptions() {
+  if (!_sb || !_sbOk) return;
+  var res = await _sb.from('leases')
+    .select('market, lease_type, asset_class')
+    .not('market', 'is', null)
+    .not('lease_type', 'is', null)
+    .not('asset_class', 'is', null);
+  if (res.error || !res.data) return;
+  var markets = {}, types = {}, acs = {};
+  res.data.forEach(function(r) {
+    if (r.market) markets[r.market.trim()] = 1;
+    if (r.lease_type) types[r.lease_type.trim()] = 1;
+    if (r.asset_class) acs[r.asset_class.trim()] = 1;
+  });
+  _llFilterMarkets = Object.keys(markets).sort();
+  _llFilterTypes = Object.keys(types).sort();
+  _llFilterAssetClasses = Object.keys(acs).sort();
+
+  var mktSel = document.getElementById('ll-filter-market');
+  var typSel = document.getElementById('ll-filter-type');
+  var acSel  = document.getElementById('ll-filter-asset-class');
+  if (mktSel) {
+    mktSel.innerHTML = '<option value="">All Markets</option>' +
+      _llFilterMarkets.map(function(m){ return '<option value="'+m+'">'+m+'</option>'; }).join('');
+  }
+  if (typSel) {
+    typSel.innerHTML = '<option value="">All Types</option>' +
+      _llFilterTypes.map(function(t){ return '<option value="'+t+'">'+t+'</option>'; }).join('');
+  }
+  if (acSel) {
+    acSel.innerHTML = '<option value="">All Asset Classes</option>' +
+      _llFilterAssetClasses.map(function(a){ return '<option value="'+a+'">'+a+'</option>'; }).join('');
+  }
+}
 
 // ── BROKER FILE CONVERTER ─────────────────────────────────
 // Synonym map: maps common broker/CoStar column headers to RIDGE field names
@@ -13294,18 +13333,25 @@ function _llEditLease(id) {
     market: cells[16] ? cells[16].textContent.replace('—','').trim() : '',
     ac:     cells[13] ? cells[13].textContent.replace('—','').trim() : '',
   };
-  var acOpts = ['Industrial','Flex Industrial','Office','Mixed Use'].map(function(o){
-    return '<option value="'+o+'"'+(cur.ac===o?' selected':'')+'>'+o+'</option>';
-  }).join('');
+  var acOpts = (_llFilterAssetClasses.length ? _llFilterAssetClasses : ['Industrial','Flex Industrial','Office','Mixed Use'])
+    .map(function(o){ return '<option value="'+o+'"'+(cur.ac===o?' selected':'')+'>'+o+'</option>'; }).join('');
+  var mktOpts = _llFilterMarkets.map(function(o){ return '<option value="'+o+'"'+(cur.market===o?' selected':'')+'>'+o+'</option>'; }).join('');
+  var mktInput = _llFilterMarkets.length
+    ? '<select id="lle-market" style="width:130px;padding:4px 8px;border:1px solid #d1d9ef;border-radius:3px;font-size:12px;"><option value="">Market</option>'+mktOpts+'</select>'
+    : '<input id="lle-market" value="'+cur.market+'" placeholder="Market" style="width:90px;padding:4px 8px;border:1px solid #d1d9ef;border-radius:3px;font-size:12px;">';
+  var typeOpts = _llFilterTypes.map(function(o){ return '<option value="'+o+'"'+(cur.type===o?' selected':'')+'>'+o+'</option>'; }).join('');
+  var typeInput = _llFilterTypes.length
+    ? '<select id="lle-type" style="width:100px;padding:4px 8px;border:1px solid #d1d9ef;border-radius:3px;font-size:12px;"><option value="">Type</option>'+typeOpts+'</select>'
+    : '<input id="lle-type" value="'+cur.type+'" placeholder="Lease Type" style="width:100px;padding:4px 8px;border:1px solid #d1d9ef;border-radius:3px;font-size:12px;">';
   row.innerHTML = '<td colspan="18" style="padding:6px 8px;">'
     + '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">'
     + '<input id="lle-tenant" value="'+cur.tenant.replace(/"/g,'&quot;')+'" placeholder="Tenant" style="flex:2;min-width:120px;padding:4px 8px;border:1px solid #d1d9ef;border-radius:3px;font-size:12px;">'
-    + '<input id="lle-sf"     value="'+cur.sf+'"     placeholder="SF"           style="width:80px;padding:4px 8px;border:1px solid #d1d9ef;border-radius:3px;font-size:12px;">'
-    + '<input id="lle-psf"    value="'+cur.psf+'"    placeholder="Rent PSF"     style="width:80px;padding:4px 8px;border:1px solid #d1d9ef;border-radius:3px;font-size:12px;">'
-    + '<input id="lle-comm"   value="'+cur.comm+'"   placeholder="Commencement" style="width:105px;padding:4px 8px;border:1px solid #d1d9ef;border-radius:3px;font-size:12px;">'
-    + '<input id="lle-exp"    value="'+cur.exp+'"    placeholder="Expiration"   style="width:105px;padding:4px 8px;border:1px solid #d1d9ef;border-radius:3px;font-size:12px;">'
-    + '<input id="lle-type"   value="'+cur.type+'"   placeholder="Lease Type"   style="width:100px;padding:4px 8px;border:1px solid #d1d9ef;border-radius:3px;font-size:12px;">'
-    + '<input id="lle-market" value="'+cur.market+'" placeholder="Market"       style="width:90px;padding:4px 8px;border:1px solid #d1d9ef;border-radius:3px;font-size:12px;">'
+    + '<input id="lle-sf"     value="'+cur.sf+'"  placeholder="SF"           style="width:80px;padding:4px 8px;border:1px solid #d1d9ef;border-radius:3px;font-size:12px;">'
+    + '<input id="lle-psf"    value="'+cur.psf+'" placeholder="Rent PSF"     style="width:80px;padding:4px 8px;border:1px solid #d1d9ef;border-radius:3px;font-size:12px;">'
+    + '<input id="lle-comm"   value="'+cur.comm+'" placeholder="Commencement" style="width:105px;padding:4px 8px;border:1px solid #d1d9ef;border-radius:3px;font-size:12px;">'
+    + '<input id="lle-exp"    value="'+cur.exp+'"  placeholder="Expiration"   style="width:105px;padding:4px 8px;border:1px solid #d1d9ef;border-radius:3px;font-size:12px;">'
+    + typeInput
+    + mktInput
     + '<select id="lle-ac" style="width:130px;padding:4px 8px;border:1px solid #d1d9ef;border-radius:3px;font-size:12px;"><option value="">Asset Class</option>'+acOpts+'</select>'
     + '<button class="btn btn-p" onclick="_llSaveEdit(\''+id+'\')" style="font-size:11px;padding:4px 10px;">Save</button>'
     + '<button class="btn btn-o" onclick="_llLoadLeases()" style="font-size:11px;padding:4px 10px;">Cancel</button>'
