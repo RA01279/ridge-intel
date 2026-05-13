@@ -591,7 +591,7 @@ footer{border-top:1px solid var(--border);padding:20px 24px;text-align:center;co
     <span id="ridge-session-user" style="font-size:10px;color:#4a6a8a;padding:3px 6px;"></span>
     <span id="sb-dot" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--faint);flex-shrink:0;" title="Supabase initializing…"></span>
     <span id="token-count" style="font-size:11px;color:var(--faint);cursor:default;" title="Session tokens — in: 0 · out: 0">0 tok</span>
-    <span id="hdr-skill-count" style="font-size:11px;color:var(--muted)">17 Skills Active · v5.14</span>
+    <span id="hdr-skill-count" style="font-size:11px;color:var(--muted)">17 Skills Active · v5.15</span>
   </div>
 </header>
 
@@ -1589,7 +1589,7 @@ function renderTools() {
   var countLabel = document.getElementById('skill-count-label');
   if (countLabel) countLabel.textContent = TOOLS.length + ' Active · Click any tile to expand';
   var hdrCount = document.getElementById('hdr-skill-count');
-  if (hdrCount) hdrCount.textContent = TOOLS.length + ' Skills Active · v5.14';
+  if (hdrCount) hdrCount.textContent = TOOLS.length + ' Skills Active · v5.15';
   var ftrCount = document.getElementById('footer-skill-count');
   if (ftrCount) ftrCount.textContent = 'RIDGE Intelligence Platform · Entrada Partners · ' + TOOLS.length + ' Skills Active · ATL · SAV · DFW · HOU';
 
@@ -12451,7 +12451,17 @@ async function _llConvertBrokerFile(file, market) {
             suite:               str(r, 'suite'),
             sf:                  sfRaw,
             lease_type:          lt,
-            commencement_date:   commRaw ? _parseLeaseDateFull(commRaw) : null,
+            commencement_date:   (function() {
+              if (commRaw) return _parseLeaseDateFull(commRaw);
+              var expRaw = str(r, 'expiration_date') ? _parseLeaseDateFull(str(r, 'expiration_date')) : null;
+              var termMo = num(r, 'lease_term_months');
+              if (expRaw && termMo) {
+                var _cd = new Date(expRaw);
+                _cd.setMonth(_cd.getMonth() - Math.round(termMo));
+                return _cd.toISOString().slice(0,10);
+              }
+              return null;
+            })(),
             expiration_date:     (function(){
               var exp = str(r, 'expiration_date');
               if (exp) return _parseLeaseDateFull(exp);
@@ -12891,7 +12901,18 @@ function _llParseRidgeTemplate(raw, market) {
       suite:               cSuite >= 0 ? String(r[cSuite] || '').trim() || null : null,
       sf:                  sfRaw,
       lease_type:          cType  >= 0 ? String(r[cType]  || '').trim() || null : null,
-      commencement_date:   cStart >= 0 && r[cStart] ? _parseLeaseDateFull(String(r[cStart])) : null,
+      commencement_date:   (function() {
+        var _c = cStart >= 0 && r[cStart] ? _parseLeaseDateFull(String(r[cStart])) : null;
+        if (_c) return _c;
+        var _e = cEnd >= 0 && r[cEnd] ? _parseLeaseDateFull(String(r[cEnd])) : null;
+        var _t = num(r, cTerm);
+        if (_e && _t) {
+          var _d = new Date(_e);
+          _d.setMonth(_d.getMonth() - Math.round(_t));
+          return _d.toISOString().slice(0,10);
+        }
+        return null;
+      })(),
       expiration_date:     cEnd   >= 0 && r[cEnd]   ? _parseLeaseDateFull(String(r[cEnd]))   : null,
       base_rent_psf:       num(r, cPSF),
       rent_escalation_pct: num(r, cEsc),
@@ -12962,13 +12983,13 @@ function _llRenderPreview(rows) {
         return '<th style="background:#1E2761;color:#fff;padding:5px 8px;text-align:left;white-space:nowrap;">' + c + '</th>';
       }).join('') + '</tr></thead><tbody>';
   var PTD = 'padding:4px 8px;color:#1A1A2E;';
-  var incomplete = rows.filter(function(r){ return !r.tenant || !r.tenant.trim(); }).length;
+  var incomplete = rows.filter(function(r){ return !r.tenant || !r.tenant.trim() || !r.address || !r.sf || !r.base_rent_psf; }).length;
   if (incomplete) {
     document.getElementById('ll-preview-info').innerHTML +=
-      ' <span style="color:#C0392B;font-weight:700;">⚠ ' + incomplete + ' row(s) missing tenant name — will be skipped</span>';
+      ' <span style="color:#C0392B;font-weight:700;">⚠ ' + incomplete + ' row(s) missing required fields (tenant, address, sf, or rent PSF) — will be skipped</span>';
   }
   rows.forEach(function(r, i) {
-    var isIncomplete = !r.tenant || !r.tenant.trim();
+    var isIncomplete = !r.tenant || !r.tenant.trim() || !r.address || !r.sf || !r.base_rent_psf;
     var bg = isIncomplete ? '#FFF0EE' : (i%2===1 ? '#F0F4FF' : '#FFFFFF');
     var sc = r.vacant ? '#C0560A' : '#1B5E20';
     html += '<tr style="background:' + bg + (isIncomplete ? ';border-left:3px solid #C0392B' : '') + ';">'
@@ -13162,14 +13183,24 @@ function _llRenderTable(rows) {
     var tid = r.id.replace(/'/g,"\\'");
     var tname = (r.tenant||'').replace(/'/g,"\\'").replace(/"/g,'&quot;');
     var taddr = (r.address||'').replace(/'/g,"\\'").replace(/"/g,'&quot;');
-    html += '<tr id="ll-row-' + r.id + '" style="background:' + bg + ';">'
+    var missingFields = [];
+    if (!r.address) missingFields.push('address');
+    if (!r.tenant) missingFields.push('tenant');
+    if (!r.sf) missingFields.push('sf');
+    if (!r.base_rent_psf) missingFields.push('base_rent_psf');
+    if (!r.commencement_date) missingFields.push('commencement_date');
+    if (!r.expiration_date) missingFields.push('expiration_date');
+    if (!r.market) missingFields.push('market');
+    if (!r.asset_class) missingFields.push('asset_class');
+    var rowBorder = missingFields.length ? ';border-left:3px solid #E67E22;' : '';
+    html += '<tr id="ll-row-' + r.id + '" style="background:' + bg + rowBorder + ';">'
       + '<td style="'+TD+'max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="'+(r.address||'')+'">' + (r.address||'—').slice(0,28) + '</td>'
       + '<td style="'+TD+'">' + (r.suite||'—') + '</td>'
       + '<td style="'+TD+'max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="'+(r.tenant||'')+'">' + (r.tenant||'—').slice(0,28) + '</td>'
       + '<td style="'+TD+'text-align:right;">' + (r.sf ? Number(r.sf).toLocaleString() : '—') + '</td>'
       + '<td style="'+TD+'text-align:right;">' + (r.base_rent_psf ? '$'+Number(r.base_rent_psf).toFixed(2) : '—') + '</td>'
-      + '<td style="'+TD+'">' + (r.commencement_date ? String(r.commencement_date).slice(0,7) : '—') + '</td>'
-      + '<td style="'+TD+'">' + (r.expiration_date ? String(r.expiration_date).slice(0,7) : '—') + '</td>'
+      + '<td style="'+TD+'">' + (r.commencement_date ? String(r.commencement_date).slice(0,10) : '—') + '</td>'
+      + '<td style="'+TD+'">' + (r.expiration_date ? String(r.expiration_date).slice(0,10) : '—') + '</td>'
       + '<td style="'+TD+'text-align:right;">' + (r.lease_term_months != null ? r.lease_term_months + ' mo' : '—') + '</td>'
       + '<td style="'+TD+'text-align:right;">' + (r.clear_height ? r.clear_height + '\'' : '—') + '</td>'
       + '<td style="'+TD+'text-align:right;">' + (r.dock_high_doors != null ? r.dock_high_doors : '—') + '</td>'
@@ -13182,6 +13213,7 @@ function _llRenderTable(rows) {
       + '<td style="'+TD+'color:'+sc+';font-weight:600;">' + sl + '</td>'
       + '<td style="'+TD+'">' + (r.market||'—') + '</td>'
       + '<td style="'+TD+'white-space:nowrap;">'
+      + (missingFields.length ? '<span title="Incomplete record — missing: '+missingFields.join(', ')+'" style="color:#E67E22;font-size:13px;margin-right:4px;cursor:default;">⚠</span>' : '')
       + '<button onclick="_llEditLease(\''+tid+'\')" style="background:#2196F3;color:#fff;border:none;border-radius:3px;padding:2px 7px;font-size:10px;cursor:pointer;margin-right:4px;">Edit</button>'
       + '<button onclick="_llDeleteLease(\''+tid+'\',\''+tname+'\',\''+taddr+'\')" style="background:#C0392B;color:#fff;border:none;border-radius:3px;padding:2px 7px;font-size:10px;cursor:pointer;">Del</button>'
       + '</td></tr>';
@@ -13254,19 +13286,28 @@ function _llEditLease(id) {
   if (!row) return;
   var cells = row.querySelectorAll('td');
   var cur = {
-    tenant: cells[2] ? (cells[2].title || cells[2].textContent).trim() : '',
-    sf:     cells[3] ? cells[3].textContent.replace(/,/g,'').trim() : '',
-    psf:    cells[4] ? cells[4].textContent.replace('$','').trim() : '',
-    exp:    cells[5] ? cells[5].textContent.trim() : '',
-    type:   cells[6] ? cells[6].textContent.trim() : '',
+    tenant: cells[2]  ? (cells[2].title || cells[2].textContent).trim() : '',
+    sf:     cells[3]  ? cells[3].textContent.replace(/,/g,'').trim() : '',
+    psf:    cells[4]  ? cells[4].textContent.replace('$','').trim() : '',
+    comm:   cells[5]  ? cells[5].textContent.trim() : '',
+    exp:    cells[6]  ? cells[6].textContent.trim() : '',
+    type:   cells[14] ? cells[14].textContent.trim() : '',
+    market: cells[16] ? cells[16].textContent.replace('—','').trim() : '',
+    ac:     cells[13] ? cells[13].textContent.replace('—','').trim() : '',
   };
-  row.innerHTML = '<td colspan="10" style="padding:6px 8px;">'
+  var acOpts = ['Industrial','Flex Industrial','Office','Mixed Use'].map(function(o){
+    return '<option value="'+o+'"'+(cur.ac===o?' selected':'')+'>'+o+'</option>';
+  }).join('');
+  row.innerHTML = '<td colspan="18" style="padding:6px 8px;">'
     + '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">'
     + '<input id="lle-tenant" value="'+cur.tenant.replace(/"/g,'&quot;')+'" placeholder="Tenant" style="flex:2;min-width:120px;padding:4px 8px;border:1px solid #d1d9ef;border-radius:3px;font-size:12px;">'
-    + '<input id="lle-sf"     value="'+cur.sf+'"     placeholder="SF"          style="width:80px;padding:4px 8px;border:1px solid #d1d9ef;border-radius:3px;font-size:12px;">'
-    + '<input id="lle-psf"    value="'+cur.psf+'"    placeholder="Rent PSF"    style="width:80px;padding:4px 8px;border:1px solid #d1d9ef;border-radius:3px;font-size:12px;">'
-    + '<input id="lle-exp"    value="'+cur.exp+'"    placeholder="Expiration"  style="width:105px;padding:4px 8px;border:1px solid #d1d9ef;border-radius:3px;font-size:12px;">'
-    + '<input id="lle-type"   value="'+cur.type+'"   placeholder="Lease Type"  style="width:120px;padding:4px 8px;border:1px solid #d1d9ef;border-radius:3px;font-size:12px;">'
+    + '<input id="lle-sf"     value="'+cur.sf+'"     placeholder="SF"           style="width:80px;padding:4px 8px;border:1px solid #d1d9ef;border-radius:3px;font-size:12px;">'
+    + '<input id="lle-psf"    value="'+cur.psf+'"    placeholder="Rent PSF"     style="width:80px;padding:4px 8px;border:1px solid #d1d9ef;border-radius:3px;font-size:12px;">'
+    + '<input id="lle-comm"   value="'+cur.comm+'"   placeholder="Commencement" style="width:105px;padding:4px 8px;border:1px solid #d1d9ef;border-radius:3px;font-size:12px;">'
+    + '<input id="lle-exp"    value="'+cur.exp+'"    placeholder="Expiration"   style="width:105px;padding:4px 8px;border:1px solid #d1d9ef;border-radius:3px;font-size:12px;">'
+    + '<input id="lle-type"   value="'+cur.type+'"   placeholder="Lease Type"   style="width:100px;padding:4px 8px;border:1px solid #d1d9ef;border-radius:3px;font-size:12px;">'
+    + '<input id="lle-market" value="'+cur.market+'" placeholder="Market"       style="width:90px;padding:4px 8px;border:1px solid #d1d9ef;border-radius:3px;font-size:12px;">'
+    + '<select id="lle-ac" style="width:130px;padding:4px 8px;border:1px solid #d1d9ef;border-radius:3px;font-size:12px;"><option value="">Asset Class</option>'+acOpts+'</select>'
     + '<button class="btn btn-p" onclick="_llSaveEdit(\''+id+'\')" style="font-size:11px;padding:4px 10px;">Save</button>'
     + '<button class="btn btn-o" onclick="_llLoadLeases()" style="font-size:11px;padding:4px 10px;">Cancel</button>'
     + '</div></td>';
@@ -13276,11 +13317,18 @@ async function _llSaveEdit(id) {
   var tenant = (document.getElementById('lle-tenant')||{}).value || '';
   var sf     = parseFloat((document.getElementById('lle-sf')||{}).value)  || null;
   var psf    = parseFloat((document.getElementById('lle-psf')||{}).value) || null;
-  var exp    = (document.getElementById('lle-exp')||{}).value  || '';
-  var type   = (document.getElementById('lle-type')||{}).value || '';
+  var comm   = (document.getElementById('lle-comm')||{}).value   || '';
+  var exp    = (document.getElementById('lle-exp')||{}).value    || '';
+  var type   = (document.getElementById('lle-type')||{}).value   || '';
+  var market = (document.getElementById('lle-market')||{}).value || '';
+  var ac     = (document.getElementById('lle-ac')||{}).value     || '';
   if (!_sbOk || !_sb) return;
   var payload = { id: id, tenant: tenant, sf: sf, base_rent_psf: psf,
-    expiration_date: exp ? _parseLeaseDate(exp) : null, lease_type: type };
+    commencement_date: comm ? _parseLeaseDate(comm) : null,
+    expiration_date:   exp  ? _parseLeaseDate(exp)  : null,
+    lease_type: type,
+    market:     market || null,
+    asset_class: ac || null };
   var res = await _sb.from('leases').upsert([payload], { onConflict: 'id' });
   if (res.error) { showToast('Save failed: ' + res.error.message); return; }
   showToast('Updated');
