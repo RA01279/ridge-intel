@@ -591,7 +591,7 @@ footer{border-top:1px solid var(--border);padding:20px 24px;text-align:center;co
     <span id="ridge-session-user" style="font-size:10px;color:#4a6a8a;padding:3px 6px;"></span>
     <span id="sb-dot" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--faint);flex-shrink:0;" title="Supabase initializing…"></span>
     <span id="token-count" style="font-size:11px;color:var(--faint);cursor:default;" title="Session tokens — in: 0 · out: 0">0 tok</span>
-    <span id="hdr-skill-count" style="font-size:11px;color:var(--muted)">17 Skills Active · v5.22</span>
+    <span id="hdr-skill-count" style="font-size:11px;color:var(--muted)">17 Skills Active · v5.23</span>
   </div>
 </header>
 
@@ -1293,6 +1293,7 @@ var TOOLS = [
     ],
     fields:[
       {row:[{id:'addr',label:'Property Address *',ph:'e.g. 7100 Distribution Dr, Dallas, TX'},{id:'type',label:'Asset Type',type:'select',opts:['Flex Industrial','Industrial / Warehouse','Single-Story Office Conversion','Multi-Tenant Industrial / Small Bay','Office']}]},
+      {row:[{id:'mkt',label:'Market *',type:'select',opts:['— Select Market —']}]},
       {row:[{id:'sub',label:'Submarket (Optional)',ph:'e.g. South Atlanta, North DFW'}]},
       {row:[{id:'ask',label:'Asking Price *',ph:'e.g. $16,800,000'},{id:'sf',label:'Building SF *',ph:'e.g. 94,000'}]},
       {row:[{id:'occ',label:'Current Occupancy',ph:'e.g. 74%'},{id:'noi',label:'In-Place NOI (if known)',ph:'e.g. $810,000'}]},
@@ -1590,7 +1591,7 @@ function renderTools() {
   var countLabel = document.getElementById('skill-count-label');
   if (countLabel) countLabel.textContent = TOOLS.length + ' Active · Click any tile to expand';
   var hdrCount = document.getElementById('hdr-skill-count');
-  if (hdrCount) hdrCount.textContent = TOOLS.length + ' Skills Active · v5.22';
+  if (hdrCount) hdrCount.textContent = TOOLS.length + ' Skills Active · v5.23';
   var ftrCount = document.getElementById('footer-skill-count');
   if (ftrCount) ftrCount.textContent = 'RIDGE Intelligence Platform · Entrada Partners · ' + TOOLS.length + ' Skills Active · ATL · SAV · DFW · HOU';
 
@@ -1981,6 +1982,7 @@ function togglePanel(id) {
     if (id === 'daily-signal') updateDSMemCount();
     if (id === 'pipeline') renderPipeline();
     if (id === 'lease-library') { _llInitFilterOptions(); _llLoadLeases(); }
+    if (id === 'napkin') { _napkinInitMarketDropdown(); }
   }
 }
 
@@ -3288,6 +3290,11 @@ async function runTool(toolId) {
       var el = document.getElementById('f-' + toolId + '-' + field.id);
       d[field.id] = el ? el.value.trim() : '';
     }));
+    // v5.23: Napkin requires Market selection
+    if (toolId === 'napkin' && !d.mkt) {
+      showToast('Market is required — please select a market');
+      return;
+    }
     // Attach extracted text from uploads (XLSX parsed data, PDF text)
     Object.keys(STATE[toolId].files).forEach(function(uploadId) {
       var fd = STATE[toolId].files[uploadId];
@@ -4226,6 +4233,30 @@ var _napkinMarketRent = null;
 var _lensBenchmarkContext = '';
 var _marketsCache = null;
 var _marketsCacheLoaded = false;
+
+async function _napkinInitMarketDropdown() {
+  await _loadMarkets();
+  var mktField = document.getElementById('f-napkin-mkt');
+  if (!mktField || mktField.tagName !== 'SELECT') return;
+  var activeMarkets = (_marketsCache || []).filter(function(m) {
+    return m.status === 'Active' || m.status === 'Watch';
+  });
+  if (!activeMarkets.length) {
+    activeMarkets = [
+      {name:'Atlanta', status:'Active'},
+      {name:'Savannah', status:'Active'},
+      {name:'DFW', status:'Active'},
+      {name:'Houston', status:'Active'},
+      {name:'Austin', status:'Watch'}
+    ];
+  }
+  mktField.innerHTML = '<option value="">— Select Market —</option>' +
+    activeMarkets.map(function(m) {
+      return '<option value="'+m.name+'">'+m.name+(m.status==='Watch'?' (Watch)':'')+'</option>';
+    }).join('') +
+    '<option value="__add_new__">+ Add new market...</option>';
+  _llSwapToTextInput('f-napkin-mkt', 'Enter new market (e.g. Charlotte, NC)');
+}
 
 async function _loadMarkets() {
   if (_marketsCacheLoaded) return _marketsCache;
