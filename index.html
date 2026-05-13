@@ -591,7 +591,7 @@ footer{border-top:1px solid var(--border);padding:20px 24px;text-align:center;co
     <span id="ridge-session-user" style="font-size:10px;color:#4a6a8a;padding:3px 6px;"></span>
     <span id="sb-dot" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--faint);flex-shrink:0;" title="Supabase initializing…"></span>
     <span id="token-count" style="font-size:11px;color:var(--faint);cursor:default;" title="Session tokens — in: 0 · out: 0">0 tok</span>
-    <span id="hdr-skill-count" style="font-size:11px;color:var(--muted)">17 Skills Active · v5.15</span>
+    <span id="hdr-skill-count" style="font-size:11px;color:var(--muted)">17 Skills Active · v5.16</span>
   </div>
 </header>
 
@@ -1589,7 +1589,7 @@ function renderTools() {
   var countLabel = document.getElementById('skill-count-label');
   if (countLabel) countLabel.textContent = TOOLS.length + ' Active · Click any tile to expand';
   var hdrCount = document.getElementById('hdr-skill-count');
-  if (hdrCount) hdrCount.textContent = TOOLS.length + ' Skills Active · v5.15';
+  if (hdrCount) hdrCount.textContent = TOOLS.length + ' Skills Active · v5.16';
   var ftrCount = document.getElementById('footer-skill-count');
   if (ftrCount) ftrCount.textContent = 'RIDGE Intelligence Platform · Entrada Partners · ' + TOOLS.length + ' Skills Active · ATL · SAV · DFW · HOU';
 
@@ -13208,7 +13208,6 @@ function _llRenderTable(rows) {
       + '<td style="'+TD+'text-align:right;">' + (r.ti_psf ? '$'+Number(r.ti_psf).toFixed(2) : '—') + '</td>'
       + '<td style="'+TD+'text-align:right;">' + (r.free_rent_months != null ? r.free_rent_months : '—') + '</td>'
       + '<td style="'+TD+'">' + (r.asset_class||'—') + '</td>'
-      + '<td style="'+TD+'">' + (r.expiration_date ? String(r.expiration_date).slice(0,10) : '—') + '</td>'
       + '<td style="'+TD+'">' + (r.lease_type||'—') + '</td>'
       + '<td style="'+TD+'color:'+sc+';font-weight:600;">' + sl + '</td>'
       + '<td style="'+TD+'">' + (r.market||'—') + '</td>'
