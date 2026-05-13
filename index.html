@@ -591,7 +591,7 @@ footer{border-top:1px solid var(--border);padding:20px 24px;text-align:center;co
     <span id="ridge-session-user" style="font-size:10px;color:#4a6a8a;padding:3px 6px;"></span>
     <span id="sb-dot" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--faint);flex-shrink:0;" title="Supabase initializing…"></span>
     <span id="token-count" style="font-size:11px;color:var(--faint);cursor:default;" title="Session tokens — in: 0 · out: 0">0 tok</span>
-    <span id="hdr-skill-count" style="font-size:11px;color:var(--muted)">17 Skills Active · v5.21</span>
+    <span id="hdr-skill-count" style="font-size:11px;color:var(--muted)">17 Skills Active · v5.22</span>
   </div>
 </header>
 
@@ -1590,7 +1590,7 @@ function renderTools() {
   var countLabel = document.getElementById('skill-count-label');
   if (countLabel) countLabel.textContent = TOOLS.length + ' Active · Click any tile to expand';
   var hdrCount = document.getElementById('hdr-skill-count');
-  if (hdrCount) hdrCount.textContent = TOOLS.length + ' Skills Active · v5.21';
+  if (hdrCount) hdrCount.textContent = TOOLS.length + ' Skills Active · v5.22';
   var ftrCount = document.getElementById('footer-skill-count');
   if (ftrCount) ftrCount.textContent = 'RIDGE Intelligence Platform · Entrada Partners · ' + TOOLS.length + ' Skills Active · ATL · SAV · DFW · HOU';
 
@@ -4224,6 +4224,23 @@ var _napkinBenchmarkContext = '';
 var _napkinPanelBanner = '';
 var _napkinMarketRent = null;
 var _lensBenchmarkContext = '';
+var _marketsCache = null;
+var _marketsCacheLoaded = false;
+
+async function _loadMarkets() {
+  if (_marketsCacheLoaded) return _marketsCache;
+  if (!_sb || !_sbOk) { _marketsCache = []; _marketsCacheLoaded = true; return _marketsCache; }
+  try {
+    var res = await _sb.from('markets').select('*').order('name');
+    if (res.error || !res.data) { _marketsCache = []; }
+    else { _marketsCache = res.data; }
+  } catch(e) {
+    console.warn('[RIDGE] markets load error:', e.message);
+    _marketsCache = [];
+  }
+  _marketsCacheLoaded = true;
+  return _marketsCache;
+}
 var _lensMarketRent = null;
 var _isrLensContext = '';
 var _isrParsedData  = null;  // structured JSON extracted from ISR response — used by PPTX builder
@@ -4260,7 +4277,7 @@ async function _sbInit() {
     _sbOk = !error;
   } catch(e) { _sbOk = false; }
   _sbSetIndicator(_sbOk);
-  if (_sbOk) { await _sbLoadDeals(); _sbSubscribe(); }
+  if (_sbOk) { await _sbLoadDeals(); _sbSubscribe(); await _loadMarkets(); }
   console.log('[RIDGE] Session started — user:', _getSessionUser(), '| Supabase:', _sbOk ? 'connected' : 'offline');
 }
 
@@ -8084,13 +8101,43 @@ function _detectMarketFromFolder(folderName) {
 
 function _detectMarket(inputs) {
   if (!inputs) return null;
-  if (inputs.mkt) return inputs.mkt;
+  if (inputs.mkt || inputs.market) return inputs.mkt || inputs.market;
   var addr = (inputs.addr || inputs.deal || inputs.address || '').toLowerCase();
   if (!addr) return null;
-  if (/atlanta|smyrna|marietta|kennesaw|alpharetta|duluth|norcross|suwanee|roswell|sandy springs|decatur|acworth|woodstock|canton|cumming|johns creek/.test(addr)) return 'Atlanta';
-  if (/savannah|pooler|richmond hill|rincon|hinesville/.test(addr)) return 'Savannah';
-  if (/dallas|fort worth|irving|garland|grand prairie|arlington|mesquite|carrollton|richardson|plano|frisco|mckinney|denton|lewisville|bedford|euless|hurst/.test(addr)) return 'DFW';
-  if (/houston|katy|pasadena|sugar land|woodlands|conroe|pearland|league city|baytown|humble|spring/.test(addr)) return 'Houston';
+  var zipMatch = addr.match(/\b(\d{5})(?:-\d{4})?\b/);
+  var zip = zipMatch ? parseInt(zipMatch[1], 10) : null;
+
+  // Cache-first: try Supabase markets table
+  if (_marketsCache && _marketsCache.length) {
+    for (var i = 0; i < _marketsCache.length; i++) {
+      var m = _marketsCache[i];
+      if (m.city_keywords && m.city_keywords.length) {
+        for (var k = 0; k < m.city_keywords.length; k++) {
+          if (addr.indexOf(m.city_keywords[k].toLowerCase()) !== -1) return m.name;
+        }
+      }
+      if (zip && m.zip_ranges && m.zip_ranges.length) {
+        for (var z = 0; z < m.zip_ranges.length; z++) {
+          var range = m.zip_ranges[z];
+          if (Array.isArray(range) && zip >= range[0] && zip <= range[1]) return m.name;
+        }
+      }
+    }
+  }
+
+  // Fallback — hardcoded patterns for the 5 seeded markets
+  if (/atlanta|smyrna|marietta|kennesaw|alpharetta|duluth|norcross|suwanee|roswell|sandy springs|decatur|acworth|woodstock|canton|cumming|johns creek|college park|east point|forest park|hapeville|stockbridge|mcdonough|lithia springs|austell|mableton|lawrenceville|tucker|stone mountain|dunwoody|brookhaven|chamblee|doraville/.test(addr)) return 'Atlanta';
+  if (/savannah|pooler|richmond hill|rincon|hinesville|garden city|port wentworth|bloomingdale|guyton|springfield/.test(addr)) return 'Savannah';
+  if (/dallas|fort worth|irving|garland|grand prairie|arlington|mesquite|carrollton|richardson|plano|frisco|mckinney|denton|lewisville|bedford|euless|hurst|haltom city|watauga|keller|southlake|colleyville|grapevine|coppell|farmers branch|addison|allen|wylie|rockwall|rowlett|sachse|murphy|desoto|duncanville|cedar hill|lancaster|burleson|mansfield|north richland hills/.test(addr)) return 'DFW';
+  if (/houston|katy|pasadena|sugar land|woodlands|conroe|pearland|league city|baytown|humble|spring|cypress|tomball|stafford|missouri city|rosenberg|richmond|friendswood|webster|deer park|la porte|channelview|jersey village|bellaire|texas city|atascocita|kingwood/.test(addr)) return 'Houston';
+  if (/austin|round rock|cedar park|pflugerville|leander|georgetown|kyle|buda|san marcos|hutto/.test(addr)) return 'Austin';
+  if (zip) {
+    if ((zip >= 30002 && zip <= 30099) || (zip >= 30168 && zip <= 30188) || (zip >= 30260 && zip <= 30297) || (zip >= 30301 && zip <= 30399)) return 'Atlanta';
+    if ((zip >= 31301 && zip <= 31499) || (zip >= 31321 && zip <= 31329)) return 'Savannah';
+    if ((zip >= 75001 && zip <= 75399) || (zip >= 76001 && zip <= 76299)) return 'DFW';
+    if ((zip >= 77001 && zip <= 77299) || (zip >= 77301 && zip <= 77599)) return 'Houston';
+    if (zip >= 78601 && zip <= 78799) return 'Austin';
+  }
   return null;
 }
 
