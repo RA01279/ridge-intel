@@ -591,7 +591,7 @@ footer{border-top:1px solid var(--border);padding:20px 24px;text-align:center;co
     <span id="ridge-session-user" style="font-size:10px;color:#4a6a8a;padding:3px 6px;"></span>
     <span id="sb-dot" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--faint);flex-shrink:0;" title="Supabase initializing…"></span>
     <span id="token-count" style="font-size:11px;color:var(--faint);cursor:default;" title="Session tokens — in: 0 · out: 0">0 tok</span>
-    <span id="hdr-skill-count" style="font-size:11px;color:var(--muted)">17 Skills Active · v5.18</span>
+    <span id="hdr-skill-count" style="font-size:11px;color:var(--muted)">17 Skills Active · v5.19</span>
   </div>
 </header>
 
@@ -1589,7 +1589,7 @@ function renderTools() {
   var countLabel = document.getElementById('skill-count-label');
   if (countLabel) countLabel.textContent = TOOLS.length + ' Active · Click any tile to expand';
   var hdrCount = document.getElementById('hdr-skill-count');
-  if (hdrCount) hdrCount.textContent = TOOLS.length + ' Skills Active · v5.18';
+  if (hdrCount) hdrCount.textContent = TOOLS.length + ' Skills Active · v5.19';
   var ftrCount = document.getElementById('footer-skill-count');
   if (ftrCount) ftrCount.textContent = 'RIDGE Intelligence Platform · Entrada Partners · ' + TOOLS.length + ' Skills Active · ATL · SAV · DFW · HOU';
 
@@ -12307,6 +12307,39 @@ async function _llInitFilterOptions() {
     acSel.innerHTML = '<option value="">All Asset Classes</option>' +
       _llFilterAssetClasses.map(function(a){ return '<option value="'+a+'">'+a+'</option>'; }).join('');
   }
+
+  var impMktSel = document.getElementById('ll-market');
+  var impAcSel  = document.getElementById('ll-import-asset-class');
+  if (impMktSel && impMktSel.tagName === 'SELECT') {
+    impMktSel.innerHTML = '<option value="">— Select Market —</option>' +
+      _llFilterMarkets.map(function(m){ return '<option value="'+m+'">'+m+'</option>'; }).join('') +
+      '<option value="__add_new__">+ Add new market...</option>';
+    _llSwapToTextInput('ll-market', 'Enter new market (e.g. Charlotte, NC)');
+  }
+  if (impAcSel && impAcSel.tagName === 'SELECT') {
+    impAcSel.innerHTML = '<option value="">— Select Asset Class —</option>' +
+      _llFilterAssetClasses.map(function(a){ return '<option value="'+a+'">'+a+'</option>'; }).join('') +
+      '<option value="__add_new__">+ Add new asset class...</option>';
+    _llSwapToTextInput('ll-import-asset-class', 'Enter new asset class');
+  }
+}
+
+function _llSwapToTextInput(selectId, placeholder) {
+  var sel = document.getElementById(selectId);
+  if (!sel) return;
+  sel.addEventListener('change', function() {
+    if (this.value === '__add_new__') {
+      var parent = this.parentNode;
+      var currentStyle = this.getAttribute('style') || '';
+      var input = document.createElement('input');
+      input.id = selectId;
+      input.type = 'text';
+      input.placeholder = placeholder;
+      input.setAttribute('style', currentStyle);
+      parent.replaceChild(input, this);
+      input.focus();
+    }
+  });
 }
 
 // ── BROKER FILE CONVERTER ─────────────────────────────────
@@ -13143,6 +13176,7 @@ async function _llConfirmImport() {
     _llParsedRows = [];
     _llSelectedFile = null;
     _llPage = 0;
+    await _llInitFilterOptions();
     await _llLoadLeases();
   } catch(e) {
     showToast('Import failed: ' + e.message);
