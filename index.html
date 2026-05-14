@@ -9237,41 +9237,16 @@ async function runRidgeAPI(skillName, prompt, runInputs, runToolId) {
                 conviction: 'Needs More Data'
               });
             }
-            // ── SKILL OUTPUTS: persist lease-stack run ──
-            if (_sbOk && _sb) {
-              try {
-                var _lsAddr = _lAddr || (_lastRunInputs && (_lastRunInputs.addr || _lastRunInputs.address)) || '';
-                var { data: _lsOut } = await _sb.from('skill_outputs').insert({
-                  skill_name: 'LEASE STACK ANALYZER',
-                  output: accumulated,
-                  inputs: _lastRunInputs || {},
-                  address: _lsAddr,
-                  market: _detectMarket(_lastRunInputs),
-                  tags: ['lease-stack'],
-                  loi_generated: false,
-                  run_by: _getSessionUser()
-                }).select('id').single();
-                if (_lsOut && _lsOut.id) {
-                  console.log('[RIDGE] Lease Stack skill_outputs written:', _lsOut.id);
-                  var _lsEmbed = await _generateEmbedding(_lsAddr + ' lease stack ' + accumulated.slice(0, 500));
-                  if (_lsEmbed && _lsOut.id) {
-                    await _sb.from('skill_outputs').update({ embedding: '[' + _lsEmbed.join(',') + ']' }).eq('id', _lsOut.id);
-                  }
-                }
-              } catch(e) {
-                console.warn('[RIDGE] Lease Stack skill_outputs error:', e.message);
-              }
-            }
             // ── DEAL CONTEXT: update for lease-stack run ──
-            if (_sbOk && _sb && _lsAddr) {
+            if (_sbOk && _sb && _lAddr) {
               try {
                 await _sb.from('deal_context').upsert({
-                  address: _lsAddr,
+                  address: _lAddr,
                   last_skill_run: 'LEASE STACK ANALYZER',
                   last_run_at: new Date().toISOString(),
                   updated_at: new Date().toISOString()
                 }, { onConflict: 'address' });
-                console.log('[RIDGE] deal_context updated for:', _lsAddr);
+                console.log('[RIDGE] deal_context updated for:', _lAddr);
               } catch(e) {
                 console.warn('[RIDGE] deal_context upsert error:', e.message);
               }
