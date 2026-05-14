@@ -591,7 +591,7 @@ footer{border-top:1px solid var(--border);padding:20px 24px;text-align:center;co
     <span id="ridge-session-user" style="font-size:10px;color:#4a6a8a;padding:3px 6px;"></span>
     <span id="sb-dot" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--faint);flex-shrink:0;" title="Supabase initializing…"></span>
     <span id="token-count" style="font-size:11px;color:var(--faint);cursor:default;" title="Session tokens — in: 0 · out: 0">0 tok</span>
-    <span id="hdr-skill-count" style="font-size:11px;color:var(--muted)">17 Skills Active · v5.24</span>
+    <span id="hdr-skill-count" style="font-size:11px;color:var(--muted)">17 Skills Active · v5.25</span>
   </div>
 </header>
 
@@ -763,7 +763,7 @@ footer{border-top:1px solid var(--border);padding:20px 24px;text-align:center;co
       <span style="color:var(--faint);font-size:11px;margin-left:4px">— auto-filled from upload where available</span>
     </div>
     <div class="manual-body" id="mbody-market-pulse">
-      <div class="fr two"><div class="fg"><label class="fl">Market</label><select id="f-market-pulse-mkt"><option>Atlanta, GA</option><option>Savannah, GA</option><option>Dallas–Fort Worth, TX</option><option>Houston, TX</option><option>Austin, TX (Watch)</option><option>All Markets — Full Matrix</option></select></div><div class="fg"><label class="fl">Specific Submarket</label><input type="text" id="f-market-pulse-sub" placeholder="Gwinnett/Buford, NE Atlanta (optional)"></div></div><div class="fr two"><div class="fg"><label class="fl">Report Type</label><select id="f-market-pulse-mode"><option>Full Market Report</option><option>Quick Update</option><option>Submarket Matrix</option><option>Benchmark Update for Active Deal</option></select></div><div class="fg"><label class="fl">Active Deal Address</label><input type="text" id="f-market-pulse-deal" placeholder="Leave blank for market-only report"></div></div>
+      <div class="fr two"><div class="fg"><label class="fl">Market</label><select id="f-market-pulse-mkt"><option value="">— Select Market —</option><option>Atlanta</option><option>Savannah</option><option>DFW</option><option>Houston</option><option>Austin</option><option value="All Markets">All Markets — Full Matrix</option></select></div><div class="fg"><label class="fl">Specific Submarket</label><input type="text" id="f-market-pulse-sub" placeholder="Gwinnett/Buford, NE Atlanta (optional)"></div></div><div class="fr two"><div class="fg"><label class="fl">Report Type</label><select id="f-market-pulse-mode"><option>Full Market Report</option><option>Quick Update</option><option>Submarket Matrix</option><option>Benchmark Update for Active Deal</option></select></div><div class="fg"><label class="fl">Active Deal Address</label><input type="text" id="f-market-pulse-deal" placeholder="Leave blank for market-only report"></div></div>
     </div>
     <div class="btn-row">
       <button class="btn btn-p" id="run-btn-market-pulse" onclick="runTool(&#39;market-pulse&#39;)">⚡ Run MARKET PULSE</button>
@@ -1340,7 +1340,7 @@ var TOOLS = [
       {id:'submarket',label:'CoStar Submarket Export',hint:'Optional: CoStar submarket XLSX/CSV for grounded benchmarks',icon:'📊',accept:'.xlsx,.csv',type:'xlsx'}
     ],
     fields:[
-      {row:[{id:'mkt',label:'Market',type:'select',opts:['Atlanta, GA','Savannah, GA','Dallas–Fort Worth, TX','Houston, TX','Austin, TX (Watch)','All Markets — Full Matrix']},{id:'sub',label:'Specific Submarket',ph:'e.g. Gwinnett/Buford, NE Atlanta (optional)'}]},
+      {row:[{id:'mkt',label:'Market',type:'select',opts:['— Select Market —','Atlanta','Savannah','DFW','Houston','Austin','All Markets']},{id:'sub',label:'Specific Submarket',ph:'e.g. Gwinnett/Buford, NE Atlanta (optional)'}]},
       {row:[{id:'mode',label:'Report Type',type:'select',opts:['Full Market Report','Quick Update','Submarket Matrix','Benchmark Update for Active Deal']},{id:'deal',label:'Active Deal Address',ph:'Leave blank for market-only report'}]},
     ],
     steps:['Pulling market data...','Benchmarking vacancy rates...','Analyzing absorption trends...','Reviewing supply pipeline...','Generating RIDGE implications...'],
@@ -1593,7 +1593,7 @@ function renderTools() {
   var countLabel = document.getElementById('skill-count-label');
   if (countLabel) countLabel.textContent = TOOLS.length + ' Active · Click any tile to expand';
   var hdrCount = document.getElementById('hdr-skill-count');
-  if (hdrCount) hdrCount.textContent = TOOLS.length + ' Skills Active · v5.24';
+  if (hdrCount) hdrCount.textContent = TOOLS.length + ' Skills Active · v5.25';
   var ftrCount = document.getElementById('footer-skill-count');
   if (ftrCount) ftrCount.textContent = 'RIDGE Intelligence Platform · Entrada Partners · ' + TOOLS.length + ' Skills Active · ATL · SAV · DFW · HOU';
 
@@ -1984,9 +1984,10 @@ function togglePanel(id) {
     if (id === 'daily-signal') updateDSMemCount();
     if (id === 'pipeline') renderPipeline();
     if (id === 'lease-library') { _llInitFilterOptions(); _llLoadLeases(); }
-    if (id === 'napkin') { _initMarketDropdown('f-napkin-mkt'); }
-    if (id === 'lens')   { _initMarketDropdown('f-lens-mkt');   }
-    if (id === 'isr')    { _initMarketDropdown('f-isr-mkt');    }
+    if (id === 'napkin')       { _initMarketDropdown('f-napkin-mkt'); }
+    if (id === 'lens')         { _initMarketDropdown('f-lens-mkt');   }
+    if (id === 'isr')          { _initMarketDropdown('f-isr-mkt');    }
+    if (id === 'market-pulse') { _initMarketDropdown('f-market-pulse-mkt', [{value:'All Markets', label:'All Markets — Full Matrix'}]); }
   }
 }
 
@@ -4237,7 +4238,7 @@ var _lensBenchmarkContext = '';
 var _marketsCache = null;
 var _marketsCacheLoaded = false;
 
-async function _initMarketDropdown(fieldId) {
+async function _initMarketDropdown(fieldId, extraOpts) {
   await _loadMarkets();
   var mktField = document.getElementById(fieldId);
   if (!mktField || mktField.tagName !== 'SELECT') return;
@@ -4253,11 +4254,13 @@ async function _initMarketDropdown(fieldId) {
       {name:'Austin', status:'Watch'}
     ];
   }
-  mktField.innerHTML = '<option value="">— Select Market —</option>' +
-    activeMarkets.map(function(m) {
-      return '<option value="'+m.name+'">'+m.name+(m.status==='Watch'?' (Watch)':'')+'</option>';
-    }).join('') +
-    '<option value="__add_new__">+ Add new market...</option>';
+  var marketOpts = activeMarkets.map(function(m) {
+    return '<option value="'+m.name+'">'+m.name+(m.status==='Watch'?' (Watch)':'')+'</option>';
+  }).join('');
+  var extra = (extraOpts || []).map(function(o) {
+    return '<option value="'+o.value+'">'+o.label+'</option>';
+  }).join('');
+  mktField.innerHTML = '<option value="">— Select Market —</option>' + marketOpts + extra + '<option value="__add_new__">+ Add new market...</option>';
   _llSwapToTextInput(fieldId, 'Enter new market (e.g. Charlotte, NC)');
 }
 
