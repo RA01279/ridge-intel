@@ -1491,8 +1491,10 @@ var TOOLS = [
       {id:'doc3',label:'Document 3',hint:'Optional: third scenario, prior executed lease, or market comp',icon:'📑',accept:'.pdf,.docx',type:'pdf'}
     ],
     fields:[
+      {row:[{id:'addr',label:'Property Address',ph:'e.g. 4200 Commerce Pkwy, Atlanta, GA'}]},
       {row:[{id:'doc1_label',label:'Document 1 — Name / Address',ph:'e.g. 4200 Commerce Pkwy — Tenant A Proposal'},{id:'doc2_label',label:'Document 2 — Name / Address',ph:'e.g. 7100 Distribution Dr — Counter-Proposal'},{id:'doc3_label',label:'Document 3 — Name / Address (optional)',ph:'e.g. Prior executed lease for comp'}]},
       {row:[{id:'mkt_rent',label:'Market Rent PSF',ph:'e.g. $12.50 NNN'},{id:'mkt_ti',label:'Market TI PSF',ph:'e.g. $25–30 PSF'},{id:'sf',label:'Rentable SF',ph:'e.g. 48,500'}]},
+      {row:[{id:'mkt',label:'Market',type:'select',opts:['Atlanta, GA','Savannah, GA','Dallas–Fort Worth, TX','Houston, TX','Austin, TX (Watch)']},{id:'sub',label:'Submarket',ph:'e.g. Gwinnett / Buford (optional)'}]},
       {row:[{id:'mode',label:'Comparison Mode',type:'select',opts:['Proposal vs Proposal (pick the better deal)','Proposal vs Executed Lease (is this standard?)','Two Executed Leases (acquisition DD)','Counter-Proposal Analysis','Single Document Deep Review']},{id:'role',label:'Entrada Role',type:'select',opts:['Landlord — maximize NOI and protect asset value','Buyer / Acquirer — evaluate inherited leases','Tenant — minimize cost and maximize flexibility']}]},
       {row:[{id:'notes',label:'Context & Priority Issues',ph:'Tenant credit, deal urgency, specific concerns, prior negotiations...',type:'textarea'}]},
     ],
@@ -3956,9 +3958,16 @@ If CONDITIONAL: state exactly what must be verified before proceeding
       var lc2 = d.doc2_label || 'Document 2';
       var lc3 = d.doc3_label || 'Document 3';
       console.log('LEASE-COMPARE buildTrigger:', {lc1:lc1, lc2:lc2, lc3:lc3, doc1:!!d.doc1_text, doc2:!!d.doc2_text, doc3:!!d.doc3_text});
+      if (d.doc1_text && d.doc1_text.startsWith('[PDF')) {
+        return 'Document 1 appears to be a scanned or image-based PDF — text could not be extracted. Lease Negotiation Analyzer requires text-based PDFs. Please provide a digitally created document or copy and paste the text.';
+      }
+      if (d.doc2_text && d.doc2_text.startsWith('[PDF')) {
+        return 'Document 2 appears to be a scanned or image-based PDF — text could not be extracted. Lease Negotiation Analyzer requires text-based PDFs. Please provide a digitally created document or copy and paste the text.';
+      }
       p = 'You are RIDGE Assistant — an expert full-stack developer and institutional CRE analyst embedded at Entrada Partners, a private equity firm focused on industrial and flex acquisitions. You are performing a lease negotiation comparison analysis.\n\n';
       p += 'COMPARISON MODE: ' + (d.mode||'Proposal vs Proposal') + '\n';
       p += 'ENTRADA ROLE: ' + (d.role||'Landlord — maximize NOI and protect asset value') + '\n';
+      if (d.addr) p += 'PROPERTY ADDRESS: ' + d.addr + '\n';
       p += 'RENTABLE SF: ' + (d.sf||'[not provided]') + '\n';
       p += 'MARKET RENT: ' + (d.mkt_rent||'[not provided — estimate from submarket data]') + '\n';
       p += 'MARKET TI: ' + (d.mkt_ti||'[not provided — estimate from submarket data]') + '\n';
@@ -4051,11 +4060,11 @@ If CONDITIONAL: state exactly what must be verified before proceeding
 
       p += '\n\n## LEASE COMP TABLE\n';
       p += 'Produce a pipe-delimited table with these exact columns:\n';
-      p += '| tenant | suite | sf | lease_type | commencement_date | expiration_date | base_rent_psf | annual_rent | options | notes |\n';
-      p += 'One row per lease option being compared. Suffix tenant name with the option letter (e.g. "Acme Corp - Option A"). Use YYYY-MM-DD for dates. Use NNN, Gross, MG, or MTM for lease_type. This table is required — _parseLeaseTable() reads it to write to the RIDGE leases database.\n';
+      p += '| tenant | suite | sf | lease_type | commencement_date | expiration_date | base_rent_psf | annual_rent | ti_psf | free_rent_months | options | notes |\n';
+      p += 'One row per lease option being compared. Suffix tenant name with the option letter (e.g. "Acme Corp - Option A"). Use YYYY-MM-DD for dates. Use NNN, Gross, MG, or MTM for lease_type. For ti_psf: TI allowance in $/SF (null if none). For free_rent_months: total months of free rent (null if none). This table is required — _parseLeaseTable() reads it to write to the RIDGE leases database.\n';
 
       p += '\n\n## RIDGE EXTRACTION JSON\n';
-      p += 'After the table, output a valid JSON array (no markdown fences) of lease objects. Each object must have these exact keys: tenant, suite, sf, lease_type, commencement_date, expiration_date, base_rent_psf, annual_rent, options, notes. Null for any missing field. This JSON is machine-read — do not add commentary inside the array.\n';
+      p += 'After the table, output a valid JSON array (no markdown fences) of lease objects. Each object must have these exact keys: tenant, suite, sf, lease_type, commencement_date, expiration_date, base_rent_psf, annual_rent, ti_psf, free_rent_months, options, notes. Null for any missing field. This JSON is machine-read — do not add commentary inside the array.\n';
       return p;
 
     case 'lease-stack':
@@ -9279,41 +9288,16 @@ async function runRidgeAPI(skillName, prompt, runInputs, runToolId) {
                 conviction: 'Needs More Data'
               });
             }
-            // ── SKILL OUTPUTS: persist lease-compare run ──
-            if (_sbOk && _sb) {
-              try {
-                var _lcAddr = _lAddr || (_lastRunInputs && (_lastRunInputs.doc1_label || _lastRunInputs.addr || '')) || '';
-                var { data: _lcOut } = await _sb.from('skill_outputs').insert({
-                  skill_name: 'LEASE NEGOTIATION ANALYZER',
-                  output: accumulated,
-                  inputs: _lastRunInputs || {},
-                  address: _lcAddr,
-                  market: _detectMarket(_lastRunInputs),
-                  tags: ['lease-compare'],
-                  loi_generated: false,
-                  run_by: _getSessionUser()
-                }).select('id').single();
-                if (_lcOut && _lcOut.id) {
-                  console.log('[RIDGE] Lease Compare skill_outputs written:', _lcOut.id);
-                  var _lcEmbed = await _generateEmbedding(_lcAddr + ' lease negotiation ' + accumulated.slice(0, 500));
-                  if (_lcEmbed) {
-                    await _sb.from('skill_outputs').update({ embedding: '[' + _lcEmbed.join(',') + ']' }).eq('id', _lcOut.id);
-                  }
-                }
-              } catch(e) {
-                console.warn('[RIDGE] Lease Compare skill_outputs error:', e.message);
-              }
-            }
             // ── DEAL CONTEXT: update for lease-compare run ──
-            if (_sbOk && _sb && _lcAddr) {
+            if (_sbOk && _sb && _lAddr) {
               try {
                 await _sb.from('deal_context').upsert({
-                  address: _lcAddr,
+                  address: _lAddr,
                   last_skill_run: 'LEASE NEGOTIATION ANALYZER',
                   last_run_at: new Date().toISOString(),
                   updated_at: new Date().toISOString()
                 }, { onConflict: 'address' });
-                console.log('[RIDGE] deal_context updated for:', _lcAddr);
+                console.log('[RIDGE] deal_context updated for:', _lAddr);
               } catch(e) {
                 console.warn('[RIDGE] deal_context upsert error:', e.message);
               }
