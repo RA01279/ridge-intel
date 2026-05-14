@@ -8933,36 +8933,7 @@ async function runRidgeAPI(skillName, prompt, runInputs, runToolId) {
             }
           })(_soId, _lastRunToolId);
         }
-        // Auto-save to contacts table from SCOUT runs
-        if (skillNameSaved.toLowerCase().includes('scout') && _lastRunInputs) {
-          var ownerMatch = outputText.match(/(?:owner|entity|owned by)[:\s]+([^\n]{3,60})/i);
-          if (ownerMatch) {
-            var ownerEntity = ownerMatch[1].trim();
-            _sb.from('contacts').upsert({
-              entity: ownerEntity,
-              market: _detectMarket(_lastRunInputs),
-              notes: 'Auto-extracted from SCOUT run on ' + (_lastRunInputs.addr || 'unknown address'),
-              properties: [_lastRunInputs.addr || '']
-            }, { onConflict: 'entity' }).catch(function(e) { console.warn('contacts save failed:', e); });
-          }
-        }
-        if (_lastRunToolId === 'scout' && _sbOk && _sb) {
-          try {
-            var _scoutAddr = _soAddr || (_lastRunInputs && (_lastRunInputs.addr || _lastRunInputs.address)) || '';
-            if (_scoutAddr) {
-              await _sb.from('deal_context').upsert({
-                address: _scoutAddr,
-                last_skill_run: 'SCOUT',
-                last_run_at: new Date().toISOString(),
-                updated_at: new Date().toISOString()
-              }, { onConflict: 'address' });
-              console.log('[RIDGE] deal_context updated for SCOUT:', _scoutAddr);
-            }
-          } catch(e) {
-            console.warn('[RIDGE] SCOUT deal_context upsert error:', e.message);
-          }
-        }
-        // Auto-save to signal_reports table from Daily Signal runs
+// Auto-save to signal_reports table from Daily Signal runs
         if (skillNameSaved.toLowerCase().includes('signal')) {
           try {
             await _sb.from('signal_reports').insert({
@@ -9441,7 +9412,7 @@ async function runRidgeAPI(skillName, prompt, runInputs, runToolId) {
             skill_name: 'MARKET PULSE',
             output: accumulated,
             inputs: _lastRunInputs || {},
-            address: _mpAddr || ('Market Pulse — ' + _mpMktName),
+            address: _mpAddr || null,
             market: _mpMktName || null,
             tags: ['market-pulse'],
             loi_generated: false,
@@ -9452,6 +9423,23 @@ async function runRidgeAPI(skillName, prompt, runInputs, runToolId) {
             var _mpEmbed = await _generateEmbedding((_mpMktName || '') + ' market pulse ' + accumulated.slice(0, 500));
             if (_mpEmbed) {
               await _sb.from('skill_outputs').update({ embedding: _mpEmbed }).eq('id', _mpOut.id);
+            }
+            // Write uploaded document text to skill_output_documents
+            var _mpDocInserts = [];
+            var _mpTool = TOOLS.find(function(t) { return t.id === 'market-pulse'; });
+            if (_mpTool && _mpTool.uploads && STATE['market-pulse']) {
+              _mpTool.uploads.forEach(function(u) {
+                var rawText = STATE['market-pulse'].files && STATE['market-pulse'].files[u.id];
+                if (rawText && typeof rawText === 'string' && rawText.trim().length > 50
+                    && !rawText.startsWith('[PDF') && !rawText.startsWith('[XLSX') && !rawText.startsWith('[No ')) {
+                  _mpDocInserts.push({ skill_output_id: _mpOut.id, tool_id: 'market-pulse', upload_slot: u.id, extracted_text: rawText });
+                }
+              });
+            }
+            if (_mpDocInserts.length) {
+              _sb.from('skill_output_documents').insert(_mpDocInserts)
+                .then(function() { console.log('[RIDGE] Market Pulse skill_output_documents written:', _mpDocInserts.length); })
+                .catch(function(e) { console.warn('[RIDGE] Market Pulse skill_output_documents error:', e.message); });
             }
           }
         } catch(e) {
