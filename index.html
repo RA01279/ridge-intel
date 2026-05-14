@@ -1523,6 +1523,8 @@ var TOOLS = [
       {row:[{id:'exec_date', label:'Master Lease Date',   ph:'e.g. March 15, 2014'},
             {id:'sf',        label:'Leased SF',            ph:'e.g. 72,400 SF'},
             {id:'mkt_rent',  label:'Current Market Rent',  ph:'e.g. $9.50 NNN'}]},
+      {row:[{id:'mkt', label:'Market', type:'select', opts:['Atlanta, GA','Savannah, GA','Dallas–Fort Worth, TX','Houston, TX','Austin, TX (Watch)']},
+            {id:'sub', label:'Submarket', ph:'e.g. Gwinnett / Buford (optional)'}]},
       {row:[{id:'context', label:'Analysis Context', type:'select',
              opts:['Acquisition Due Diligence','Asset Management Review','Renewal / Lease-Up Prep','Disposition / Sale Prep','Refinance / Lender DD']},
             {id:'role',    label:'Entrada Role',    type:'select',
@@ -4060,6 +4062,9 @@ If CONDITIONAL: state exactly what must be verified before proceeding
       var amds = ['amd1','amd2','amd3','amd4','amd5','amd6','amd7','amd8','amd9','amd10'];
       var amdCount = amds.filter(function(a){ return !!d[a+'_text']; }).length;
       console.log('LEASE-STACK buildTrigger:', {addr:d.addr, tenant:d.tenant, master:!!d.master_text, amendments:amdCount});
+      if (d.master_text && d.master_text.startsWith('[PDF')) {
+        return 'The master lease appears to be a scanned or image-based PDF — text could not be extracted. Lease Stack requires a text-based PDF. Please use a digitally created lease document, or copy and paste the lease text into the Additional Context field.';
+      }
       p  = 'You are RIDGE Assistant — an expert full-stack developer and institutional CRE analyst embedded at Entrada Partners, a private equity firm focused on industrial and flex acquisitions. You are performing a full lease stack review.\n\n';
       p += 'PROPERTY: '         + (d.addr       || '[not provided]') + '\n';
       p += 'TENANT: '           + (d.tenant     || '[not provided]') + '\n';
@@ -4072,17 +4077,18 @@ If CONDITIONAL: state exactly what must be verified before proceeding
       p += 'AMENDMENTS UPLOADED: ' + amdCount + '\n\n';
 
       if (d.master_text) {
-        p += '=== MASTER LEASE ===\n' + d.master_text.slice(0, 15000) + '\n\n';
+        p += '=== MASTER LEASE ===\n' + d.master_text.slice(0, 30000) + '\n\n';
       } else {
         p += '=== MASTER LEASE ===\n[Not uploaded — upload the master lease to proceed]\n\n';
       }
       amds.forEach(function(a, i) {
         if (d[a+'_text']) {
-          p += '=== AMENDMENT ' + (i+1) + ' ===\n' + d[a+'_text'].slice(0, 4000) + '\n\n';
+          p += '=== AMENDMENT ' + (i+1) + ' ===\n' + d[a+'_text'].slice(0, 6000) + '\n\n';
         }
       });
 
       p += 'Produce a complete lease stack analysis at the level of institutional CRE counsel. Be specific — quote provisions, cite amendment numbers, and quantify economic impacts in dollars where possible.\n\n';
+      p += '⚠️ EXHIBITS & TRUNCATION NOTICE: Commercial leases frequently contain critical exhibits appended at the end of the document — Exhibit A (Premises), Exhibit B (Work Letter / TI Allowance), Exhibit C (Rent Schedule), Exhibit D (Rules & Regulations), Exhibit E (SNDA). If the document text appears to end before reaching exhibit content, explicitly flag: "⚠️ DOCUMENT TRUNCATED — exhibit content not available. The following could not be verified: [list missing items]." When exhibit content IS present, extract: (1) the full TI allowance or Landlord\'s Work dollar commitment from the work letter — note that "Landlord\'s Work" and "TI Allowance" are economically equivalent and may be specified as a total dollar amount or $/SF; convert to $/SF using the leased SF, (2) the complete rent escalation schedule from any rent exhibit, (3) any free rent or abatement periods with month count and dollar impact. Do not assume exhibits are absent simply because they were not referenced in the body — always check whether the document continues past the signature page.\n\n';
 
       p += '## LEASE DOCUMENT INVENTORY\n';
       p += 'List every document in the stack: document type, parties, execution date, and a one-sentence summary of its purpose. Note any gaps (e.g., Amendment 3 references Amendment 2 but Amendment 2 was not provided).\n\n';
@@ -4163,11 +4169,11 @@ If CONDITIONAL: state exactly what must be verified before proceeding
 
       p += '\n\n## LEASE COMP TABLE\n';
       p += 'Produce a pipe-delimited table with these exact columns:\n';
-      p += '| tenant | suite | sf | lease_type | commencement_date | expiration_date | base_rent_psf | annual_rent | options | notes |\n';
-      p += 'One row per tenant. Use YYYY-MM-DD for dates. Use NNN, Gross, MG, or MTM for lease_type. This table is required — _parseLeaseTable() reads it to write to the RIDGE leases database.\n';
+      p += '| tenant | suite | sf | lease_type | commencement_date | expiration_date | base_rent_psf | annual_rent | ti_psf | free_rent_months | options | notes |\n';
+      p += 'One row per tenant. Use YYYY-MM-DD for dates. Use NNN, Gross, MG, or MTM for lease_type. For ti_psf: use the TI allowance or Landlord\'s Work amount in $/SF (divide total $ by SF if stated as a lump sum); use null if not specified. For free_rent_months: total months of free rent or rent abatement; use null if none. This table is required — _parseLeaseTable() reads it to write to the RIDGE leases database.\n';
 
       p += '\n\n## RIDGE EXTRACTION JSON\n';
-      p += 'After the table, output a valid JSON array (no markdown fences) of lease objects. Each object must have these exact keys: tenant, suite, sf, lease_type, commencement_date, expiration_date, base_rent_psf, annual_rent, options, notes. Null for any missing field. This JSON is machine-read — do not add commentary inside the array.\n';
+      p += 'After the table, output a valid JSON array (no markdown fences) of lease objects. Each object must have these exact keys: tenant, suite, sf, lease_type, commencement_date, expiration_date, base_rent_psf, annual_rent, ti_psf, free_rent_months, options, notes. Null for any missing field. This JSON is machine-read — do not add commentary inside the array.\n';
       return p;
 
     case 'dd-tracker':
@@ -4971,6 +4977,7 @@ function _parseLeaseTable(text) {
     };
     var cTenant = col(['TENANT', 'ADDRESS']);
     var cSF     = col(['SF', 'SQ', 'SIZE']);
+    var cComm   = col(['COMMENCEMENT', 'COMM_DATE', 'START']);
     var cExp    = col(['EXP', 'EXPIR']);
     var cRent   = col(['IN-PLACE', 'BASE_RENT', 'EFF', 'RENT_PSF', 'RENT']);
     var cTI     = col(['TI_PSF', 'TI', 'TENANT_I']);
@@ -4996,6 +5003,7 @@ function _parseLeaseTable(text) {
       var rv  = num(cRent);     if (rv)            obj.base_rent_psf = rv;
       var tiv = num(cTI);       if (tiv)           obj.ti_psf = tiv;
       var frv = num(cFree);     if (frv)           obj.free_rent_months = frv;
+      if (cComm >= 0 && cells[cComm]) obj.commencement_date = cells[cComm];
       if (cExp >= 0  && cells[cExp])  obj.expiration_date = cells[cExp];
       if (cType >= 0 && cells[cType]) obj.lease_type = cells[cType];
       rows.push(obj);
