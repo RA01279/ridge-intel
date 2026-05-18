@@ -8881,6 +8881,28 @@ async function runRidgeAPI(skillName, prompt, runInputs, runToolId) {
       console.log('Supabase post-run block entered — skill:', skillNameSaved, '| _sbOk:', _sbOk, '| _sb:', !!_sb);
       if (_lastRunToolId !== 'market-pulse' && _lastRunToolId !== 'lease-stack' && _lastRunToolId !== 'lease-compare') {
       try {
+        // ── LENS pre-parse: backfill address from OM if user left field blank ──
+        if (_lastRunToolId === 'lens'
+            && _lastRunInputs
+            && !(_lastRunInputs.addr && _lastRunInputs.addr.trim())
+            && STATE['lens'] && STATE['lens'].files && STATE['lens'].files.om) {
+          var _omEarlyText = STATE['lens'].files.om;
+          if (typeof _omEarlyText === 'string'
+              && _omEarlyText.length > 100
+              && !_omEarlyText.startsWith('[PDF')
+              && !_omEarlyText.startsWith('[No ')) {
+            try {
+              var _lensOMEarly = await _lensParseOM(_omEarlyText, _lastRunInputs.ask);
+              if (_lensOMEarly && _lensOMEarly.deal_metadata && _lensOMEarly.deal_metadata.address) {
+                _lastRunInputs.addr = _lensOMEarly.deal_metadata.address;
+                window._lensOMParsed = _lensOMEarly;
+                console.log('[RIDGE] LENS address backfilled from OM:', _lastRunInputs.addr);
+              }
+            } catch(eParse) {
+              console.warn('[RIDGE] LENS early OM parse error:', eParse.message);
+            }
+          }
+        }
         var autoTags = [skillNameSaved];
         if (skillNameSaved.toLowerCase().includes('loi')) {
           autoTags.push('loi-generated');
@@ -9127,7 +9149,7 @@ async function runRidgeAPI(skillName, prompt, runInputs, runToolId) {
                     showToast('⚠️ Scanned OM detected — text extraction failed. Use a text-based PDF or paste the OM directly.');
                     console.warn('[RIDGE] LENS OM Intelligence skipped — placeholder text detected');
                   } else if (_omRawText && _omRawText.length > 100) {
-                    var _lensOMParsed = await _lensParseOM(_omRawText, _lastRunInputs && _lastRunInputs.ask);
+                    var _lensOMParsed = window._lensOMParsed || await _lensParseOM(_omRawText, _lastRunInputs && _lastRunInputs.ask);
                     window._lensOMParsed = _lensOMParsed;
                     console.log('[RIDGE] _lensParseOM result:', _lensOMParsed ? 'populated' : 'NULL', _lensOMParsed);
                     if (_lensOMParsed) {
