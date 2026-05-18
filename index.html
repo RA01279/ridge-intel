@@ -1449,17 +1449,20 @@ var TOOLS = [
     prompt:(d)=>`Review this ${d.dtype||'CRE legal document'} for ${d.addr||'the subject deal'}.\n${d.focus?'Focus areas: '+d.focus+'\n':''}\n${d.doc1_text||'[Document uploaded]'}\n${d.doc2_text?'Secondary document:\n'+d.doc2_text+'\n':''}\nProduce:\n## DOCUMENT SUMMARY\nParties, purpose, key dates, transaction structure in 3–5 sentences.\n\n## KEY PROVISIONS TABLE\nTable: Section | Provision | Summary | Risk Level\n\n## RED FLAGS\nFor each flag: Section reference, what it says, why it's a problem, suggested fix or redline language.\n\n## RIDGE-SPECIFIC CONCERNS\nAnything that affects: earnest money refundability, financing contingency, assignment rights, seller reps on leases, waterfall/preferred return (if JV), prepayment/defeasance (if loan docs), termination rights (if PMA).\n\n## MISSING PROVISIONS\nAnything RIDGE typically requires that is absent from this document.\n\n## RECOMMENDED REDLINES\n3–5 specific changes with proposed language.`
   },
   {
-    id:'daily-signal', num:'11', icon:'📊', name:'DAILY SIGNAL',
-    badge:'Daily Prospects',
-    shortDesc:'Upload CoStar exports → 15 ranked prospects with owner contacts.',
-    desc:'Upload CoStar exports → 15 ranked prospects with owner contacts.',
-    uploads:[{id:'costar',label:'CoStar Reports Folder',hint:'Select your CoStar Reports folder — all XLSX files load automatically',icon:'📁',accept:'.xlsx',type:'xlsx',folder:true}],
+    id:'scout', num:'11', icon:'🛰️', name:'SCOUT',
+    badge:'Off-Market Sourcing', badgeBlue:true,
+    desc:'Pick a market and asset class. SCOUT scores CoStar properties deterministically, previews top 30, and only spends AI tokens after you approve. Every enriched claim cites a tool result.',
+    shortDesc:'CoStar folder → verified off-market prospects. Source-cited.',
+    uploads:[],
     fields:[
-      {row:[{id:'date',label:'Report Date',ph:'e.g. April 1, 2026'},{id:'notes',label:'Focus / Notes',ph:'e.g. Prioritize Savannah and NE Atlanta this week...'}]},
+      {row:[{id:'mkt',label:'Market',type:'select',opts:['Atlanta','Savannah','Dallas–Fort Worth','Houston','Austin']}]},
+      {row:[{id:'asset',label:'Asset Class',type:'select',opts:['Industrial','Flex','Office','Mixed-Use']}]},
+      {row:[{id:'sub',label:'Submarket',type:'select',opts:['All Submarkets']}]},
+      {row:[{id:'notes',label:'Focus / Notes',ph:'e.g. Prioritize >50k SF or distressed only'}]},
     ],
-    steps:['Parsing CoStar data...','Scoring vacancy signals...','Ranking prospects...','Identifying owner contacts...','Building report...'],
-    system:`You are DAILY SIGNAL, RIDGE's daily acquisition lead generator for Entrada Partners. Score and rank properties from CoStar export data using RIDGE's signal scoring system. RIDGE criteria: industrial and flex, $10M–$70M, ATL/SAV/DFW/HOU, IRR ≥14.75%. Be direct. Rank ruthlessly. Surface the best 15 prospects with owner contact info.`,
-    prompt:(d)=>`Run Daily Signal report for ${d.date||'today'}.\n${d.notes?'Focus: '+d.notes+'\n':''}\n${d.sourced?'PREVIOUSLY SOURCED — exclude these unless new signal:\n'+d.sourced+'\n\n':''}\n${d.costar_text?'CoStar data:\n'+d.costar_text:''}`
+    steps:['Parsing CoStar folder...','Scoring signals deterministically...','Pre-fetching context (DB + Voyage)...','Awaiting approval to enrich...','Enriching candidates (web_search/web_fetch)...','Synthesizing report...','Writing verified properties to database...'],
+    system:`You are SCOUT, RIDGE's off-market sourcing engine for Entrada Partners. You produce a ranked list of acquisition prospects from CoStar data, enriched with verified owner intelligence and distress signals. Every claim in your output must cite a tool result. Never fabricate owner names, dollar amounts, debt facts, or distress signals. Null is better than invented.`,
+    prompt: null // SCOUT runs its own pipeline via _scoutRunPipeline; buildTrigger returns __SCOUT_HANDLED__ sentinel
   },
   {
     id:'canvas', num:'12', icon:'🏗️', name:'CANVAS',
@@ -1708,8 +1711,47 @@ function renderTools() {
         _wfTierRows(); // set initial state: hide t2/t3
       }
     }
+
+    // SCOUT — folder integration banner + reactive Submarket dropdown
+    if (tool.id === 'scout') {
+      var scoutPanel = document.getElementById('panel-scout');
+      var scoutBody  = scoutPanel ? scoutPanel.querySelector('.panel-body') : null;
+      if (scoutBody && !document.getElementById('scout-folder-banner')) {
+        var banner = document.createElement('div');
+        banner.id = 'scout-folder-banner';
+        banner.style.cssText = 'margin:0 0 14px 0;padding:12px;background:#f0f4ff;border:1px solid #c5d2f0;border-radius:6px;font-size:12px;';
+        banner.innerHTML =
+          '<button id="scout-connect-folder-btn" onclick="_scoutConnectFolderClick()" ' +
+            'style="display:none;background:#1e2761;color:#fff;border:none;border-radius:4px;padding:8px 14px;font-size:12px;cursor:pointer;font-weight:600;">' +
+            '🔗 Connect CoStar Reports Folder</button>' +
+          '<div id="scout-folder-status" style="display:none;font-weight:600;"></div>';
+        scoutBody.insertBefore(banner, scoutBody.firstChild);
+
+        var reconnectWrap = document.createElement('div');
+        reconnectWrap.style.cssText = 'margin:8px 0 0 0;text-align:right;font-size:11px;';
+        reconnectWrap.innerHTML = '<a id="scout-reconnect-link" href="#" onclick="event.preventDefault();_scoutReconnectFolderClick();" ' +
+          'style="display:none;color:#2196f3;text-decoration:underline;cursor:pointer;">Reconnect folder</a>';
+        scoutBody.appendChild(reconnectWrap);
+      }
+
+      var mktEl = document.getElementById('f-scout-mkt');
+      var astEl = document.getElementById('f-scout-asset');
+      if (mktEl) mktEl.addEventListener('change', _scoutRefreshSubmarkets);
+      if (astEl) astEl.addEventListener('change', _scoutRefreshSubmarkets);
+
+      var scoutP = document.getElementById('panel-scout');
+      if (scoutP) {
+        var sobs = new MutationObserver(function(muts){
+          muts.forEach(function(m){
+            if (m.attributeName === 'class' && scoutP.classList.contains('open')) _scoutOnPanelOpen();
+          });
+        });
+        sobs.observe(scoutP, { attributes: true });
+      }
+    }
   });
 
+  // TODO(SCOUT Chunk 11 — Daily Signal retirement): remove this observer; panel-daily-signal element no longer exists after SCOUT replaced the registry entry. Safe no-op for now (getElementById returns null), but should be deleted in Chunk 11 alongside renderDSTracker.
   // Render DS tracker on panel open
   var dsPanel = document.getElementById('panel-daily-signal');
   if(dsPanel){
@@ -2192,6 +2234,7 @@ function handleMultiXLSX(toolId, uploadId, input) {
 }
 
 // ── Daily Signal sourced memory ──────────────────────────────
+// TODO(SCOUT Chunk 11 — Daily Signal retirement): rename DS_STATE_KEY → SCOUT_STATE_KEY and the helper functions below (getDailySignalState/saveDailySignalState/getDSTracker/etc.) to their SCOUT equivalents. Migrate localStorage key on load. Re-signal memory is preserved, not deleted.
 // ── DAILY SIGNAL — UNIFIED STATE ─────────────────────────────
 // Single versioned key replaces ridge_daily_sourced (newline string)
 // and ridge_ds_tracker (bare JSON object).
@@ -2377,6 +2420,7 @@ function getDSOutreachAngle(p) {
   };
 }
 
+// TODO(SCOUT Chunk 11 — Daily Signal retirement): rename exportDailySignalXLSX → exportScoutXLSX and refactor for the new properties schema (signal_score, conviction_tier, outreach_priority, etc.). The deterministic scoring logic in this function carries over conceptually — most rows just need column renames.
 async function exportDailySignalXLSX() {
   var rows = (STATE['daily-signal'] || {})._rows;
   if (!rows || !rows.length) { showToast('Select CoStar folder first'); return; }
@@ -3936,6 +3980,7 @@ If CONDITIONAL: state exactly what must be verified before proceeding
       p += 'Followed by: the top 3 specific actions the deal team should take in the next 48 hours.';
       return p;
 
+    // TODO(SCOUT Chunk 11 — Daily Signal retirement): remove this entire `case 'daily-signal'` block. SCOUT replaced the registry entry; this dispatcher case is unreachable unless an old saved-deal blob references the toolId. Replace with `case 'scout'` that returns __SCOUT_HANDLED__ sentinel (added in Chunk 8).
     case 'daily-signal':
       p = 'You are a senior acquisitions officer at Entrada Partners running the daily sourcing signal report.\n\n';
       p += 'REPORT DATE: ' + (d.date||new Date().toLocaleDateString()) + '\nFOCUS: ' + (d.notes||'All target markets') + '\n\n';
@@ -6009,6 +6054,7 @@ function _parseMarketPulseJSON(text) {
   }
 }
 
+// TODO(SCOUT Chunk 11 — Daily Signal retirement): remove this function. SCOUT writes structured property rows directly via _scoutSynthesize → properties table UPDATE; no markdown parsing required. The only remaining caller is the signal_reports auto-save at line ~8959, which is also being removed in Chunk 11.
 function _parseDailySignalProspects(text) {
   if (!text) return [];
   try {
@@ -8245,6 +8291,248 @@ function _detectMarket(inputs) {
   return null;
 }
 
+// ── SCOUT FOLDER PERMISSION + FILENAME INDEX ──────────────────────────
+// Persists the CoStar Reports folder handle via IndexedDB so the user does
+// not re-pick on every session. FileSystem Access API only (Chromium).
+// Filename convention: Market_Submarket_AssetClass.xlsx
+//   e.g. "Atlanta_South Atlanta_Industrial.xlsx"
+// On scan we build window._scoutFolderIndex of {market, submarket, asset_class, filename, fileHandle}.
+
+var _SCOUT_IDB_NAME   = 'ridge_filesystem';
+var _SCOUT_IDB_STORE  = 'handles';
+var _SCOUT_HANDLE_KEY = 'scout_costar_root';
+window._scoutFolderIndex = null;
+
+function _scoutFsSupported() {
+  return typeof window.showDirectoryPicker === 'function';
+}
+
+function _scoutIDBOpen() {
+  return new Promise(function(resolve, reject) {
+    var req = indexedDB.open(_SCOUT_IDB_NAME, 1);
+    req.onupgradeneeded = function() {
+      var db = req.result;
+      if (!db.objectStoreNames.contains(_SCOUT_IDB_STORE)) {
+        db.createObjectStore(_SCOUT_IDB_STORE);
+      }
+    };
+    req.onsuccess = function() { resolve(req.result); };
+    req.onerror   = function() { reject(req.error); };
+  });
+}
+
+async function _scoutIDBGet(key) {
+  try {
+    var db = await _scoutIDBOpen();
+    return await new Promise(function(resolve, reject) {
+      var tx  = db.transaction(_SCOUT_IDB_STORE, 'readonly');
+      var req = tx.objectStore(_SCOUT_IDB_STORE).get(key);
+      req.onsuccess = function() { resolve(req.result); };
+      req.onerror   = function() { reject(req.error); };
+    });
+  } catch(e) { console.warn('[SCOUT] IDB get failed:', e.message); return null; }
+}
+
+async function _scoutIDBSet(key, val) {
+  try {
+    var db = await _scoutIDBOpen();
+    return await new Promise(function(resolve, reject) {
+      var tx  = db.transaction(_SCOUT_IDB_STORE, 'readwrite');
+      var req = tx.objectStore(_SCOUT_IDB_STORE).put(val, key);
+      req.onsuccess = function() { resolve(); };
+      req.onerror   = function() { reject(req.error); };
+    });
+  } catch(e) { console.warn('[SCOUT] IDB set failed:', e.message); }
+}
+
+async function _scoutIDBDel(key) {
+  try {
+    var db = await _scoutIDBOpen();
+    return await new Promise(function(resolve, reject) {
+      var tx  = db.transaction(_SCOUT_IDB_STORE, 'readwrite');
+      var req = tx.objectStore(_SCOUT_IDB_STORE).delete(key);
+      req.onsuccess = function() { resolve(); };
+      req.onerror   = function() { reject(req.error); };
+    });
+  } catch(e) { console.warn('[SCOUT] IDB del failed:', e.message); }
+}
+
+async function _scoutVerifyFolderPermission(handle) {
+  if (!handle || typeof handle.queryPermission !== 'function') return false;
+  try {
+    var opts  = { mode: 'read' };
+    var state = await handle.queryPermission(opts);
+    if (state === 'granted') return true;
+    if (state === 'prompt') {
+      var req = await handle.requestPermission(opts);
+      return req === 'granted';
+    }
+    return false;
+  } catch(e) { console.warn('[SCOUT] permission check failed:', e.message); return false; }
+}
+
+async function _scoutGetFolderHandle() {
+  if (!_scoutFsSupported()) return null;
+  var handle = await _scoutIDBGet(_SCOUT_HANDLE_KEY);
+  if (!handle) return null;
+  var ok = await _scoutVerifyFolderPermission(handle);
+  return ok ? handle : null;
+}
+
+async function _scoutRequestFolderHandle() {
+  if (!_scoutFsSupported()) return null;
+  try {
+    var handle = await window.showDirectoryPicker({ mode: 'read', id: 'scout-costar-root' });
+    await _scoutIDBSet(_SCOUT_HANDLE_KEY, handle);
+    return handle;
+  } catch(e) {
+    if (e.name !== 'AbortError') console.warn('[SCOUT] folder picker failed:', e.message);
+    return null;
+  }
+}
+
+async function _scoutClearFolderHandle() {
+  await _scoutIDBDel(_SCOUT_HANDLE_KEY);
+  window._scoutFolderIndex = null;
+}
+
+// Filename pattern: <Market>_<Submarket>_<AssetClass>.xlsx — submarket may contain spaces/slashes/hyphens but not underscores
+var _SCOUT_FILE_RE = /^([^_]+)_(.+)_([^_]+)\.xlsx$/i;
+
+async function _scoutScanFolder(handle) {
+  if (!handle) return [];
+  var index = [];
+  try {
+    for await (var entry of handle.values()) {
+      if (entry.kind !== 'file') continue;
+      if (!/\.xlsx$/i.test(entry.name)) continue;
+      var m = entry.name.match(_SCOUT_FILE_RE);
+      if (!m) {
+        console.warn('[SCOUT] filename skipped (expected Market_Submarket_AssetClass.xlsx):', entry.name);
+        continue;
+      }
+      index.push({
+        market:      m[1].trim(),
+        submarket:   m[2].trim(),
+        asset_class: m[3].trim(),
+        filename:    entry.name,
+        fileHandle:  entry
+      });
+    }
+  } catch(e) { console.warn('[SCOUT] folder scan failed:', e.message); }
+  window._scoutFolderIndex = index;
+  return index;
+}
+
+function _scoutPopulateDropdowns() {
+  var mktSel   = document.getElementById('f-scout-mkt');
+  var assetSel = document.getElementById('f-scout-asset');
+  var subSel   = document.getElementById('f-scout-sub');
+  if (!mktSel || !assetSel || !subSel) return;
+
+  var STATIC_MKT   = ['Atlanta','Savannah','Dallas–Fort Worth','Houston','Austin'];
+  var STATIC_ASSET = ['Industrial','Flex','Office','Mixed-Use'];
+  var idx = window._scoutFolderIndex;
+
+  function fillSelect(el, opts, current) {
+    el.innerHTML = '';
+    opts.forEach(function(o) {
+      var op = document.createElement('option');
+      op.value = o; op.textContent = o;
+      if (o === current) op.selected = true;
+      el.appendChild(op);
+    });
+  }
+
+  var mktOpts   = STATIC_MKT.slice();
+  var assetOpts = STATIC_ASSET.slice();
+  if (idx && idx.length) {
+    var foldMkts   = Array.from(new Set(idx.map(function(r){ return r.market; })));
+    var foldAssets = Array.from(new Set(idx.map(function(r){ return r.asset_class; })));
+    var filteredMkt = STATIC_MKT.filter(function(m){ return foldMkts.indexOf(m) !== -1; });
+    var filteredAst = STATIC_ASSET.filter(function(a){ return foldAssets.indexOf(a) !== -1; });
+    if (filteredMkt.length) mktOpts   = filteredMkt;
+    if (filteredAst.length) assetOpts = filteredAst;
+  }
+  fillSelect(mktSel,   mktOpts,   mktSel.value);
+  fillSelect(assetSel, assetOpts, assetSel.value);
+  _scoutRefreshSubmarkets();
+}
+
+function _scoutRefreshSubmarkets() {
+  var mktSel   = document.getElementById('f-scout-mkt');
+  var assetSel = document.getElementById('f-scout-asset');
+  var subSel   = document.getElementById('f-scout-sub');
+  if (!mktSel || !assetSel || !subSel) return;
+  var idx = window._scoutFolderIndex;
+  var mkt = mktSel.value; var asset = assetSel.value;
+  var subs = ['All Submarkets'];
+  if (idx && idx.length && mkt && asset) {
+    var matching = idx.filter(function(r){ return r.market === mkt && r.asset_class === asset; });
+    var unique = Array.from(new Set(matching.map(function(r){ return r.submarket; }))).sort();
+    subs = subs.concat(unique);
+  }
+  var prev = subSel.value;
+  subSel.innerHTML = '';
+  subs.forEach(function(s) {
+    var op = document.createElement('option');
+    op.value = s; op.textContent = s;
+    if (s === prev) op.selected = true;
+    subSel.appendChild(op);
+  });
+  subSel.disabled = !(mkt && asset && idx && idx.length);
+}
+
+async function _scoutOnPanelOpen() {
+  var btn       = document.getElementById('scout-connect-folder-btn');
+  var status    = document.getElementById('scout-folder-status');
+  var reconnect = document.getElementById('scout-reconnect-link');
+
+  if (!_scoutFsSupported()) {
+    if (btn) btn.style.display = 'none';
+    if (status) {
+      status.style.display = 'block';
+      status.style.color = '#c0392b';
+      status.textContent = '⚠ SCOUT requires a Chromium-based browser (Chrome, Edge, Brave). Folder integration is not available in this browser.';
+    }
+    if (reconnect) reconnect.style.display = 'none';
+    return;
+  }
+
+  var handle = await _scoutGetFolderHandle();
+  if (!handle) {
+    if (btn)       btn.style.display       = 'inline-block';
+    if (status)    status.style.display    = 'none';
+    if (reconnect) reconnect.style.display = 'none';
+    _scoutPopulateDropdowns();
+    return;
+  }
+
+  if (btn) btn.style.display = 'none';
+  if (status) {
+    status.style.display = 'block';
+    status.style.color   = '#1b5e20';
+    status.textContent   = '✓ Folder connected: ' + handle.name + ' — scanning...';
+  }
+  if (reconnect) reconnect.style.display = 'inline';
+
+  var index = await _scoutScanFolder(handle);
+  _scoutPopulateDropdowns();
+  if (status) {
+    status.textContent = '✓ ' + handle.name + ' — ' + index.length + ' file' + (index.length === 1 ? '' : 's') + ' indexed';
+  }
+}
+
+async function _scoutConnectFolderClick() {
+  var handle = await _scoutRequestFolderHandle();
+  if (handle) await _scoutOnPanelOpen();
+}
+
+async function _scoutReconnectFolderClick() {
+  await _scoutClearFolderHandle();
+  await _scoutConnectFolderClick();
+}
+
 function _hEsc(s) {
   return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
@@ -8955,6 +9243,7 @@ async function runRidgeAPI(skillName, prompt, runInputs, runToolId) {
             }
           })(_soId, _lastRunToolId);
         }
+// TODO(SCOUT Chunk 11 — Daily Signal retirement): remove this signal_reports auto-save block entirely. SCOUT does not write to signal_reports (deprecated table comment added in Chunk 1 migration). The check `skillNameSaved.toLowerCase().includes('signal')` was Daily-Signal-specific — SCOUT writes structured property rows in its dedicated post-run block instead.
 // Auto-save to signal_reports table from Daily Signal runs
         if (skillNameSaved.toLowerCase().includes('signal')) {
           try {
