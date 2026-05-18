@@ -8879,7 +8879,7 @@ async function runRidgeAPI(skillName, prompt, runInputs, runToolId) {
       var outputText = document.getElementById('ridge-panel-content').innerText;
       var skillNameSaved = document.getElementById('ridge-panel-skill-name').textContent;
       console.log('Supabase post-run block entered — skill:', skillNameSaved, '| _sbOk:', _sbOk, '| _sb:', !!_sb);
-      if (_lastRunToolId !== 'market-pulse' && _lastRunToolId !== 'lease-stack' && _lastRunToolId !== 'lease-compare') {
+      if (_lastRunToolId !== 'market-pulse') {
       try {
         // ── LENS pre-parse: backfill address from OM if user left field blank ──
         if (_lastRunToolId === 'lens'
