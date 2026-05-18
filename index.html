@@ -3528,6 +3528,9 @@ async function runTool(toolId) {
   }
 
   var prompt = await buildTrigger(toolId, d);
+  if (prompt === '__SCOUT_HANDLED__') {
+    return _scoutRunPipeline(d);
+  }
   var skillName = tool ? tool.name : 'PIPELINE';
   runRidgeAPI(skillName, prompt, d, toolId);
 }
@@ -3980,7 +3983,10 @@ If CONDITIONAL: state exactly what must be verified before proceeding
       p += 'Followed by: the top 3 specific actions the deal team should take in the next 48 hours.';
       return p;
 
-    // TODO(SCOUT Chunk 11 — Daily Signal retirement): remove this entire `case 'daily-signal'` block. SCOUT replaced the registry entry; this dispatcher case is unreachable unless an old saved-deal blob references the toolId. Replace with `case 'scout'` that returns __SCOUT_HANDLED__ sentinel (added in Chunk 8).
+    case 'scout':
+      return '__SCOUT_HANDLED__';
+
+    // TODO(SCOUT Chunk 11 — Daily Signal retirement): remove this entire `case 'daily-signal'` block. SCOUT replaced the registry entry; this dispatcher case is unreachable unless an old saved-deal blob references the toolId. The replacement `case 'scout'` lives directly above this comment.
     case 'daily-signal':
       p = 'You are a senior acquisitions officer at Entrada Partners running the daily sourcing signal report.\n\n';
       p += 'REPORT DATE: ' + (d.date||new Date().toLocaleDateString()) + '\nFOCUS: ' + (d.notes||'All target markets') + '\n\n';
@@ -8424,6 +8430,173 @@ async function _scoutScanFolder(handle) {
   return index;
 }
 
+// Smart column resolver — survives CoStar header drift via multi-key fallback per logical field.
+// Returns a full property object, or null if street address is missing (the one hard-required field).
+// Daily Signal's failure mode was a rigid single-header lookup; SCOUT enumerates known aliases.
+function _scoutResolveColumns(headers, row, market) {
+  var idx = {};
+  headers.forEach(function(h, i) {
+    if (h) idx[String(h).toLowerCase().trim()] = i;
+  });
+
+  var FIELD_KEYS = {
+    street:           ['property address', 'address', 'street address'],
+    city:             ['city', 'property city'],
+    building_sf:      ['rba', 'rentable building area', 'building sf', 'total sf', 'gba'],
+    available_sf:     ['total available space', 'available sf', 'available space'],
+    asking_rent_psf:  ['rent/sf/yr', 'asking rent', 'rent psf', 'rent/sf', 'asking rent/sf'],
+    submarket:        ['submarket name', 'submarket'],
+    last_sale_date:   ['last sale date', 'sale date', 'recorded sale date'],
+    last_sale_price:  ['last sale price', 'sale price', 'recorded sale price'],
+    percent_leased:   ['percent leased', '% leased', 'pct leased', 'leased %', 'occupancy %'],
+    year_built:       ['year built', 'built'],
+    year_renovated:   ['year renovated', 'renovated', 'year reno', 'last renovated'],
+    tenancy:          ['tenancy', 'single/multi'],
+    ceiling_height:   ['ceiling ht', 'clear height', 'ceiling height', 'min ceiling height'],
+    loading_docks:    ['number of loading docks', 'loading docks', 'docks'],
+    owner_name:       ['recorded owner name', 'owner name', 'owner'],
+    owner_address:    ['recorded owner address', 'owner address', 'owner mailing address'],
+    owner_csz:        ['recorded owner city state zip', 'owner city state zip', 'owner csz']
+  };
+
+  function getField(name) {
+    var keys = FIELD_KEYS[name] || [];
+    for (var k = 0; k < keys.length; k++) {
+      var i = idx[keys[k].toLowerCase()];
+      if (typeof i === 'number' && row[i] !== undefined && row[i] !== null && row[i] !== '') {
+        return row[i];
+      }
+    }
+    return null;
+  }
+
+  // Numeric helpers — preserve zero AND strip CoStar comma/currency formatting.
+  // "125,000" → 125000, "$3,250,000" → 3250000, 0 → 0, null/empty → null.
+  function _scoutCleanNumStr(v) {
+    if (v == null) return null;
+    var s = String(v).replace(/[^0-9.\-]/g, '');
+    return s.length ? s : null;
+  }
+  function numI(name) {
+    var s = _scoutCleanNumStr(getField(name));
+    if (s == null) return null;
+    var n = parseInt(s, 10);
+    return Number.isFinite(n) ? n : null;
+  }
+  function numF(name) {
+    var s = _scoutCleanNumStr(getField(name));
+    if (s == null) return null;
+    var n = parseFloat(s);
+    return Number.isFinite(n) ? n : null;
+  }
+
+  var street = getField('street');
+  if (!street) {
+    console.warn('[SCOUT] row skipped — no street address');
+    return null;
+  }
+  var city = getField('city');
+  var STATE_BY_MARKET = {
+    'Atlanta': 'GA', 'Savannah': 'GA',
+    'Dallas–Fort Worth': 'TX', 'Houston': 'TX', 'Austin': 'TX'
+  };
+  var state = STATE_BY_MARKET[market] || '';
+  var fullAddress = String(street).trim()
+    + (city  ? ', ' + String(city).trim() : '')
+    + (state ? ', ' + state               : '');
+
+  var pctLeased  = numF('percent_leased');
+  var vacancyPct = (pctLeased == null) ? null : Math.max(0, 100 - pctLeased);
+
+  return {
+    address:         fullAddress,
+    street:          String(street).trim(),
+    city:            city ? String(city).trim() : null,
+    state:           state || null,
+    market:          market,
+    submarket:       getField('submarket'),
+    building_sf:     numI('building_sf'),
+    available_sf:    numI('available_sf'),
+    asking_rent_psf: numF('asking_rent_psf'),
+    last_sale_date:  getField('last_sale_date'),
+    last_sale_price: numF('last_sale_price'),
+    percent_leased:  pctLeased,
+    vacancy_pct:     vacancyPct,
+    year_built:      numI('year_built'),
+    year_renovated:  numI('year_renovated'),
+    tenancy:         getField('tenancy'),
+    ceiling_height:  numF('ceiling_height'),
+    loading_docks:   numI('loading_docks'),
+    owner_name:      getField('owner_name'),
+    owner_address:   getField('owner_address'),
+    owner_csz:       getField('owner_csz'),
+    _source_file:    null
+  };
+}
+
+// Reads matching XLSX files from window._scoutFolderIndex via SheetJS.
+// Filters by market + assetClass (always), and by submarket when provided.
+// Returns { rows, filesProcessed, errors }; caches rows on window._scoutParsedRows.
+async function _scoutParseFolder(market, assetClass, submarket) {
+  var rows           = [];
+  var filesProcessed = [];
+  var errors         = [];
+
+  if (!window._scoutFolderIndex || !window._scoutFolderIndex.length) {
+    errors.push('No folder connected');
+    return { rows: rows, filesProcessed: filesProcessed, errors: errors };
+  }
+
+  var matches = window._scoutFolderIndex.filter(function(e) {
+    return e.market === market && e.asset_class === assetClass;
+  });
+  if (submarket && submarket !== 'All Submarkets') {
+    matches = matches.filter(function(e) { return e.submarket === submarket; });
+  }
+  if (!matches.length) {
+    errors.push('No files match selection');
+    return { rows: rows, filesProcessed: filesProcessed, errors: errors };
+  }
+
+  for (var i = 0; i < matches.length; i++) {
+    var entry = matches[i];
+    try {
+      var file      = await entry.fileHandle.getFile();
+      var buf       = await file.arrayBuffer();
+      var wb        = XLSX.read(buf, { type: 'array' });
+      var sheetName = wb.SheetNames[0];
+      var sheet     = wb.Sheets[sheetName];
+      var raw       = XLSX.utils.sheet_to_json(sheet, { defval: null, header: 1 });
+      if (!raw || raw.length < 2) {
+        errors.push({ file: entry.filename, error: 'Empty sheet' });
+        continue;
+      }
+      var headers = raw[0] || [];
+      var count   = 0;
+      for (var r = 1; r < raw.length; r++) {
+        var prop = null;
+        try {
+          prop = _scoutResolveColumns(headers, raw[r], market);
+        } catch (rowErr) {
+          console.warn('[SCOUT] row resolve failed in ' + entry.filename + ' row ' + r + ':', rowErr.message);
+          continue;
+        }
+        if (prop) {
+          prop._source_file = entry.filename;
+          rows.push(prop);
+          count++;
+        }
+      }
+      filesProcessed.push({ filename: entry.filename, count: count });
+    } catch (fileErr) {
+      errors.push({ file: entry.filename, error: fileErr.message });
+    }
+  }
+
+  window._scoutParsedRows = rows;
+  return { rows: rows, filesProcessed: filesProcessed, errors: errors };
+}
+
 function _scoutPopulateDropdowns() {
   var mktSel   = document.getElementById('f-scout-mkt');
   var assetSel = document.getElementById('f-scout-asset');
@@ -8531,6 +8704,48 @@ async function _scoutConnectFolderClick() {
 async function _scoutReconnectFolderClick() {
   await _scoutClearFolderHandle();
   await _scoutConnectFolderClick();
+}
+
+// Minimal pipeline orchestrator (Chunk 3). Validates inputs, re-scans the folder
+// for freshness, calls _scoutParseFolder, logs the parse result. Future chunks
+// extend this with scoring (Chunk 4), preview gate (Chunk 5), pre-fetch +
+// enrichment + synthesis (Chunks 6–7), and the database write (Chunk 8).
+async function _scoutRunPipeline(d) {
+  var market     = d.mkt;
+  var assetClass = d.asset;
+  var submarket  = d.sub || 'All Submarkets';
+
+  if (!market || !assetClass) {
+    showToast('SCOUT: select Market and Asset Class first');
+    return;
+  }
+
+  var handle = await _scoutGetFolderHandle();
+  if (!handle) {
+    showToast('SCOUT: connect CoStar Reports folder first');
+    return;
+  }
+
+  // Re-scan in case folder contents changed since panel open
+  await _scoutScanFolder(handle);
+
+  showToast('SCOUT: parsing files...');
+  var result = await _scoutParseFolder(market, assetClass, submarket);
+
+  console.log('[SCOUT] parse result:', result);
+  console.log('[SCOUT] sample parsed rows (first 3):', result.rows.slice(0, 3));
+
+  if (result.errors.length) {
+    console.warn('[SCOUT] parse errors:', result.errors);
+  }
+
+  if (result.rows.length === 0) {
+    showToast('SCOUT: 0 properties parsed — check console for details');
+    return;
+  }
+
+  showToast('SCOUT: ' + result.rows.length + ' properties parsed from '
+    + result.filesProcessed.length + ' file(s) — scoring will be added in Chunk 4');
 }
 
 function _hEsc(s) {
