@@ -4771,7 +4771,7 @@ async function _portfolioMapLoad() {
           skill_name: 'PORTFOLIO MAP',
           output: 'Portfolio map rendered: ' + props.length + ' properties loaded. Filters \u2014 market: ' + (market||'All') + ', tier: ' + (tier||'All') + ', min score: ' + minScore + '.',
           inputs: { market: market, tier: tier, min_score: minScore, property_count: props.length },
-          address: 'Portfolio Map \u2014 ' + (market !== 'All' ? market : 'All Markets'),
+          address: null,
           market: market !== 'All' ? market : null,
           tags: ['portfolio-map'],
           loi_generated: false,
