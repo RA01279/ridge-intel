@@ -8965,6 +8965,153 @@ function _scoutScore(property, batchContext) {
   return { score: score, conviction_tier: tier, flags: flags };
 }
 
+// ── PRE-FETCH (Chunk 5) ──────────────────────────────────────────────────
+// Pulls historical context for the top 30 scored candidates BEFORE any AI
+// fires. Voyage semantic search across prior skill_outputs + Supabase lookups
+// against properties (prior SCOUT runs) and deals (pipeline overlap).
+// Result attached as p._prefetched; consumed by the preview UI (Chunk 6) and
+// the enrichment agent loop (Chunk 7).
+//
+// RPCs in use (both verified live via Supabase MCP — no fallback path needed):
+//   match_skill_outputs(query_embedding vector, match_threshold float, match_count int)
+//     returns (id, skill_name, address, output, similarity)
+
+// Batch-embed via Voyage. One POST with N input strings (Voyage tier accepts
+// up to 128 per call). Returns array of vectors aligned to input order.
+// On batch failure, falls back to sequential _generateEmbedding (preserves
+// existing 3-attempt 429/5xx backoff).
+async function _scoutBatchEmbed(texts) {
+  if (!_voyageKey || !texts || !texts.length) return [];
+  var cleaned = texts.map(function(t) { return String(t || '').slice(0, 4000); });
+  var maxAttempts = 3;
+  var lastStatus = 0;
+  for (var attempt = 0; attempt < maxAttempts; attempt++) {
+    if (attempt > 0) {
+      var backoff = (lastStatus === 429) ? Math.pow(2, attempt) * 5000 : Math.pow(2, attempt) * 500;
+      if (attempt === maxAttempts - 1 && lastStatus === 429) break;
+      await new Promise(function(r) { setTimeout(r, backoff); });
+    }
+    try {
+      var resp = await fetch('https://api.voyageai.com/v1/embeddings', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', 'Authorization': 'Bearer ' + _voyageKey },
+        body: JSON.stringify({ model: 'voyage-3-large', input: cleaned })
+      });
+      lastStatus = resp.status; _lastVoyageStatus = resp.status;
+      if (resp.status === 429 || resp.status >= 500) continue;
+      if (!resp.ok) break;
+      var data = await resp.json();
+      if (data.data && data.data.length === cleaned.length) {
+        return data.data.map(function(d) { return d.embedding; });
+      }
+      break;
+    } catch(e) { lastStatus = 0; }
+  }
+  console.warn('[SCOUT] batch embed failed; falling back to sequential single-text embeds');
+  var out = [];
+  for (var i = 0; i < cleaned.length; i++) {
+    out.push(await _generateEmbedding(cleaned[i]));
+  }
+  return out;
+}
+
+// Embed each candidate as "address owner_name city" and semantic-search prior
+// skill_outputs via the match_skill_outputs RPC. Returns:
+//   { [address]: [{ skill_output_id, similarity, title, snippet }] }
+async function _scoutPrefetchVoyage(candidates) {
+  var out = {};
+  if (!_sb || !_sbOk || !_voyageKey || !candidates.length) return out;
+  var texts = candidates.map(function(p) {
+    return [p.address, p.owner_name || '', p.city || ''].filter(Boolean).join(' ');
+  });
+  var vectors = await _scoutBatchEmbed(texts);
+  var rpcs = candidates.map(function(p, i) {
+    var vec = vectors[i];
+    if (!vec) return Promise.resolve({ data: null });
+    return _sb.rpc('match_skill_outputs', {
+      query_embedding: '[' + vec.join(',') + ']',
+      match_threshold: 0.65,
+      match_count: 5
+    });
+  });
+  var results = await Promise.allSettled(rpcs);
+  results.forEach(function(r, i) {
+    var addr = candidates[i].address;
+    var rows = (r.status === 'fulfilled' && r.value && r.value.data) || [];
+    out[addr] = rows.map(function(row) {
+      var text = String(row.output || '');
+      return {
+        skill_output_id: row.id,
+        similarity:      row.similarity,
+        title:           text.slice(0, 100),
+        snippet:         text.slice(0, 200)
+      };
+    });
+  });
+  return out;
+}
+
+// Look up each candidate's address against properties (prior SCOUT run) and
+// deals (pipeline overlap). Case-insensitive via ilike with LIKE-special chars
+// escaped. Per-candidate failures degrade to null without blocking the batch.
+// Returns: { [address]: { priorRun, pipelineOverlap } }
+async function _scoutPrefetchSupabase(candidates) {
+  var out = {};
+  if (!_sb || !_sbOk || !candidates.length) return out;
+
+  function escIlike(s) { return String(s || '').replace(/[\\%_]/g, '\\$&'); }
+
+  var calls = candidates.map(function(p) {
+    var addr    = p.address;
+    var addrEsc = escIlike(addr);
+    return Promise.allSettled([
+      _sb.from('properties')
+         .select('last_scout_run_at, outreach_priority, outreach_angle, signal_score')
+         .ilike('address', addrEsc).limit(1).maybeSingle(),
+      _sb.from('deals')
+         .select('id, stage, status')
+         .ilike('address', addrEsc).limit(1).maybeSingle()
+    ]).then(function(res) {
+      var propRes = res[0]; var dealRes = res[1];
+      var priorRun = (propRes.status === 'fulfilled' && propRes.value && propRes.value.data
+                      && propRes.value.data.last_scout_run_at) ? propRes.value.data : null;
+      var pipelineOverlap = (dealRes.status === 'fulfilled' && dealRes.value && dealRes.value.data
+                             && dealRes.value.data.id)
+        ? { deal_id: dealRes.value.data.id, stage: dealRes.value.data.stage, status: dealRes.value.data.status }
+        : null;
+      if (propRes.status === 'rejected') console.warn('[SCOUT] prefetch properties failed for', addr, propRes.reason && propRes.reason.message);
+      if (dealRes.status === 'rejected') console.warn('[SCOUT] prefetch deals failed for', addr, dealRes.reason && dealRes.reason.message);
+      out[addr] = { priorRun: priorRun, pipelineOverlap: pipelineOverlap };
+    });
+  });
+  await Promise.allSettled(calls);
+  return out;
+}
+
+// Orchestrator: runs Voyage and Supabase prefetch in parallel, attaches
+// results to each candidate as p._prefetched. Never blocks the pipeline on
+// a failure — missing context degrades gracefully (synthesis prompt in
+// Chunk 7 will note absence rather than fabricating to fill the gap).
+async function _scoutPrefetch(candidates) {
+  var pair = await Promise.all([
+    _scoutPrefetchVoyage(candidates).catch(function(e) { console.warn('[SCOUT] voyage prefetch failed:', e.message); return {}; }),
+    _scoutPrefetchSupabase(candidates).catch(function(e) { console.warn('[SCOUT] supabase prefetch failed:', e.message); return {}; })
+  ]);
+  var voyageResults   = pair[0];
+  var supabaseResults = pair[1];
+
+  return candidates.map(function(p) {
+    var sb = supabaseResults[p.address] || {};
+    return Object.assign({}, p, {
+      _prefetched: {
+        voyageMatches:   voyageResults[p.address] || [],
+        priorScoutRun:   sb.priorRun || null,
+        pipelineOverlap: sb.pipelineOverlap || null
+      }
+    });
+  });
+}
+
 function _scoutPopulateDropdowns() {
   var mktSel   = document.getElementById('f-scout-mkt');
   var assetSel = document.getElementById('f-scout-asset');
@@ -9165,7 +9312,33 @@ async function _scoutRunPipeline(d) {
   showToast('SCOUT: ' + scored.length + ' scored — HIGH ' + (tierCounts.HIGH || 0)
     + ' / MED ' + (tierCounts.MEDIUM || 0)
     + ' / WATCH ' + (tierCounts.WATCH || 0)
-    + ' — preview in Chunk 6');
+    + ' — pre-fetching context...');
+
+  // Pre-fetch context for top 30 candidates (Voyage + Supabase, no AI yet, ~$0.001).
+  function voyageMatchTotal(arr) {
+    return arr.reduce(function(acc, p) { return acc + p._prefetched.voyageMatches.length; }, 0);
+  }
+  var top30    = scored.slice(0, 30);
+  var enriched = await _scoutPrefetch(top30);
+  window._scoutEnrichedCandidates = enriched;
+
+  console.log('[SCOUT] pre-fetched top 30 with context:', enriched.slice(0, 5).map(function(p) {
+    return {
+      address:        p.address,
+      score:          p.signal_score,
+      voyage_matches: p._prefetched.voyageMatches.length,
+      prior_run:      !!p._prefetched.priorScoutRun,
+      in_pipeline:    !!p._prefetched.pipelineOverlap
+    };
+  }));
+
+  var pipelineCount = enriched.filter(function(p) { return p._prefetched.pipelineOverlap; }).length;
+  var priorCount    = enriched.filter(function(p) { return p._prefetched.priorScoutRun;   }).length;
+
+  showToast('SCOUT: pre-fetched top 30 — '
+    + voyageMatchTotal(enriched) + ' Voyage matches, '
+    + priorCount + ' seen before, '
+    + pipelineCount + ' already in pipeline — preview UI in Chunk 6');
 }
 
 function _hEsc(s) {
