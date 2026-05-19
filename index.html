@@ -409,6 +409,23 @@ footer{border-top:1px solid var(--border);padding:20px 24px;text-align:center;co
 /* LEASE LIBRARY */
 .ll-section{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:16px 20px;}
 .ll-sec-title{font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--blue);margin-bottom:12px;}
+/* SCOUT PREVIEW (Chunk 6) */
+.scout-preview-wrap{margin-top:16px;padding:14px;background:#fff;border:1px solid #e0e0e0;border-radius:8px;}
+.scout-preview-header h3{margin:0 0 8px 0;font-size:14px;font-weight:600;color:#1e2761;}
+.scout-preview-meta{font-size:11px;color:#555;margin-bottom:12px;}
+.scout-preview-table{width:100%;border-collapse:collapse;font-size:11px;}
+.scout-preview-table th{background:#1e2761;color:#fff;padding:6px 8px;text-align:left;font-weight:600;}
+.scout-preview-table td{padding:6px 8px;border-bottom:1px solid #eee;vertical-align:middle;}
+.scout-preview-table tr:hover{background:#f8faff;}
+.scout-tier-high{background:#1b5e20;color:#fff;padding:2px 6px;border-radius:3px;font-weight:600;font-size:10px;}
+.scout-tier-medium{background:#b45309;color:#fff;padding:2px 6px;border-radius:3px;font-weight:600;font-size:10px;}
+.scout-tier-watch{background:#555;color:#fff;padding:2px 6px;border-radius:3px;font-weight:600;font-size:10px;}
+.scout-context-pill{display:inline-block;margin-right:4px;font-size:10px;cursor:help;}
+.scout-preview-actions{margin-top:12px;display:flex;gap:8px;align-items:center;}
+.scout-preview-actions button.primary{background:#1e2761;color:#fff;border:none;padding:8px 14px;border-radius:4px;cursor:pointer;font-weight:600;}
+.scout-preview-actions button.primary:disabled{background:#999;cursor:not-allowed;}
+.scout-preview-actions button.secondary{background:#fff;color:#1e2761;border:1px solid #1e2761;padding:8px 14px;border-radius:4px;cursor:pointer;}
+.scout-preview-cost{font-size:11px;color:#888;margin-left:auto;}
 </style>
 </head>
 <body>
@@ -9112,6 +9129,200 @@ async function _scoutPrefetch(candidates) {
   });
 }
 
+// ── PREVIEW UI (Chunk 6) ─────────────────────────────────────────────────
+// Renders the top 30 ranked + pre-fetched candidates as a table with a
+// checkbox per row. User reviews, deselects junk, clicks Approve to Enrich
+// to gate the AI spend. No AI fires until Approve is clicked.
+
+function _scoutRenderPreview(enrichedCandidates) {
+  var results = document.getElementById('results-scout');
+  var body    = document.getElementById('rout-scout');
+  var title   = document.getElementById('rtitle-scout');
+  if (!results || !body) return;
+
+  // Initialize selection state — default checked, except pipeline overlaps
+  STATE['scout'] = STATE['scout'] || {};
+  STATE['scout']._selected = enrichedCandidates.map(function(p) {
+    return !p._prefetched.pipelineOverlap;
+  });
+
+  var tierCounts = enrichedCandidates.reduce(function(acc, p) {
+    acc[p.conviction_tier] = (acc[p.conviction_tier] || 0) + 1;
+    return acc;
+  }, {});
+
+  function tierBadge(tier) {
+    var cls = tier === 'HIGH'   ? 'scout-tier-high'
+            : tier === 'MEDIUM' ? 'scout-tier-medium'
+            :                     'scout-tier-watch';
+    return '<span class="' + cls + '">' + _hEsc(tier) + '</span>';
+  }
+
+  function contextPills(p) {
+    var pills = '';
+    var vCount = p._prefetched.voyageMatches.length;
+    if (vCount > 0) {
+      pills += '<span class="scout-context-pill" title="' + vCount + ' semantic match'
+        + (vCount === 1 ? '' : 'es') + ' in prior skill outputs">🔁 ' + vCount + '</span>';
+    }
+    if (p._prefetched.priorScoutRun) {
+      var when = p._prefetched.priorScoutRun.last_scout_run_at
+        ? new Date(p._prefetched.priorScoutRun.last_scout_run_at).toLocaleDateString() : '';
+      pills += '<span class="scout-context-pill" title="Previously sourced — last run ' + _hEsc(when) + '">👀</span>';
+    }
+    if (p._prefetched.pipelineOverlap) {
+      pills += '<span class="scout-context-pill" title="Already in pipeline — stage: '
+        + _hEsc(p._prefetched.pipelineOverlap.stage || 'unknown') + '">📋</span>';
+    }
+    return pills || '<span style="color:#bbb;">—</span>';
+  }
+
+  // Prettify flag names: strip _flag suffix, underscores → spaces, title-case words.
+  // private_owner_flag → "Private Owner", below_market_rent_flag → "Below Market Rent"
+  function activeFlags(p) {
+    var flags = Object.keys(p._flags || {})
+      .filter(function(k) { return p._flags[k] === true; })
+      .map(function(k) {
+        return k.replace(/_flag$/, '').replace(/_/g, ' ').replace(/\b\w/g, function(c) { return c.toUpperCase(); });
+      });
+    return flags.length ? flags.join(', ') : '<span style="color:#bbb;">—</span>';
+  }
+
+  function fmtNum(n) { return (n == null) ? '—' : Number(n).toLocaleString(); }
+
+  var rows = enrichedCandidates.map(function(p, i) {
+    var checked = STATE['scout']._selected[i] ? 'checked' : '';
+    return '<tr>'
+      + '<td><input type="checkbox" class="scout-row-cb" id="scout-row-' + i + '" data-idx="' + i + '" ' + checked + '></td>'
+      + '<td>' + (i + 1) + '</td>'
+      + '<td title="' + _hEsc(p.address) + '">' + _hEsc(p.address) + '</td>'
+      + '<td>' + _hEsc(p.submarket || '—') + '</td>'
+      + '<td>' + fmtNum(p.building_sf) + '</td>'
+      + '<td><strong>' + p.signal_score + '</strong></td>'
+      + '<td>' + tierBadge(p.conviction_tier) + '</td>'
+      + '<td>' + activeFlags(p) + '</td>'
+      + '<td>' + contextPills(p) + '</td>'
+      + '</tr>';
+  }).join('');
+
+  var total           = enrichedCandidates.length;
+  var initialSelected = STATE['scout']._selected.filter(Boolean).length;
+
+  var html = ''
+    + '<div class="scout-preview-wrap">'
+    +   '<div class="scout-preview-header">'
+    +     '<h3>Top ' + total + ' Candidates — Review & Approve</h3>'
+    +     '<div class="scout-preview-meta">'
+    +       '<span>HIGH: ' + (tierCounts.HIGH || 0) + '</span> · '
+    +       '<span>MEDIUM: ' + (tierCounts.MEDIUM || 0) + '</span> · '
+    +       '<span>WATCH: ' + (tierCounts.WATCH || 0) + '</span>'
+    +       '<span id="scout-selected-count"> · ' + initialSelected + ' of ' + total + ' selected</span>'
+    +     '</div>'
+    +   '</div>'
+    +   '<table class="scout-preview-table">'
+    +     '<thead><tr>'
+    +       '<th><input type="checkbox" id="scout-select-all"' + (initialSelected === total ? ' checked' : '') + '></th>'
+    +       '<th>#</th><th>Address</th><th>Submarket</th><th>SF</th>'
+    +       '<th>Score</th><th>Tier</th><th>Signals</th><th>Context</th>'
+    +     '</tr></thead>'
+    +     '<tbody>' + rows + '</tbody>'
+    +   '</table>'
+    +   '<div class="scout-preview-actions">'
+    +     '<button id="scout-approve-btn" class="primary"' + (initialSelected === 0 ? ' disabled' : '') + '>⚡ Approve to Enrich (' + initialSelected + ' selected)</button>'
+    +     '<button id="scout-select-toggle" class="secondary">' + (initialSelected === total ? 'Deselect All' : 'Select All') + '</button>'
+    +     '<div class="scout-preview-cost">Estimated cost: ~$0.50–$1.00 in AI tokens</div>'
+    +   '</div>'
+    + '</div>';
+
+  if (title) title.textContent = 'SCOUT — Top ' + total + ' Candidates';
+  body.innerHTML = html;
+  results.classList.add('show');
+
+  // Wire row checkboxes
+  body.querySelectorAll('.scout-row-cb').forEach(function(cb) {
+    cb.addEventListener('change', function() {
+      _scoutHandleCheckboxToggle(parseInt(cb.getAttribute('data-idx'), 10));
+    });
+  });
+
+  // Select-all header checkbox
+  var selectAll = document.getElementById('scout-select-all');
+  if (selectAll) {
+    selectAll.addEventListener('change', function() {
+      var all = selectAll.checked;
+      STATE['scout']._selected = STATE['scout']._selected.map(function() { return all; });
+      body.querySelectorAll('.scout-row-cb').forEach(function(cb) { cb.checked = all; });
+      _scoutUpdatePreviewCounts();
+    });
+  }
+
+  // Select/Deselect toggle button — inverts based on current state
+  var toggleBtn = document.getElementById('scout-select-toggle');
+  if (toggleBtn) {
+    toggleBtn.addEventListener('click', function() {
+      var currentlySelected = STATE['scout']._selected.filter(Boolean).length;
+      var target = currentlySelected < STATE['scout']._selected.length;
+      STATE['scout']._selected = STATE['scout']._selected.map(function() { return target; });
+      body.querySelectorAll('.scout-row-cb').forEach(function(cb) { cb.checked = target; });
+      var sa = document.getElementById('scout-select-all');
+      if (sa) sa.checked = target;
+      _scoutUpdatePreviewCounts();
+    });
+  }
+
+  // Approve button — kicks off Chunk 7's agent loop (placeholder for now)
+  var approveBtn = document.getElementById('scout-approve-btn');
+  if (approveBtn) approveBtn.addEventListener('click', _scoutApproveToEnrich);
+}
+
+// Recomputes selection counts + dependent UI bits (button label, toggle label, header).
+function _scoutUpdatePreviewCounts() {
+  var sel       = (STATE['scout'] && STATE['scout']._selected) || [];
+  var selected  = sel.filter(Boolean).length;
+  var total     = sel.length;
+  var countEl   = document.getElementById('scout-selected-count');
+  var btn       = document.getElementById('scout-approve-btn');
+  var toggle    = document.getElementById('scout-select-toggle');
+  var selectAll = document.getElementById('scout-select-all');
+  if (countEl)   countEl.textContent = ' · ' + selected + ' of ' + total + ' selected';
+  if (btn) {
+    btn.textContent = '⚡ Approve to Enrich (' + selected + ' selected)';
+    btn.disabled    = selected === 0;
+  }
+  if (toggle)    toggle.textContent = (selected === total) ? 'Deselect All' : 'Select All';
+  if (selectAll) selectAll.checked  = (selected === total);
+}
+
+function _scoutHandleCheckboxToggle(idx) {
+  var cb = document.getElementById('scout-row-' + idx);
+  if (!cb) return;
+  STATE['scout']._selected[idx] = cb.checked;
+  _scoutUpdatePreviewCounts();
+}
+
+// Chunk 6 placeholder — Chunk 7 replaces the launch portion with the real
+// enrichment agent loop. For now, validates selection and persists it.
+async function _scoutApproveToEnrich() {
+  var enriched = window._scoutEnrichedCandidates || [];
+  var selected = (STATE['scout'] && STATE['scout']._selected) || [];
+  var toEnrich = enriched.filter(function(_, i) { return selected[i]; });
+
+  if (!toEnrich.length) {
+    showToast('SCOUT: select at least one property to enrich');
+    return;
+  }
+
+  // Persist the selection for Chunk 7's agent loop to consume
+  window._scoutApprovedForEnrichment = toEnrich;
+
+  console.log('[SCOUT] approved for enrichment:', toEnrich.length, 'properties');
+  console.log('[SCOUT] enrichment list:', toEnrich.map(function(p) {
+    return { address: p.address, score: p.signal_score, tier: p.conviction_tier };
+  }));
+
+  showToast('SCOUT: ' + toEnrich.length + ' approved for enrichment — agent loop ships in Chunk 7');
+}
+
 function _scoutPopulateDropdowns() {
   var mktSel   = document.getElementById('f-scout-mkt');
   var assetSel = document.getElementById('f-scout-asset');
@@ -9338,7 +9549,10 @@ async function _scoutRunPipeline(d) {
   showToast('SCOUT: pre-fetched top 30 — '
     + voyageMatchTotal(enriched) + ' Voyage matches, '
     + priorCount + ' seen before, '
-    + pipelineCount + ' already in pipeline — preview UI in Chunk 6');
+    + pipelineCount + ' already in pipeline — review and approve below');
+
+  // Render preview UI — gates AI spend behind explicit user approval
+  _scoutRenderPreview(enriched);
 }
 
 function _hEsc(s) {
