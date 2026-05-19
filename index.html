@@ -8789,6 +8789,167 @@ async function _scoutParseFolder(market, assetClass, submarket) {
   return { rows: rows, filesProcessed: filesProcessed, errors: errors };
 }
 
+// ── SCORING ENGINE (Chunk 4) ─────────────────────────────────────────────
+// Deterministic JS scoring. Runs on every parsed property AFTER parse.
+// No AI involvement — pure functions over CoStar-observable fields.
+// v1 max score = 11 from 5 signals. v2 plugs in paid data (debt maturity,
+// CMBS watchlist, owner age, tax delinquency) without changing this shape.
+
+// Parse last_sale_date through multiple CoStar formats. Returns Date or null.
+function _scoutParseSaleDate(v) {
+  if (v == null || v === '') return null;
+  // Excel date serial (days since 1899-12-30). 25569 = 1970-01-01.
+  if (typeof v === 'number' && v > 25569 && v < 80000) {
+    var d0 = new Date((v - 25569) * 86400 * 1000);
+    if (!isNaN(d0.getTime())) return d0;
+  }
+  // Native parser handles ISO ("2018-01-15"), US-style ("1/15/2018"), "Jan 2018", etc.
+  var d1 = new Date(v);
+  if (!isNaN(d1.getTime())) return d1;
+  // Year-only string ("2018") → Jan 1 of that year
+  if (/^\d{4}$/.test(String(v).trim())) {
+    var d2 = new Date(parseInt(v, 10), 0, 1);
+    if (!isNaN(d2.getTime())) return d2;
+  }
+  return null;
+}
+
+// Median of a numeric array (ignoring nulls/NaN). Returns null if no values.
+function _scoutMedian(values) {
+  var nums = values.filter(function(v) { return v != null && !isNaN(v); }).sort(function(a, b) { return a - b; });
+  if (!nums.length) return null;
+  var mid = Math.floor(nums.length / 2);
+  return nums.length % 2 ? nums[mid] : (nums[mid - 1] + nums[mid]) / 2;
+}
+
+// Group properties by submarket and by market, compute medians per group.
+// Scoring uses submarket median when the submarket has 5+ properties,
+// else falls back to market-level median.
+function _scoutBuildBatchContext(rows) {
+  var bySubmarket = {};
+  var byMarket    = {};
+  rows.forEach(function(p) {
+    var sub = p.submarket || 'Unknown';
+    var mkt = p.market || 'Unknown';
+    (bySubmarket[sub] = bySubmarket[sub] || []).push(p);
+    (byMarket[mkt]    = byMarket[mkt]    || []).push(p);
+  });
+
+  function statsFor(group) {
+    return {
+      medianRent:    _scoutMedian(group.map(function(p) { return p.asking_rent_psf; })),
+      medianVacancy: _scoutMedian(group.map(function(p) { return p.vacancy_pct; })),
+      count:         group.length
+    };
+  }
+
+  var submarketStats = {};
+  Object.keys(bySubmarket).forEach(function(k) { submarketStats[k] = statsFor(bySubmarket[k]); });
+  var marketStats = {};
+  Object.keys(byMarket).forEach(function(k) { marketStats[k] = statsFor(byMarket[k]); });
+
+  return { submarketStats: submarketStats, marketStats: marketStats };
+}
+
+// Private-owner heuristic. Owner name must match a private pattern AND must
+// not match any known REIT / institutional keyword. Both lists case-insensitive.
+function _scoutIsPrivateOwner(ownerName) {
+  if (!ownerName) return false;
+  var n = String(ownerName).toLowerCase();
+  var privatePatterns = ['llc', 'ltd', 'trust', 'family', 'holdings', 'properties', 'partners', 'group', 'investments'];
+  var institutional   = ['reit', 'real estate investment trust', 'prologis', 'duke', 'blackstone', 'brookfield',
+    'eqr', 'sila', 'first industrial', 'rexford', 'terreno', 'eastgroup', 'industrial logistics'];
+  var matchesPrivate = privatePatterns.some(function(p) { return n.indexOf(p) !== -1; });
+  if (!matchesPrivate) return false;
+  return !institutional.some(function(k) { return n.indexOf(k) !== -1; });
+}
+
+// Deterministic scoring. Pure function. Returns { score, conviction_tier, flags }.
+// v1 max = 11 from 5 signals. v2 placeholder fields are null
+// so paid signals can slot in without changing the consumer shape.
+function _scoutScore(property, batchContext) {
+  var flags = {
+    private_owner_flag:           false,
+    long_hold_flag:               false,
+    hold_years:                   null,
+    vacancy_signal:               false,
+    vacancy_gap_pp:               null,
+    below_market_rent_flag:       false,
+    rent_gap_pct:                 null,
+    permit_inactivity_flag:       false,
+    years_since_capex:            null,
+    // v2 placeholders (filled by paid signals later — no v1 contribution):
+    debt_maturity_within_18_mo:   null,
+    cmbs_watchlist_flag:          null,
+    owner_age_estate_flag:        null,
+    tax_delinquent_flag:          null
+  };
+  var score = 0;
+
+  // A. PRIVATE OWNER (+2)
+  if (_scoutIsPrivateOwner(property.owner_name)) {
+    flags.private_owner_flag = true;
+    score += 2;
+  }
+
+  // B. HOLD PERIOD (+1 / +2 / +3 tiered)
+  var saleDate = _scoutParseSaleDate(property.last_sale_date);
+  if (saleDate) {
+    var years = (Date.now() - saleDate.getTime()) / (365.25 * 86400 * 1000);
+    flags.hold_years = +years.toFixed(1);
+    if      (years >= 10) { flags.long_hold_flag = true; score += 3; }
+    else if (years >=  7) { flags.long_hold_flag = true; score += 2; }
+    else if (years >=  5) { flags.long_hold_flag = true; score += 1; }
+  }
+
+  // C. VACANCY VS SUBMARKET (+1 / +2). Submarket median when n>=5, else market median.
+  if (property.vacancy_pct != null && batchContext && batchContext.submarketStats) {
+    var subStats = batchContext.submarketStats[property.submarket || 'Unknown'];
+    var mktStats = batchContext.marketStats[property.market || 'Unknown'];
+    var medianVacancy = (subStats && subStats.count >= 5 && subStats.medianVacancy != null)
+      ? subStats.medianVacancy
+      : (mktStats ? mktStats.medianVacancy : null);
+    if (medianVacancy != null) {
+      var gap = property.vacancy_pct - medianVacancy;
+      flags.vacancy_gap_pp = +gap.toFixed(1);
+      if      (gap >= 20) { flags.vacancy_signal = true; score += 2; }
+      else if (gap >= 10) { flags.vacancy_signal = true; score += 1; }
+    }
+  }
+
+  // D. BELOW-MARKET RENT (+1 / +2). Same submarket→market fallback as vacancy.
+  if (property.asking_rent_psf != null && property.asking_rent_psf > 0
+      && batchContext && batchContext.submarketStats) {
+    var subStats2 = batchContext.submarketStats[property.submarket || 'Unknown'];
+    var mktStats2 = batchContext.marketStats[property.market || 'Unknown'];
+    var medianRent = (subStats2 && subStats2.count >= 5 && subStats2.medianRent != null)
+      ? subStats2.medianRent
+      : (mktStats2 ? mktStats2.medianRent : null);
+    if (medianRent != null && medianRent > 0) {
+      var gapPct = ((medianRent - property.asking_rent_psf) / medianRent) * 100;
+      flags.rent_gap_pct = +gapPct.toFixed(1);
+      if      (gapPct >= 20) { flags.below_market_rent_flag = true; score += 2; }
+      else if (gapPct >= 10) { flags.below_market_rent_flag = true; score += 1; }
+    }
+  }
+
+  // E. PERMIT INACTIVITY proxy (+2). Effective last-capex year = year_renovated || year_built.
+  // 25+ years without a renovation read is a weak proxy for permit inactivity; v2 will
+  // replace this with actual county permit data.
+  var capexYear = property.year_renovated || property.year_built || null;
+  if (capexYear) {
+    var ysc = new Date().getFullYear() - capexYear;
+    flags.years_since_capex = ysc;
+    if (ysc >= 25) {
+      flags.permit_inactivity_flag = true;
+      score += 2;
+    }
+  }
+
+  var tier = (score >= 8) ? 'HIGH' : (score >= 5) ? 'MEDIUM' : 'WATCH';
+  return { score: score, conviction_tier: tier, flags: flags };
+}
+
 function _scoutPopulateDropdowns() {
   var mktSel   = document.getElementById('f-scout-mkt');
   var assetSel = document.getElementById('f-scout-asset');
@@ -8919,9 +9080,9 @@ async function _scoutReconnectFolderClick() {
   await _scoutConnectFolderClick();
 }
 
-// Minimal pipeline orchestrator (Chunk 3). Validates inputs, re-scans the folder
-// for freshness, calls _scoutParseFolder, logs the parse result. Future chunks
-// extend this with scoring (Chunk 4), preview gate (Chunk 5), pre-fetch +
+// Pipeline orchestrator. Validates inputs, re-scans the folder for freshness,
+// parses CoStar XLSX, scores every property deterministically, ranks and logs
+// the top 10. Future chunks add the preview gate (Chunk 5), pre-fetch +
 // enrichment + synthesis (Chunks 6–7), and the database write (Chunk 8).
 async function _scoutRunPipeline(d) {
   var market     = d.mkt;
@@ -8957,8 +9118,39 @@ async function _scoutRunPipeline(d) {
     return;
   }
 
-  showToast('SCOUT: ' + result.rows.length + ' properties parsed from '
-    + result.filesProcessed.length + ' file(s) — scoring will be added in Chunk 4');
+  // Score every parsed property against batch-level submarket medians.
+  showToast('SCOUT: scoring...');
+  var batchContext = _scoutBuildBatchContext(result.rows);
+  var scored = result.rows.map(function(p) {
+    var s = _scoutScore(p, batchContext);
+    return Object.assign({}, p, {
+      signal_score:    s.score,
+      conviction_tier: s.conviction_tier,
+      _flags:          s.flags
+    });
+  });
+  scored.sort(function(a, b) { return b.signal_score - a.signal_score; });
+  window._scoutScoredRows = scored;
+
+  console.log('[SCOUT] batch context:', batchContext);
+  console.log('[SCOUT] top 10 scored properties:', scored.slice(0, 10).map(function(p) {
+    return {
+      address: p.address,
+      score:   p.signal_score,
+      tier:    p.conviction_tier,
+      flags:   Object.keys(p._flags).filter(function(k) { return p._flags[k] === true; })
+    };
+  }));
+
+  var tierCounts = scored.reduce(function(acc, p) {
+    acc[p.conviction_tier] = (acc[p.conviction_tier] || 0) + 1;
+    return acc;
+  }, {});
+
+  showToast('SCOUT: ' + scored.length + ' scored — HIGH ' + (tierCounts.HIGH || 0)
+    + ' / MED ' + (tierCounts.MEDIUM || 0)
+    + ' / WATCH ' + (tierCounts.WATCH || 0)
+    + ' — preview in Chunk 6');
 }
 
 function _hEsc(s) {
