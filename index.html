@@ -8306,6 +8306,7 @@ function _detectMarket(inputs) {
 
 var _SCOUT_IDB_NAME   = 'ridge_filesystem';
 var _SCOUT_IDB_STORE  = 'handles';
+var _SCOUT_SNIFF_STORE = 'sniff_cache';
 var _SCOUT_HANDLE_KEY = 'scout_costar_root';
 window._scoutFolderIndex = null;
 
@@ -8315,11 +8316,14 @@ function _scoutFsSupported() {
 
 function _scoutIDBOpen() {
   return new Promise(function(resolve, reject) {
-    var req = indexedDB.open(_SCOUT_IDB_NAME, 1);
+    var req = indexedDB.open(_SCOUT_IDB_NAME, 2);
     req.onupgradeneeded = function() {
       var db = req.result;
       if (!db.objectStoreNames.contains(_SCOUT_IDB_STORE)) {
         db.createObjectStore(_SCOUT_IDB_STORE);
+      }
+      if (!db.objectStoreNames.contains(_SCOUT_SNIFF_STORE)) {
+        db.createObjectStore(_SCOUT_SNIFF_STORE);
       }
     };
     req.onsuccess = function() { resolve(req.result); };
@@ -8363,6 +8367,45 @@ async function _scoutIDBDel(key) {
   } catch(e) { console.warn('[SCOUT] IDB del failed:', e.message); }
 }
 
+// Sniff cache — { market, submarket, asset_class, lastModified, cachedAt } keyed by filename.
+// Lives in a separate object store so it can be cleared independently on Reconnect
+// without dropping the user's folder handle.
+async function _scoutSniffCacheGet(filename) {
+  try {
+    var db = await _scoutIDBOpen();
+    return await new Promise(function(resolve, reject) {
+      var tx  = db.transaction(_SCOUT_SNIFF_STORE, 'readonly');
+      var req = tx.objectStore(_SCOUT_SNIFF_STORE).get(filename);
+      req.onsuccess = function() { resolve(req.result); };
+      req.onerror   = function() { reject(req.error); };
+    });
+  } catch(e) { console.warn('[SCOUT] sniff cache get failed:', e.message); return null; }
+}
+
+async function _scoutSniffCacheSet(filename, entry) {
+  try {
+    var db = await _scoutIDBOpen();
+    return await new Promise(function(resolve, reject) {
+      var tx  = db.transaction(_SCOUT_SNIFF_STORE, 'readwrite');
+      var req = tx.objectStore(_SCOUT_SNIFF_STORE).put(entry, filename);
+      req.onsuccess = function() { resolve(); };
+      req.onerror   = function() { reject(req.error); };
+    });
+  } catch(e) { console.warn('[SCOUT] sniff cache set failed:', e.message); }
+}
+
+async function _scoutSniffCacheClear() {
+  try {
+    var db = await _scoutIDBOpen();
+    return await new Promise(function(resolve, reject) {
+      var tx  = db.transaction(_SCOUT_SNIFF_STORE, 'readwrite');
+      var req = tx.objectStore(_SCOUT_SNIFF_STORE).clear();
+      req.onsuccess = function() { resolve(); };
+      req.onerror   = function() { reject(req.error); };
+    });
+  } catch(e) { console.warn('[SCOUT] sniff cache clear failed:', e.message); }
+}
+
 async function _scoutVerifyFolderPermission(handle) {
   if (!handle || typeof handle.queryPermission !== 'function') return false;
   try {
@@ -8399,35 +8442,184 @@ async function _scoutRequestFolderHandle() {
 
 async function _scoutClearFolderHandle() {
   await _scoutIDBDel(_SCOUT_HANDLE_KEY);
+  await _scoutSniffCacheClear();
   window._scoutFolderIndex = null;
 }
 
 // Filename pattern: <Market>_<Submarket>_<AssetClass>.xlsx — submarket may contain spaces/slashes/hyphens but not underscores
 var _SCOUT_FILE_RE = /^([^_]+)_(.+)_([^_]+)\.xlsx$/i;
 
-async function _scoutScanFolder(handle) {
+async function _scoutScanFolder(handle, progressCb) {
   if (!handle) return [];
   var index = [];
   try {
     for await (var entry of handle.values()) {
       if (entry.kind !== 'file') continue;
       if (!/\.xlsx$/i.test(entry.name)) continue;
+
+      // Fast path: filename matches Market_Submarket_AssetClass convention
       var m = entry.name.match(_SCOUT_FILE_RE);
-      if (!m) {
-        console.warn('[SCOUT] filename skipped (expected Market_Submarket_AssetClass.xlsx):', entry.name);
+      if (m) {
+        index.push({
+          market:      m[1].trim(),
+          submarket:   m[2].trim(),
+          asset_class: m[3].trim(),
+          filename:    entry.name,
+          fileHandle:  entry,
+          source:      'filename'
+        });
         continue;
       }
-      index.push({
-        market:      m[1].trim(),
-        submarket:   m[2].trim(),
-        asset_class: m[3].trim(),
-        filename:    entry.name,
-        fileHandle:  entry
-      });
+
+      // Slow path: sniff file contents (cached by filename + lastModified)
+      try {
+        var file         = await entry.getFile();
+        var lastModified = file.lastModified;
+        var cached       = await _scoutSniffCacheGet(entry.name);
+        var meta;
+        if (cached && cached.lastModified === lastModified) {
+          meta = cached;
+        } else {
+          if (progressCb) progressCb({ filename: entry.name, action: 'sniffing' });
+          meta = await _scoutSniffFile(entry);
+          if (meta) {
+            meta.lastModified = lastModified;
+            meta.cachedAt     = Date.now();
+            await _scoutSniffCacheSet(entry.name, meta);
+          }
+        }
+        if (meta) {
+          index.push({
+            market:      meta.market,
+            submarket:   meta.submarket,
+            asset_class: meta.asset_class,
+            filename:    entry.name,
+            fileHandle:  entry,
+            source:      'sniff'
+          });
+        } else {
+          console.warn('[SCOUT] file skipped — could not determine market/asset_class:', entry.name);
+        }
+      } catch (sniffErr) {
+        console.warn('[SCOUT] sniff failed for', entry.name, ':', sniffErr.message);
+      }
     }
   } catch(e) { console.warn('[SCOUT] folder scan failed:', e.message); }
   window._scoutFolderIndex = index;
   return index;
+}
+
+// CoStar content sniff — for default-named exports like "CostarExport (22).xlsx"
+// that don't match the Market_Submarket_AssetClass convention. Reads first ~5
+// data rows, extracts city/submarket/property_type from CoStar's standard
+// columns, derives market and asset class. Always returns metadata when the
+// file is readable — falls back to 'Unknown' rather than rejecting unknown markets.
+var _SCOUT_CITY_TO_MARKET = (function() {
+  var m = {};
+  ['atlanta','marietta','alpharetta','duluth','buford','gainesville','lawrenceville',
+   'norcross','roswell','smyrna','stone mountain','kennesaw','austell','fairburn',
+   'union city','mcdonough','stockbridge','forest park','college park','east point',
+   'tucker','doraville','chamblee'].forEach(function(c){ m[c] = 'Atlanta'; });
+  ['savannah','pooler','garden city','rincon','port wentworth','bloomingdale']
+    .forEach(function(c){ m[c] = 'Savannah'; });
+  ['dallas','fort worth','plano','arlington','irving','carrollton','mesquite',
+   'garland','grand prairie','mckinney','frisco','lewisville','denton','flower mound',
+   'addison','farmers branch','richardson','desoto','duncanville','lancaster',
+   'cedar hill'].forEach(function(c){ m[c] = 'Dallas–Fort Worth'; });
+  ['houston','pasadena','sugar land','katy','pearland','the woodlands','spring',
+   'cypress','humble','baytown','stafford','missouri city','rosenberg','tomball']
+    .forEach(function(c){ m[c] = 'Houston'; });
+  ['austin','round rock','cedar park','pflugerville','leander','georgetown','kyle','buda']
+    .forEach(function(c){ m[c] = 'Austin'; });
+  return m;
+})();
+
+function _scoutCityToMarket(city) {
+  if (!city) return null;
+  var c = String(city).toLowerCase().trim();
+  if (_SCOUT_CITY_TO_MARKET[c]) return _SCOUT_CITY_TO_MARKET[c];
+  // Substring fallback for things like "Atlanta, GA" or "Houston (East)"
+  var keys = Object.keys(_SCOUT_CITY_TO_MARKET);
+  for (var i = 0; i < keys.length; i++) {
+    if (c.indexOf(keys[i]) !== -1) return _SCOUT_CITY_TO_MARKET[keys[i]];
+  }
+  return null;
+}
+
+function _scoutPropertyTypeToAssetClass(pt) {
+  if (!pt) return null;
+  var p = String(pt).toLowerCase();
+  // Check 'flex' before 'office' because "Flex Office" should be Flex
+  if (p.indexOf('industrial') !== -1) return 'Industrial';
+  if (p.indexOf('flex')       !== -1) return 'Flex';
+  if (p.indexOf('mixed')      !== -1) return 'Mixed-Use';
+  if (p.indexOf('office')     !== -1) return 'Office';
+  return null; // Caller falls back to raw property_type string or 'Unknown'
+}
+
+async function _scoutSniffFile(fileHandle) {
+  try {
+    var file = await fileHandle.getFile();
+    var buf  = await file.arrayBuffer();
+    var wb   = XLSX.read(buf, { type: 'array' });
+    var sheetName = wb.SheetNames[0];
+    var sheet     = wb.Sheets[sheetName];
+    var raw       = XLSX.utils.sheet_to_json(sheet, { defval: null, header: 1 });
+    if (!raw || raw.length < 2) return null;
+
+    var headers = raw[0] || [];
+    var idx = {};
+    headers.forEach(function(h, i) {
+      if (h) idx[String(h).toLowerCase().trim()] = i;
+    });
+
+    function colIdx(keys) {
+      for (var k = 0; k < keys.length; k++) {
+        var i = idx[keys[k].toLowerCase()];
+        if (typeof i === 'number') return i;
+      }
+      return -1;
+    }
+
+    // Market column is the most authoritative signal when CoStar includes it.
+    var marketCol    = colIdx(['market', 'market name', 'metro', 'metro area', 'cbsa', 'msa']);
+    var cityCol      = colIdx(['city', 'property city']);
+    var submarketCol = colIdx(['submarket name', 'submarket']);
+    var typeCol      = colIdx(['property type', 'building type', 'type']);
+
+    var marketFromCol = null, city = null, submarket = null, propType = null;
+    var scanUpTo = Math.min(raw.length, 6); // rows 1..5 (header is row 0)
+    for (var r = 1; r < scanUpTo; r++) {
+      var row = raw[r];
+      if (!row) continue;
+      if (marketFromCol == null && marketCol    >= 0 && row[marketCol]    != null && row[marketCol]    !== '') marketFromCol = row[marketCol];
+      if (city          == null && cityCol      >= 0 && row[cityCol]      != null && row[cityCol]      !== '') city          = row[cityCol];
+      if (submarket     == null && submarketCol >= 0 && row[submarketCol] != null && row[submarketCol] !== '') submarket     = row[submarketCol];
+      if (propType      == null && typeCol      >= 0 && row[typeCol]      != null && row[typeCol]      !== '') propType      = row[typeCol];
+      if (marketFromCol && city && submarket && propType) break;
+    }
+
+    // Market: explicit Market column → known-city map → raw city string → 'Unknown'.
+    // Asset class: canonical mapping → raw property_type verbatim → 'Unknown'.
+    // The file is ALWAYS indexed. No hardcoded market list rejects new geographies
+    // (Phoenix, Charlotte, Nashville, etc. work automatically with zero code edits).
+    var market = (marketFromCol ? String(marketFromCol).trim() : null)
+      || _scoutCityToMarket(city)
+      || (city ? String(city).trim() : null)
+      || 'Unknown';
+    var assetClass = _scoutPropertyTypeToAssetClass(propType)
+      || (propType ? String(propType).trim() : null)
+      || 'Unknown';
+
+    return {
+      market:      market,
+      submarket:   submarket ? String(submarket).trim() : 'Unknown',
+      asset_class: assetClass
+    };
+  } catch (e) {
+    console.warn('[SCOUT] sniff error in', fileHandle.name, ':', e.message);
+    return null;
+  }
 }
 
 // Smart column resolver — survives CoStar header drift via multi-key fallback per logical field.
@@ -8603,8 +8795,6 @@ function _scoutPopulateDropdowns() {
   var subSel   = document.getElementById('f-scout-sub');
   if (!mktSel || !assetSel || !subSel) return;
 
-  var STATIC_MKT   = ['Atlanta','Savannah','Dallas–Fort Worth','Houston','Austin'];
-  var STATIC_ASSET = ['Industrial','Flex','Office','Mixed-Use'];
   var idx = window._scoutFolderIndex;
 
   function fillSelect(el, opts, current) {
@@ -8617,16 +8807,25 @@ function _scoutPopulateDropdowns() {
     });
   }
 
-  var mktOpts   = STATIC_MKT.slice();
-  var assetOpts = STATIC_ASSET.slice();
-  if (idx && idx.length) {
-    var foldMkts   = Array.from(new Set(idx.map(function(r){ return r.market; })));
-    var foldAssets = Array.from(new Set(idx.map(function(r){ return r.asset_class; })));
-    var filteredMkt = STATIC_MKT.filter(function(m){ return foldMkts.indexOf(m) !== -1; });
-    var filteredAst = STATIC_ASSET.filter(function(a){ return foldAssets.indexOf(a) !== -1; });
-    if (filteredMkt.length) mktOpts   = filteredMkt;
-    if (filteredAst.length) assetOpts = filteredAst;
+  // Sort alphabetically with 'Unknown' pinned to the end (if present).
+  function sortWithUnknownLast(arr) {
+    var hasUnknown = arr.indexOf('Unknown') !== -1;
+    var rest = arr.filter(function(v) { return v !== 'Unknown'; }).sort(function(a, b) {
+      return String(a).localeCompare(String(b));
+    });
+    if (hasUnknown) rest.push('Unknown');
+    return rest;
   }
+
+  // Dropdowns populate entirely from folder contents — no hardcoded market list.
+  // Future markets (Phoenix, Charlotte, Nashville, etc.) appear automatically.
+  var mktOpts   = [];
+  var assetOpts = [];
+  if (idx && idx.length) {
+    mktOpts   = sortWithUnknownLast(Array.from(new Set(idx.map(function(r){ return r.market; }))));
+    assetOpts = sortWithUnknownLast(Array.from(new Set(idx.map(function(r){ return r.asset_class; }))));
+  }
+
   fillSelect(mktSel,   mktOpts,   mktSel.value);
   fillSelect(assetSel, assetOpts, assetSel.value);
   _scoutRefreshSubmarkets();
@@ -8689,10 +8888,24 @@ async function _scoutOnPanelOpen() {
   }
   if (reconnect) reconnect.style.display = 'inline';
 
-  var index = await _scoutScanFolder(handle);
+  var index = await _scoutScanFolder(handle, function(progress) {
+    if (status && progress.action === 'sniffing') {
+      status.textContent = '✓ ' + handle.name + ' — scanning ' + progress.filename + '...';
+    }
+  });
   _scoutPopulateDropdowns();
   if (status) {
-    status.textContent = '✓ ' + handle.name + ' — ' + index.length + ' file' + (index.length === 1 ? '' : 's') + ' indexed';
+    // Per-market breakdown — gives immediate visibility into what was auto-labeled.
+    var breakdown = {};
+    index.forEach(function(e) { breakdown[e.market] = (breakdown[e.market] || 0) + 1; });
+    var breakdownKeys = Object.keys(breakdown).sort(function(a, b) {
+      if (a === 'Unknown') return 1;
+      if (b === 'Unknown') return -1;
+      return String(a).localeCompare(String(b));
+    });
+    var breakdownStr = breakdownKeys.map(function(k) { return k + ' (' + breakdown[k] + ')'; }).join(', ');
+    status.textContent = '✓ ' + handle.name + ' — ' + index.length + ' file' + (index.length === 1 ? '' : 's')
+      + (breakdownStr ? ': ' + breakdownStr : ' indexed');
   }
 }
 
