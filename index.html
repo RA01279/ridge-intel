@@ -8877,6 +8877,7 @@ function _scoutScore(property, batchContext) {
     below_market_rent_flag:       false,
     rent_gap_pct:                 null,
     permit_inactivity_flag:       false,
+    renovation_flip_flag:         false,
     years_since_capex:            null,
     // v2 placeholders (filled by paid signals later — no v1 contribution):
     debt_maturity_within_18_mo:   null,
@@ -8933,16 +8934,30 @@ function _scoutScore(property, batchContext) {
     }
   }
 
-  // E. PERMIT INACTIVITY proxy (+2). Effective last-capex year = year_renovated || year_built.
-  // 25+ years without a renovation read is a weak proxy for permit inactivity; v2 will
-  // replace this with actual county permit data.
+  // E. CAPEX SIGNAL (+1 or +2 — two regimes, intent-flipped from a naive "old = motivated" read)
+  //
+  //   ysc 2–5    → RECENT RENOVATION = flip prep (+2, renovation_flip_flag).
+  //                A private owner who just dropped capex is staging the asset for sale —
+  //                highest-conviction capex signal.
+  //   ysc ≥ 20   → STALE / DEFERRED MAINTENANCE (+1, permit_inactivity_flag).
+  //                Disengaged owner or functionally obsolete building. Weaker signal.
+  //   ysc 0–1    → Just renovated, no time for resale staging signal yet. No points.
+  //   ysc 6–19   → Normal hold period, mid-life building. No signal.
+  //
+  // `year_renovated || year_built` correctly prefers year_renovated when present —
+  // a building with year_built=1985 and year_renovated=2024 resolves to 2024, firing
+  // the flip flag rather than the stale flag. v2 replaces this proxy with actual
+  // county permit pull data.
   var capexYear = property.year_renovated || property.year_built || null;
   if (capexYear) {
     var ysc = new Date().getFullYear() - capexYear;
     flags.years_since_capex = ysc;
-    if (ysc >= 25) {
-      flags.permit_inactivity_flag = true;
+    if (ysc >= 2 && ysc <= 5) {
+      flags.renovation_flip_flag = true;
       score += 2;
+    } else if (ysc >= 20) {
+      flags.permit_inactivity_flag = true;
+      score += 1;
     }
   }
 
