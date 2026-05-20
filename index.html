@@ -9361,18 +9361,365 @@ function _scoutCloseApproveModal() {
   if (modal) modal.classList.remove('show');
 }
 
-// Chunk 6.5 placeholder — fires when the modal's Run Enrichment button is
-// clicked. Chunk 7 replaces this with the real agent loop + post-run DB write.
+// ── ENRICHMENT AGENT LOOP (Chunk 7) ──────────────────────────────────────
+// First server-side tool-use loop in RIDGE. Per Anthropic docs, web_search and
+// web_fetch execute inline within one API turn; no client-side tool_result
+// push-back. Most calls finish on stop_reason='end_turn'; 'pause_turn' is the
+// documented continuation signal — we append the assistant turn and call again.
+//
+// Anti-fabrication is enforced in three layers:
+//   1. System prompt (below) — explicit rule that unsourced fields = null.
+//   2. JSON schema in user message — every claim has a paired "source" field.
+//   3. Post-hoc validator (_scoutValidateDossier) — strips any value-without-source.
+// We do not trust the AI to follow rules; the validator enforces them.
+
+var _SCOUT_ENRICHMENT_SYSTEM_PROMPT = "You are SCOUT, RIDGE's off-market sourcing engine for Entrada Partners, "
+  + "an industrial/flex private equity firm. You enrich CoStar-sourced property candidates "
+  + "with verified owner intelligence and distress signals.\n\n"
+  + "ABSOLUTE RULES — VIOLATIONS DISQUALIFY THE RUN:\n\n"
+  + "1. Every claim in your output must be supported by a tool result you ran in THIS "
+  + "conversation. If you cannot cite a specific web_search query or web_fetch URL that "
+  + "produced the claim, the field value is null. Not \"unknown\", not \"appears to be\" — "
+  + "literally null.\n\n"
+  + "2. You are forbidden from generating from your own knowledge: owner LLC names, "
+  + "principals, contact info, dollar amounts, debt terms, loan maturities, CMBS servicer "
+  + "names, court case names, foreclosure status, tax delinquency status, prior sale facts, "
+  + "or ownership transfer dates. These come ONLY from tool results.\n\n"
+  + "3. The CoStar property objects provided below are ground truth for: address, SF, year "
+  + "built, year renovated, asking rent, vacancy, last sale date, owner name as recorded by "
+  + "CoStar. Do not override these — your job is to EXTEND them with verified external research.\n\n"
+  + "4. Pre-fetched context (prior RIDGE history) is also ground truth. Reference it when relevant.\n\n"
+  + "5. Tool usage:\n"
+  + "  - web_search: search for the owner entity, the property address, distress indicators. "
+  + "Good queries: \"[owner name] [state] secretary of state\", \"[owner name] industrial real estate\", "
+  + "\"[property address] foreclosure\", \"[property address] lawsuit\".\n"
+  + "  - web_fetch: open specific URLs that web_search surfaced — county records, SOS portals, "
+  + "news. Never invent URLs (the API enforces this — only previously-seen URLs are fetchable).\n\n"
+  + "6. If a search returns nothing useful, that is a valid and expected outcome. Return null "
+  + "for that field. A null is a SUCCESS — it means you didn't fabricate.\n\n"
+  + "7. Output ONE JSON object, no markdown fences, no prose outside the JSON. Schema "
+  + "provided in the user message.\n\n"
+  + "8. Between tool calls, write one short sentence stating what you found and what you "
+  + "are checking next. Do not fire multiple searches back-to-back in silence — a brief note "
+  + "between each search keeps the research auditable and the response stable.\n\n"
+  + "You will be judged on whether every non-null field has a real source. Fabrication is "
+  + "the only way to fail.";
+
+// Orchestrator. Splits approved candidates into batches of 5, runs each through
+// _scoutBatchEnrich sequentially with 2s spacing, applies the validator,
+// caches results on window._scoutEnrichedResults for Chunk 8 (synthesis).
 async function _scoutRunEnrichment() {
   var toEnrich = window._scoutApprovedForEnrichment || [];
   if (!toEnrich.length) return;
+  if (!_apiKey) {
+    showToast('SCOUT: Anthropic API key not configured');
+    return;
+  }
 
-  console.log('[SCOUT] running enrichment on:', toEnrich.length, 'properties');
-  console.log('[SCOUT] enrichment list:', toEnrich.map(function(p) {
-    return { address: p.address, score: p.signal_score, tier: p.conviction_tier };
-  }));
+  // Split into batches of 5
+  var batches = [];
+  for (var i = 0; i < toEnrich.length; i += 5) batches.push(toEnrich.slice(i, i + 5));
 
-  showToast('SCOUT: ' + toEnrich.length + ' approved for enrichment — agent loop ships in Chunk 7');
+  _scoutEnrichProgress(0, batches.length, 'starting');
+  var allDossiers = [];
+
+  for (var b = 0; b < batches.length; b++) {
+    _scoutEnrichProgress(b, batches.length, 'enriching batch ' + (b + 1));
+    try {
+      var dossiers = await _scoutBatchEnrich(batches[b], b);
+      var validated = dossiers.map(_scoutValidateDossier);
+      allDossiers = allDossiers.concat(validated);
+    } catch (e) {
+      console.warn('[SCOUT] batch ' + (b + 1) + ' failed:', e && e.message);
+      // Deterministic scores survive — push minimal dossiers with _batchFailed flag.
+      batches[b].forEach(function(p) {
+        allDossiers.push({ address: p.address, _batchFailed: true });
+      });
+    }
+    // 2s spacing between batches; no spacing after the last one.
+    if (b < batches.length - 1) await new Promise(function(r) { setTimeout(r, 2000); });
+  }
+
+  window._scoutEnrichedResults = allDossiers;
+  _scoutEnrichProgress(batches.length, batches.length, 'complete');
+
+  var failedBatches = allDossiers.filter(function(d) { return d._batchFailed; }).length;
+  console.log('[SCOUT] enrichment complete:', allDossiers.length, 'dossiers',
+    failedBatches ? '(' + failedBatches + ' deterministic-only due to batch failure)' : '');
+  showToast('SCOUT: enrichment complete — ' + allDossiers.length + ' dossiers'
+    + (failedBatches ? ' (' + failedBatches + ' deterministic-only)' : '')
+    + ' — synthesis in Chunk 8');
+}
+
+// Single-batch enrichment via Anthropic API with server-side web_search + web_fetch.
+// Anthropic runs the tools INLINE within one API call — we never push tool_result
+// blocks back. Most calls finish on stop_reason='end_turn'. 'pause_turn' is the
+// documented server-side continuation signal — we append the assistant turn and
+// call again with the same tools. 12-iteration cap as a runaway guard.
+// Parse retry once on JSON malformation; second failure returns deterministic-only.
+async function _scoutBatchEnrich(batch, batchIndex) {
+  var systemPrompt = _SCOUT_ENRICHMENT_SYSTEM_PROMPT;
+  var userPrompt   = _scoutBuildBatchPrompt(batch, batchIndex);
+
+  var tools = [
+    { type: 'web_search_20250305', name: 'web_search', max_uses: 10 },
+    { type: 'web_fetch_20250910',  name: 'web_fetch',  max_uses:  5 }
+  ];
+
+  var messages = [{ role: 'user', content: userPrompt }];
+  var assistantText = '';
+  var iterations = 0;
+  var MAX_ITERATIONS = 12;
+
+  while (iterations < MAX_ITERATIONS) {
+    iterations++;
+    var resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': _apiKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-6',
+        max_tokens: 8192,
+        system: systemPrompt,
+        tools: tools,
+        messages: messages
+      })
+    });
+
+    if (!resp.ok) {
+      var errText = await resp.text();
+      throw new Error('Anthropic API ' + resp.status + ': ' + errText.slice(0, 200));
+    }
+
+    var data = await resp.json();
+    var content = data.content || [];
+
+    // Accumulate text blocks across turns — the JSON output lives in text blocks.
+    content.forEach(function(block) {
+      if (block.type === 'text' && block.text) assistantText += block.text;
+    });
+
+    if (data.stop_reason === 'pause_turn') {
+      // Server-tool continuation: append assistant turn verbatim and loop.
+      messages.push({ role: 'assistant', content: content });
+      console.log('[SCOUT] batch ' + (batchIndex + 1) + ' pause_turn — continuing (iteration ' + iterations + ')');
+      continue;
+    }
+
+    if (data.stop_reason !== 'end_turn') {
+      console.warn('[SCOUT] batch ' + (batchIndex + 1) + ' unexpected stop_reason=' + data.stop_reason);
+    }
+    break;
+  }
+
+  if (iterations >= MAX_ITERATIONS) {
+    console.warn('[SCOUT] batch ' + (batchIndex + 1) + ' hit iteration cap; parsing what we have');
+  }
+
+  // Parse JSON from accumulated assistant text. One retry with a no-tools clarification call.
+  var parsed = _scoutTryParseDossierJSON(assistantText);
+  if (!parsed) {
+    console.warn('[SCOUT] batch ' + (batchIndex + 1) + ' JSON parse failed; retrying with clarification');
+    messages.push({ role: 'assistant', content: assistantText });
+    messages.push({ role: 'user', content: 'Your last response was not valid JSON. Output only the JSON object, no markdown fences, no prose.' });
+
+    var retryResp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': _apiKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-6',
+        max_tokens: 8192,
+        system: systemPrompt,
+        // No tools on the retry — just want the JSON back cleanly.
+        messages: messages
+      })
+    });
+    if (retryResp.ok) {
+      var retryData = await retryResp.json();
+      var retryText = (retryData.content || [])
+        .filter(function(b) { return b.type === 'text'; })
+        .map(function(b) { return b.text; })
+        .join('');
+      parsed = _scoutTryParseDossierJSON(retryText);
+    }
+  }
+
+  if (!parsed || !Array.isArray(parsed.properties)) {
+    console.warn('[SCOUT] batch ' + (batchIndex + 1) + ' parse retry failed — returning deterministic-only. Raw text first 500ch:', assistantText.slice(0, 500));
+    return batch.map(function(p) {
+      return { address: p.address, _batchFailed: true, _parseError: true };
+    });
+  }
+
+  return parsed.properties;
+}
+
+// Extract a JSON object from arbitrary assistant text. Strips ``` fences if
+// present, slices from first { to last } and tries to parse.
+function _scoutTryParseDossierJSON(text) {
+  if (!text) return null;
+  var t = String(text).trim();
+  t = t.replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/, '');
+  var start = t.indexOf('{');
+  var end   = t.lastIndexOf('}');
+  if (start < 0 || end < 0 || end < start) return null;
+  try { return JSON.parse(t.slice(start, end + 1)); }
+  catch(e) { return null; }
+}
+
+// Builds the per-batch user message. Reads signal_score, conviction_tier, flags,
+// and pre-fetched context from each candidate. Inlines the JSON output schema
+// so the AI has the exact shape it must produce.
+function _scoutBuildBatchPrompt(batch, batchIndex) {
+  var N = batch.length;
+  var props = batch.map(function(p, i) {
+    var flagList = Object.keys(p._flags || {})
+      .filter(function(k) { return p._flags[k] === true; })
+      .join(', ') || 'none';
+    var lines = [
+      'Property ' + (i + 1) + ':',
+      '- address: ' + p.address,
+      '- city: ' + (p.city || '—') + ' | submarket: ' + (p.submarket || '—') + ' | market: ' + (p.market || '—'),
+      '- building_sf: ' + (p.building_sf == null ? '—' : p.building_sf),
+      '- year_built: ' + (p.year_built || '—') + ' | year_renovated: ' + (p.year_renovated || '—'),
+      '- asking_rent_psf: ' + (p.asking_rent_psf == null ? '—' : p.asking_rent_psf),
+      '- vacancy_pct: ' + (p.vacancy_pct == null ? '—' : p.vacancy_pct),
+      '- last_sale_date: ' + (p.last_sale_date || '—') + ' | last_sale_price: ' + (p.last_sale_price == null ? '—' : p.last_sale_price),
+      '- owner_name (CoStar): ' + (p.owner_name || '—'),
+      '- signal_score: ' + p.signal_score + ' | tier: ' + p.conviction_tier,
+      '- triggered_signals: ' + flagList
+    ];
+    if (p._prefetched && p._prefetched.priorScoutRun) {
+      lines.push('- PRIOR RIDGE HISTORY: sourced before on ' + (p._prefetched.priorScoutRun.last_scout_run_at || 'unknown date'));
+    }
+    if (p._prefetched && p._prefetched.voyageMatches && p._prefetched.voyageMatches.length) {
+      lines.push('- RELATED PRIOR WORK: ' + p._prefetched.voyageMatches.length + ' semantic matches in skill history');
+    }
+    return lines.join('\n');
+  }).join('\n\n');
+
+  var schema = '{\n'
+    + '  "batch_index": ' + batchIndex + ',\n'
+    + '  "properties": [\n'
+    + '    {\n'
+    + '      "address": "<verbatim from input>",\n'
+    + '      "owner_entity_verified": { "value": "<LLC/entity name from a real result, or null>", "source": "<query or URL, or null>" },\n'
+    + '      "owner_principals": [ { "name": "<string>", "source": "<URL>" } ],\n'
+    + '      "distress_signal": {\n'
+    + '        "foreclosure": { "value": <true|false|null>, "source": "<URL or null>" },\n'
+    + '        "litigation":  { "value": "<short description or null>", "source": "<URL or null>" },\n'
+    + '        "tax_status":  { "value": "<short description or null>", "source": "<URL or null>" }\n'
+    + '      },\n'
+    + '      "recent_news": [ { "summary": "<one sentence>", "source": "<URL>" } ],\n'
+    + '      "owner_motivation_hypothesis": "<one sentence drawn ONLY from sourced facts, or null>",\n'
+    + '      "recommended_outreach_angle": "<one sentence drawn ONLY from sourced facts, or null>",\n'
+    + '      "outreach_priority": "<CRITICAL|URGENT|HIGH|MONITOR>",\n'
+    + '      "tool_calls_made": [ { "tool": "web_search|web_fetch", "query_or_url": "<string>" } ],\n'
+    + '      "_exhaustion": "<null normally; \'<tool> budget reached\' if max_uses cap stopped enrichment>"\n'
+    + '    }\n'
+    + '  ]\n'
+    + '}';
+
+  return 'BATCH ' + (batchIndex + 1) + ' — enrich these ' + N + ' propert' + (N === 1 ? 'y' : 'ies') + '.\n\n'
+    + '═══ PROPERTIES ═══\n' + props + '\n\n'
+    + '═══ YOUR JOB ═══\n'
+    + 'For EACH property, use web_search and web_fetch to research and fill the dossier. '
+    + 'Every non-null field needs a "source" sub-field with the real query or URL.\n\n'
+    + 'Output this exact JSON shape, no fences, no prose:\n' + schema;
+}
+
+// Post-hoc validator — the LAST LINE OF DEFENSE against fabrication. Strips any
+// value that doesn't carry a source. We do not trust the AI to follow the rules;
+// we enforce them. Counts strips and logs per dossier as a quality signal.
+function _scoutValidateDossier(dossier) {
+  if (!dossier || dossier._batchFailed) return dossier;
+  var stripped = 0;
+
+  // owner_entity_verified: { value, source } pair — null both if source missing.
+  if (dossier.owner_entity_verified) {
+    var oev = dossier.owner_entity_verified;
+    if (oev.value != null && (!oev.source || !String(oev.source).trim())) {
+      oev.value = null; oev.source = null; stripped++;
+    }
+  }
+
+  // distress_signal sub-fields: each is { value, source }.
+  if (dossier.distress_signal) {
+    Object.keys(dossier.distress_signal).forEach(function(k) {
+      var entry = dossier.distress_signal[k];
+      if (entry && entry.value != null && (!entry.source || !String(entry.source).trim())) {
+        entry.value = null; entry.source = null; stripped++;
+      }
+    });
+  }
+
+  // owner_principals[]: drop any entry without a source.
+  if (Array.isArray(dossier.owner_principals)) {
+    var beforeP = dossier.owner_principals.length;
+    dossier.owner_principals = dossier.owner_principals.filter(function(p) {
+      return p && p.name && p.source && String(p.source).trim();
+    });
+    stripped += (beforeP - dossier.owner_principals.length);
+  }
+
+  // recent_news[]: drop any entry without a source.
+  if (Array.isArray(dossier.recent_news)) {
+    var beforeN = dossier.recent_news.length;
+    dossier.recent_news = dossier.recent_news.filter(function(n) {
+      return n && n.summary && n.source && String(n.source).trim();
+    });
+    stripped += (beforeN - dossier.recent_news.length);
+  }
+
+  // Hypothesis fields are derived synthesis. Only allowed if AT LEAST ONE sourced
+  // fact exists in the dossier. Otherwise these are pure invention — null them.
+  var hasSourcedFact = !!(
+    (dossier.owner_entity_verified && dossier.owner_entity_verified.value != null) ||
+    (dossier.distress_signal && Object.keys(dossier.distress_signal).some(function(k) {
+      var e = dossier.distress_signal[k];
+      return e && e.value != null;
+    })) ||
+    (dossier.owner_principals && dossier.owner_principals.length) ||
+    (dossier.recent_news && dossier.recent_news.length)
+  );
+  if (!hasSourcedFact) {
+    if (dossier.owner_motivation_hypothesis != null) { dossier.owner_motivation_hypothesis = null; stripped++; }
+    if (dossier.recommended_outreach_angle  != null) { dossier.recommended_outreach_angle  = null; stripped++; }
+  }
+
+  if (stripped > 0) {
+    console.warn('[SCOUT] validator stripped ' + stripped + ' unsourced field(s) from', dossier.address);
+  }
+  dossier._validatorStrippedCount = stripped;
+  return dossier;
+}
+
+// Progress UI — replaces the preview table while enrichment runs. Renders
+// inside the SCOUT panel's #rout-scout body; preserves the .scout-preview-wrap
+// dark-theme container so it visually matches the surrounding UI.
+function _scoutEnrichProgress(current, total, phase) {
+  var body = document.getElementById('rout-scout');
+  if (!body) return;
+  var pct = total ? Math.round((current / total) * 100) : 0;
+  body.innerHTML = '<div class="scout-preview-wrap">'
+    + '<div class="scout-preview-header"><h3>SCOUT Enrichment Running</h3></div>'
+    + '<div class="scout-preview-meta">' + _hEsc(phase) + ' — ' + current + ' of ' + total + ' batch' + (total === 1 ? '' : 'es') + '</div>'
+    + '<div style="background:var(--surface2);border-radius:var(--r);height:20px;overflow:hidden;margin-top:8px;">'
+    +   '<div style="background:var(--blue);height:100%;width:' + pct + '%;transition:width 0.3s;"></div>'
+    + '</div>'
+    + '<div class="scout-preview-meta" style="margin-top:8px;">'
+    + 'Researching owner entities and distress signals via live web search. ~3–4 minutes total.'
+    + '</div>'
+    + '</div>';
 }
 
 function _scoutPopulateDropdowns() {
