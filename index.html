@@ -9876,13 +9876,9 @@ function _scoutRenderReport(markdown, dossiers) {
     + '</div>'
     + '</div>';
 
-  // Save to Database — Chunk 8b placeholder for now
+  // Save to Database — wires to _scoutSaveToDatabase (skill_outputs + properties + docs)
   var saveBtn = document.getElementById('scout-save-btn');
-  if (saveBtn) {
-    saveBtn.addEventListener('click', function() {
-      showToast('SCOUT: database persistence ships in Chunk 8b');
-    });
-  }
+  if (saveBtn) saveBtn.addEventListener('click', _scoutSaveToDatabase);
 
   // Copy Report — copies raw markdown (not rendered HTML) to clipboard
   var copyBtn = document.getElementById('scout-copy-report');
@@ -9898,6 +9894,297 @@ function _scoutRenderReport(markdown, dossiers) {
         showToast('Clipboard API unavailable');
       }
     });
+  }
+}
+
+// ── ADDRESS NORMALIZATION (Chunk 8b) ─────────────────────────────────────
+// Match-only key for dedupe. NOT stored — the original address string is
+// what lands in the properties.address column. Lowercases, strips trailing
+// city/state/zip, removes punctuation, standardizes directionals and
+// street-type abbreviations to canonical short forms.
+function _scoutNormalizeAddress(addr) {
+  if (!addr) return '';
+  var s = String(addr).toLowerCase().trim();
+  // Drop everything after the first comma — keeps just the street portion.
+  // "123 Main St, Atlanta, GA 30301" → "123 main st"
+  if (s.indexOf(',') !== -1) s = s.split(',')[0];
+  // Strip punctuation, keep alphanumerics + spaces.
+  s = s.replace(/[^a-z0-9\s]/g, ' ');
+  // Collapse whitespace.
+  s = s.replace(/\s+/g, ' ').trim();
+  var dirs = {
+    northeast: 'ne', northwest: 'nw', southeast: 'se', southwest: 'sw',
+    north: 'n', south: 's', east: 'e', west: 'w'
+  };
+  var streetTypes = {
+    street: 'st',
+    avenue: 'ave',
+    boulevard: 'blvd',
+    drive: 'dr',
+    circle: 'cir',
+    parkway: 'pky', pkwy: 'pky',
+    road: 'rd',
+    lane: 'ln',
+    court: 'ct',
+    place: 'pl',
+    highway: 'hwy',
+    terrace: 'ter',
+    trail: 'trl'
+  };
+  return s.split(' ').map(function(w) {
+    if (dirs[w]) return dirs[w];
+    if (streetTypes[w]) return streetTypes[w];
+    return w;
+  }).join(' ');
+}
+
+// ── SAVE TO DATABASE (Chunk 8b) ──────────────────────────────────────────
+// Wires the Save button to write a completed SCOUT run across three tables:
+// skill_outputs (the run + markdown), properties (per-dossier UPDATE or INSERT
+// based on normalized-address dedupe), skill_output_documents (CoStar source
+// filenames). Server-side IDs via gen_random_uuid() — we OMIT id on insert.
+// On all-property-failure, retains runId on window._scoutLastRunId so a retry
+// reuses the existing skill_outputs row rather than creating a duplicate.
+async function _scoutSaveToDatabase() {
+  if (!_sb || !_sbOk) {
+    showToast('SCOUT: Supabase not connected — cannot save');
+    return;
+  }
+  var dossiers = window._scoutEnrichedResults || [];
+  var approved = window._scoutApprovedForEnrichment || [];
+  var reportMd = window._scoutReportMarkdown || '';
+  if (!dossiers.length || !reportMd) {
+    showToast('SCOUT: nothing to save — run enrichment first');
+    return;
+  }
+
+  var saveBtn = document.getElementById('scout-save-btn');
+  if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = 'Saving...'; }
+
+  // Index approved candidates by address for deterministic-field lookup.
+  var byAddr = {};
+  approved.forEach(function(p) { byAddr[p.address] = p; });
+
+  var firstC        = approved[0] || {};
+  var runMarket     = firstC.market || 'Unknown';
+  var runAssetClass = firstC.asset_class || firstC.asset || 'Unknown';
+  var runSubmarket  = firstC.submarket || null;
+  var runTimestamp  = new Date().toISOString();
+
+  // Coercion helpers — keep null-strict (don't coerce undefined to false).
+  function bool(v) { return v === true ? true : (v === false ? false : null); }
+  function dateOrNull(v) {
+    var d = _scoutParseSaleDate(v);
+    return d ? d.toISOString().slice(0, 10) : null;
+  }
+
+  // ── STEP 1 — skill_outputs (insert fresh, or reuse a prior failed-properties run) ──
+  var runId = window._scoutLastRunId || null;
+  if (!runId) {
+    var soRecord = {
+      skill_name: 'SCOUT',
+      output:     reportMd,
+      market:     runMarket,
+      address:    null,
+      inputs: {
+        market:         runMarket,
+        asset_class:    runAssetClass,
+        submarket:      runSubmarket,
+        property_count: dossiers.length,
+        run_at:         runTimestamp
+      },
+      tags:   ['scout', 'sourcing', String(runMarket).toLowerCase()],
+      run_by: _getSessionUser()
+    };
+    // Embed the report (first 8000 chars) — soft failure, don't block save.
+    try {
+      var reportVec = await _generateEmbedding(reportMd.slice(0, 8000));
+      if (reportVec) soRecord.embedding = '[' + reportVec.join(',') + ']';
+    } catch(e) { console.warn('[SCOUT] report embedding failed:', e && e.message); }
+
+    try {
+      var soRes = await _sb.from('skill_outputs').insert(soRecord).select('id').single();
+      if (soRes.error) throw new Error(soRes.error.message);
+      runId = soRes.data && soRes.data.id;
+    } catch(e) {
+      console.warn('[SCOUT] skill_outputs insert failed:', e && e.message);
+      showToast('SCOUT: save failed at skill_outputs — see console');
+      if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = '💾 Save to Database'; }
+      return;
+    }
+    if (!runId) {
+      showToast('SCOUT: save failed — no run ID returned');
+      if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = '💾 Save to Database'; }
+      return;
+    }
+    // Stash for potential retry — cleared at end of full-success save.
+    window._scoutLastRunId = runId;
+  } else {
+    console.log('[SCOUT] retry — reusing prior runId:', runId);
+  }
+
+  // ── STEP 2 — properties upsert via normalized-address dedupe ──────────
+  // Fetch id+address for all existing rows once, build a normalized → id map.
+  // Table is small (0 rows at SCOUT v1 launch); revisit if it exceeds Supabase's
+  // default 1000-row select limit.
+  var addrMap = {};
+  try {
+    var allRes = await _sb.from('properties').select('id, address');
+    if (allRes.error) throw new Error(allRes.error.message);
+    (allRes.data || []).forEach(function(row) {
+      if (row.address) addrMap[_scoutNormalizeAddress(row.address)] = row.id;
+    });
+  } catch(e) {
+    console.warn('[SCOUT] properties dedupe fetch failed (will INSERT all):', e && e.message);
+  }
+
+  function buildPropRow(dossier, candidate) {
+    var flags = (candidate && candidate._flags) || {};
+
+    // Build cited_sources jsonb — dedupe by (type, source) pair.
+    var citedSources = [];
+    var sourceSet    = {};
+    function addSrc(type, src) {
+      if (!src) return;
+      var key = type + '|' + src;
+      if (sourceSet[key]) return;
+      sourceSet[key] = true;
+      citedSources.push({ type: type, source: src });
+    }
+    if (dossier.owner_entity_verified && dossier.owner_entity_verified.source) {
+      addSrc('owner_entity', dossier.owner_entity_verified.source);
+    }
+    if (dossier.distress_signal) {
+      Object.keys(dossier.distress_signal).forEach(function(k) {
+        var entry = dossier.distress_signal[k];
+        if (entry && entry.source) addSrc('distress.' + k, entry.source);
+      });
+    }
+    (dossier.recent_news      || []).forEach(function(n) { if (n && n.source) addSrc('news',      n.source); });
+    (dossier.owner_principals || []).forEach(function(p) { if (p && p.source) addSrc('principal', p.source); });
+
+    // asking_rent_psf column is TEXT (verified). Cast non-null numbers to string.
+    var rentPSF = (candidate && candidate.asking_rent_psf != null)
+      ? String(candidate.asking_rent_psf) : null;
+
+    return {
+      address:                    (candidate && candidate.address) || dossier.address,
+      city:                       (candidate && candidate.city) || null,
+      submarket:                  (candidate && candidate.submarket) || null,
+      market:                     (candidate && candidate.market) || runMarket,
+      asset_class:                runAssetClass,
+      building_sf:                (candidate && candidate.building_sf != null)    ? candidate.building_sf    : null,
+      year_built:                 (candidate && candidate.year_built != null)     ? candidate.year_built     : null,
+      year_renovated:             (candidate && candidate.year_renovated != null) ? candidate.year_renovated : null,
+      vacancy_pct:                (candidate && candidate.vacancy_pct != null)    ? candidate.vacancy_pct    : null,
+      asking_rent_psf:            rentPSF,
+      last_sale_date:             dateOrNull(candidate && candidate.last_sale_date),
+      last_sale_price:            (candidate && candidate.last_sale_price != null) ? candidate.last_sale_price : null,
+      owner_name:                 (candidate && candidate.owner_name) || null,
+      signal_score:               (candidate && candidate.signal_score != null) ? candidate.signal_score : null,
+      conviction_tier:            (candidate && candidate.conviction_tier) || null,
+      private_owner_flag:         bool(flags.private_owner_flag),
+      long_hold_flag:             bool(flags.long_hold_flag),
+      vacancy_signal:             bool(flags.vacancy_signal),
+      below_market_rent_flag:     bool(flags.below_market_rent_flag),
+      permit_inactivity_flag:     bool(flags.permit_inactivity_flag),
+      renovation_flip_flag:       bool(flags.renovation_flip_flag),
+      debt_maturity_within_18_mo: bool(flags.debt_maturity_within_18_mo),
+      cmbs_watchlist_flag:        bool(flags.cmbs_watchlist_flag),
+      owner_age_estate_flag:      bool(flags.owner_age_estate_flag),
+      tax_delinquent_flag:        bool(flags.tax_delinquent_flag),
+      last_scout_run_at:          runTimestamp,
+      last_scout_run_id:          runId,
+      enriched_owner_intel:       dossier,
+      outreach_angle:             dossier.recommended_outreach_angle || null,
+      outreach_priority:          dossier.outreach_priority || null,
+      cited_sources:              citedSources
+    };
+  }
+
+  var writeOps = dossiers.map(function(dossier) {
+    var addr       = dossier.address;
+    var candidate  = byAddr[addr];
+    var row        = buildPropRow(dossier, candidate);
+    var existingId = addrMap[_scoutNormalizeAddress(addr)];
+    if (existingId) {
+      return _sb.from('properties').update(row).eq('id', existingId)
+        .then(function(res) { return { kind: 'update', addr: addr, error: res.error }; });
+    }
+    return _sb.from('properties').insert(row)
+      .then(function(res) { return { kind: 'insert', addr: addr, error: res.error }; });
+  });
+
+  var propResults = await Promise.allSettled(writeOps);
+  var newCount = 0, updatedCount = 0, propFail = 0;
+  propResults.forEach(function(r) {
+    if (r.status === 'fulfilled' && r.value && !r.value.error) {
+      if (r.value.kind === 'insert') newCount++;
+      else                            updatedCount++;
+    } else {
+      propFail++;
+      var msg = r.status === 'rejected'
+        ? (r.reason && r.reason.message)
+        : (r.value && r.value.error && r.value.error.message);
+      console.warn('[SCOUT] property write failed for', (r.value && r.value.addr) || '?', ':', msg);
+    }
+  });
+
+  // ── STEP 3 — skill_output_documents (one row per CoStar source file) ──
+  var docCount = 0;
+  try {
+    var folderIdx = window._scoutFolderIndex || [];
+    var matchingFiles = folderIdx.filter(function(f) {
+      return f.market === runMarket && f.asset_class === runAssetClass;
+    });
+    if (matchingFiles.length) {
+      var docInserts = matchingFiles.map(function(f) {
+        return {
+          skill_output_id: runId,
+          tool_id:         'scout',
+          upload_slot:     f.filename,
+          extracted_text:  'CoStar export: ' + f.filename + ' — fed SCOUT run ' + runMarket + '/' + runAssetClass
+        };
+      });
+      var docRes = await _sb.from('skill_output_documents').insert(docInserts);
+      if (!docRes.error) docCount = docInserts.length;
+      else console.warn('[SCOUT] document inserts failed:', docRes.error.message);
+    }
+  } catch(e) {
+    console.warn('[SCOUT] document save error:', e && e.message);
+  }
+
+  // ── Result feedback ───────────────────────────────────────────────────
+  var propTotal   = dossiers.length;
+  var propSuccess = newCount + updatedCount;
+  var allFailed   = propFail === propTotal && propTotal > 0;
+  var feedbackMsg;
+  if (allFailed) {
+    feedbackMsg = 'SCOUT: run record saved but all ' + propTotal
+      + ' property writes failed — see console, click to retry';
+  } else {
+    feedbackMsg = 'SCOUT: saved — 1 run, ' + propSuccess + '/' + propTotal + ' properties ('
+      + newCount + ' new, ' + updatedCount + ' updated), ' + docCount + ' docs';
+    if (propFail > 0) feedbackMsg += ' — ' + propFail + ' write failures, see console';
+  }
+  showToast(feedbackMsg);
+  console.log('[SCOUT] save complete — runId:', runId,
+    '— props:', { new: newCount, updated: updatedCount, failed: propFail },
+    '— docs:', docCount);
+
+  if (saveBtn) {
+    if (allFailed) {
+      saveBtn.disabled    = false;
+      saveBtn.textContent = '⚠ Retry Save';
+    } else {
+      saveBtn.disabled    = true;
+      saveBtn.textContent = '✓ Saved';
+    }
+  }
+
+  // Clear retry state only on a fully successful save (per spec).
+  if (propFail === 0) {
+    window._scoutLastRunId = null;
   }
 }
 
