@@ -9086,7 +9086,7 @@ async function _scoutPrefetchSupabase(candidates) {
          .select('last_scout_run_at, outreach_priority, outreach_angle, signal_score')
          .ilike('address', addrEsc).limit(1).maybeSingle(),
       _sb.from('deals')
-         .select('id, stage, status')
+         .select('id, stage, conviction')
          .ilike('address', addrEsc).limit(1).maybeSingle()
     ]).then(function(res) {
       var propRes = res[0]; var dealRes = res[1];
@@ -9094,7 +9094,7 @@ async function _scoutPrefetchSupabase(candidates) {
                       && propRes.value.data.last_scout_run_at) ? propRes.value.data : null;
       var pipelineOverlap = (dealRes.status === 'fulfilled' && dealRes.value && dealRes.value.data
                              && dealRes.value.data.id)
-        ? { deal_id: dealRes.value.data.id, stage: dealRes.value.data.stage, status: dealRes.value.data.status }
+        ? { deal_id: dealRes.value.data.id, stage: dealRes.value.data.stage, conviction: dealRes.value.data.conviction }
         : null;
       if (propRes.status === 'rejected') console.warn('[SCOUT] prefetch properties failed for', addr, propRes.reason && propRes.reason.message);
       if (dealRes.status === 'rejected') console.warn('[SCOUT] prefetch deals failed for', addr, dealRes.reason && dealRes.reason.message);
