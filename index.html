@@ -9418,6 +9418,9 @@ var _SCOUT_ENRICHMENT_SYSTEM_PROMPT = "You are SCOUT, RIDGE's off-market sourcin
 // _scoutBatchEnrich sequentially with 2s spacing, applies the validator,
 // caches results on window._scoutEnrichedResults for Chunk 8 (synthesis).
 async function _scoutRunEnrichment() {
+  // Clear any stale retry handle from a prior run's save attempt
+  window._scoutLastRunId = null;
+
   var toEnrich = window._scoutApprovedForEnrichment || [];
   if (!toEnrich.length) return;
   if (!_apiKey) {
