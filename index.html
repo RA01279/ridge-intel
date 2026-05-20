@@ -434,6 +434,15 @@ footer{border-top:1px solid var(--border);padding:20px 24px;text-align:center;co
 .scout-preview-actions button.secondary{background:transparent;color:var(--blue);border:1px solid var(--border);padding:8px 14px;border-radius:var(--r);cursor:pointer;}
 .scout-preview-actions button.secondary:hover{border-color:var(--blue);}
 .scout-preview-cost{font-size:11px;color:var(--muted);margin-left:auto;}
+.scout-report-body{font-size:12px;color:var(--text);line-height:1.6;max-height:500px;overflow-y:auto;padding:4px 2px;}
+.scout-report-body h2{color:var(--blue);font-size:14px;margin:14px 0 6px;font-weight:700;}
+.scout-report-body h3{color:var(--text);font-size:12px;margin:10px 0 4px;font-weight:700;}
+.scout-report-body h4{color:var(--muted);font-size:11px;margin:8px 0 4px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;}
+.scout-report-body p{margin:4px 0;}
+.scout-report-body ul{margin:4px 0 8px;padding-left:18px;}
+.scout-report-body li{margin:3px 0;}
+.scout-report-body a{color:var(--blue);}
+.scout-report-body strong{color:var(--text);}
 </style>
 </head>
 <body>
@@ -9447,8 +9456,15 @@ async function _scoutRunEnrichment() {
   console.log('[SCOUT] enrichment complete:', allDossiers.length, 'dossiers',
     failedBatches ? '(' + failedBatches + ' deterministic-only due to batch failure)' : '');
   showToast('SCOUT: enrichment complete — ' + allDossiers.length + ' dossiers'
-    + (failedBatches ? ' (' + failedBatches + ' deterministic-only)' : '')
-    + ' — synthesis in Chunk 8');
+    + (failedBatches ? ' (' + failedBatches + ' deterministic-only)' : ''));
+
+  // Synthesis pass — turn the validated dossiers into a ranked markdown briefing.
+  showToast('SCOUT: synthesizing intelligence briefing...');
+  _scoutEnrichProgress(batches.length, batches.length, 'synthesizing report');
+  var reportMd = await _scoutSynthesize(allDossiers);
+  window._scoutReportMarkdown = reportMd;
+  _scoutRenderReport(reportMd, allDossiers);
+  showToast('SCOUT: briefing ready — review below');
 }
 
 // Single-batch enrichment via Anthropic API with server-side web_search + web_fetch.
@@ -9720,6 +9736,169 @@ function _scoutEnrichProgress(current, total, phase) {
     + 'Researching owner entities and distress signals via live web search. ~3–4 minutes total.'
     + '</div>'
     + '</div>';
+}
+
+// Synthesis pass — one Anthropic API call, NO tools. Turns the validated
+// dossiers into a ranked markdown intelligence briefing. The validator has
+// already stripped unsourced facts; this pass only re-organizes and ranks.
+// No new knowledge enters — every claim in the report inherits a source.
+async function _scoutSynthesize(dossiers) {
+  if (!_apiKey) {
+    return '# SCOUT Report\n\nAPI key not configured — ' + dossiers.length
+      + ' enriched dossiers are still in memory at window._scoutEnrichedResults.';
+  }
+
+  // Strip noisy intermediate fields before sending — keep only what the briefing needs.
+  var slimDossiers = dossiers.map(function(d) {
+    var copy = {};
+    var keep = ['address', 'owner_entity_verified', 'owner_principals',
+      'distress_signal', 'recent_news', 'owner_motivation_hypothesis',
+      'recommended_outreach_angle', 'outreach_priority', '_batchFailed'];
+    keep.forEach(function(k) { if (d[k] !== undefined) copy[k] = d[k]; });
+    return copy;
+  });
+
+  // Pull market and asset class from the original approved candidates.
+  var approved = window._scoutApprovedForEnrichment || [];
+  var first = approved[0] || {};
+  var market     = first.market || 'Unknown';
+  var assetClass = first.asset_class || first.asset || 'Unknown';
+
+  var systemPrompt = "You are SCOUT's synthesis pass for Entrada Partners, "
+    + "an industrial/flex private equity acquisitions firm. You receive enriched property "
+    + "dossiers — each already validated, every fact already sourced. Your job: produce "
+    + "a ranked markdown intelligence briefing for the acquisitions team.\n\n"
+    + "RULES:\n"
+    + "1. Use ONLY facts present in the dossiers. Do not add knowledge, do not infer "
+    + "beyond what the dossier states. Every dossier fact was sourced; your summary "
+    + "inherits those sources.\n"
+    + "2. Do not invent. If a dossier is thin (null owner, no news), say so plainly — "
+    + "'limited public footprint, direct outreach required.'\n"
+    + "3. Rank by acquisition actionability: verified owner + a real distress or "
+    + "disposition signal = top tier. Thin dossiers = bottom.\n"
+    + "4. Be concise and concrete. Acquisitions officers read this between meetings.\n"
+    + "5. A null field in a dossier means SCOUT searched and found nothing. You must NOT "
+    + "fill that gap. Never write 'likely owned by', 'appears to be', 'probably', or any "
+    + "softened guess in place of a null. If the dossier says null, the briefing says "
+    + "'not found' or omits it. Treating a null as anything other than absence of data "
+    + "is fabrication.\n"
+    + "6. Output clean markdown. No fences.";
+
+  var userPrompt = 'SCOUT enrichment run — ' + slimDossiers.length + ' properties, '
+    + market + ' ' + assetClass + '.\n\n'
+    + 'Produce a markdown intelligence briefing with these sections:\n\n'
+    + '## Executive Summary\n'
+    + '3-4 sentences. How many properties, how many have verified owners, how many show '
+    + 'actionable signals, the single best opportunity.\n\n'
+    + '## Tier 1 — Act Now\n'
+    + 'Properties with a verified owner AND a real signal (disposition program, listing '
+    + 'change, distress, litigation). For each: address, owner entity, the signal with '
+    + 'its source URL, the recommended outreach angle. If none qualify, say so.\n\n'
+    + '## Tier 2 — Worth a Call\n'
+    + 'Verified owner but softer/no signal, OR strong signal but unverified owner. Brief '
+    + 'line each.\n\n'
+    + '## Tier 3 — Thin Data\n'
+    + 'Properties where research found little. Just address + one line. These need direct '
+    + 'outreach or skip-trace.\n\n'
+    + '## Data Notes\n'
+    + 'Anything the team should know — properties where the dossier flagged exhaustion, '
+    + 'batch failures, etc.\n\n'
+    + 'Here are the ' + slimDossiers.length + ' dossiers as JSON:\n'
+    + JSON.stringify(slimDossiers, null, 2);
+
+  try {
+    var resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': _apiKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-6',
+        max_tokens: 8192,
+        system: systemPrompt,
+        messages: [{ role: 'user', content: userPrompt }]
+      })
+    });
+    if (!resp.ok) {
+      var errText = await resp.text();
+      throw new Error('Anthropic API ' + resp.status + ': ' + errText.slice(0, 200));
+    }
+    var data = await resp.json();
+    var text = (data.content || [])
+      .filter(function(b) { return b.type === 'text'; })
+      .map(function(b) { return b.text; })
+      .join('');
+    return text || ('# SCOUT Report\n\nSynthesis pass returned empty — ' + dossiers.length
+      + ' dossiers were still enriched and are available.');
+  } catch (e) {
+    console.warn('[SCOUT] synthesis failed:', e && e.message);
+    return '# SCOUT Report\n\nSynthesis pass failed — ' + dossiers.length
+      + ' dossiers were still enriched and are available. Error: ' + (e && e.message);
+  }
+}
+
+// Renders the synthesis markdown into the SCOUT panel. Reuses the existing
+// parseMarkdown helper (line ~11193) — same parser ISR/Gavel use. Adds two
+// action buttons: Save to Database (Chunk 8b placeholder) and Copy Report.
+function _scoutRenderReport(markdown, dossiers) {
+  var body = document.getElementById('rout-scout');
+  if (!body) return;
+
+  var verifiedCount = dossiers.filter(function(d) {
+    return d && d.owner_entity_verified && d.owner_entity_verified.value;
+  }).length;
+  var signalCount = dossiers.filter(function(d) {
+    if (!d) return false;
+    var ds = d.distress_signal || {};
+    var hasDistress = Object.keys(ds).some(function(k) { return ds[k] && ds[k].value != null; });
+    var hasNews = Array.isArray(d.recent_news) && d.recent_news.length > 0;
+    return hasDistress || hasNews;
+  }).length;
+  var timestamp = new Date().toLocaleString();
+
+  var renderedHTML = parseMarkdown(markdown || '');
+
+  body.innerHTML = '<div class="scout-preview-wrap">'
+    + '<div class="scout-preview-header">'
+    +   '<h3>SCOUT Intelligence Briefing</h3>'
+    +   '<div class="scout-preview-meta">'
+    +     dossiers.length + ' properties enriched · ' + _hEsc(timestamp)
+    +     + ' · ' + verifiedCount + ' verified owners · ' + signalCount + ' with signals'
+    +   '</div>'
+    + '</div>'
+    + '<div class="scout-report-body">' + renderedHTML + '</div>'
+    + '<div class="scout-preview-actions">'
+    +   '<button id="scout-save-btn" class="primary">💾 Save to Database</button>'
+    +   '<button id="scout-copy-report" class="secondary">Copy Report</button>'
+    + '</div>'
+    + '</div>';
+
+  // Save to Database — Chunk 8b placeholder for now
+  var saveBtn = document.getElementById('scout-save-btn');
+  if (saveBtn) {
+    saveBtn.addEventListener('click', function() {
+      showToast('SCOUT: database persistence ships in Chunk 8b');
+    });
+  }
+
+  // Copy Report — copies raw markdown (not rendered HTML) to clipboard
+  var copyBtn = document.getElementById('scout-copy-report');
+  if (copyBtn) {
+    copyBtn.addEventListener('click', function() {
+      var md = window._scoutReportMarkdown || markdown || '';
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(md).then(
+          function() { showToast('Report copied'); },
+          function() { showToast('Copy failed — select and copy manually'); }
+        );
+      } else {
+        showToast('Clipboard API unavailable');
+      }
+    });
+  }
 }
 
 function _scoutPopulateDropdowns() {
