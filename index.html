@@ -409,23 +409,31 @@ footer{border-top:1px solid var(--border);padding:20px 24px;text-align:center;co
 /* LEASE LIBRARY */
 .ll-section{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:16px 20px;}
 .ll-sec-title{font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--blue);margin-bottom:12px;}
-/* SCOUT PREVIEW (Chunk 6) */
-.scout-preview-wrap{margin-top:16px;padding:14px;background:#fff;border:1px solid #e0e0e0;border-radius:8px;}
-.scout-preview-header h3{margin:0 0 8px 0;font-size:14px;font-weight:600;color:#1e2761;}
-.scout-preview-meta{font-size:11px;color:#555;margin-bottom:12px;}
-.scout-preview-table{width:100%;border-collapse:collapse;font-size:11px;}
-.scout-preview-table th{background:#1e2761;color:#fff;padding:6px 8px;text-align:left;font-weight:600;}
-.scout-preview-table td{padding:6px 8px;border-bottom:1px solid #eee;vertical-align:middle;}
-.scout-preview-table tr:hover{background:#f8faff;}
-.scout-tier-high{background:#1b5e20;color:#fff;padding:2px 6px;border-radius:3px;font-weight:600;font-size:10px;}
-.scout-tier-medium{background:#b45309;color:#fff;padding:2px 6px;border-radius:3px;font-weight:600;font-size:10px;}
-.scout-tier-watch{background:#555;color:#fff;padding:2px 6px;border-radius:3px;font-weight:600;font-size:10px;}
+/* SCOUT PREVIEW (Chunk 6, dark-themed in Chunk 6.5) */
+.scout-preview-wrap{margin-top:16px;padding:14px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);}
+.scout-preview-header h3{margin:0 0 8px 0;font-size:14px;font-weight:700;color:var(--blue);}
+.scout-preview-meta{font-size:11px;color:var(--muted);margin-bottom:12px;}
+.scout-preview-table{width:100%;border-collapse:collapse;font-size:11px;color:var(--text);}
+.scout-preview-table th{background:var(--navy);color:#fff;padding:7px 8px;text-align:left;font-weight:600;border-bottom:1px solid var(--border);}
+.scout-preview-table td{padding:6px 8px;border-bottom:1px solid var(--border);vertical-align:middle;color:var(--text);}
+.scout-preview-table tr:nth-child(even) td{background:var(--surface2);}
+.scout-preview-table tr:hover td{background:rgba(33,150,243,0.08);}
+/* Unchecked rows dimmed but still legible — :has() supported in Chromium (SCOUT-only) */
+.scout-preview-table tr:has(input.scout-row-cb:not(:checked)) td{color:var(--muted);}
+.scout-preview-table tr:has(input.scout-row-cb:not(:checked)) .scout-tier-high,
+.scout-preview-table tr:has(input.scout-row-cb:not(:checked)) .scout-tier-medium,
+.scout-preview-table tr:has(input.scout-row-cb:not(:checked)) .scout-tier-watch{opacity:0.55;}
+.scout-tier-high{background:var(--green);color:#fff;padding:2px 6px;border-radius:3px;font-weight:700;font-size:10px;letter-spacing:0.5px;}
+.scout-tier-medium{background:var(--amber);color:#fff;padding:2px 6px;border-radius:3px;font-weight:700;font-size:10px;letter-spacing:0.5px;}
+.scout-tier-watch{background:var(--faint);color:var(--text);padding:2px 6px;border-radius:3px;font-weight:700;font-size:10px;letter-spacing:0.5px;}
 .scout-context-pill{display:inline-block;margin-right:4px;font-size:10px;cursor:help;}
 .scout-preview-actions{margin-top:12px;display:flex;gap:8px;align-items:center;}
-.scout-preview-actions button.primary{background:#1e2761;color:#fff;border:none;padding:8px 14px;border-radius:4px;cursor:pointer;font-weight:600;}
-.scout-preview-actions button.primary:disabled{background:#999;cursor:not-allowed;}
-.scout-preview-actions button.secondary{background:#fff;color:#1e2761;border:1px solid #1e2761;padding:8px 14px;border-radius:4px;cursor:pointer;}
-.scout-preview-cost{font-size:11px;color:#888;margin-left:auto;}
+.scout-preview-actions button.primary{background:var(--blue);color:#fff;border:none;padding:8px 14px;border-radius:var(--r);cursor:pointer;font-weight:600;}
+.scout-preview-actions button.primary:hover:not(:disabled){background:var(--blue-dim);}
+.scout-preview-actions button.primary:disabled{background:var(--faint);color:var(--muted);cursor:not-allowed;}
+.scout-preview-actions button.secondary{background:transparent;color:var(--blue);border:1px solid var(--border);padding:8px 14px;border-radius:var(--r);cursor:pointer;}
+.scout-preview-actions button.secondary:hover{border-color:var(--blue);}
+.scout-preview-cost{font-size:11px;color:var(--muted);margin-left:auto;}
 </style>
 </head>
 <body>
@@ -466,6 +474,19 @@ footer{border-top:1px solid var(--border);padding:20px 24px;text-align:center;co
     <div class="modal-btns">
       <button class="btn btn-o" onclick="closeLaunch()">Cancel</button>
       <button class="btn btn-p" id="launch-go-btn" onclick="copyAndLaunch()">↗ Copy &amp; Open Claude</button>
+    </div>
+  </div>
+</div>
+
+<!-- SCOUT APPROVE-TO-ENRICH MODAL (Chunk 6.5) -->
+<div class="modal-bg" id="scout-approve-modal">
+  <div class="modal" style="max-width:520px;">
+    <button class="xbtn" onclick="_scoutCloseApproveModal()">✕</button>
+    <h3 id="scout-approve-modal-title">Approve Properties for Enrichment</h3>
+    <p id="scout-approve-modal-body" style="margin-bottom:14px;"></p>
+    <div class="modal-btns">
+      <button class="btn btn-o" onclick="_scoutCloseApproveModal()">Cancel</button>
+      <button class="btn btn-p" onclick="_scoutCloseApproveModal();_scoutRunEnrichment();">⚡ Run Enrichment</button>
     </div>
   </div>
 </div>
@@ -9300,8 +9321,8 @@ function _scoutHandleCheckboxToggle(idx) {
   _scoutUpdatePreviewCounts();
 }
 
-// Chunk 6 placeholder — Chunk 7 replaces the launch portion with the real
-// enrichment agent loop. For now, validates selection and persists it.
+// Validates selection and shows the confirmation modal. The modal's
+// Run Enrichment button calls _scoutRunEnrichment with the persisted subset.
 async function _scoutApproveToEnrich() {
   var enriched = window._scoutEnrichedCandidates || [];
   var selected = (STATE['scout'] && STATE['scout']._selected) || [];
@@ -9312,10 +9333,41 @@ async function _scoutApproveToEnrich() {
     return;
   }
 
-  // Persist the selection for Chunk 7's agent loop to consume
+  // Persist the approved subset for the modal's confirm button to read
   window._scoutApprovedForEnrichment = toEnrich;
+  _scoutShowApproveModal(toEnrich.length);
+}
 
-  console.log('[SCOUT] approved for enrichment:', toEnrich.length, 'properties');
+// Confirmation modal — shows cost / duration / methodology before any AI fires.
+function _scoutShowApproveModal(n) {
+  var title = document.getElementById('scout-approve-modal-title');
+  var body  = document.getElementById('scout-approve-modal-body');
+  if (title) title.textContent = 'Approve ' + n + ' Propert' + (n === 1 ? 'y' : 'ies') + ' for Enrichment';
+  if (body) body.innerHTML =
+    'SCOUT will research each selected property using live web search — owner entity verification, '
+    + 'distress signals, debt indicators, and recent news.'
+    + '<br><br>This step:'
+    + '<br>· Uses AI and live web search (~$0.50–$1.00 in API tokens)'
+    + '<br>· Takes about 3–4 minutes to complete'
+    + '<br>· Every fact in the result is sourced — SCOUT never fabricates owner data'
+    + '<br><br>' + n + ' propert' + (n === 1 ? 'y' : 'ies') + ' selected. '
+    + 'Properties already in your pipeline were auto-deselected.';
+  var modal = document.getElementById('scout-approve-modal');
+  if (modal) modal.classList.add('show');
+}
+
+function _scoutCloseApproveModal() {
+  var modal = document.getElementById('scout-approve-modal');
+  if (modal) modal.classList.remove('show');
+}
+
+// Chunk 6.5 placeholder — fires when the modal's Run Enrichment button is
+// clicked. Chunk 7 replaces this with the real agent loop + post-run DB write.
+async function _scoutRunEnrichment() {
+  var toEnrich = window._scoutApprovedForEnrichment || [];
+  if (!toEnrich.length) return;
+
+  console.log('[SCOUT] running enrichment on:', toEnrich.length, 'properties');
   console.log('[SCOUT] enrichment list:', toEnrich.map(function(p) {
     return { address: p.address, score: p.signal_score, tier: p.conviction_tier };
   }));
