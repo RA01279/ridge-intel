@@ -9844,8 +9844,8 @@ async function _scoutSynthesize(dossiers) {
 }
 
 // Renders the synthesis markdown into the SCOUT panel. Reuses the existing
-// parseMarkdown helper (line ~11193) — same parser ISR/Gavel use. Adds two
-// action buttons: Save to Database (Chunk 8b placeholder) and Copy Report.
+// parseMarkdown helper (line ~11193) — same parser ISR/Gavel use. Adds three
+// action buttons: Save to Database, Export PDF, and Copy Report.
 function _scoutRenderReport(markdown, dossiers) {
   var body = document.getElementById('rout-scout');
   if (!body) return;
@@ -9862,6 +9862,16 @@ function _scoutRenderReport(markdown, dossiers) {
   }).length;
   var timestamp = new Date().toLocaleString();
 
+  // Stash report meta for the PDF export — avoids recomputing counts in _scoutExportPDF.
+  var firstC = (window._scoutApprovedForEnrichment || [])[0] || {};
+  window._scoutReportMeta = {
+    market:        firstC.market || 'Unknown',
+    assetClass:    firstC.asset_class || firstC.asset || 'Unknown',
+    dossierCount:  dossiers.length,
+    verifiedCount: verifiedCount,
+    signalCount:   signalCount
+  };
+
   var renderedHTML = parseMarkdown(markdown || '');
 
   body.innerHTML = '<div class="scout-preview-wrap">'
@@ -9875,6 +9885,7 @@ function _scoutRenderReport(markdown, dossiers) {
     + '<div class="scout-report-body">' + renderedHTML + '</div>'
     + '<div class="scout-preview-actions">'
     +   '<button id="scout-save-btn" class="primary">💾 Save to Database</button>'
+    +   '<button id="scout-export-pdf" class="secondary">📄 Export PDF</button>'
     +   '<button id="scout-copy-report" class="secondary">Copy Report</button>'
     + '</div>'
     + '</div>';
@@ -9882,6 +9893,10 @@ function _scoutRenderReport(markdown, dossiers) {
   // Save to Database — wires to _scoutSaveToDatabase (skill_outputs + properties + docs)
   var saveBtn = document.getElementById('scout-save-btn');
   if (saveBtn) saveBtn.addEventListener('click', _scoutSaveToDatabase);
+
+  // Export PDF — opens a print window of the briefing
+  var pdfBtn = document.getElementById('scout-export-pdf');
+  if (pdfBtn) pdfBtn.addEventListener('click', _scoutExportPDF);
 
   // Copy Report — copies raw markdown (not rendered HTML) to clipboard
   var copyBtn = document.getElementById('scout-copy-report');
@@ -9898,6 +9913,83 @@ function _scoutRenderReport(markdown, dossiers) {
       }
     });
   }
+}
+
+// Exports the SCOUT briefing as a PDF via the print-window pattern (mirrors
+// ridgeExportPDF) — no PDF library. Builds a clean print document from the
+// report markdown, opens a window, writes the doc, calls print(). Styling is
+// deliberately plain — the Entrada Executive brand pass is a separate block.
+function _scoutExportPDF() {
+  var md = window._scoutReportMarkdown || '';
+  if (!md.trim()) {
+    showToast('SCOUT: no briefing to export — run enrichment first');
+    return;
+  }
+
+  var meta          = window._scoutReportMeta || {};
+  var market        = meta.market        || 'Unknown';
+  var assetClass    = meta.assetClass    || 'Unknown';
+  var dossierCount  = (meta.dossierCount  != null) ? meta.dossierCount  : 0;
+  var verifiedCount = (meta.verifiedCount != null) ? meta.verifiedCount : 0;
+  var signalCount   = (meta.signalCount   != null) ? meta.signalCount   : 0;
+
+  var now      = new Date();
+  var runDate  = now.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+  var genStr   = now.toLocaleString();
+  var fileDate = now.toISOString().slice(0, 10);
+  // Filename: lowercase, any run of non-alphanumerics → single hyphen, trim edges.
+  // "Dallas–Fort Worth" → "dallas-fort-worth" (en-dash + space collapse cleanly).
+  var fileName = ('scout-briefing-' + market + '-' + fileDate)
+    .toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+
+  var briefingHTML = parseMarkdown(md);
+
+  var css = [
+    '* { margin:0; padding:0; box-sizing:border-box; }',
+    'body { font-family: Georgia, "Times New Roman", serif; font-size: 11pt; color:#1a1a1a; background:#fff; line-height:1.55; overflow-wrap: break-word; }',
+    '.page { max-width: 820px; margin: 0 auto; padding: 36px 44px; }',
+    '.hdr { border-bottom: 2px solid #333; padding-bottom: 12px; }',
+    '.hdr h1 { font-size: 19pt; font-weight: 700; letter-spacing: 0.5px; }',
+    '.hdr .firm { font-size: 10pt; color:#555; margin-top: 3px; }',
+    '.submeta { font-size: 9.5pt; color:#555; margin: 12px 0 24px; }',
+    '.body h2 { font-size: 14pt; margin: 22px 0 6px; padding-bottom: 3px; border-bottom: 1px solid #ccc; }',
+    '.body h3 { font-size: 12pt; margin: 14px 0 4px; }',
+    '.body h4 { font-size: 10.5pt; margin: 10px 0 4px; color:#444; }',
+    '.body p { margin: 6px 0; }',
+    '.body ul { margin: 6px 0 10px; padding-left: 22px; }',
+    '.body li { margin: 3px 0; }',
+    '.body a { color:#1565c0; }',
+    '.body strong { color:#000; }',
+    '.body table { width:100%; border-collapse: collapse; margin: 10px 0; font-size: 9.5pt; }',
+    '.body th { background:#eee; padding: 5px 8px; text-align: left; border: 1px solid #ccc; }',
+    '.body td { padding: 5px 8px; border: 1px solid #ddd; }',
+    '.ftr { margin-top: 30px; padding-top: 10px; border-top: 1px solid #ccc; font-size: 8pt; color:#888; }',
+    '@media print { body { print-color-adjust: exact; -webkit-print-color-adjust: exact; } .page { padding: 24px; } }'
+  ].join('\n');
+
+  var submeta = _hEsc(market) + ' · ' + _hEsc(assetClass) + ' · ' + _hEsc(runDate)
+    + ' · ' + dossierCount + ' properties · ' + verifiedCount + ' verified owners · '
+    + signalCount + ' with signals';
+
+  var docHTML = '<!DOCTYPE html><html><head><meta charset="utf-8">'
+    + '<title>' + _hEsc(fileName) + '</title><style>' + css + '</style></head><body>'
+    + '<div class="page">'
+    +   '<div class="hdr"><h1>SCOUT — Off-Market Sourcing Briefing</h1>'
+    +   '<div class="firm">Entrada Partners</div></div>'
+    +   '<div class="submeta">' + submeta + '</div>'
+    +   '<div class="body">' + briefingHTML + '</div>'
+    +   '<div class="ftr">Generated by RIDGE · ' + _hEsc(genStr) + '</div>'
+    + '</div></body></html>';
+
+  var w = window.open('', '_blank', 'width=960,height=800');
+  if (!w) {
+    showToast('SCOUT: popup blocked — allow popups to export PDF');
+    return;
+  }
+  w.document.open();
+  w.document.write(docHTML);
+  w.document.close();
+  setTimeout(function() { w.print(); }, 400);
 }
 
 // ── ADDRESS NORMALIZATION (Chunk 8b) ─────────────────────────────────────
