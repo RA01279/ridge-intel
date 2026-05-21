@@ -97,13 +97,6 @@ main{max-width:1120px;margin:0 auto;padding:32px 20px;}
 input[type=file]{display:none;}
 .refresh-btn{margin-top:6px;background:none;border:1px solid var(--border);color:var(--muted);font-size:11px;padding:4px 10px;cursor:pointer;border-radius:3px;}
 .refresh-btn:hover{color:var(--text);border-color:var(--text);}
-.ds-memory-bar{display:flex;align-items:center;gap:10px;background:rgba(255,255,255,.03);border:1px solid var(--border);padding:8px 12px;border-radius:4px;margin-bottom:14px;flex-wrap:wrap;}
-.ds-mem-label{font-size:12px;color:var(--muted);flex:1;}
-.ds-mem-label strong{color:var(--text);}
-.ds-mem-btn{background:none;border:1px solid var(--border);color:var(--muted);font-size:11px;padding:3px 10px;cursor:pointer;border-radius:3px;}
-.ds-mem-btn:hover{color:var(--text);border-color:var(--text);}
-.ds-mem-clear:hover{color:var(--red,#e05);border-color:var(--red,#e05);}
-.ds-log-box{background:rgba(255,255,255,.02);border:1px solid var(--border);padding:12px;border-radius:4px;margin-bottom:14px;}
 .export-section{border-top:1px solid var(--border);margin-top:20px;padding-top:16px;}
 .export-toggle{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted);cursor:pointer;margin-bottom:0;user-select:none;}
 .export-toggle:hover{color:var(--text);}
@@ -231,19 +224,6 @@ footer{border-top:1px solid var(--border);padding:20px 24px;text-align:center;co
 .nl-value.amber{color:#f59e0b;}
 .nl-value.red{color:#f87171;}
 
-.ds-tracker{margin-top:16px;border:1px solid var(--border);border-radius:var(--r);overflow:hidden;}
-.ds-tracker-head{background:var(--surface2);padding:10px 14px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;user-select:none;}
-.ds-tracker-head-title{font-size:11px;font-weight:700;letter-spacing:1px;color:var(--text);text-transform:uppercase;}
-.ds-tracker-body{display:none;max-height:420px;overflow-y:auto;}
-.ds-tracker-body.open{display:block;}
-.ds-tracker-table{width:100%;border-collapse:collapse;font-size:11px;}
-.ds-tracker-table th{background:#0D1B2A;color:#fff;padding:6px 8px;text-align:left;font-weight:600;font-size:10px;position:sticky;top:0;z-index:1;}
-.ds-tracker-table td{padding:5px 8px;border-bottom:1px solid var(--border);vertical-align:middle;}
-.ds-tracker-table tr:nth-child(even) td{background:var(--surface2);}
-.ds-status-sel{font-size:11px;padding:2px 4px;border:1px solid var(--border);border-radius:3px;width:128px;font-weight:600;}
-.ds-note-inp{font-size:11px;padding:2px 6px;border:1px solid var(--border);border-radius:3px;width:100%;box-sizing:border-box;}
-.ds-date-inp{font-size:11px;padding:2px 4px;border:1px solid var(--border);border-radius:3px;width:100px;}
-
 /* MODAL (launch) */
 .modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:999;align-items:center;justify-content:center;}
 .modal-bg.show{display:flex;}
@@ -349,10 +329,6 @@ footer{border-top:1px solid var(--border);padding:20px 24px;text-align:center;co
 
   /* 3. Upload rows — collapse to single column */
   .upload-row.two{grid-template-columns:1fr;}
-
-  /* 4. DS Tracker table — horizontal scroll */
-  .ds-tracker-body{overflow-x:auto;}
-  .ds-tracker-table{min-width:580px;}
 
   /* 5. Results tables — horizontal scroll */
   .res-body table{display:block;overflow-x:auto;width:100%;}
@@ -1798,17 +1774,6 @@ function renderTools() {
     }
   });
 
-  // TODO(SCOUT Chunk 11 — Daily Signal retirement): remove this observer; panel-daily-signal element no longer exists after SCOUT replaced the registry entry. Safe no-op for now (getElementById returns null), but should be deleted in Chunk 11 alongside renderDSTracker.
-  // Render DS tracker on panel open
-  var dsPanel = document.getElementById('panel-daily-signal');
-  if(dsPanel){
-    var obs = new MutationObserver(function(muts){
-      muts.forEach(function(m){
-        if(m.attributeName==='class' && dsPanel.classList.contains('open')) renderDSTracker();
-      });
-    });
-    obs.observe(dsPanel, {attributes:true});
-  }
 }
 
 function _buildStandalonePanelHTML(id) {
@@ -1948,9 +1913,7 @@ function buildPanelHTML(tool) {
 
   // Buttons / Export section
   var exportSection = '';
-  if (tool.id === 'daily-signal') {
-    exportSection = `<button class="btn btn-o" onclick="exportDailySignalXLSX()">↓ Export Excel</button>`;
-  } else if (tool.id === 'isr') {
+  if (tool.id === 'isr') {
     exportSection = '';  // ISR already has PPTX export handled separately
   } else {
     exportSection = `<div class="export-section">
@@ -1981,25 +1944,6 @@ function buildPanelHTML(tool) {
   <div class="panel-body">
     ${uploadsHTML}
     ${parsedHTML}
-    ${tool.id === 'daily-signal' ? `<div class="ds-memory-bar">
-      <span class="ds-mem-label">📋 Sourced memory: <strong id="ds-mem-count">0 properties</strong></span>
-      <button class="ds-mem-btn" onclick="toggleDSLog()">+ Log This Run</button>
-      <button class="ds-mem-btn ds-mem-clear" onclick="clearDailySourced()">Clear Memory</button>
-    </div>
-    <div class="ds-log-box" id="ds-log-box" style="display:none">
-      <label class="fl" style="margin-bottom:6px">Paste the "SOURCED THIS RUN:" block from Claude's output — saved automatically</label>
-      <textarea id="ds-log-input" placeholder="123 Industrial Blvd, Savannah&#10;456 Port Ave, Atlanta&#10;..." style="height:90px;width:100%;box-sizing:border-box"></textarea>
-      <button class="btn btn-p" style="margin-top:6px;font-size:12px" onclick="saveDailySourced()">Save to Memory</button>
-    </div>
-    <div class="ds-tracker" id="ds-tracker">
-      <div class="ds-tracker-head" onclick="toggleDSTracker()">
-        <span class="ds-tracker-head-title">📞 Contact Tracker <span id="ds-tracker-count" style="color:var(--muted);font-weight:400;"></span></span>
-        <span id="ds-tracker-arrow" style="font-size:11px;color:var(--muted);">▶</span>
-      </div>
-      <div class="ds-tracker-body" id="ds-tracker-body">
-        <div id="ds-tracker-panel" style="padding:0;"></div>
-      </div>
-    </div>` : ''}
     <div class="manual-toggle" onclick="toggleManual('${tool.id}')">
       <span id="marrow-${tool.id}">▶</span> Fields &amp; Parameters
       <span style="color:var(--faint);font-size:11px;margin-left:4px">— auto-filled from upload where available</span>
@@ -2011,10 +1955,9 @@ function buildPanelHTML(tool) {
     <div class="btn-row">
       <button class="btn btn-p" id="run-btn-${tool.id}" onclick="${tool.id === 'portfolio-map' ? '_portfolioMapLoad()' : 'runTool(\'' + tool.id + '\')'}">↗ Run ${tool.name}</button>
       <button class="btn btn-o" onclick="clearTool('${tool.id}')">Clear</button>
-      ${tool.id === 'daily-signal' ? exportSection : ''}
       ${tool.id==='loi'?'<button class="btn btn-g" onclick="generateLOI()" style="margin-left:8px;">⬇ Generate LOI</button>':''}
     </div>
-    ${tool.id !== 'daily-signal' ? exportSection : ''}
+    ${exportSection}
     <div class="loading" id="loading-${tool.id}">
       <div class="loading-lbl" id="llbl-${tool.id}">Working...</div>
       <div class="pbar"><div class="pfill" id="pfill-${tool.id}"></div></div>
@@ -2075,7 +2018,6 @@ function togglePanel(id) {
     panel.classList.add('open');
     if (card) card.classList.add('open');
     setTimeout(() => panel.scrollIntoView({ behavior:'smooth', block:'start' }), 50);
-    if (id === 'daily-signal') updateDSMemCount();
     if (id === 'pipeline') renderPipeline();
     if (id === 'lease-library') { _llInitFilterOptions(); _llLoadLeases(); }
     if (id === 'napkin')       { _initMarketDropdown('f-napkin-mkt'); }
@@ -2278,698 +2220,6 @@ function handleMultiXLSX(toolId, uploadId, input) {
     };
     reader.readAsArrayBuffer(file);
   });
-}
-
-// ── Daily Signal sourced memory ──────────────────────────────
-// TODO(SCOUT Chunk 11 — Daily Signal retirement): rename DS_STATE_KEY → SCOUT_STATE_KEY and the helper functions below (getDailySignalState/saveDailySignalState/getDSTracker/etc.) to their SCOUT equivalents. Migrate localStorage key on load. Re-signal memory is preserved, not deleted.
-// ── DAILY SIGNAL — UNIFIED STATE ─────────────────────────────
-// Single versioned key replaces ridge_daily_sourced (newline string)
-// and ridge_ds_tracker (bare JSON object).
-var DS_STATE_KEY = 'ridge_daily_state_v1';
-
-function getDailySignalState() {
-  try { return JSON.parse(localStorage.getItem(DS_STATE_KEY) || '{"sourced":[],"tracker":{}}'); }
-  catch(e) { return {sourced:[], tracker:{}}; }
-}
-
-function saveDailySignalState(state) {
-  localStorage.setItem(DS_STATE_KEY, JSON.stringify(state));
-}
-
-// Run once on load — migrates old keys into the unified schema without deleting them.
-function _migrateDSState() {
-  if (localStorage.getItem(DS_STATE_KEY)) return; // already migrated
-  var sourced = [];
-  var tracker = {};
-  try {
-    sourced = (localStorage.getItem('ridge_daily_sourced') || '').split('\n').map(function(s){ return s.trim(); }).filter(Boolean);
-  } catch(e) { console.warn('[RIDGE] DS migrate sourced failed:', e.message); }
-  try {
-    tracker = JSON.parse(localStorage.getItem('ridge_ds_tracker') || '{}');
-  } catch(e) { console.warn('[RIDGE] DS migrate tracker failed:', e.message); }
-  if (sourced.length || Object.keys(tracker).length) {
-    saveDailySignalState({sourced: sourced, tracker: tracker});
-    console.log('[RIDGE] DS state migrated — ' + sourced.length + ' sourced, ' + Object.keys(tracker).length + ' tracker entries');
-  }
-}
-
-function updateDSMemCount() {
-  var el = document.getElementById('ds-mem-count');
-  if (!el) return;
-  var lines = getDailySignalState().sourced;
-  el.textContent = lines.length + ' propert' + (lines.length === 1 ? 'y' : 'ies');
-}
-function toggleDSLog() {
-  var box = document.getElementById('ds-log-box');
-  if (box) box.style.display = box.style.display === 'none' ? 'block' : 'none';
-}
-function saveDailySourced() {
-  var inp = document.getElementById('ds-log-input');
-  if (!inp || !inp.value.trim()) return;
-  var state = getDailySignalState();
-  var incoming = inp.value.split('\n');
-  state.sourced = Array.from(new Set([...state.sourced, ...incoming].map(function(s){ return s.trim(); }).filter(Boolean)));
-  saveDailySignalState(state);
-  inp.value = '';
-  var box = document.getElementById('ds-log-box');
-  if (box) box.style.display = 'none';
-  updateDSMemCount();
-  showToast('✓ ' + state.sourced.length + ' properties saved to sourced memory');
-}
-function clearDailySourced() {
-  var count = getDailySignalState().sourced.length;
-  if (!count || confirm('Clear ' + count + ' properties from sourced memory?')) {
-    var state = getDailySignalState();
-    state.sourced = [];
-    saveDailySignalState(state);
-    updateDSMemCount();
-    showToast('Sourced memory cleared');
-  }
-}
-
-var _dsTKKeys = [];
-
-
-
-function getDSTracker(){
-  return getDailySignalState().tracker;
-}
-function _saveDSTracker(t){
-  var state = getDailySignalState();
-  state.tracker = t;
-  saveDailySignalState(state);
-}
-
-function setDSTrackerEntry(idx, updates){
-  var addr = _dsTKKeys[idx];
-  if(!addr) return;
-  var t = getDSTracker();
-  t[addr] = Object.assign(t[addr]||{status:'',note:'',followUpDate:'',lastContact:'',score:0,addedDate:new Date().toISOString().slice(0,10)}, updates);
-  _saveDSTracker(t);
-  renderDSTracker();
-}
-
-function deleteDSTrackerEntry(idx){
-  var addr = _dsTKKeys[idx];
-  if(!addr) return;
-  if(!confirm('Remove "'+addr+'" from tracker?')) return;
-  var t = getDSTracker();
-  delete t[addr];
-  _saveDSTracker(t);
-  renderDSTracker();
-}
-
-function toggleDSTracker(){
-  var body = document.getElementById('ds-tracker-body');
-  var arrow = document.getElementById('ds-tracker-arrow');
-  if(!body) return;
-  var open = body.classList.toggle('open');
-  if(arrow) arrow.textContent = open ? '▼' : '▶';
-  if(open) renderDSTracker();
-}
-
-function renderDSTracker(){
-  var panel = document.getElementById('ds-tracker-panel');
-  var countEl = document.getElementById('ds-tracker-count');
-  if(!panel) return;
-  var t = getDSTracker();
-  var keys = Object.keys(t);
-  if(countEl) countEl.textContent = '— '+keys.length+' tracked';
-  if(!keys.length){
-    panel.innerHTML='<div style="color:var(--muted);font-size:11px;padding:12px 14px;">No properties tracked yet. Run a Daily Signal report to begin.</div>';
-    _dsTKKeys=[];
-    return;
-  }
-  // Sort: In Conversation → Follow Up → Left Message → No Answer → Not Called → Not Interested → Dead
-  var ORDER={'In Conversation':0,'Follow Up':1,'Left Message':2,'No Answer':3,'':4,'Not Called':4,'Not Interested':5,'Dead':6};
-  keys.sort(function(a,b){ return (ORDER[t[a].status||'']||4)-(ORDER[t[b].status||'']||4); });
-  _dsTKKeys = keys;
-  var STATUS_COLOR={'In Conversation':'#166534','Follow Up':'#1D4ED8','Left Message':'#92400E','No Answer':'#64748B','':'#94A3B8','Not Interested':'#6B7280','Dead':'#DC2626'};
-  var STATUS_BG={'In Conversation':'#D1FAE5','Follow Up':'#DBEAFE','Left Message':'#FEF3C7','No Answer':'#F1F5F9','':'#F8FAFC','Not Interested':'#F3F4F6','Dead':'#FEE2E2'};
-  var STATUSES=['','No Answer','Left Message','Not Interested','Follow Up','In Conversation','Dead'];
-  var html='<table class="ds-tracker-table"><thead><tr><th style="width:36%">Property</th><th style="width:16%">Score</th><th style="width:22%">Status</th><th style="width:14%">Follow Up</th><th>Notes</th><th style="width:28px"></th></tr></thead><tbody>';
-  keys.forEach(function(key,i){
-    var e=t[key];
-    var sc=e.score?'<span style="font-weight:700;color:'+(e.score>=8?'#059669':e.score>=5?'#D97706':'#94A3B8')+'">'+e.score+'</span>':'—';
-    var sbg=STATUS_BG[e.status||'']||'#F8FAFC';
-    var sc2=STATUS_COLOR[e.status||'']||'#94A3B8';
-    var opts=STATUSES.map(function(s){ return '<option value="'+s+'"'+(e.status===s?' selected':'')+'>'+(s||'Not Called')+'</option>'; }).join('');
-    html+='<tr>';
-    html+='<td style="max-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="'+key+'"><span style="font-weight:500;">'+key+'</span>'+(e.lastContact?'<br><span style="color:var(--muted);font-size:10px;">Last: '+e.lastContact+'</span>':'')+'</td>';
-    html+='<td style="text-align:center;">'+sc+'</td>';
-    html+='<td><select class="ds-status-sel" style="background:'+sbg+';color:'+sc2+';" onchange="setDSTrackerEntry('+i+',{status:this.value,lastContact:new Date().toISOString().slice(0,10)})">'+opts+'</select></td>';
-    html+='<td><input type="date" class="ds-date-inp" value="'+(e.followUpDate||'')+'" onchange="setDSTrackerEntry('+i+',{followUpDate:this.value})"></td>';
-    html+='<td><input type="text" class="ds-note-inp" value="'+(e.note||'').replace(/"/g,'&quot;').replace(/\'/g,'&#39;')+'" placeholder="Notes..." onchange="setDSTrackerEntry('+i+',{note:this.value})"></td>';
-    html+='<td style="text-align:center;"><button onclick="deleteDSTrackerEntry('+i+')" style="background:none;border:none;color:#EF4444;cursor:pointer;font-size:14px;line-height:1;padding:0;">×</button></td>';
-    html+='</tr>';
-  });
-  html+='</tbody></table>';
-  panel.innerHTML=html;
-}
-
-function getDSOutreachAngle(p) {
-  var sub = p.submarket || p.city || 'your submarket';
-  var addr = p.address;
-  var yh = p.yearsHeld;
-  if (p.forSaleRaw) {
-    return {
-      angle: 'Listed Asset — Direct Approach',
-      script: 'Hi [Owner Name], my name is [Your Name] with Entrada Partners — we are institutional industrial buyers actively acquiring in ' + sub + '. We saw ' + addr + ' is on the market and wanted to connect directly. We close in 60 days with no financing contingency and no broker on our side. Would you have 10 minutes this week to connect?'
-    };
-  }
-  if (p.vacancyN >= 35 && yh >= 7) {
-    return {
-      angle: 'High Vacancy + Long Hold — Repositioning Conversation',
-      script: 'Hi [Owner Name], I am [Your Name] with Entrada Partners. We invest in industrial and flex properties in ' + sub + ' — specifically assets at a natural inflection point. ' + addr + ' caught our attention. We would love to have a brief conversation about your long-term plans for the asset and whether a sale makes sense.'
-    };
-  }
-  if (yh >= 12) {
-    return {
-      angle: 'Long-Term Hold — Capital Event',
-      script: 'Hi [Owner Name], I am [Your Name] with Entrada Partners. After ' + yh + ' years of ownership, many owners in ' + sub + ' are thinking through a capital event or succession plan. We are active buyers and would value the chance to introduce ourselves and learn more about your goals for ' + addr + '.'
-    };
-  }
-  if (p.vacancyN >= 20) {
-    return {
-      angle: 'Vacancy Play — Repositioning Capital',
-      script: 'Hi [Owner Name], I am [Your Name] with Entrada Partners. We are tracking industrial vacancy in ' + sub + ' and ' + addr + ' is on our radar. We have experience repositioning multi-tenant assets like this and would be interested in a conversation about whether a sale makes sense for you.'
-    };
-  }
-  if (p.belowMarket) {
-    return {
-      angle: 'Below-Market Rents — Mark-to-Market Opportunity',
-      script: 'Hi [Owner Name], I am [Your Name] with Entrada Partners. We are active buyers in ' + sub + ' focused on properties with near-term rent growth potential. ' + addr + ' fits what we are looking for. Would you be open to a brief call this week?'
-    };
-  }
-  return {
-    angle: 'Market Presence — Acquisition Outreach',
-    script: 'Hi [Owner Name], I am [Your Name] with Entrada Partners. We are actively acquiring industrial and flex properties in ' + sub + ' and ' + addr + ' fits our investment criteria well. I would love to introduce myself and learn more about your long-term plans for the asset.'
-  };
-}
-
-// TODO(SCOUT Chunk 11 — Daily Signal retirement): rename exportDailySignalXLSX → exportScoutXLSX and refactor for the new properties schema (signal_score, conviction_tier, outreach_priority, etc.). The deterministic scoring logic in this function carries over conceptually — most rows just need column renames.
-async function exportDailySignalXLSX() {
-  var rows = (STATE['daily-signal'] || {})._rows;
-  if (!rows || !rows.length) { showToast('Select CoStar folder first'); return; }
-
-  var today = new Date();
-  var dateStr = today.toLocaleDateString('en-US', { month:'long', day:'numeric', year:'numeric' });
-  var fileDate = today.toISOString().slice(0,10);
-  var sourced = getDailySignalState().sourced.map(function(s){ return s.toLowerCase(); });
-  var tracker = getDSTracker();
-
-  function col(r, keys) {
-    var rk = Object.keys(r);
-    for (var i=0; i<keys.length; i++) {
-      for (var j=0; j<rk.length; j++) {
-        if (rk[j].toLowerCase().includes(keys[i].toLowerCase())) return r[rk[j]];
-      }
-    }
-    return '';
-  }
-
-  var totalScreened = 0;
-  var disqualified = 0;
-  var results = [];
-
-  rows.forEach(function(r) {
-    var address = String(col(r,['Property Address']) || '').trim();
-    if (!address) return;
-    totalScreened++;
-
-    var rba          = parseFloat(String(col(r,['RBA','Rentable Building'])).replace(/[^0-9.]/g,'')) || 0;
-    var vacancy      = parseFloat(String(col(r,['Vacancy %','Vacancy Pct','Vacancy Rate'])).replace(/[^0-9.]/g,'')) || 0;
-    var pctLeased    = parseFloat(String(col(r,['Percent Leased','% Leased'])).replace(/[^0-9.]/g,'')) || 0;
-    var forSale      = String(col(r,['For Sale Status','For Sale'])).trim().toLowerCase();
-    var forSalePrice = String(col(r,['For Sale Price']) || '').trim();
-    var lastSale     = String(col(r,['Last Sale Date','Last Sale']) || '').trim();
-    var lastSaleAmt  = String(col(r,['Last Sale Price']) || '').trim();
-    var rentSF       = parseFloat(String(col(r,['Rent/SF','Rent Per SF','Asking Rent'])).replace(/[^0-9.]/g,'')) || 0;
-    var yearBuilt    = parseInt(String(col(r,['Year Built']))) || 0;
-    var yearRenovated= parseInt(String(col(r,['Year Renovated']))) || 0;
-    var phone        = String(col(r,['Recorded Owner Phone','Owner Phone']) || '').trim();
-    var city         = String(col(r,['City']) || '').trim();
-    var submarket    = String(col(r,['Submarket Name','Submarket']) || '').trim();
-    var availSF      = parseFloat(String(col(r,['Total Available Space','Available SF','Avail'])).replace(/[^0-9.]/g,'')) || 0;
-    var owner        = String(col(r,['Recorded Owner Name','Owner Name']) || '').trim();
-    var ownerAddr    = String(col(r,['Recorded Owner Address']) || '').trim();
-    var propType     = String(col(r,['Property Type','Type']) || '').toLowerCase();
-    var bldgClass    = String(col(r,['Building Class','Class']) || '').trim();
-    var tenancy      = String(col(r,['Tenancy']) || '').trim();
-    var ceilHt       = String(col(r,['Ceiling Ht','Clear Height']) || '').trim();
-    var docks        = String(col(r,['Number Of Loading Docks','Loading Docks','Docks']) || '').trim();
-    var driveIns     = String(col(r,['Drive Ins','Drive-Ins']) || '').trim();
-    var power        = String(col(r,['Power']) || '').trim();
-    var rail         = String(col(r,['Rail Lines','Rail']) || '').trim();
-    var propName     = String(col(r,['Property Name']) || '').trim();
-
-    if (rba < 10000 || rba > 300000) { disqualified++; return; }
-    if (pctLeased >= 100 && forSale !== 'yes' && vacancy === 0) { disqualified++; return; }
-    if (propType && propType.length > 0 &&
-        !propType.includes('industrial') && !propType.includes('flex') &&
-        !propType.includes('warehouse') && !propType.includes('distribution') &&
-        !propType.includes('manufacturing') && !propType.includes('light')) { disqualified++; return; }
-
-    var addrKey = address.toLowerCase();
-    var prevSourced = sourced.some(function(s){ return addrKey.includes(s) || s.includes(addrKey.substring(0,20)); });
-
-    var score = 0; var signals = [];
-
-    // Vacancy signal (0-5 pts)
-    if (vacancy >= 50)       { score += 5; signals.push(vacancy.toFixed(0) + '% vacant'); }
-    else if (vacancy >= 35)  { score += 4; signals.push(vacancy.toFixed(0) + '% vacant'); }
-    else if (vacancy >= 20)  { score += 3; signals.push(vacancy.toFixed(0) + '% vacant'); }
-    else if (vacancy >= 10)  { score += 1; signals.push(vacancy.toFixed(0) + '% vacant'); }
-
-    // For sale signal (0-4 pts)
-    var forSaleRaw = forSale && forSale !== '' && forSale !== 'no' && forSale !== 'not for sale';
-    if (forSaleRaw) { score += 4; signals.push('listed for sale' + (forSalePrice ? ' · ' + forSalePrice : '')); }
-
-    // Hold period signal (0-4 pts)
-    var saleYear = null;
-    var m = lastSale.match(/(\d{4})/);
-    if (m) saleYear = parseInt(m[1]);
-    var yearsHeld = saleYear ? today.getFullYear() - saleYear : null;
-    if (yearsHeld >= 12)     { score += 4; signals.push(yearsHeld + '-yr hold'); }
-    else if (yearsHeld >= 8) { score += 3; signals.push(yearsHeld + '-yr hold'); }
-    else if (yearsHeld >= 5) { score += 2; signals.push(yearsHeld + '-yr hold'); }
-    else if (yearsHeld >= 3) { score += 1; signals.push(yearsHeld + '-yr hold'); }
-
-    // Direct contact (0-2 pts)
-    if (phone && phone.replace(/[^0-9]/g,'').length >= 10) { score += 2; signals.push('direct phone'); }
-
-    // Building age / renovation signal (0-2 pts)
-    var currentYr = today.getFullYear();
-    var neverRenovated = !yearRenovated || yearRenovated < 2000;
-    if (yearBuilt > 0 && yearBuilt < 2000 && neverRenovated) { score += 2; signals.push('built ' + yearBuilt + ' · unrenovated'); }
-    else if (yearBuilt > 0 && yearBuilt < 2010)              { score += 1; signals.push('built ' + yearBuilt); }
-
-    // Below-market rent (0-1 pt)
-    var belowMarket = rentSF > 0 && rentSF < 9;
-    if (belowMarket) { score += 1; signals.push('$' + rentSF.toFixed(2) + '/SF — below market'); }
-
-    // Rail served (0-1 pt)
-    var railServed = rail && rail.toLowerCase() !== 'none' && rail.trim() !== '';
-    if (railServed) { score += 1; signals.push('rail served'); }
-
-    if (score === 0) return;
-
-    var reSignal = prevSourced && (forSale === 'yes' || vacancy >= 30);
-    if (prevSourced && !reSignal) return;
-
-    // Build readable signal sentence
-    var signalText = signals.length ? signals[0].charAt(0).toUpperCase() + signals[0].slice(1) : '';
-    if (signals.length > 1) signalText += ' · ' + signals.slice(1).join(' · ');
-    if (reSignal) signalText = '⚡ RE-SIGNAL: ' + signalText;
-
-    var outreach = getDSOutreachAngle({ address, submarket, city, vacancyN: vacancy, yearsHeld, forSaleRaw, belowMarket });
-    var mapLink  = 'https://maps.google.com/?q=' + encodeURIComponent(address + (city ? ', ' + city : '')) + '&t=k';
-
-    results.push({
-      score, address, city, submarket, owner, ownerAddr,
-      rba:          rba ? Math.round(rba/100)*100 : 0,
-      vacancyN:     vacancy,
-      vacancy:      vacancy ? vacancy.toFixed(1)+'%' : '0%',
-      availSF:      availSF ? Math.round(availSF/100)*100 : 0,
-      lastSale:     lastSale || '—',
-      lastSaleAmt:  lastSaleAmt || '—',
-      yearsHeld:    yearsHeld,
-      phone:        (phone && phone.replace(/[^0-9]/g,'').length >= 10) ? phone : 'Research via county records',
-      signal:       signalText,
-      ceilHt:       ceilHt || '—',
-      docks:        docks || '—',
-      driveIns:     driveIns || '—',
-      power:        power || '—',
-      rail:         rail || '—',
-      bldgClass:    bldgClass || '—',
-      tenancy:      tenancy || '—',
-      yearBuilt:    yearBuilt || '—',
-      yearRenovated:yearRenovated || '—',
-      rentSF:       rentSF ? '$' + rentSF.toFixed(2) + '/SF' : '—',
-      forSalePrice: forSalePrice || '—',
-      propName:     propName || '',
-      outreachAngle: outreach.angle,
-      callScript:   outreach.script,
-      mapLink,
-      reSignal,
-      forSaleRaw,
-      belowMarket,
-      trackerEntry: tracker[normDSAddr(address)] || null,
-    });
-  });
-
-  results.sort(function(a,b){ return b.score - a.score; });
-  var top15 = results.slice(0, 15);
-  if (!top15.length) { showToast('No qualifying prospects found'); return; }
-
-  // ── PROPERTIES DB: write signal scores ───────────────────────
-  var scoredRows = results;
-  if (_sbOk && _sb && scoredRows && scoredRows.length) {
-    try {
-      var _scoreUpdates = scoredRows.map(function(r) {
-        return {
-          address:         r.address,
-          signal_score:    r.score || 0,
-          conviction_tier: r.score >= 8 ? 'High Conviction' :
-                           r.score >= 5 ? 'Watch List' : 'Below Threshold'
-        };
-      });
-      for (var _su of _scoreUpdates) {
-        await _sb.from('properties')
-          .update({ signal_score: _su.signal_score, conviction_tier: _su.conviction_tier })
-          .ilike('address', '%' + _su.address.split(',')[0] + '%');
-      }
-      console.log('[RIDGE] Updated signal scores for', _scoreUpdates.length, 'properties');
-    } catch(e) {
-      console.warn('[RIDGE] signal score update error:', e.message);
-    }
-  }
-
-  // ── ExcelJS formatted workbook ─────────────────────────────
-  var wb = new ExcelJS.Workbook();
-  wb.creator = 'Entrada Partners';
-  var ws = wb.addWorksheet('Daily Signal', { views:[{ state:'frozen', xSplit:0, ySplit:6 }] });
-
-  var NAVY   = '0D1B2A';
-  var WHITE  = 'FFFFFF';
-  var ACCENT = '2563EB';
-  var GREEN  = 'D1FAE5';
-  var YELLOW = 'FEF9C3';
-  var LGRAY  = 'F8FAFC';
-  var BORDER = 'CBD5E1';
-  var TEXT   = '0F172A';
-  var MUTED  = '64748B';
-
-  function thin(color) { return { style:'thin', color:{ argb: color || BORDER } }; }
-  function fillSolid(hex) { return { type:'pattern', pattern:'solid', fgColor:{ argb: hex } }; }
-  function numFmt(v, fmt) { return { value: v, numFmt: fmt }; }
-
-  // ── Row 1: Main title ──────────────────────────────────────
-  ws.mergeCells('A1:O1');
-  var t1 = ws.getCell('A1');
-  t1.value = 'ENTRADA PARTNERS  ·  DAILY SIGNAL REPORT';
-  t1.font   = { bold:true, size:14, color:{ argb:WHITE }, name:'Calibri' };
-  t1.fill   = fillSolid(NAVY);
-  t1.alignment = { vertical:'middle', horizontal:'left', indent:2 };
-  ws.getRow(1).height = 32;
-
-  // ── Row 2: Date + stats bar ────────────────────────────────
-  ws.mergeCells('A2:E2');
-  ws.getCell('A2').value = dateStr;
-  ws.getCell('A2').font  = { size:10, color:{ argb:'93C5FD' }, bold:true, name:'Calibri' };
-  ws.getCell('A2').fill  = fillSolid(NAVY);
-  ws.getCell('A2').alignment = { vertical:'middle', indent:2 };
-
-  ws.mergeCells('F2:I2');
-  ws.getCell('F2').value = totalScreened + ' properties screened';
-  ws.getCell('F2').font  = { size:10, color:{ argb:'94A3B8' }, name:'Calibri' };
-  ws.getCell('F2').fill  = fillSolid(NAVY);
-  ws.getCell('F2').alignment = { vertical:'middle', horizontal:'center' };
-
-  ws.mergeCells('J2:L2');
-  ws.getCell('J2').value = (totalScreened - disqualified) + ' scored';
-  ws.getCell('J2').font  = { size:10, color:{ argb:'94A3B8' }, name:'Calibri' };
-  ws.getCell('J2').fill  = fillSolid(NAVY);
-  ws.getCell('J2').alignment = { vertical:'middle', horizontal:'center' };
-
-  ws.mergeCells('M2:O2');
-  ws.getCell('M2').value = 'Top score: ' + top15[0].score + '/15';
-  ws.getCell('M2').font  = { size:10, color:{ argb:'6EE7B7' }, bold:true, name:'Calibri' };
-  ws.getCell('M2').fill  = fillSolid(NAVY);
-  ws.getCell('M2').alignment = { vertical:'middle', horizontal:'center' };
-  ws.getRow(2).height = 22;
-
-  // ── Row 3: Spacer ──────────────────────────────────────────
-  ws.getRow(3).height = 4;
-  for (var cc=1; cc<=15; cc++) {
-    ws.getCell(3, cc).fill = fillSolid('1E293B');
-  }
-
-  // ── Row 4: Section label ───────────────────────────────────
-  ws.mergeCells('A4:O4');
-  ws.getCell('A4').value = 'TOP ' + top15.length + ' ACQUISITION PROSPECTS — Ranked by Signal Score';
-  ws.getCell('A4').font  = { size:9, color:{ argb:'94A3B8' }, name:'Calibri' };
-  ws.getCell('A4').fill  = fillSolid('1E293B');
-  ws.getCell('A4').alignment = { vertical:'middle', indent:2 };
-  ws.getRow(4).height = 18;
-
-  // ── Row 5: Spacer ──────────────────────────────────────────
-  ws.getRow(5).height = 4;
-  for (var cc=1; cc<=15; cc++) {
-    ws.getCell(5, cc).fill = fillSolid(LGRAY);
-  }
-
-  // ── Row 6: Column headers ──────────────────────────────────
-  var COLS = ['#','Score','Status','Address','City','Submarket','Class','RBA (SF)','Vacancy','Last Sale','Yrs Held','Ceil Ht','Docks','D-I','Power','Rail','Owner','Phone','Signal','Outreach Angle'];
-  var COL_WIDTHS = [4, 6.5, 16, 40, 16, 22, 8, 11, 9, 11, 8, 9, 6, 5, 14, 12, 28, 20, 46, 30];
-  ws.columns = COL_WIDTHS.map(function(w){ return { width: w }; });
-
-  var hdrRow = ws.getRow(6);
-  COLS.forEach(function(h, i) {
-    var c = hdrRow.getCell(i+1);
-    c.value = h;
-    c.font  = { bold:true, size:9, color:{ argb:WHITE }, name:'Calibri' };
-    c.fill  = fillSolid('1E3A5F');
-    c.alignment = { vertical:'middle', horizontal: i < 2 ? 'center' : i <= 1 ? 'center' : 'left', wrapText: false };
-    c.border = { bottom: thin('2563EB') };
-  });
-  hdrRow.height = 20;
-
-  // ── Data rows 7–21 ─────────────────────────────────────────
-  top15.forEach(function(p, idx) {
-    var rn = 7 + idx;
-    var row = ws.getRow(rn);
-    var isHot  = p.score >= 8;
-    var isWarm = p.score >= 5 && p.score < 8;
-    var rowFill = p.reSignal ? 'FFF3E0' : isHot ? GREEN : isWarm ? YELLOW : WHITE;
-    var altFill = p.reSignal ? 'FFF3E0' : isHot ? 'ECFDF5' : isWarm ? 'FEFCE8' : LGRAY;
-    var bg = idx % 2 === 0 ? rowFill : altFill;
-
-    var tStatus = p.trackerEntry ? (p.trackerEntry.status||'Not Called') : 'Not Called';
-    var vals = [
-      idx+1, p.score, tStatus, p.address, p.city, p.submarket, p.bldgClass,
-      p.rba || '—', p.vacancy, p.lastSale,
-      p.yearsHeld ? p.yearsHeld + ' yrs' : '—',
-      p.ceilHt, p.docks, p.driveIns, p.power, p.rail,
-      p.owner, p.phone, p.signal, p.outreachAngle
-    ];
-
-    vals.forEach(function(v, ci) {
-      var c = row.getCell(ci+1);
-      c.value = v;
-      c.fill  = fillSolid(bg);
-      c.font  = { size:9, name:'Calibri', color:{ argb: TEXT } };
-      c.alignment = { vertical:'middle', wrapText: ci === 19 };
-      c.border = { bottom: thin(BORDER) };
-
-      // Special formatting
-      if (ci === 0) { c.font = { bold:true, size:9, name:'Calibri', color:{ argb: MUTED } }; c.alignment.horizontal = 'center'; }
-      if (ci === 1) {
-        var scoreColor = p.score >= 8 ? '059669' : p.score >= 5 ? 'D97706' : MUTED;
-        c.font = { bold:true, size:10, name:'Calibri', color:{ argb: scoreColor } };
-        c.alignment.horizontal = 'center';
-      }
-      if (ci === 2) {
-        var stColors={'In Conversation':'059669','Follow Up':'1D4ED8','Left Message':'92400E','No Answer':'64748B','Not Called':'94A3B8','Not Interested':'6B7280','Dead':'DC2626'};
-        var stBGs={'In Conversation':'D1FAE5','Follow Up':'DBEAFE','Left Message':'FEF3C7','No Answer':'F1F5F9','Not Called':'F8FAFC','Not Interested':'F3F4F6','Dead':'FEE2E2'};
-        c.font={bold:true,size:9,name:'Calibri',color:{argb:stColors[tStatus]||'94A3B8'}};
-        c.fill=fillSolid(stBGs[tStatus]||'F8FAFC');
-        c.alignment={vertical:'middle',horizontal:'center'};
-      }
-      if (ci === 3) { c.font = { bold: idx < 3, size:9, name:'Calibri', color:{ argb: TEXT } }; }
-      if (ci === 14 && p.phone.startsWith('Research')) {
-        c.font = { size:9, name:'Calibri', color:{ argb: 'EF4444' }, italic:true };
-      }
-    });
-
-    row.height = p.signal.length > 60 ? 30 : 18;
-  });
-
-  // ── Outreach priority callout (rows 23–26) ─────────────────
-  var priRow = 7 + top15.length + 1;
-  ws.getRow(priRow).height = 4;
-
-  ws.mergeCells('A' + (priRow+1) + ':O' + (priRow+1));
-  ws.getCell('A' + (priRow+1)).value = 'OUTREACH PRIORITY — Call These First';
-  ws.getCell('A' + (priRow+1)).font  = { bold:true, size:9, color:{ argb:WHITE }, name:'Calibri' };
-  ws.getCell('A' + (priRow+1)).fill  = fillSolid('1E3A5F');
-  ws.getCell('A' + (priRow+1)).alignment = { vertical:'middle', indent:2 };
-  ws.getRow(priRow+1).height = 18;
-
-  top15.slice(0,3).forEach(function(p, i) {
-    var rn = priRow + 2 + i;
-    ws.mergeCells('A' + rn + ':B' + rn);
-    ws.getCell('A' + rn).value = '#' + (i+1) + ' — Score ' + p.score;
-    ws.getCell('A' + rn).font  = { bold:true, size:9, name:'Calibri', color:{ argb:'059669' } };
-    ws.getCell('A' + rn).fill  = fillSolid(LGRAY);
-    ws.getCell('A' + rn).alignment = { vertical:'middle', horizontal:'center' };
-
-    ws.mergeCells('C' + rn + ':G' + rn);
-    ws.getCell('C' + rn).value = p.address + (p.city ? ', ' + p.city : '');
-    ws.getCell('C' + rn).font  = { bold:true, size:9, name:'Calibri', color:{ argb: TEXT } };
-    ws.getCell('C' + rn).fill  = fillSolid(LGRAY);
-
-    ws.mergeCells('H' + rn + ':J' + rn);
-    ws.getCell('H' + rn).value = p.owner;
-    ws.getCell('H' + rn).font  = { size:9, name:'Calibri', color:{ argb: MUTED } };
-    ws.getCell('H' + rn).fill  = fillSolid(LGRAY);
-
-    ws.mergeCells('K' + rn + ':M' + rn);
-    ws.getCell('K' + rn).value = p.phone;
-    ws.getCell('K' + rn).font  = { bold:true, size:9, name:'Calibri', color:{ argb:'2563EB' } };
-    ws.getCell('K' + rn).fill  = fillSolid(LGRAY);
-
-    ws.mergeCells('N' + rn + ':O' + rn);
-    ws.getCell('N' + rn).value = p.signal;
-    ws.getCell('N' + rn).font  = { size:9, name:'Calibri', color:{ argb: MUTED }, italic:true };
-    ws.getCell('N' + rn).fill  = fillSolid(LGRAY);
-    ws.getRow(rn).height = 18;
-  });
-
-  // ── Sheet 2: Call Sheet ────────────────────────────────────
-  var ws2 = wb.addWorksheet('Call Sheet');
-  ws2.columns = [{width:18},{width:52},{width:18},{width:52}];
-
-  var CARD_LABEL = '0D1B2A'; // navy
-  var CARD_VAL   = 'F8FAFC'; // near-white
-  var CARD_HEAD  = '1E3A5F'; // mid-navy
-  var CARD_SEP   = '2563EB'; // accent blue
-  var CARD_SCRIPT= 'EFF6FF'; // light blue
-
-  function csCell(row, col, val, opts) {
-    opts = opts || {};
-    var c = ws2.getCell(row, col);
-    c.value = val;
-    c.font  = { name:'Calibri', size: opts.size||10, bold:opts.bold||false, italic:opts.italic||false, color:{argb: opts.color||'0F172A'} };
-    c.fill  = {type:'pattern', pattern:'solid', fgColor:{argb: opts.bg||'FFFFFF'}};
-    c.alignment = {vertical:'top', horizontal: opts.align||'left', wrapText: opts.wrap||false, indent: opts.indent||0};
-    c.border = opts.border||{};
-    return c;
-  }
-
-  var cs2Row = 1;
-  top15.forEach(function(p, idx) {
-    // Header bar — rank + address
-    ws2.mergeCells(cs2Row, 1, cs2Row, 4);
-    var hc = ws2.getCell(cs2Row, 1);
-    hc.value = '#' + (idx+1) + '  ·  SCORE ' + p.score + '  ·  ' + p.address.toUpperCase() + (p.city ? ', ' + p.city : '');
-    hc.font  = {name:'Calibri', size:11, bold:true, color:{argb:'FFFFFF'}};
-    hc.fill  = {type:'pattern', pattern:'solid', fgColor:{argb: p.score >= 8 ? '0D3B1A' : p.score >= 5 ? '1E3A1E' : CARD_HEAD}};
-    hc.alignment = {vertical:'middle', horizontal:'left', indent:2};
-    ws2.getRow(cs2Row).height = 22;
-    cs2Row++;
-
-    // Building specs row
-    csCell(cs2Row, 1, 'BUILDING SPECS', {bold:true, color:'FFFFFF', bg:CARD_LABEL, size:9});
-    ws2.mergeCells(cs2Row, 2, cs2Row, 2);
-    csCell(cs2Row, 2, (p.bldgClass ? 'Class ' + p.bldgClass + '  · ' : '') + (p.rba ? p.rba.toLocaleString() + ' SF' : '') + (p.yearBuilt && p.yearBuilt !== '—' ? '  ·  Built ' + p.yearBuilt : '') + (p.yearRenovated && p.yearRenovated !== '—' ? '  ·  Reno ' + p.yearRenovated : '') + (p.tenancy ? '  ·  ' + p.tenancy : ''), {bg:CARD_VAL, size:10});
-    csCell(cs2Row, 3, 'SUBMARKET', {bold:true, color:'FFFFFF', bg:CARD_LABEL, size:9});
-    csCell(cs2Row, 4, (p.submarket || p.city || '—'), {bg:CARD_VAL, size:10});
-    ws2.getRow(cs2Row).height = 18; cs2Row++;
-
-    // Functional specs
-    csCell(cs2Row, 1, 'CLEAR HT / DOCKS', {bold:true, color:'FFFFFF', bg:CARD_LABEL, size:9});
-    csCell(cs2Row, 2, (p.ceilHt !== '—' ? p.ceilHt + ' clear' : '—') + (p.docks !== '—' ? '  ·  ' + p.docks + ' dock(s)' : '') + (p.driveIns !== '—' ? '  ·  ' + p.driveIns + ' DI' : ''), {bg:CARD_VAL, size:10});
-    csCell(cs2Row, 3, 'POWER / RAIL', {bold:true, color:'FFFFFF', bg:CARD_LABEL, size:9});
-    csCell(cs2Row, 4, (p.power !== '—' ? p.power : 'Not specified') + (p.rail && p.rail !== '—' ? '  ·  Rail: ' + p.rail : ''), {bg:CARD_VAL, size:10});
-    ws2.getRow(cs2Row).height = 18; cs2Row++;
-
-    // Occupancy
-    csCell(cs2Row, 1, 'VACANCY / RENT', {bold:true, color:'FFFFFF', bg:CARD_LABEL, size:9});
-    csCell(cs2Row, 2, p.vacancy + ' vacant' + (p.rentSF !== '—' ? '  ·  Asking ' + p.rentSF : '') + (p.forSaleRaw ? '  ·  FOR SALE' + (p.forSalePrice !== '—' ? ' @ ' + p.forSalePrice : '') : ''), {bg:CARD_VAL, size:10, bold: p.forSaleRaw||false});
-    csCell(cs2Row, 3, 'TRUCK COURT', {bold:true, color:'FFFFFF', bg:CARD_LABEL, size:9});
-    csCell(cs2Row, 4, 'Verify via satellite →', {bg:CARD_VAL, size:10, italic:true, color:'64748B'});
-    ws2.getRow(cs2Row).height = 18; cs2Row++;
-
-    // Ownership
-    csCell(cs2Row, 1, 'OWNER', {bold:true, color:'FFFFFF', bg:CARD_LABEL, size:9});
-    csCell(cs2Row, 2, (p.owner || '—') + (p.ownerAddr ? '  ·  ' + p.ownerAddr : ''), {bg:CARD_VAL, size:10});
-    csCell(cs2Row, 3, 'PHONE', {bold:true, color:'FFFFFF', bg:CARD_LABEL, size:9});
-    csCell(cs2Row, 4, p.phone, {bg: p.phone.startsWith('Research') ? 'FEF2F2' : 'F0FDF4', size:10, bold:true, color: p.phone.startsWith('Research') ? 'DC2626' : '166534'});
-    ws2.getRow(cs2Row).height = 18; cs2Row++;
-
-    // Hold / sale history
-    csCell(cs2Row, 1, 'LAST SALE', {bold:true, color:'FFFFFF', bg:CARD_LABEL, size:9});
-    csCell(cs2Row, 2, (p.lastSale || '—') + (p.lastSaleAmt !== '—' ? ' @ ' + p.lastSaleAmt : '') + (p.yearsHeld ? '  ·  ' + p.yearsHeld + '-year hold' : ''), {bg:CARD_VAL, size:10});
-    csCell(cs2Row, 3, 'MAP', {bold:true, color:'FFFFFF', bg:CARD_LABEL, size:9});
-    var mapCell = ws2.getCell(cs2Row, 4);
-    mapCell.value = {text: '↗ Satellite View', hyperlink: p.mapLink};
-    mapCell.font  = {name:'Calibri', size:10, bold:true, color:{argb:'2563EB'}, underline:true};
-    mapCell.fill  = {type:'pattern', pattern:'solid', fgColor:{argb:CARD_VAL}};
-    ws2.getRow(cs2Row).height = 18; cs2Row++;
-
-    // Signal
-    csCell(cs2Row, 1, 'SIGNAL', {bold:true, color:'FFFFFF', bg:'1E3A5F', size:9});
-    ws2.mergeCells(cs2Row, 2, cs2Row, 4);
-    csCell(cs2Row, 2, p.signal + (p.reSignal ? '  ⚡ RE-SIGNAL' : ''), {bg:'DBEAFE', size:10, bold:true, color:'1E3A5F', wrap:false});
-    ws2.getRow(cs2Row).height = 18; cs2Row++;
-
-    // Outreach angle
-    csCell(cs2Row, 1, 'OUTREACH', {bold:true, color:'FFFFFF', bg:'1E3A5F', size:9});
-    ws2.mergeCells(cs2Row, 2, cs2Row, 4);
-    csCell(cs2Row, 2, p.outreachAngle, {bg:'EFF6FF', size:10, bold:true, color:'1E40AF', wrap:false});
-    ws2.getRow(cs2Row).height = 18; cs2Row++;
-
-    // Call script
-    csCell(cs2Row, 1, 'CALL SCRIPT', {bold:true, color:'FFFFFF', bg:'1E3A5F', size:9});
-    ws2.mergeCells(cs2Row, 2, cs2Row, 4);
-    csCell(cs2Row, 2, p.callScript, {bg:CARD_SCRIPT, size:10, italic:true, color:'1E3A5F', wrap:true});
-    ws2.getRow(cs2Row).height = 48; cs2Row++;
-
-    // Tracker status row
-    var te = p.trackerEntry;
-    csCell(cs2Row, 1, 'TRACKER', {bold:true, color:'FFFFFF', bg:'1E3A5F', size:9});
-    ws2.mergeCells(cs2Row, 2, cs2Row, 4);
-    var tStat = te ? (te.status||'Not Called') : 'Not Called';
-    var tNote = te ? (te.note||'') : '';
-    var tFU   = te ? (te.followUpDate||'') : '';
-    var tLC   = te ? (te.lastContact||'') : '';
-    var tStr  = tStat + (tLC?' · Last contact: '+tLC:'') + (tFU?' · Follow up: '+tFU:'') + (tNote?' · '+tNote:'');
-    var tBGs2={'In Conversation':'D1FAE5','Follow Up':'DBEAFE','Left Message':'FEF3C7','No Answer':'F1F5F9','Not Called':'F8FAFC','Not Interested':'F3F4F6','Dead':'FEE2E2'};
-    var tCs2={'In Conversation':'166534','Follow Up':'1E40AF','Left Message':'92400E','No Answer':'475569','Not Called':'64748B','Not Interested':'6B7280','Dead':'DC2626'};
-    csCell(cs2Row, 2, tStr, {bg:tBGs2[tStat]||'F8FAFC', size:10, bold:true, color:tCs2[tStat]||'64748B', wrap:false});
-    ws2.getRow(cs2Row).height = 18; cs2Row++;
-
-    // Separator
-    ws2.mergeCells(cs2Row, 1, cs2Row, 4);
-    ws2.getCell(cs2Row, 1).fill = {type:'pattern', pattern:'solid', fgColor:{argb:'E2E8F0'}};
-    ws2.getRow(cs2Row).height = 6; cs2Row++;
-  });
-
-  // ── Download ───────────────────────────────────────────────
-  var buf = await wb.xlsx.writeBuffer();
-  var blob = new Blob([buf], { type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-  var url = URL.createObjectURL(blob);
-  var a = document.createElement('a');
-  a.href = url; a.download = 'Entrada_DailySignal_' + fileDate + '.xlsx';
-  document.body.appendChild(a); a.click(); document.body.removeChild(a);
-  URL.revokeObjectURL(url);
-
-  // Auto-register top 15 in tracker (preserves existing entries)
-  var tNow = getDSTracker();
-  top15.forEach(function(p){
-    var key = normDSAddr(p.address);
-    if(!tNow[key]){
-      tNow[key] = {status:'', note:'', followUpDate:'', lastContact:'', score:p.score, addedDate:new Date().toISOString().slice(0,10)};
-    } else {
-      tNow[key].score = p.score; // update score each run
-    }
-  });
-  _saveDSTracker(tNow);
-  renderDSTracker();
-  // Open tracker panel after export
-  var tbody = document.getElementById('ds-tracker-body');
-  var tarrow = document.getElementById('ds-tracker-arrow');
-  if(tbody && !tbody.classList.contains('open')){ tbody.classList.add('open'); if(tarrow) tarrow.textContent='▼'; }
-
-  // Auto-populate log
-  var addrs = top15.map(function(p){ return p.address + (p.city ? ', ' + p.city : ''); }).join('\n');
-  var inp = document.getElementById('ds-log-input');
-  if (inp) inp.value = addrs;
-  var box = document.getElementById('ds-log-box');
-  if (box) box.style.display = 'block';
-
-  showToast('✓ ' + top15.length + ' prospects exported — save to memory below');
 }
 
 var _folderHandles = {};
@@ -4033,17 +3283,6 @@ If CONDITIONAL: state exactly what must be verified before proceeding
     case 'scout':
       return '__SCOUT_HANDLED__';
 
-    // TODO(SCOUT Chunk 11 — Daily Signal retirement): remove this entire `case 'daily-signal'` block. SCOUT replaced the registry entry; this dispatcher case is unreachable unless an old saved-deal blob references the toolId. The replacement `case 'scout'` lives directly above this comment.
-    case 'daily-signal':
-      p = 'You are a senior acquisitions officer at Entrada Partners running the daily sourcing signal report.\n\n';
-      p += 'REPORT DATE: ' + (d.date||new Date().toLocaleDateString()) + '\nFOCUS: ' + (d.notes||'All target markets') + '\n\n';
-      if (d.costar_text) p += 'COSTAR EXPORT DATA:\n' + d.costar_text.slice(0, 15000) + '\n\n';
-      var _dsSourced = getDailySignalState().sourced;
-      p += 'PREVIOUSLY SOURCED (exclude these):\n' + (_dsSourced.length ? _dsSourced.join('\n') : 'None') + '\n\n';
-      p += 'ENTRADA SIGNAL CRITERIA:\n- Private owner, 7-15yr hold, family LLC or local operating company (3 pts)\n- Vacancy above submarket average (2 pts)\n- No meaningful capex/permits in 5+ years (2 pts)\n- Debt maturity within 18 months or bridge loan stress (3 pts)\n- CMBS watchlist or special servicer (3 pts)\n- Below-market rents with near-term rollover (2 pts)\nMax score: 15 pts | Threshold for inclusion: 6+ pts\n\n';
-      p += 'Produce:\n## SIGNAL REPORT — ' + (d.date||new Date().toLocaleDateString()) + '\n\n### TOP 15 PROSPECTS\n| Rank | Address | Market | Submarket | SF | Owner Entity | Hold (yrs) | Signal Score | Primary Signals | Conviction | Outreach Angle |\n\nFor each prospect: be specific about the owner entity name, estimated hold period, exactly which signals triggered and why, and the specific outreach angle that will resonate with this owner type.\n\n### PORTFOLIO CLUSTERS\nAny ownership clusters where the same entity owns multiple properties — flag as portfolio conversation opportunity.\n\n### DEBT STRESS WATCH\nProperties with loan maturities in the next 18 months. Lender name, estimated maturity, loan type.\n\n### MARKET OBSERVATIONS\nWhat the data is telling you about each submarket today — vacancy direction, rent trends, buyer activity.\n\nSOURCED THIS RUN:\n[List every property address included in the Top 15]';
-      return p;
-
     case 'canvas':
       p = 'You are a senior acquisitions officer at Entrada Partners running tenant intelligence.\n\n';
       p += 'MODE: ' + (d.mode||'Fill') + '\nPROPERTY: ' + (d.addr||'') + '\nAVAILABLE SF: ' + (d.sf||'') + '\nTARGET RENT: $' + (d.rent||'') + ' PSF\nSUBMARKET: ' + (d.sub||'') + '\nIDEAL PROFILE: ' + (d.notes||'') + '\n\n';
@@ -4323,7 +3562,6 @@ function _updateExportButtons() {
     'gavel':         { pdf:true,  ppt:false, xls:true  },
     'napkin':        { pdf:true,  ppt:false, xls:false },
     'scout':         { pdf:true,  ppt:false, xls:true  },
-    'daily-signal':  { pdf:true,  ppt:false, xls:true  },
     'canvas':        { pdf:true,  ppt:false, xls:false },
     'market-pulse':  { pdf:true,  ppt:false, xls:true  },
     'debt':          { pdf:true,  ppt:false, xls:true  },
@@ -6104,42 +5342,6 @@ function _parseMarketPulseJSON(text) {
   } catch(e) {
     console.warn('[RIDGE] _parseMarketPulseJSON error:', e.message);
     return null;
-  }
-}
-
-// TODO(SCOUT Chunk 11 — Daily Signal retirement): remove this function. SCOUT writes structured property rows directly via _scoutSynthesize → properties table UPDATE; no markdown parsing required. The only remaining caller is the signal_reports auto-save at line ~8959, which is also being removed in Chunk 11.
-function _parseDailySignalProspects(text) {
-  if (!text) return [];
-  try {
-    var prospects = [];
-    var lines = text.split('\n');
-    var inTable = false;
-    var headers = [];
-    for (var i = 0; i < lines.length; i++) {
-      var line = lines[i].trim();
-      if (!inTable && line.match(/address|property|owner|signal|tier/i) && line.includes('|')) {
-        headers = line.split('|').map(function(h) { return h.trim().toLowerCase(); });
-        inTable = true;
-        i++; // skip separator line
-        continue;
-      }
-      if (inTable && line.includes('|')) {
-        var cells = line.split('|').map(function(c) { return c.trim(); });
-        if (cells.length >= 2 && cells[0]) {
-          var prospect = {};
-          for (var j = 0; j < headers.length; j++) {
-            prospect[headers[j]] = cells[j] || '';
-          }
-          prospects.push(prospect);
-        }
-      } else if (inTable && !line.includes('|') && line.length > 0) {
-        inTable = false;
-      }
-    }
-    return prospects;
-  } catch(e) {
-    console.warn('[RIDGE] _parseDailySignalProspects error:', e.message);
-    return [];
   }
 }
 
@@ -11225,19 +10427,6 @@ async function runRidgeAPI(skillName, prompt, runInputs, runToolId) {
             }
           })(_soId, _lastRunToolId);
         }
-// TODO(SCOUT Chunk 11 — Daily Signal retirement): remove this signal_reports auto-save block entirely. SCOUT does not write to signal_reports (deprecated table comment added in Chunk 1 migration). The check `skillNameSaved.toLowerCase().includes('signal')` was Daily-Signal-specific — SCOUT writes structured property rows in its dedicated post-run block instead.
-// Auto-save to signal_reports table from Daily Signal runs
-        if (skillNameSaved.toLowerCase().includes('signal')) {
-          try {
-            await _sb.from('signal_reports').insert({
-              market: _detectMarket(_lastRunInputs),
-              submarket: (_lastRunInputs && _lastRunInputs.notes) ? _lastRunInputs.notes.slice(0,100) : null,
-              report_date: new Date().toISOString().slice(0,10),
-              prospects: _parseDailySignalProspects(outputText),
-              raw_data: { output: outputText.slice(0, 5000), inputs: _lastRunInputs }
-            });
-          } catch(e) { console.warn('signal_reports save failed:', e); }
-        }
       } catch(e) { console.warn('Supabase skill_outputs save failed:', e); showToast('Output could not be saved to history.'); }
       } // end if (_lastRunToolId !== 'market-pulse')
       if (_lastRunToolId === 'canvas' && _sbOk && _sb) {
@@ -15921,7 +15110,6 @@ async function _llExportLeases() {
   showToast('✅ Exported ' + all.length + ' leases');
 }
 
-_migrateDSState(); // one-time migration of ridge_daily_sourced + ridge_ds_tracker → ridge_daily_state_v1
 _sbInit().then(async function() {
   await loadApiKey();
   await loadMapsKey();
