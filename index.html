@@ -652,6 +652,7 @@ footer{border-top:1px solid var(--border);padding:20px 24px;text-align:center;co
       <div class="tc-desc">Capital stack modeling. DSCR, debt yield, LTV across scenarios.</div>
     </div><div class="tool-card" id="card-isr">
       <div class="tc-row"><span class="tc-num">07</span><span class="tc-name">ACQUISITION INVESTMENT REPORT</span></div>
+      <div class="tc-row"><span class="tc-num">07a</span><span class="tc-name">DEAL MEMO</span></div>
       <div class="tc-desc">Upload model → IC analysis + 14-slide deck.</div>
     </div><div class="tool-card" id="card-loi">
       <div class="tc-row"><span class="tc-num">08</span><span class="tc-name">LOI GENERATOR</span></div>
@@ -966,7 +967,71 @@ footer{border-top:1px solid var(--border);padding:20px 24px;text-align:center;co
       </div>
       <div class="res-body" id="rout-isr"></div>
     </div>
-  </div></div><div class="tool-panel" id="panel-loi">
+  </div></div><div class="tool-panel" id="panel-memo">
+    <div class="panel-head">
+      <span class="panel-head-icon">📋</span>
+      <span class="panel-head-title">DEAL MEMO</span>
+      <span class="panel-head-sub">IC Narrative · Multi-Turn</span>
+      <button class="panel-close" onclick="togglePanel('memo')">✕ Close</button>
+    </div>
+    <div class="panel-body">
+      <div class="upload-row three">
+        <div class="upload-group">
+          <label>Offering Memorandum * <span>Primary deal narrative source — PDF</span></label>
+          <div class="uz" id="uz-memo-om" onclick="document.getElementById('file-memo-om').click()">
+            <input type="file" id="file-memo-om" accept=".pdf">
+            <div class="uz-ico">📄</div><div class="uz-t">Click or drag to upload</div>
+            <div class="uz-s">PDF</div><div class="uz-st" id="uzst-memo-om"></div>
+          </div>
+        </div>
+        <div class="upload-group">
+          <label>Acquisition Model <span>Excel model — authoritative source for all financials</span></label>
+          <div class="uz" id="uz-memo-model" onclick="document.getElementById('file-memo-model').click()">
+            <input type="file" id="file-memo-model" accept=".xlsx,.xls">
+            <div class="uz-ico">📊</div><div class="uz-t">Click or drag to upload</div>
+            <div class="uz-s">XLSX · XLS</div><div class="uz-st" id="uzst-memo-model"></div>
+          </div>
+        </div>
+        <div class="upload-group">
+          <label>Market Report <span>Optional: CoStar, CBRE, JLL submarket data</span></label>
+          <div class="uz" id="uz-memo-market" onclick="document.getElementById('file-memo-market').click()">
+            <input type="file" id="file-memo-market" accept=".pdf,.xlsx">
+            <div class="uz-ico">📊</div><div class="uz-t">Click or drag to upload</div>
+            <div class="uz-s">PDF · XLSX</div><div class="uz-st" id="uzst-memo-market"></div>
+          </div>
+        </div>
+      </div>
+      <div class="fr two">
+        <div class="fg">
+          <label class="fl">Property Address</label>
+          <input type="text" id="f-memo-addr" placeholder="e.g. 4200 Commerce Pkwy, Savannah, GA">
+        </div>
+        <div class="fg">
+          <label class="fl">Deal Name / Code</label>
+          <input type="text" id="f-memo-deal_name" placeholder="e.g. Commerce Flex — Savannah">
+        </div>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-p" id="run-btn-memo" onclick="runTool('memo')">⚡ Begin DEAL MEMO</button>
+        <button class="btn btn-o" onclick="clearTool('memo')">Clear</button>
+        <button class="btn btn-g" style="font-size:12px" id="pptx-btn-memo" onclick="memoExportPPTX()" disabled>⬇ Download .pptx</button>
+      </div>
+      <div class="loading" id="loading-memo">
+        <div class="loading-lbl" id="llbl-memo">Working...</div>
+        <div class="pbar"><div class="pfill" id="pfill-memo"></div></div>
+        <div class="pstep" id="pstep-memo"></div>
+      </div>
+      <div class="results" id="results-memo">
+        <div class="res-head">
+          <div class="res-title" id="rtitle-memo">DEAL MEMO — Results</div>
+          <div class="res-actions">
+            <button class="btn btn-o" style="font-size:12px" onclick="copyResult('memo')">📋 Copy</button>
+          </div>
+        </div>
+        <div class="res-body" id="rout-memo"></div>
+      </div>
+    </div>
+  </div><div class="tool-panel" id="panel-loi">
   <div class="panel-head">
     <span class="panel-head-icon">📄</span>
     <span class="panel-head-title">LOI GENERATOR</span>
@@ -1425,6 +1490,76 @@ var TOOLS = [
     isISR:true,
     steps:['Parsing acquisition model...','Extracting return metrics...','Analyzing cash flows...','Cross-referencing OM...','Building investment thesis...','Running risk assessment...','Drafting IC recommendation...','Assembling report...'],
     system:`You are a senior acquisitions officer at Entrada Partners. RIDGE criteria: IRR ≥14.75%, EM 1.8x–2.2x, YOC 7.5–8.0% at Yr3/4, max LTV 65%, 5yr hold, $10M–$70M, markets ATL/SAV/DFW/HOU. Generate an institutional IC report.`
+  },
+  {
+    id:'memo', num:'07a', icon:'📋', name:'DEAL MEMO',
+    badge:'IC Narrative · Multi-Turn', badgeBlue:true,
+    desc:'Section-by-section IC narrative for an Entrada acquisition. Upload OM, acquisition model, and market reports. Guided interview produces polished Deal Overview, Business Plan, and Case Studies — plus an Entrada-branded PPTX deck.',
+    shortDesc:'Upload docs → guided IC narrative + PPTX.',
+    uploads:[
+      {id:'om',     label:'Offering Memorandum *', hint:'Primary deal narrative source — PDF',                     icon:'📄', accept:'.pdf',       type:'pdf'},
+      {id:'model',  label:'Acquisition Model',     hint:'Excel model — authoritative source for all financials', icon:'📊', accept:'.xlsx,.xls', type:'xlsx'},
+      {id:'market', label:'Market Report',         hint:'Optional: CoStar, CBRE, JLL submarket data',            icon:'📊', accept:'.pdf,.xlsx', type:'mixed'}
+    ],
+    fields:[
+      {row:[
+        {id:'addr',      label:'Property Address', ph:'e.g. 4200 Commerce Pkwy, Savannah, GA'},
+        {id:'deal_name', label:'Deal Name / Code', ph:'e.g. Commerce Flex — Savannah'}
+      ]}
+    ],
+    isMemo: true,
+    steps:['Reading source materials...','Extracting deal data...','Beginning Deal Overview...'],
+    system:`You are drafting the text content for an Entrada Partners IC investment memo. This memo will be pasted into a pre-formatted PowerPoint template. Your only job is to produce tight, polished, IC-ready copy.
+
+VOICE & TONE: Direct, confident, factual. No fluff, no hype, no filler phrases ("exciting opportunity", "unique chance", "pleased to present", "attractive", "compelling", "strong fundamentals"). State facts and let them do the work. Write the way a sharp acquisitions professional talks to an IC they respect: clear thesis, honest on risks, specific on numbers. Active voice. Short sentences. 4 tight paragraphs max for narrative sections. Do not editorialize on financial returns or investment quality — present the numbers and let the IC draw conclusions.
+
+SECTION SEQUENCE (work through in order — do not skip ahead):
+1. DEAL OVERVIEW (~4 paragraphs + Property Fact Table)
+2. BUSINESS PLAN (2–3 paragraphs)
+3. CASE STUDIES (1–2 comparable deals, ~1 paragraph each; if user skips, output placeholder only)
+
+After completing each section draft and receiving user confirmation/edits, output the sentinel tag on its own line:
+  Section 1 done → [SECTION_1_COMPLETE]
+  Section 2 done → [SECTION_2_COMPLETE]
+  Section 3 done → [SECTION_3_COMPLETE]
+
+After outputting the full compiled memo (all sections, property fact table, and deck completion checklist), output:
+  [COMPILE_COMPLETE]
+
+These sentinel tags are machine-readable signals — include them exactly as shown, on their own line.
+
+QUALITY STANDARDS:
+- No filler language (see Voice & Tone above)
+- No editorializing on returns — state numbers, let IC decide
+- Every figure came from an uploaded source or explicit user confirmation — never invented
+- Model figures take precedence over OM figures when both exist
+- Market stats extracted from uploads must be verified with user before use
+- Stats unavailable from any source → flag inline as [INSERT STAT — description]
+- Paragraphs are tight — if a sentence adds no information, cut it
+- Case studies: close with a specific outcome, not a vague positive statement
+
+PROPERTY FACT TABLE fields (extract from model first, OM second):
+Total Building Area, % Office Finish (current), Occupancy, Year Built, Loading (dock-high/at-grade), Clear Height, Number of Buildings, Site Area, Parking Ratio, WALT, Purchase Price, Number of Tenants, Average Tenant Size
+
+DECK COMPLETION CHECKLIST (output at compilation):
+[ ] Cover Page — hero photos (user upload)
+[ ] Location Map — regional aerial or map graphic (user upload)
+[ ] Conversion Budget Table — screenshot from acquisition model CapEx tab
+[ ] Site Plans — building-level aerials with suite overlays (user upload)
+[ ] Sale & Lease Comps — comp table or CoStar screenshot (user upload)
+[ ] Financial Summary — screenshot from acquisition model (returns, debt terms, sources & uses)
+[ ] Property Photos — exterior, dock doors, aerials (user upload)
+[ ] Case Studies — add copy when ready (if skipped during drafting)`,
+    prompt:(d)=>`SOURCE MATERIALS FOR: ${d.deal_name||d.addr||'Subject Deal'}
+
+${d.om_text   ? 'OFFERING MEMORANDUM:\n' + d.om_text.slice(0,18000)   + '\n\n' : '[No OM uploaded]'}
+${d.model_text ? 'ACQUISITION MODEL:\n'  + d.model_text.slice(0,12000) + '\n\n' : '[No model uploaded]'}
+${d.market_text? 'MARKET REPORT:\n'      + d.market_text.slice(0,8000) + '\n\n' : ''}
+
+PROPERTY: ${d.addr||'[Address not provided]'}
+DEAL CODE: ${d.deal_name||''}
+
+Extract every relevant fact from the materials above before asking any questions. Ask only for genuine gaps that cannot be found in the uploads. Then begin Section 1: Deal Overview. Follow the system prompt section sequence exactly.`
   },
   {
     id:'loi', num:'08', icon:'📄', name:'LOI GENERATOR',
@@ -2824,6 +2959,18 @@ async function runTool(toolId) {
     }
   }
 
+  // DEAL MEMO — multi-turn path
+  if (tool && tool.isMemo) {
+    _memoAddr     = d.addr      || '';
+    _memoDealName = d.deal_name || d.addr || 'Subject Deal';
+    _memoConvHistory = [];
+    _memoSection     = 'S1';
+    _memoAccumText   = '';
+    var _memoInitMsg = tool.prompt(d);
+    _runMemoTurn(_memoInitMsg, toolId, tool);
+    return;
+  }
+
   var prompt = await buildTrigger(toolId, d);
   if (prompt === '__SCOUT_HANDLED__') {
     return _scoutRunPipeline(d);
@@ -3635,6 +3782,13 @@ var _lensMarketRent = null;
 var _isrLensContext = '';
 var _isrParsedData  = null;  // structured JSON extracted from ISR response — used by PPTX builder
 var _isrModelBuffer = null;  // raw ArrayBuffer of uploaded ISR model — persists across PPTX export
+// ── DEAL MEMO multi-turn state ──────────────────────────────
+var _memoConvHistory = [];   // full conversation history [{role, content}]
+var _memoSection     = 'IDLE'; // IDLE | S1 | S2 | S3 | COMPILE | DONE
+var _memoAccumText   = '';   // accumulated compiled output (all turns joined)
+var _memoTurnText    = '';   // accumulated text for current streaming turn
+var _memoAddr        = '';
+var _memoDealName    = '';
 var _skillRawOutputs = {};   // keyed by tool id: 'napkin', 'gavel', 'isr', etc. — full response only, never compressed
 var _ridgeSessionLog  = [];  // bookkeeping audit trail — never sent to the Claude API
 var _sessionTokens = { input: 0, output: 0 };  // real API token counts for this browser session
@@ -5897,6 +6051,444 @@ function copyResult(toolId) {
     var btn = document.querySelector(`[onclick="copyResult('${toolId}')"]`);
     if(btn){btn.textContent='✓ Copied'; setTimeout(()=>btn.textContent='📋 Copy',1500);}
   });
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  DEAL MEMO — MULTI-TURN ENGINE
+// ─────────────────────────────────────────────────────────────────────────────
+
+// Section labels for the progress indicator
+var _MEMO_SECTION_LABELS = {
+  'S1':      'Section 1 of 3 — Deal Overview',
+  'S2':      'Section 2 of 3 — Business Plan',
+  'S3':      'Section 3 of 3 — Case Studies',
+  'COMPILE': 'Compiling full memo...',
+  'DONE':    'Memo complete'
+};
+
+// Inject or update the reply UI below streaming content in the ridge panel
+function _memoShowReplyArea() {
+  var panelContent = document.getElementById('ridge-panel-content');
+  if (!panelContent) return;
+  var existing = document.getElementById('memo-reply-area');
+  if (existing) existing.remove();
+
+  var label = _MEMO_SECTION_LABELS[_memoSection] || '';
+
+  var replyArea = document.createElement('div');
+  replyArea.id = 'memo-reply-area';
+  replyArea.style.cssText = [
+    'margin-top:20px',
+    'padding:16px',
+    'background:var(--surface2)',
+    'border:1px solid var(--border)',
+    'border-radius:6px'
+  ].join(';');
+
+  replyArea.innerHTML =
+    '<div id="memo-section-indicator" style="font-size:11px;font-variant:small-caps;letter-spacing:.08em;color:var(--blue);font-weight:700;margin-bottom:10px;">' +
+      _hEsc(label) +
+    '</div>' +
+    '<textarea id="memo-reply-input" rows="4" style="width:100%;box-sizing:border-box;background:var(--bg);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:13px;padding:10px;resize:vertical;" placeholder="Reply here — confirm the section, request edits, answer questions, or type SKIP to move to the next section..."></textarea>' +
+    '<div style="margin-top:10px;display:flex;gap:10px;align-items:center;">' +
+      '<button class="btn btn-p" onclick="memoSendReply()" style="font-size:12px;padding:8px 18px;">Send →</button>' +
+      '<button class="btn btn-o" onclick="memoSkipSection()" style="font-size:12px;padding:8px 14px;">Skip Section</button>' +
+      '<span id="memo-turn-counter" style="font-size:11px;color:var(--faint);margin-left:auto;"></span>' +
+    '</div>';
+
+  panelContent.appendChild(replyArea);
+
+  // Scroll to reply area
+  var panelBody = document.getElementById('ridge-response-panel');
+  if (panelBody) {
+    var bodyEl = panelBody.querySelector('.ridge-panel-body');
+    if (bodyEl) bodyEl.scrollTop = bodyEl.scrollHeight;
+  }
+
+  // Update turn counter
+  var turnEl = document.getElementById('memo-turn-counter');
+  if (turnEl) turnEl.textContent = _memoConvHistory.filter(function(m){return m.role==='assistant';}).length + ' turn(s) complete';
+}
+
+function memoSkipSection() {
+  memoSendReply('SKIP — move to next section');
+}
+
+function memoSendReply(overrideText) {
+  var input = document.getElementById('memo-reply-input');
+  var text  = overrideText || (input ? input.value.trim() : '');
+  if (!text) { showToast('Enter a reply first'); return; }
+  var replyArea = document.getElementById('memo-reply-area');
+  if (replyArea) replyArea.remove();
+
+  // Find the TOOLS entry for memo
+  var memoTool = TOOLS.find(function(t){ return t.id === 'memo'; });
+  _runMemoTurn(text, 'memo', memoTool);
+}
+
+async function _runMemoTurn(userMessage, toolId, tool) {
+  if (!_apiKey) { showApiKeyModal(); return; }
+
+  var _runBtn = document.getElementById('run-btn-memo');
+  if (_runBtn) { _runBtn.disabled = true; _runBtn.textContent = '⏳ Writing...'; }
+
+  // Open / ensure panel is open
+  openRidgePanel('DEAL MEMO');
+
+  if (_memoAddr) showPropertyMap(_memoAddr, 'DEAL MEMO');
+
+  var contentEl  = document.getElementById('ridge-panel-content');
+  var spinnerEl  = document.getElementById('ridge-spinner');
+  var copyBtn    = document.getElementById('ridge-copy-btn');
+  if (!contentEl) return;
+
+  // Append a turn divider (skip on first turn)
+  if (_memoConvHistory.length > 0) {
+    var divider = document.createElement('div');
+    divider.style.cssText = 'border-top:1px solid var(--border);margin:18px 0 14px;padding-top:4px;font-size:10px;font-variant:small-caps;color:var(--faint);letter-spacing:.08em;';
+    divider.textContent = '— ' + (_MEMO_SECTION_LABELS[_memoSection] || 'Continuing') + ' —';
+    contentEl.appendChild(divider);
+  }
+
+  // Create turn output element
+  var turnEl = document.createElement('div');
+  turnEl.className = 'memo-turn';
+  contentEl.appendChild(turnEl);
+
+  // Push user message to history
+  _memoConvHistory.push({ role: 'user', content: userMessage });
+
+  // Stream
+  var systemPrompt = tool ? tool.system : '';
+  if (spinnerEl) spinnerEl.style.display = 'none';
+  contentEl.style.display = 'block';
+
+  _memoTurnText = '';
+
+  try {
+    var resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true',
+        'x-api-key': _apiKey
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-6',
+        max_tokens: 8000,
+        stream: true,
+        system: systemPrompt,
+        messages: _memoConvHistory
+      })
+    });
+
+    if (!resp.ok) {
+      var errText = await resp.text();
+      turnEl.textContent = 'API error ' + resp.status + ': ' + errText;
+      if (_runBtn) { _runBtn.disabled = false; _runBtn.textContent = '⚡ Begin DEAL MEMO'; }
+      return;
+    }
+
+    var reader  = resp.body.getReader();
+    var decoder = new TextDecoder();
+    var buf     = '';
+    var chunkCount = 0;
+
+    while (true) {
+      var { done, value } = await reader.read();
+      if (done) break;
+      buf += decoder.decode(value, { stream: true });
+      var lines = buf.split('\n');
+      buf = lines.pop();
+      for (var i = 0; i < lines.length; i++) {
+        var line = lines[i].trim();
+        if (!line.startsWith('data:')) continue;
+        var jsonStr = line.slice(5).trim();
+        if (jsonStr === '[DONE]') continue;
+        try {
+          var evt = JSON.parse(jsonStr);
+          if (evt.type === 'message_start' && evt.message && evt.message.usage) {
+            _trackTokens(evt.message.usage.input_tokens, 0);
+          }
+          if (evt.type === 'message_delta' && evt.usage) {
+            _trackTokens(0, evt.usage.output_tokens);
+          }
+          if (evt.type === 'content_block_delta' && evt.delta && evt.delta.type === 'text_delta') {
+            _memoTurnText += evt.delta.text;
+            chunkCount++;
+            if (chunkCount % 8 === 0) {
+              // Strip sentinel tags from display
+              var displayText = _memoTurnText
+                .replace(/\[SECTION_\d_COMPLETE\]/g, '')
+                .replace(/\[COMPILE_COMPLETE\]/g, '')
+                .trim();
+              turnEl.innerHTML = parseMarkdown(displayText);
+              var pb = document.getElementById('ridge-response-panel');
+              if (pb) { var bb = pb.querySelector('.ridge-panel-body'); if(bb) bb.scrollTop = bb.scrollHeight; }
+            }
+          }
+        } catch(e) { console.warn('[MEMO]', e.message); }
+      }
+    }
+
+    // Final render — strip sentinels from display
+    var displayFinal = _memoTurnText
+      .replace(/\[SECTION_\d_COMPLETE\]/g, '')
+      .replace(/\[COMPILE_COMPLETE\]/g, '')
+      .trim();
+    turnEl.innerHTML = parseMarkdown(displayFinal);
+
+    // Push assistant response (with sentinels) to history
+    _memoConvHistory.push({ role: 'assistant', content: _memoTurnText });
+
+    // Accumulate full text
+    _memoAccumText += '\n\n' + _memoTurnText;
+
+    // ── Sentinel detection ─────────────────────────────────────
+    if (_memoTurnText.indexOf('[SECTION_1_COMPLETE]') !== -1) {
+      _memoSection = 'S2';
+    } else if (_memoTurnText.indexOf('[SECTION_2_COMPLETE]') !== -1) {
+      _memoSection = 'S3';
+    } else if (_memoTurnText.indexOf('[SECTION_3_COMPLETE]') !== -1) {
+      _memoSection = 'COMPILE';
+    }
+
+    if (_memoTurnText.indexOf('[COMPILE_COMPLETE]') !== -1) {
+      _memoSection = 'DONE';
+      // Write to skill_outputs
+      await _memoWriteSkillOutput();
+      // Enable PPTX export
+      var pptxBtn = document.getElementById('pptx-btn-memo');
+      if (pptxBtn) { pptxBtn.disabled = false; }
+      if (copyBtn) copyBtn.disabled = false;
+      if (_runBtn) { _runBtn.disabled = false; _runBtn.textContent = '⚡ Begin DEAL MEMO'; }
+      showToast('✓ Deal Memo complete — download PPTX when ready', 'success');
+      return;
+    }
+
+    // Show reply area for next turn
+    _memoShowReplyArea();
+
+  } catch(e) {
+    console.error('[MEMO] stream error:', e);
+    turnEl.textContent = 'Stream error: ' + e.message;
+  }
+
+  if (_runBtn) { _runBtn.disabled = false; _runBtn.textContent = '⚡ Begin DEAL MEMO'; }
+  if (copyBtn) copyBtn.disabled = false;
+}
+
+// Write compiled memo to skill_outputs at COMPILE_COMPLETE
+async function _memoWriteSkillOutput() {
+  if (!_sbOk || !_sb) return;
+  try {
+    var outputText = _memoAccumText.replace(/\[SECTION_\d_COMPLETE\]/g,'').replace(/\[COMPILE_COMPLETE\]/g,'').trim();
+    var _soInsert = await _sb.from('skill_outputs').insert({
+      skill_name: 'DEAL MEMO',
+      output:     outputText,
+      inputs:     { addr: _memoAddr, deal_name: _memoDealName },
+      address:    _memoAddr || null,
+      market:     _detectMarket({ addr: _memoAddr }),
+      tags:       ['DEAL MEMO', 'IC Narrative'],
+      run_by:     _getSessionUser()
+    }).select('id').single();
+    var _soId = _soInsert.data && _soInsert.data.id;
+    if (_soId) {
+      var _embedText = outputText.slice(0,3000) + ' DEAL MEMO ' + (_memoAddr||'');
+      _generateEmbedding(_embedText).then(function(vec) {
+        if (vec && _sb) {
+          try { _sb.from('skill_outputs').update({ embedding: '[' + vec.join(',') + ']' }).eq('id', _soId); }
+          catch(e) { console.warn('[MEMO] embedding update failed:', e.message); }
+        }
+      }).catch(function(e) { console.warn('[MEMO] embedding generation failed:', e.message); });
+    }
+    console.log('[MEMO] skill_outputs written — id:', _soId);
+  } catch(e) {
+    console.warn('[MEMO] skill_outputs write error:', e.message);
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  DEAL MEMO — PPTX EXPORT
+// ─────────────────────────────────────────────────────────────────────────────
+
+function memoExportPPTX() {
+  if (typeof PptxGenJS === 'undefined') {
+    alert('PptxGenJS not loaded — refresh and try again.');
+    return;
+  }
+  if (!_memoAccumText) {
+    showToast('Run Deal Memo first — no content to export.', 'warn');
+    return;
+  }
+
+  var pptx = new PptxGenJS();
+  pptx.layout = 'LAYOUT_WIDE';
+
+  var dateStr    = new Date().toLocaleDateString('en-US',{year:'numeric',month:'short',day:'numeric'});
+  var dealLabel  = (_memoDealName || _memoAddr || 'Deal Memo').toUpperCase();
+  var cleanText  = _memoAccumText.replace(/\[SECTION_\d_COMPLETE\]/g,'').replace(/\[COMPILE_COMPLETE\]/g,'').trim();
+
+  // ── Color palette (Entrada brand) ────────────────────────────
+  var NAVY   = '1E2761';
+  var WHITE  = 'FFFFFF';
+  var ORANGE = 'E05C2A';
+  var BLUE   = '4A9FD4';
+  var LGRAY  = 'F5F7FA';
+  var DGRAY  = '4A5568';
+
+  // ── Helper: section extractor ────────────────────────────────
+  function _memoExtractSection(text, startMarker, endMarkers) {
+    var startIdx = -1;
+    var markers = [startMarker, startMarker.toLowerCase(), startMarker.toUpperCase()];
+    for (var m = 0; m < markers.length; m++) {
+      var idx = text.indexOf(markers[m]);
+      if (idx !== -1) { startIdx = idx; break; }
+    }
+    if (startIdx === -1) return '';
+    var chunk = text.slice(startIdx + startMarker.length);
+    for (var e = 0; e < endMarkers.length; e++) {
+      var endIdx = chunk.indexOf(endMarkers[e]);
+      if (endIdx !== -1) { chunk = chunk.slice(0, endIdx); break; }
+    }
+    return chunk.trim();
+  }
+
+  function _rcTitle(slide, title, sub, addr, date) {
+    slide.addShape(pptx.ShapeType.rect, { x:0, y:0, w:'100%', h:1.1, fill:{color:NAVY} });
+    slide.addText(title, { x:0.35, y:0.12, w:10, h:0.55, fontSize:20, bold:true, color:WHITE, fontFace:'Calibri' });
+    if (sub)  slide.addText(sub,  { x:0.35, y:0.65, w:8, h:0.32, fontSize:10, color:BLUE,  fontFace:'Calibri', italic:true });
+    if (addr) slide.addText(addr, { x:8.5,  y:0.12, w:5, h:0.35, fontSize:9,  color:WHITE, fontFace:'Calibri', align:'right' });
+    if (date) slide.addText(date, { x:8.5,  y:0.60, w:5, h:0.30, fontSize:8,  color:'7AB3D4', fontFace:'Calibri', align:'right' });
+  }
+
+  // ── SLIDE 1: Cover ────────────────────────────────────────────
+  var s1 = pptx.addSlide();
+  s1.addShape(pptx.ShapeType.rect, { x:0, y:0, w:'100%', h:'100%', fill:{color:NAVY} });
+  s1.addShape(pptx.ShapeType.rect, { x:0, y:3.6, w:'100%', h:0.06, fill:{color:ORANGE} });
+  s1.addText('ENTRADA PARTNERS', { x:0.5, y:0.6, w:12.4, h:0.5, fontSize:13, bold:true, color:BLUE,  fontFace:'Calibri', align:'center', charSpacing:4 });
+  s1.addText('INVESTMENT COMMITTEE MEMO', { x:0.5, y:1.15, w:12.4, h:0.45, fontSize:11, color:'7AB3D4', fontFace:'Calibri', align:'center', charSpacing:3 });
+  s1.addShape(pptx.ShapeType.rect, { x:1.5, y:1.8, w:10.4, h:1.6, fill:{color:'0D1836'}, line:{color:ORANGE, pt:1} });
+  s1.addText(dealLabel, { x:1.6, y:1.95, w:10.2, h:0.8, fontSize:26, bold:true, color:WHITE, fontFace:'Calibri', align:'center' });
+  s1.addText(_memoAddr || '', { x:1.6, y:2.75, w:10.2, h:0.45, fontSize:12, color:'7AB3D4', fontFace:'Calibri', align:'center' });
+  s1.addText('[INSERT HERO PHOTO — user upload]', { x:0.5, y:3.8, w:12.4, h:2.6, fontSize:11, color:'4A5568', fontFace:'Calibri', align:'center', italic:true });
+  s1.addText(dateStr, { x:0.5, y:6.6, w:12.4, h:0.3, fontSize:9, color:'4A6A8A', fontFace:'Calibri', align:'center' });
+  s1.addText('CONFIDENTIAL — FOR DISCUSSION PURPOSES ONLY', { x:0.5, y:7.0, w:12.4, h:0.25, fontSize:7.5, color:'2A3A5A', fontFace:'Calibri', align:'center', charSpacing:2 });
+
+  // ── SLIDE 2: Deal Overview ────────────────────────────────────
+  var dealOverviewText = _memoExtractSection(cleanText, 'DEAL OVERVIEW', ['PROPERTY FACT TABLE','BUSINESS PLAN','CASE STUDIES','---']);
+  var s2 = pptx.addSlide();
+  s2.background = { color: LGRAY };
+  _rcTitle(s2, 'DEAL OVERVIEW', dealLabel, _memoAddr, dateStr);
+  s2.addText(dealOverviewText.slice(0,1800) || '[Deal Overview — complete memo section to populate]', {
+    x:0.4, y:1.25, w:12.55, h:5.3,
+    fontSize:10.5, color:DGRAY, fontFace:'Calibri',
+    wrap:true, valign:'top'
+  });
+
+  // ── SLIDE 3: Property Fact Table ──────────────────────────────
+  var factTableText = _memoExtractSection(cleanText, 'PROPERTY FACT TABLE', ['BUSINESS PLAN','CASE STUDIES','---']);
+  var factRows = [];
+  if (factTableText) {
+    var factLines = factTableText.split('\n').filter(function(l){ return l.trim() && l.indexOf(':') !== -1; });
+    factLines.forEach(function(l){
+      var parts = l.split(':');
+      var lbl = parts[0].replace(/^[-•*\s]+/,'').trim();
+      var val = parts.slice(1).join(':').trim();
+      if (lbl && val) factRows.push([lbl, val]);
+    });
+  }
+  var s3 = pptx.addSlide();
+  s3.background = { color: WHITE };
+  _rcTitle(s3, 'PROPERTY FACTS', dealLabel, _memoAddr, dateStr);
+  var factTableData = factRows.length ? factRows.map(function(r){
+    return [
+      { text: r[0], options: { bold:true, color:NAVY,  fontSize:10, fontFace:'Calibri', fill:{color:'EEF2F8'} } },
+      { text: r[1], options: { color:DGRAY, fontSize:10, fontFace:'Calibri' } }
+    ];
+  }) : [[
+    { text: 'No fact table data', options: { color:DGRAY, fontSize:10, fontFace:'Calibri' } },
+    { text: 'Complete the Deal Overview section', options: { color:DGRAY, fontSize:10, fontFace:'Calibri' } }
+  ]];
+  s3.addTable(factTableData, {
+    x:0.5, y:1.3, w:12.4,
+    border:{ type:'solid', color:'D1D5DB', pt:0.5 },
+    rowH: 0.36,
+    autoPage: false
+  });
+
+  // ── SLIDE 4: Business Plan ─────────────────────────────────────
+  var bizPlanText = _memoExtractSection(cleanText, 'BUSINESS PLAN', ['CASE STUDIES','DECK COMPLETION','---']);
+  var s4 = pptx.addSlide();
+  s4.background = { color: LGRAY };
+  _rcTitle(s4, 'BUSINESS PLAN', dealLabel, _memoAddr, dateStr);
+  s4.addShape(pptx.ShapeType.rect, { x:0.4, y:1.2, w:0.06, h:5.4, fill:{color:ORANGE} });
+  s4.addText(bizPlanText.slice(0,1800) || '[Business Plan — complete memo section to populate]', {
+    x:0.65, y:1.25, w:12.1, h:5.3,
+    fontSize:10.5, color:DGRAY, fontFace:'Calibri',
+    wrap:true, valign:'top'
+  });
+
+  // ── SLIDE 5: Case Studies ─────────────────────────────────────
+  var caseStudyText = _memoExtractSection(cleanText, 'CASE STUDIES', ['DECK COMPLETION','---']);
+  var s5 = pptx.addSlide();
+  s5.background = { color: WHITE };
+  _rcTitle(s5, 'EXECUTION TRACK RECORD', dealLabel, _memoAddr, dateStr);
+  if (!caseStudyText || caseStudyText.toLowerCase().indexOf('to be completed') !== -1) {
+    s5.addText('[Case Studies — to be completed]\n\nAdd comparable Entrada deal writeups when ready.', {
+      x:0.5, y:2.0, w:12.4, h:4.0,
+      fontSize:11, color:'A0AEC0', fontFace:'Calibri', italic:true, align:'center'
+    });
+  } else {
+    // Split into two columns if two case studies present (look for double line breaks)
+    var csParts = caseStudyText.split(/\n{2,}/).filter(function(p){ return p.trim().length > 40; });
+    if (csParts.length >= 2) {
+      s5.addShape(pptx.ShapeType.rect, { x:0.4,  y:1.25, w:5.9, h:5.3, fill:{color:LGRAY}, line:{color:'D1D5DB', pt:0.5} });
+      s5.addShape(pptx.ShapeType.rect, { x:7.05, y:1.25, w:5.9, h:5.3, fill:{color:LGRAY}, line:{color:'D1D5DB', pt:0.5} });
+      s5.addText(csParts[0].trim().slice(0,600), { x:0.55, y:1.4, w:5.6, h:5.0, fontSize:10, color:DGRAY, fontFace:'Calibri', wrap:true, valign:'top' });
+      s5.addText(csParts[1].trim().slice(0,600), { x:7.2,  y:1.4, w:5.6, h:5.0, fontSize:10, color:DGRAY, fontFace:'Calibri', wrap:true, valign:'top' });
+    } else {
+      s5.addText(caseStudyText.slice(0,1200), { x:0.5, y:1.35, w:12.4, h:5.3, fontSize:10.5, color:DGRAY, fontFace:'Calibri', wrap:true, valign:'top' });
+    }
+  }
+
+  // ── SLIDE 6: Deck Completion Checklist ────────────────────────
+  var s6 = pptx.addSlide();
+  s6.background = { color: NAVY };
+  s6.addText('DECK COMPLETION CHECKLIST', { x:0.5, y:0.4, w:12.4, h:0.5, fontSize:16, bold:true, color:WHITE, fontFace:'Calibri' });
+  s6.addText('Slides requiring user-assembled content', { x:0.5, y:0.9, w:12.4, h:0.3, fontSize:10, color:BLUE, fontFace:'Calibri', italic:true });
+  var checkItems = [
+    ['Cover Page',               'Hero exterior photos (user upload)'],
+    ['Location Map',             'Regional aerial or market map graphic (user upload)'],
+    ['Conversion Budget Table',  'Screenshot from acquisition model CapEx tab'],
+    ['Site Plans',               'Building-level aerials with suite overlays (user upload)'],
+    ['Sale & Lease Comps',       'Comp table or CoStar screenshot (user upload)'],
+    ['Financial Summary',        'Screenshot from acquisition model — returns, debt terms, sources & uses'],
+    ['Property Photos',          'Exterior, dock doors, aerials (user upload)'],
+    ['Case Studies',             'Add copy when ready (if skipped during drafting)']
+  ];
+  var checkData = checkItems.map(function(r){
+    return [
+      { text: '☐  ' + r[0], options: { bold:true, color:WHITE,  fontSize:10, fontFace:'Calibri' } },
+      { text: r[1],          options: { color:'7AB3D4', fontSize:10, fontFace:'Calibri' } }
+    ];
+  });
+  s6.addTable(checkData, {
+    x:0.5, y:1.4, w:12.4,
+    border:{ type:'solid', color:'2A3A5A', pt:0.5 },
+    fill:{ color:'162050' },
+    rowH: 0.55
+  });
+  s6.addText('Generated by RIDGE · Entrada Partners · ' + dateStr, {
+    x:0.5, y:7.15, w:12.4, h:0.25, fontSize:7.5, color:'2A3A5A', fontFace:'Calibri', align:'center', charSpacing:1.5
+  });
+
+  // ── Export ────────────────────────────────────────────────────
+  var safeTitle = (_memoDealName || _memoAddr || 'deal-memo').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
+  pptx.writeFile({ fileName: 'entrada-ic-memo-' + safeTitle + '.pptx' })
+    .then(function(){ showToast('✓ PPTX exported', 'success'); })
+    .catch(function(e){ showToast('PPTX export error — check console'); console.error('[MEMO PPTX]', e); });
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -10127,6 +10719,7 @@ async function runRidgeAPI(skillName, prompt, runInputs, runToolId) {
     'RIDGE': 'You are RIDGE, a senior acquisitions officer at Entrada Partners. Target markets: Atlanta, Savannah, DFW, Houston. Deal criteria: $10M–$70M industrial and flex assets, 14.75%+ levered IRR, 7.5–8.0% YOC at Year 3/4, 95% off-market sourcing. Begin a live sourcing session. Ask which market to focus on, whether I have a CoStar export or want a cold sweep, then run SCOUT and deliver a ranked prospect list with owner intel, debt profile, and outreach angle.',
     'Pipeline Report': 'You are RIDGE. Analyze this pipeline data and deliver a concise report covering: deals closest to closing, overdue next steps, total potential acquisition volume, and recommended focus for this week. Be direct and actionable.',
     'ACQUISITION INVESTMENT REPORT': 'You are a senior acquisitions officer at Entrada Partners preparing an institutional investment committee presentation. RIDGE underwriting criteria: IRR ≥14.75% levered, Equity Multiple ≥1.8x, YOC 7.5–8.0% at Year 3/4, max LTV 65%, 5-year hold, deal size $10M–$70M, markets: Atlanta, Savannah, DFW, Houston. Write at the level of a senior PE professional presenting to a sophisticated IC — specific, data-driven, no filler language. Format all output in clean markdown with ## section headers and pipe-delimited tables exactly as instructed. Never fabricate return metrics. Always complete every requested section.',
+    'DEAL MEMO': 'You are drafting IC narrative copy for Entrada Partners. Be direct, factual, and precise. No filler language. Every number must be traceable to an uploaded source or explicit user confirmation.',
     'default': 'You are RIDGE, a senior acquisitions officer at Entrada Partners, an institutional private equity firm. You specialize in industrial and flex CRE acquisitions in Atlanta, Savannah, DFW, and Houston. You are running the ' + skillName + ' module. Be precise, data-driven, and direct. Write like a senior professional presenting to an investment committee. Format all output in clean markdown with tables where data warrants it. Never hedge excessively — state your conviction and defend it.'
   };
   var systemPrompt = systemPrompts[skillName] || systemPrompts['default'];
