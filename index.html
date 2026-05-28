@@ -6245,6 +6245,14 @@ async function _renderLeaseCompMap() {
       '<div style="display:flex;gap:10px;margin-top:16px;">' +
         '<button onclick="window._lcmExportPDF()" style="background:#002d72;color:#fff;border:none;padding:7px 16px;border-radius:4px;font-size:12px;font-weight:500;cursor:pointer;font-family:inherit;letter-spacing:.03em;">&#8595; Export PDF</button>' +
         '<button onclick="window._lcmExportImage()" style="background:#005eb8;color:#fff;border:none;padding:7px 16px;border-radius:4px;font-size:12px;font-weight:500;cursor:pointer;font-family:inherit;letter-spacing:.03em;">&#8595; Export Image</button>' +
+      '</div>' +
+      '<hr style="border:none;border-top:1px solid var(--border);margin:18px 0 12px;" />' +
+      '<div style="font-size:10px;font-weight:700;color:#002d72;letter-spacing:.1em;text-transform:uppercase;margin-bottom:8px;">Tag to Deal</div>' +
+      '<select id="lcm-deal-tag-select" style="width:100%;padding:6px 8px;font-size:12px;background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:4px;font-family:inherit;margin-bottom:6px;"><option value="">Loading deals…</option></select>' +
+      '<input id="lcm-deal-tag-new" type="text" placeholder="or enter new address to create" style="width:100%;padding:6px 8px;font-size:12px;background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:4px;font-family:inherit;margin-bottom:8px;box-sizing:border-box;" />' +
+      '<div style="display:flex;align-items:center;gap:10px;">' +
+        '<button id="lcm-tag-btn" onclick="window._lcmTagDeal()" style="background:#005eb8;color:#fff;border:none;padding:7px 16px;border-radius:4px;font-size:12px;font-weight:500;cursor:pointer;font-family:inherit;letter-spacing:.03em;">Tag &#8594;</button>' +
+        '<span id="lcm-tag-status" style="font-size:11px;color:var(--muted);"></span>' +
       '</div>';
 
     // Approach A — reorder (lease-comp only): map + chart on TOP, full streamed analysis
@@ -6270,6 +6278,28 @@ async function _renderLeaseCompMap() {
     window._lcmChartId  = chartId;
     window._lcmComps    = comps;
     window._lcmSubject  = subject;
+
+    // Populate deal tag dropdown from deal_context
+    (async function() {
+      var sel = document.getElementById('lcm-deal-tag-select');
+      var btn = document.getElementById('lcm-tag-btn');
+      if (!sel) return;
+      if (!_sbOk || !_sb) {
+        sel.innerHTML = '<option value="">Supabase offline</option>';
+        if (btn) btn.disabled = true;
+        return;
+      }
+      try {
+        var res = await _sb.from('deal_context').select('address').order('updated_at', { ascending: false });
+        var rows = (res.data || []).filter(function(r) { return r.address && r.address.trim(); });
+        sel.innerHTML = '<option value="">— select existing deal —</option>' +
+          rows.map(function(r) { return '<option value="' + _hEsc(r.address) + '">' + _hEsc(r.address) + '</option>'; }).join('');
+      } catch(e) {
+        sel.innerHTML = '<option value="">Error loading deals</option>';
+        if (btn) btn.disabled = true;
+        console.warn('[RIDGE] lcm deal_context fetch error:', e.message);
+      }
+    })();
 
     window._lcmExportPDF = function() {
       try {
@@ -6350,6 +6380,41 @@ async function _renderLeaseCompMap() {
       } catch(e) {
         console.warn('[RIDGE] _lcmExportImage error:', e.message);
         showToast('⚠ Image export failed');
+      }
+    };
+
+    window._lcmTagDeal = async function() {
+      var sel    = document.getElementById('lcm-deal-tag-select');
+      var newInp = document.getElementById('lcm-deal-tag-new');
+      var status = document.getElementById('lcm-tag-status');
+      var addr   = (newInp && newInp.value.trim()) || (sel && sel.value.trim()) || '';
+      if (status) { status.style.color = 'var(--muted)'; status.textContent = ''; }
+      if (!addr) {
+        if (status) { status.style.color = '#DC2626'; status.textContent = 'Select or enter an address.'; }
+        return;
+      }
+      if (!window._lcmLastSoId) {
+        if (status) { status.style.color = '#DC2626'; status.textContent = 'Run Lease Comp Map first.'; }
+        return;
+      }
+      if (!_sbOk || !_sb) {
+        if (status) { status.style.color = '#DC2626'; status.textContent = 'Supabase offline.'; }
+        return;
+      }
+      try {
+        if (status) { status.style.color = 'var(--muted)'; status.textContent = 'Saving…'; }
+        await _sb.from('deal_context').upsert({
+          address: addr,
+          lease_comp_run_id: window._lcmLastSoId,
+          last_skill_run: 'LEASE COMP MAP',
+          last_run_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        }, { onConflict: 'address' });
+        if (status) { status.style.color = '#059669'; status.textContent = '✓ Tagged to ' + addr; }
+        console.log('[RIDGE] deal_context tagged for LEASE COMP MAP:', addr, 'run_id:', window._lcmLastSoId);
+      } catch(e) {
+        if (status) { status.style.color = '#DC2626'; status.textContent = 'Error: ' + e.message; }
+        console.warn('[RIDGE] _lcmTagDeal error:', e.message);
       }
     };
 
@@ -11173,6 +11238,7 @@ async function runRidgeAPI(skillName, prompt, runInputs, runToolId) {
           } else if (_lastRunToolId === 'lease-comp') {
             _lRows = _parseLeaseTable(accumulated);
             await _writeLeaseRows(_lRows, _lAddr, 'LEASE_COMP_MAP');
+            window._lcmLastSoId = _soId || null;
           } else if (_lastRunToolId === 'lease-stack') {
             _lRows = _parseLeaseTable(accumulated);
             await _writeLeaseRows(_lRows, _lAddr, 'LEASE_STACK');
