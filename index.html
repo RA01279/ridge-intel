@@ -6239,7 +6239,24 @@ async function _renderLeaseCompMap() {
       '<div style="position:relative;height:' + chartH + 'px;width:100%;">' +
         '<canvas id="' + chartId + '"></canvas>' +
       '</div>';
-    contentEl.appendChild(wrap);
+
+    // Approach A — reorder (lease-comp only): map + chart on TOP, full streamed analysis
+    // collapsed behind a <details> toggle BELOW. The shared streaming loop already painted
+    // the analysis into contentEl; capture it, clear, then rebuild in the new order.
+    var _existingHTML = contentEl.innerHTML;
+    if (_existingHTML && _existingHTML.trim()) {
+      var details = document.createElement('details');
+      details.style.marginTop = '22px';
+      details.innerHTML =
+        '<summary style="cursor:pointer;font-weight:600;color:#005eb8;font-size:13px;padding:8px 0;">&#9656; Full Comp Analysis</summary>' +
+        '<div class="lcm-analysis-body">' + _existingHTML + '</div>';
+      contentEl.innerHTML = '';        // text preserved in _existingHTML/details — panel not lost
+      contentEl.appendChild(wrap);     // map + chart first (on top)
+      contentEl.appendChild(details);  // full analysis collapsed below
+    } else {
+      // Defensive fallback — never blank the panel if there was no streamed text
+      contentEl.appendChild(wrap);
+    }
 
     // Geocode subject + comps (throttle only on cache miss, mirroring Portfolio Map)
     var pts = [];
