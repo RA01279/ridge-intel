@@ -7140,13 +7140,15 @@ function updateNapkinLive(){
   var askPSF=ask&&sf?ask/sf:null;
   var cap=ask&&noi?noi/ask*100:null;
   var stabNOI=sf&&mkt?sf*mkt*0.90:null;
-  var hurdlePrice=stabNOI?stabNOI/0.0650:null;
+  // YOC hurdle = going-in cap + 100bps; max entry = stabilized NOI ÷ hurdle
+  var hurdleRate = cap!=null ? (cap/100)+0.01 : null;
+  var hurdlePrice = (stabNOI && hurdleRate) ? stabNOI/hurdleRate : null;
   function cls(v,good,warn){return v==null?'':v>=good?'green':v>=warn?'amber':'red';}
   var items=[
     {l:'Ask PSF',v:askPSF?'$'+askPSF.toFixed(0)+' PSF':'—',c:''},
     {l:'In-Place Cap Rate',v:cap?cap.toFixed(2)+'%':'—',c:cls(cap,5.5,4.5)},
     {l:'Stabilized NOI (est.)',v:stabNOI?'$'+Math.round(stabNOI).toLocaleString():'—',c:''},
-    {l:'Max Entry @ Hurdle',v:hurdlePrice?'$'+Math.round(hurdlePrice).toLocaleString():'—',c:hurdlePrice&&ask?cls(hurdlePrice/ask*100,100,90):''}
+    {l:'Max Entry @ Hurdle',v:hurdlePrice?'$'+Math.round(hurdlePrice).toLocaleString():(stabNOI&&!noi?'enter NOI':'—'),c:hurdlePrice&&ask?cls(hurdlePrice/ask*100,100,90):''}
   ];
   document.getElementById('nl-grid').innerHTML=items.map(function(i){return '<div><div class="nl-label">'+i.l+'</div><div class="nl-value '+i.c+'">'+i.v+'</div></div>';}).join('');
   live.classList.add('show');
