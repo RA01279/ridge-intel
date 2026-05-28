@@ -15,6 +15,7 @@
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -6223,13 +6224,15 @@ async function _renderLeaseCompMap() {
     var mapDivId = 'lcm-leaflet-' + Date.now();
     var chartId  = 'lcm-chart-' + Date.now();
     var chartH = Math.max(170, comps.length * 34 + 64);
+    var wrapId = 'lcm-wrap-' + Date.now();
     var wrap = document.createElement('div');
     wrap.style.marginTop = '22px';
+    wrap.id = wrapId;
     wrap.innerHTML =
       '<h2 style="font-size:15px;font-weight:700;color:#005eb8;margin:20px 0 10px;border-bottom:1px solid var(--border);padding-bottom:5px;">Lease Comp Map</h2>' +
       '<div id="' + mapDivId + '" style="height:460px;width:100%;border-radius:6px;overflow:hidden;background:#0d1314;"></div>' +
       '<div style="font-size:11px;color:var(--muted);margin:8px 0 18px;display:flex;gap:18px;flex-wrap:wrap;align-items:center;">' +
-        '<span><span style="display:inline-block;width:11px;height:11px;border-radius:50%;background:#005eb8;border:2px solid #fff;margin-right:5px;vertical-align:middle;"></span>Subject</span>' +
+        '<span><span style="display:inline-block;width:11px;height:11px;border-radius:50%;background:#DC2626;border:2px solid #fff;margin-right:5px;vertical-align:middle;"></span>Subject</span>' +
         '<span style="display:flex;align-items:center;gap:6px;">Lease recency' +
           '<span style="display:inline-block;width:90px;height:10px;border-radius:5px;background:linear-gradient(90deg,#7FB3E8,#002d72);"></span>' +
           '<span style="color:var(--faint);">older &rarr; newer</span>' +
@@ -6238,6 +6241,10 @@ async function _renderLeaseCompMap() {
       '<h3 style="font-size:14px;font-weight:700;color:var(--text);margin:6px 0 8px;">Effective Rent $/SF &mdash; Comps vs. Subject</h3>' +
       '<div style="position:relative;height:' + chartH + 'px;width:100%;">' +
         '<canvas id="' + chartId + '"></canvas>' +
+      '</div>' +
+      '<div style="display:flex;gap:10px;margin-top:16px;">' +
+        '<button onclick="window._lcmExportPDF()" style="background:#002d72;color:#fff;border:none;padding:7px 16px;border-radius:4px;font-size:12px;font-weight:500;cursor:pointer;font-family:inherit;letter-spacing:.03em;">&#8595; Export PDF</button>' +
+        '<button onclick="window._lcmExportImage()" style="background:#005eb8;color:#fff;border:none;padding:7px 16px;border-radius:4px;font-size:12px;font-weight:500;cursor:pointer;font-family:inherit;letter-spacing:.03em;">&#8595; Export Image</button>' +
       '</div>';
 
     // Approach A — reorder (lease-comp only): map + chart on TOP, full streamed analysis
@@ -6257,6 +6264,94 @@ async function _renderLeaseCompMap() {
       // Defensive fallback — never blank the panel if there was no streamed text
       contentEl.appendChild(wrap);
     }
+
+    // Store refs for export functions (refreshed each render)
+    window._lcmWrapId   = wrapId;
+    window._lcmChartId  = chartId;
+    window._lcmComps    = comps;
+    window._lcmSubject  = subject;
+
+    window._lcmExportPDF = function() {
+      try {
+        var chartCanvas = document.getElementById(window._lcmChartId);
+        var chartImg    = chartCanvas ? chartCanvas.toDataURL('image/png') : null;
+        var subj        = window._lcmSubject || {};
+        var addrStr     = subj.address || 'Lease Comp Analysis';
+        var dateStr     = new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+        var tableRows   = (window._lcmComps || []).map(function(c) {
+          return '<tr><td>' + _hEsc(c.address || '') + '</td>' +
+            '<td>' + _hEsc(c.tenant || '—') + '</td>' +
+            '<td>' + (c.sf ? Number(c.sf).toLocaleString() : '—') + '</td>' +
+            '<td>' + _hEsc(c.lease_date || '—') + '</td>' +
+            '<td>$' + (c.eff_rate_psf != null ? Number(c.eff_rate_psf).toFixed(2) : '—') + '</td>' +
+            '<td>' + _hEsc(c.lease_type || '—') + '</td></tr>';
+        }).join('');
+        var subjRow = subj.in_place_rent_psf != null
+          ? '<p style="margin:10px 0 0;font-size:11pt;"><strong>Subject in-place rent:</strong> $' + Number(subj.in_place_rent_psf).toFixed(2) + ' /SF</p>'
+          : '';
+        var html = '<!DOCTYPE html><html><head><meta charset="utf-8"><title>Lease Comp Analysis</title><style>' +
+          '* { margin:0; padding:0; box-sizing:border-box; }' +
+          'body { font-family: Calibri, Arial, sans-serif; font-size: 11pt; color: #1a1a1a; background: #fff; }' +
+          '.page { width:100%; max-width:900px; margin:0 auto; padding:32px 40px; }' +
+          '.header { background:#002d72; color:#fff; padding:18px 24px; margin-bottom:24px; display:flex; justify-content:space-between; align-items:center; }' +
+          '.header h1 { font-size:18pt; font-weight:700; letter-spacing:2px; color:#c7c1bb; }' +
+          '.header p { font-size:9pt; color:#8b9fc4; margin-top:3px; }' +
+          '.address { font-size:15pt; font-weight:700; color:#002d72; border-bottom:2px solid #005eb8; padding-bottom:8px; margin-bottom:16px; }' +
+          '.section-title { background:#002d72; color:#fff; font-size:10pt; font-weight:700; letter-spacing:2px; padding:6px 12px; margin:20px 0 8px; text-transform:uppercase; }' +
+          'table { width:100%; border-collapse:collapse; margin-bottom:16px; font-size:10pt; }' +
+          'th { background:#002d72; color:#fff; padding:7px 12px; text-align:left; font-weight:600; }' +
+          'td { padding:6px 12px; border-bottom:1px solid #e0e0e0; }' +
+          'tr:nth-child(even) td { background:#f5f7fa; }' +
+          '.chart-img { width:100%; margin:12px 0; border:1px solid #ddd; border-radius:4px; }' +
+          '.footer { margin-top:24px; padding-top:10px; border-top:1px solid #c7c1bb; font-size:8pt; color:#888; display:flex; justify-content:space-between; }' +
+          '@media print { body { print-color-adjust:exact; -webkit-print-color-adjust:exact; } }' +
+          '</style></head><body><div class="page">' +
+          '<div class="header"><div><h1>ENTRADA PARTNERS</h1><p>Lease Comp Analysis</p></div><div style="text-align:right;font-size:9pt;color:#8b9fc4;">' + dateStr + '</div></div>' +
+          '<div class="address">' + _hEsc(addrStr) + '</div>' + subjRow +
+          '<div class="section-title">Rent Benchmark Chart</div>' +
+          (chartImg ? '<img src="' + chartImg + '" class="chart-img" />' : '<p style="color:#888;font-size:10pt;">Chart unavailable.</p>') +
+          '<div class="section-title">Lease Comp Table</div>' +
+          '<table><thead><tr><th>Address</th><th>Tenant</th><th>SF</th><th>Lease Date</th><th>Eff. Rate /SF</th><th>Type</th></tr></thead><tbody>' + tableRows + '</tbody></table>' +
+          '<div class="footer"><span>Entrada Partners &middot; Lease Comp Analysis &middot; ' + dateStr + '</span><span>RIDGE Intelligence</span></div>' +
+          '</div></body></html>';
+        var w = window.open('', '_blank');
+        if (!w) { showToast('⚠ Pop-up blocked — allow pop-ups and try again'); return; }
+        w.document.write(html);
+        w.document.close();
+        w.focus();
+        setTimeout(function() { w.print(); }, 600);
+      } catch(e) {
+        console.warn('[RIDGE] _lcmExportPDF error:', e.message);
+        showToast('⚠ PDF export failed');
+      }
+    };
+
+    window._lcmExportImage = function() {
+      try {
+        var wrapEl = document.getElementById(window._lcmWrapId);
+        if (!wrapEl) { showToast('⚠ Map block not found'); return; }
+        if (typeof html2canvas === 'undefined') { showToast('⚠ Image export unavailable — html2canvas not loaded'); return; }
+        var subj     = window._lcmSubject || {};
+        var addrSlug = (subj.address || 'lcm')
+          .toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').substring(0, 40);
+        var dateSlug = new Date().toISOString().slice(0, 10);
+        showToast('Capturing image…');
+        html2canvas(wrapEl, { backgroundColor: '#0d1314', useCORS: true, scale: 2 })
+          .then(function(canvas) {
+            var link = document.createElement('a');
+            link.download = 'entrada-lcm-' + addrSlug + '-' + dateSlug + '.png';
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+          })
+          .catch(function(e) {
+            console.warn('[RIDGE] _lcmExportImage error:', e.message);
+            showToast('⚠ Image export failed');
+          });
+      } catch(e) {
+        console.warn('[RIDGE] _lcmExportImage error:', e.message);
+        showToast('⚠ Image export failed');
+      }
+    };
 
     // Geocode subject + comps (throttle only on cache miss, mirroring Portfolio Map)
     var pts = [];
@@ -6285,7 +6380,7 @@ async function _renderLeaseCompMap() {
       pts.forEach(function(pt) {
         var d = pt.data;
         if (pt.kind === 'subject') {
-          var sdot = L.divIcon({ className: '', html: '<div style="width:20px;height:20px;border-radius:50%;background:#005eb8;border:3px solid #fff;box-shadow:0 1px 5px rgba(0,0,0,.6);"></div>', iconSize: [20, 20], iconAnchor: [10, 10] });
+          var sdot = L.divIcon({ className: '', html: '<div style="width:20px;height:20px;border-radius:50%;background:#DC2626;border:3px solid #fff;box-shadow:0 1px 5px rgba(0,0,0,.6);"></div>', iconSize: [20, 20], iconAnchor: [10, 10] });
           var spop = '<div style="font-size:12px;min-width:200px;">' +
             '<div style="font-weight:700;font-size:13px;margin-bottom:3px;">' + _hEsc(d.address || 'Subject') + '</div>' +
             '<div style="color:#005eb8;font-size:10px;font-weight:700;letter-spacing:.5px;margin-bottom:4px;">SUBJECT PROPERTY</div>' +
