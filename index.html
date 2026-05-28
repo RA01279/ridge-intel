@@ -14,6 +14,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -3307,6 +3308,7 @@ async function _loadMarkets() {
 var _lensMarketRent = null;
 var _isrLensContext = '';
 var _isrParsedData  = null;  // structured JSON extracted from ISR response — used by PPTX builder
+var _leaseCompParsed = null; // structured lease comp JSON (Call 2) — used by _renderLeaseCompMap
 var _isrModelBuffer = null;  // raw ArrayBuffer of uploaded ISR model — persists across PPTX export
 // ── DEAL MEMO multi-turn state ──────────────────────────────
 var _memoConvHistory = [];   // full conversation history [{role, content}]
@@ -6105,6 +6107,242 @@ async function _isrExtractJSON(memoText) {
     console.warn('[RIDGE] Call 2 extraction failed:', e.message);
   } finally {
     if (_isrBtn) { _isrBtn.disabled = false; _isrBtn.textContent = '⬇ Download .pptx'; }
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+//  LEASE COMP MAP — Call 2 extraction + map/chart render (Part A)
+// ═══════════════════════════════════════════════════════════
+
+// Single-address geocode — reuses the shared _ridgeGeoCache + Nominatim pattern
+// used by Portfolio Map. Returns {lat,lng,cached} or null. Caller handles throttle.
+async function _ridgeGeocodeOne(address) {
+  if (!address) return null;
+  var cacheKey = String(address).toLowerCase().trim();
+  if (_ridgeGeoCache[cacheKey]) {
+    return { lat: _ridgeGeoCache[cacheKey].lat, lng: _ridgeGeoCache[cacheKey].lng, cached: true };
+  }
+  try {
+    var resp = await fetch('https://nominatim.openstreetmap.org/search?format=json&limit=1&q=' + encodeURIComponent(address), {
+      headers: { 'Accept': 'application/json', 'User-Agent': 'RIDGE-Intelligence/1.0' }
+    });
+    var geo = await resp.json();
+    if (geo && geo[0]) {
+      var lat = parseFloat(geo[0].lat), lng = parseFloat(geo[0].lon);
+      _ridgeGeoCache[cacheKey] = { lat: lat, lng: lng };
+      return { lat: lat, lng: lng, cached: false };
+    }
+  } catch(e) { /* skip un-geocodeable */ }
+  return null;
+}
+
+// Parse YYYY-MM or YYYY-MM-DD (with loose fallback) → epoch ms, or null.
+function _lcmDate(s) {
+  if (!s) return null;
+  var str = String(s).trim();
+  var m = str.match(/^(\d{4})-(\d{1,2})(?:-(\d{1,2}))?$/);
+  if (m) return new Date(parseInt(m[1], 10), parseInt(m[2], 10) - 1, m[3] ? parseInt(m[3], 10) : 1).getTime();
+  var d = Date.parse(str);
+  return isNaN(d) ? null : d;
+}
+
+// Recency ramp: t in [0,1] — 0 = oldest (light #7FB3E8) → 1 = newest (navy #002d72).
+function _lcmRamp(t) {
+  if (t == null || isNaN(t)) t = 1;
+  t = Math.max(0, Math.min(1, t));
+  var c0 = [0x7F, 0xB3, 0xE8], c1 = [0x00, 0x2D, 0x72];
+  var r = Math.round(c0[0] + (c1[0] - c0[0]) * t);
+  var g = Math.round(c0[1] + (c1[1] - c0[1]) * t);
+  var b = Math.round(c0[2] + (c1[2] - c0[2]) * t);
+  return 'rgb(' + r + ',' + g + ',' + b + ')';
+}
+
+// Call 2 — mirrors _isrExtractJSON (Haiku, non-streaming, JSON-only, surrogate strip, fence clean).
+async function _leaseCompExtractJSON(memoText) {
+  memoText = String(memoText || '').replace(/[\uD800-\uDFFF]/g, '').replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, '');
+  try {
+    var resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': _apiKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 4000,
+        system: 'You are a data extraction assistant. Return ONLY valid JSON, no other text.',
+        messages: [{
+          role: 'user',
+          content: 'Extract structured lease comp data from this analysis and return as JSON only:\n\n' +
+            JSON.stringify({
+              comps: 'array of {address, tenant, sf, lease_date (YYYY-MM or YYYY-MM-DD), eff_rate_psf (number), lease_type, source}',
+              subject: '{address, in_place_rent_psf (number)}'
+            }) + '\n\nAnalysis:\n' + memoText.slice(0, 12000)
+        }]
+      })
+    });
+    if (!resp.ok) {
+      var _errText = await resp.text();
+      console.warn('[RIDGE] Lease Comp Call 2 failed:', resp.status, _errText.slice(0, 200));
+      showToast('⚠ Lease Comp map extraction failed (' + resp.status + ') — text analysis is unaffected');
+      return;
+    }
+    var data = await resp.json();
+    if (data.usage) { _trackTokens(data.usage.input_tokens, data.usage.output_tokens); }
+    var raw = data.content[0].text;
+    var clean = raw.replace(/```json|```/g, '').trim();
+    _leaseCompParsed = JSON.parse(clean);
+    console.log('[RIDGE] Lease Comp Call 2 extraction complete:',
+      _leaseCompParsed && _leaseCompParsed.comps ? _leaseCompParsed.comps.length + ' comps' : 'no comps');
+    await _renderLeaseCompMap();
+  } catch(e) {
+    console.warn('[RIDGE] Lease Comp Call 2 extraction failed:', e.message);
+    showToast('⚠ Lease Comp map unavailable — text analysis is unaffected');
+  }
+}
+
+// Render Leaflet map (recency-colored comp pins + distinct subject) and Chart.js rent bar chart.
+async function _renderLeaseCompMap() {
+  try {
+    if (!_leaseCompParsed || !Array.isArray(_leaseCompParsed.comps) || !_leaseCompParsed.comps.length) return;
+    var comps = _leaseCompParsed.comps.filter(function(c){ return c && c.eff_rate_psf != null && !isNaN(Number(c.eff_rate_psf)); });
+    if (!comps.length) return;
+    var subject = _leaseCompParsed.subject || {};
+    var contentEl = document.getElementById('ridge-panel-content');
+    if (!contentEl) return;
+
+    // Recency range across comps (shared by pins + bars)
+    var times = comps.map(function(c){ return _lcmDate(c.lease_date); }).filter(function(t){ return t != null; });
+    var minTs = times.length ? Math.min.apply(null, times) : 0;
+    var maxTs = times.length ? Math.max.apply(null, times) : 0;
+    function _compT(c) { var ts = _lcmDate(c.lease_date); return (maxTs > minTs && ts != null) ? (ts - minTs) / (maxTs - minTs) : 1; }
+
+    // Build container: heading + map + legend + chart canvas
+    var mapDivId = 'lcm-leaflet-' + Date.now();
+    var chartId  = 'lcm-chart-' + Date.now();
+    var chartH = Math.max(170, comps.length * 34 + 64);
+    var wrap = document.createElement('div');
+    wrap.style.marginTop = '22px';
+    wrap.innerHTML =
+      '<h2 style="font-size:15px;font-weight:700;color:#005eb8;margin:20px 0 10px;border-bottom:1px solid var(--border);padding-bottom:5px;">Lease Comp Map</h2>' +
+      '<div id="' + mapDivId + '" style="height:460px;width:100%;border-radius:6px;overflow:hidden;background:#0d1314;"></div>' +
+      '<div style="font-size:11px;color:var(--muted);margin:8px 0 18px;display:flex;gap:18px;flex-wrap:wrap;align-items:center;">' +
+        '<span><span style="display:inline-block;width:11px;height:11px;border-radius:50%;background:#005eb8;border:2px solid #fff;margin-right:5px;vertical-align:middle;"></span>Subject</span>' +
+        '<span style="display:flex;align-items:center;gap:6px;">Lease recency' +
+          '<span style="display:inline-block;width:90px;height:10px;border-radius:5px;background:linear-gradient(90deg,#7FB3E8,#002d72);"></span>' +
+          '<span style="color:var(--faint);">older &rarr; newer</span>' +
+        '</span>' +
+      '</div>' +
+      '<h3 style="font-size:14px;font-weight:700;color:var(--text);margin:6px 0 8px;">Effective Rent $/SF &mdash; Comps vs. Subject</h3>' +
+      '<div style="position:relative;height:' + chartH + 'px;width:100%;">' +
+        '<canvas id="' + chartId + '"></canvas>' +
+      '</div>';
+    contentEl.appendChild(wrap);
+
+    // Geocode subject + comps (throttle only on cache miss, mirroring Portfolio Map)
+    var pts = [];
+    if (subject.address) {
+      var sg = await _ridgeGeocodeOne(subject.address);
+      if (sg) pts.push({ kind: 'subject', lat: sg.lat, lng: sg.lng, data: subject });
+      if (!(sg && sg.cached)) await new Promise(function(r){ setTimeout(r, 1100); });
+    }
+    for (var i = 0; i < comps.length; i++) {
+      var c = comps[i];
+      if (!c.address) continue;
+      var g = await _ridgeGeocodeOne(c.address);
+      if (g) pts.push({ kind: 'comp', lat: g.lat, lng: g.lng, data: c });
+      if (!(g && g.cached)) await new Promise(function(r){ setTimeout(r, 1100); });
+    }
+
+    // Map (Leaflet) — guard: if no geocoded points, note it and fall through to the chart
+    await new Promise(function(r){ setTimeout(r, 60); });
+    if (window._ridgeLeaseCompMap) { try { window._ridgeLeaseCompMap.remove(); } catch(e){} window._ridgeLeaseCompMap = null; }
+    if (pts.length) {
+      var map = L.map(mapDivId).setView([pts[0].lat, pts[0].lng], 10);
+      window._ridgeLeaseCompMap = map;
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>', maxZoom: 19
+      }).addTo(map);
+      pts.forEach(function(pt) {
+        var d = pt.data;
+        if (pt.kind === 'subject') {
+          var sdot = L.divIcon({ className: '', html: '<div style="width:20px;height:20px;border-radius:50%;background:#005eb8;border:3px solid #fff;box-shadow:0 1px 5px rgba(0,0,0,.6);"></div>', iconSize: [20, 20], iconAnchor: [10, 10] });
+          var spop = '<div style="font-size:12px;min-width:200px;">' +
+            '<div style="font-weight:700;font-size:13px;margin-bottom:3px;">' + _hEsc(d.address || 'Subject') + '</div>' +
+            '<div style="color:#005eb8;font-size:10px;font-weight:700;letter-spacing:.5px;margin-bottom:4px;">SUBJECT PROPERTY</div>' +
+            (d.in_place_rent_psf != null ? '<div style="font-size:11px;">In-place rent: <strong>$' + Number(d.in_place_rent_psf).toFixed(2) + ' /SF</strong></div>' : '') +
+            '</div>';
+          L.marker([pt.lat, pt.lng], { icon: sdot }).bindPopup(spop).addTo(map);
+        } else {
+          var col = _lcmRamp(_compT(d));
+          var cdot = L.divIcon({ className: '', html: '<div style="width:14px;height:14px;border-radius:50%;background:' + col + ';border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.5);"></div>', iconSize: [14, 14], iconAnchor: [7, 7] });
+          var cpop = '<div style="font-size:12px;min-width:210px;">' +
+            '<div style="font-weight:700;font-size:13px;margin-bottom:3px;">' + _hEsc(d.address || '') + '</div>' +
+            (d.tenant ? '<div style="font-size:11px;">Tenant: <strong>' + _hEsc(String(d.tenant)) + '</strong></div>' : '') +
+            (d.sf != null ? '<div style="font-size:11px;">' + Number(d.sf).toLocaleString() + ' SF</div>' : '') +
+            (d.lease_date ? '<div style="font-size:11px;">Leased: ' + _hEsc(String(d.lease_date)) + '</div>' : '') +
+            (d.eff_rate_psf != null ? '<div style="font-size:11px;">Eff. rent: <strong>$' + Number(d.eff_rate_psf).toFixed(2) + ' /SF</strong></div>' : '') +
+            (d.source ? '<div style="font-size:10px;color:#8b949e;margin-top:3px;">' + _hEsc(String(d.source)) + '</div>' : '') +
+            '</div>';
+          L.marker([pt.lat, pt.lng], { icon: cdot }).bindPopup(cpop).addTo(map);
+        }
+      });
+      if (pts.length > 1) { try { map.fitBounds(pts.map(function(p){ return [p.lat, p.lng]; }), { padding: [34, 34], maxZoom: 13 }); } catch(e){} }
+    } else {
+      var mdEl = document.getElementById(mapDivId);
+      if (mdEl) mdEl.innerHTML = '<div style="color:var(--muted);padding:24px;font-size:13px;">No comp addresses could be geocoded &mdash; see the rent comparison below.</div>';
+      showToast('⚠ Lease comps could not be mapped — showing rent chart only');
+    }
+
+    // Chart (Chart.js horizontal bar) — comps colored by recency + subject reference line
+    await new Promise(function(r){ setTimeout(r, 30); });
+    if (typeof Chart === 'undefined') { showToast('⚠ Chart library unavailable — map rendered without rent chart'); return; }
+    if (window._ridgeLeaseCompChart) { try { window._ridgeLeaseCompChart.destroy(); } catch(e){} window._ridgeLeaseCompChart = null; }
+    var canvas = document.getElementById(chartId);
+    if (!canvas) return;
+    var labels = comps.map(function(c){ return (c.tenant || c.address || 'Comp'); });
+    var vals = comps.map(function(c){ return Number(c.eff_rate_psf) || 0; });
+    var barCols = comps.map(function(c){ return _lcmRamp(_compT(c)); });
+    var subjRent = (subject.in_place_rent_psf != null && !isNaN(Number(subject.in_place_rent_psf))) ? Number(subject.in_place_rent_psf) : null;
+    var subjectLinePlugin = {
+      id: 'lcmSubjectLine',
+      afterDraw: function(chart) {
+        if (subjRent == null) return;
+        var xS = chart.scales.x, area = chart.chartArea, ctx = chart.ctx;
+        var x = xS.getPixelForValue(subjRent);
+        ctx.save();
+        ctx.beginPath(); ctx.moveTo(x, area.top); ctx.lineTo(x, area.bottom);
+        ctx.lineWidth = 2; ctx.strokeStyle = '#005eb8'; ctx.setLineDash([5, 4]); ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.fillStyle = '#005eb8'; ctx.font = '600 11px sans-serif'; ctx.textAlign = 'center';
+        ctx.fillText('Subject $' + subjRent.toFixed(2), x, area.top - 4);
+        ctx.restore();
+      }
+    };
+    window._ridgeLeaseCompChart = new Chart(canvas.getContext('2d'), {
+      type: 'bar',
+      data: { labels: labels, datasets: [{ label: 'Effective Rent $/SF', data: vals, backgroundColor: barCols, borderWidth: 0, borderRadius: 3 }] },
+      options: {
+        indexAxis: 'y',
+        responsive: true,
+        maintainAspectRatio: false,
+        layout: { padding: { top: 18 } },
+        plugins: {
+          legend: { display: false },
+          tooltip: { callbacks: { label: function(ctx){ return '$' + Number(ctx.raw).toFixed(2) + ' /SF'; } } }
+        },
+        scales: {
+          x: { title: { display: true, text: '$/SF NNN', color: '#005eb8', font: { size: 11, weight: '600' } }, grid: { color: 'rgba(0,46,114,0.08)' }, ticks: { callback: function(v){ return '$' + v; } } },
+          y: { grid: { display: false } }
+        }
+      },
+      plugins: [subjectLinePlugin]
+    });
+  } catch(e) {
+    console.warn('[RIDGE] _renderLeaseCompMap error:', e.message);
+    showToast('⚠ Lease Comp map render failed — text analysis is unaffected');
   }
 }
 
@@ -10425,6 +10663,10 @@ async function runRidgeAPI(skillName, prompt, runInputs, runToolId) {
           conviction: _isrConv
         });
       }
+    }
+    // LEASE COMP MAP — fire Call 2 extraction for the map + rent chart (additive; the lease-comp DB write below is unchanged)
+    if (_lastRunToolId === 'lease-comp') {
+      try { _leaseCompExtractJSON(accumulated); } catch(e) { console.warn('[RIDGE] lease-comp Call 2 trigger error:', e.message); }
     }
     console.log('Stream complete — about to enter Supabase post-run block');
     document.getElementById('ridge-pdf-btn').disabled = false;
