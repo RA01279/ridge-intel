@@ -648,7 +648,7 @@ footer{border-top:1px solid var(--border);padding:20px 24px;text-align:center;co
 <header class="ridge-hdr">
     <div class="ridge-hdr-left">
       <span class="ridge-hdr-logo">RIDGE</span>
-      <span class="ridge-hdr-badge" id="hdr-skill-count">18 Skills Active · v5.53</span>
+      <span class="ridge-hdr-badge" id="hdr-skill-count">18 Skills Active · v5.54</span>
       <span class="ridge-hdr-firm">Entrada Partners</span>
     </div>
     <div class="ridge-hdr-right">
@@ -1254,7 +1254,7 @@ function renderTools() {
   panels.innerHTML = '';
 
   var hdrCount = document.getElementById('hdr-skill-count');
-  if (hdrCount) hdrCount.textContent = TOOLS.length + ' Skills Active · v5.53';
+  if (hdrCount) hdrCount.textContent = TOOLS.length + ' Skills Active · v5.54';
   var ftrCount = document.getElementById('footer-skill-count');
   if (ftrCount) ftrCount.textContent = 'RIDGE Intelligence Platform · Entrada Partners · ' + TOOLS.length + ' Skills Active · ATL · SAV · DFW · HOU';
 
@@ -6230,7 +6230,7 @@ async function _renderLeaseCompMap() {
     wrap.id = wrapId;
     wrap.innerHTML =
       '<h2 style="font-size:15px;font-weight:700;color:#005eb8;margin:20px 0 10px;border-bottom:1px solid var(--border);padding-bottom:5px;">Lease Comp Map</h2>' +
-      '<div id="' + mapDivId + '" style="height:460px;width:100%;border-radius:6px;overflow:hidden;background:#0d1314;"></div>' +
+      '<div id="' + mapDivId + '" style="height:460px;width:100%;border-radius:6px;overflow:hidden;background:#f5f5f5;"></div>' +
       '<div style="font-size:11px;color:var(--muted);margin:8px 0 18px;display:flex;gap:18px;flex-wrap:wrap;align-items:center;">' +
         '<span><span style="display:inline-block;width:11px;height:11px;border-radius:50%;background:#DC2626;border:2px solid #fff;margin-right:5px;vertical-align:middle;"></span>Subject</span>' +
         '<span style="display:flex;align-items:center;gap:6px;">Lease recency' +
@@ -6276,6 +6276,7 @@ async function _renderLeaseCompMap() {
     // Store refs for export functions (refreshed each render)
     window._lcmWrapId   = wrapId;
     window._lcmChartId  = chartId;
+    window._lcmMapId    = mapDivId;
     window._lcmComps    = comps;
     window._lcmSubject  = subject;
 
@@ -6301,8 +6302,16 @@ async function _renderLeaseCompMap() {
       }
     })();
 
-    window._lcmExportPDF = function() {
+    window._lcmExportPDF = async function() {
       try {
+        var mapImg = null;
+        var mapEl = document.getElementById(window._lcmMapId);
+        if (mapEl && window.html2canvas) {
+          try {
+            var _mc = await html2canvas(mapEl, { backgroundColor: '#ffffff', useCORS: true, scale: 2 });
+            mapImg = _mc.toDataURL('image/png');
+          } catch(me) { console.warn('[RIDGE][LCM] PDF map capture failed:', me.message); }
+        }
         var chartCanvas = document.getElementById(window._lcmChartId);
         var chartImg    = chartCanvas ? chartCanvas.toDataURL('image/png') : null;
         var subj        = window._lcmSubject || {};
@@ -6333,11 +6342,14 @@ async function _renderLeaseCompMap() {
           'td { padding:6px 12px; border-bottom:1px solid #e0e0e0; }' +
           'tr:nth-child(even) td { background:#f5f7fa; }' +
           '.chart-img { width:100%; margin:12px 0; border:1px solid #ddd; border-radius:4px; }' +
+          '.map-img { display:block; width:100%; max-height:460px; object-fit:contain; margin:12px 0; border:1px solid #ddd; border-radius:4px; }' +
           '.footer { margin-top:24px; padding-top:10px; border-top:1px solid #c7c1bb; font-size:8pt; color:#888; display:flex; justify-content:space-between; }' +
           '@media print { body { print-color-adjust:exact; -webkit-print-color-adjust:exact; } }' +
           '</style></head><body><div class="page">' +
           '<div class="header"><div><h1>ENTRADA PARTNERS</h1><p>Lease Comp Analysis</p></div><div style="text-align:right;font-size:9pt;color:#8b9fc4;">' + dateStr + '</div></div>' +
           '<div class="address">' + _hEsc(addrStr) + '</div>' + subjRow +
+          '<div class="section-title">Comp Map</div>' +
+          (mapImg ? '<img src="' + mapImg + '" class="map-img" />' : '<p style="color:#888;font-size:10pt;">Map unavailable.</p>') +
           '<div class="section-title">Rent Benchmark Chart</div>' +
           (chartImg ? '<img src="' + chartImg + '" class="chart-img" />' : '<p style="color:#888;font-size:10pt;">Chart unavailable.</p>') +
           '<div class="section-title">Lease Comp Table</div>' +
@@ -6366,7 +6378,7 @@ async function _renderLeaseCompMap() {
           .toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').substring(0, 40);
         var dateSlug = new Date().toISOString().slice(0, 10);
         showToast('Capturing image…');
-        html2canvas(wrapEl, { backgroundColor: '#0d1314', useCORS: true, scale: 2 })
+        html2canvas(wrapEl, { backgroundColor: '#ffffff', useCORS: true, scale: 2 })
           .then(function(canvas) {
             var link = document.createElement('a');
             link.download = 'entrada-lcm-' + addrSlug + '-' + dateSlug + '.png';
@@ -6420,10 +6432,18 @@ async function _renderLeaseCompMap() {
 
     // Geocode subject + comps (throttle only on cache miss, mirroring Portfolio Map)
     var pts = [];
-    if (subject.address) {
+    if (subject && subject.address) {
       var sg = await _ridgeGeocodeOne(subject.address);
-      if (sg) pts.push({ kind: 'subject', lat: sg.lat, lng: sg.lng, data: subject });
+      if (sg) {
+        pts.push({ kind: 'subject', lat: sg.lat, lng: sg.lng, data: subject });
+      } else {
+        console.warn('[RIDGE][LCM] Subject geocode failed:', subject.address);
+        showToast('⚠ Subject property could not be mapped — geocode failed');
+      }
       if (!(sg && sg.cached)) await new Promise(function(r){ setTimeout(r, 1100); });
+    } else {
+      console.warn('[RIDGE][LCM] No subject address provided — subject pin skipped');
+      showToast('⚠ No subject address — subject pin not shown');
     }
     for (var i = 0; i < comps.length; i++) {
       var c = comps[i];
@@ -6439,8 +6459,9 @@ async function _renderLeaseCompMap() {
     if (pts.length) {
       var map = L.map(mapDivId).setView([pts[0].lat, pts[0].lng], 10);
       window._ridgeLeaseCompMap = map;
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>', maxZoom: 19
+      L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+        attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> © <a href="https://carto.com/attributions">CARTO</a>',
+        subdomains: 'abcd', maxZoom: 20
       }).addTo(map);
       pts.forEach(function(pt) {
         var d = pt.data;
