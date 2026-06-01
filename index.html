@@ -648,7 +648,7 @@ footer{border-top:1px solid var(--border);padding:20px 24px;text-align:center;co
 <header class="ridge-hdr">
     <div class="ridge-hdr-left">
       <span class="ridge-hdr-logo">RIDGE</span>
-      <span class="ridge-hdr-badge" id="hdr-skill-count">18 Skills Active · v5.54</span>
+      <span class="ridge-hdr-badge" id="hdr-skill-count">18 Skills Active · v5.55</span>
       <span class="ridge-hdr-firm">Entrada Partners</span>
     </div>
     <div class="ridge-hdr-right">
@@ -1254,7 +1254,7 @@ function renderTools() {
   panels.innerHTML = '';
 
   var hdrCount = document.getElementById('hdr-skill-count');
-  if (hdrCount) hdrCount.textContent = TOOLS.length + ' Skills Active · v5.54';
+  if (hdrCount) hdrCount.textContent = TOOLS.length + ' Skills Active · v5.55';
   var ftrCount = document.getElementById('footer-skill-count');
   if (ftrCount) ftrCount.textContent = 'RIDGE Intelligence Platform · Entrada Partners · ' + TOOLS.length + ' Skills Active · ATL · SAV · DFW · HOU';
 
@@ -15677,11 +15677,6 @@ async function _llExportLeases() {
   showToast('✅ Exported ' + all.length + ' leases');
 }
 
-_sbInit().then(async function() {
-  await loadApiKey();
-  await loadMapsKey();
-  if (!_apiKey) showApiKeyModal();
-});
 </script>
 
 <script type="module" src="./shared/bridge.js"></script>

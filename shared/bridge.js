@@ -17,3 +17,11 @@ Object.assign(window, {
   _sbUpsertDeal, _sbDeleteDeal,
   showToast, _showModal, _hideModal, closeApiKeyModal
 });
+
+// Kick off app startup only after all bridged symbols are on window,
+// so the classic startup chain never races the bridge.
+window._sbInit().then(async function () {
+  await window.loadApiKey();
+  await window.loadMapsKey();
+  if (!window._apiKey) window.showApiKeyModal();
+});
