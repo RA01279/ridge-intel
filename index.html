@@ -10630,6 +10630,7 @@ async function _compressToMemoryBlock(response, tool) {
     if (data.usage) { _trackTokens(data.usage.input_tokens, data.usage.output_tokens); }
     return (data.content && data.content[0] && data.content[0].text) || _fallbackCompress(response, tool);
   } catch(e) {
+    console.warn('[RIDGE] _compressToMemoryBlock failed, using fallback:', e.message);
     return _fallbackCompress(response, tool);
   }
 }
