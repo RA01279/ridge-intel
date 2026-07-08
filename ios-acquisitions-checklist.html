@@ -60,15 +60,22 @@
   section.checklist-section h2 .sec-count { margin-left: auto; font-family: 'IBM Plex Mono', monospace; font-size: 11px; font-weight: 500; color: #9AA3AE; }
   section.checklist-section h2 .sec-count.complete { color: var(--accent, #1F3A5F); }
 
-  .item { display: flex; gap: 11px; align-items: flex-start; padding: 5px 0; cursor: pointer; user-select: none; }
+  .item { position: relative; display: flex; gap: 11px; align-items: flex-start; padding: 5px 0; cursor: pointer; user-select: none; }
+  .item-input { position: absolute; inset: 0; margin: 0; opacity: 0; cursor: pointer; }
   .item-box { flex: 0 0 auto; width: 17px; height: 17px; margin-top: 2px; border-radius: 4px; display: flex; align-items: center; justify-content: center; border: 1.5px solid #B9C4D2; background: #fff; transition: background .12s, border-color .12s; }
   .item-box .check { display: none; color: #fff; font-size: 11px; font-weight: 700; line-height: 1; }
+  .item-input:focus-visible + .item-box { outline: 2px solid var(--accent, #1F3A5F); outline-offset: 2px; }
   .item.done .item-box { border: 1.5px solid var(--accent, #1F3A5F); background: var(--accent, #1F3A5F); }
   .item.done .item-box .check { display: block; }
   .item-text { font-size: 13.5px; line-height: 1.45; color: #2A3641; }
   .item.done .item-text { color: #9AA3AE; text-decoration: line-through; text-decoration-color: #B9C4D2; }
 
   footer { margin-top: 40px; padding-top: 16px; border-top: 1px solid #D8E0EA; font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #8A93A0; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
+
+  @media (max-width: 720px) {
+    #layout { display: block; }
+    #toc { position: static; margin-bottom: 24px; }
+  }
 
   @media print {
     @page { margin: 0.5in; }
@@ -80,8 +87,8 @@
     #paper { padding: 0 !important; max-width: none !important; }
     header { padding-top: 0 !important; }
     h1 { font-size: 21pt !important; }
-    section.checklist-section { break-inside: avoid; page-break-inside: avoid; }
-    section.checklist-section > h2 { break-after: avoid; page-break-after: avoid; }
+    section.checklist-section, #gate { break-inside: avoid; page-break-inside: avoid; }
+    section.checklist-section > h2, #gate h2 { break-after: avoid; page-break-after: avoid; }
     label { break-inside: avoid; page-break-inside: avoid; }
     body { font-size: 10.5pt; }
     footer { break-inside: avoid; }
@@ -105,7 +112,7 @@
     <aside id="toc">
       <div class="toc-label">On this page</div>
       <nav id="toc-nav">
-        <a href="#gate" data-target="gate"><span class="num">&nbsp;</span>Gate Criteria</a>
+        <a href="#gate" data-target="gate">Gate Criteria</a>
       </nav>
       <div class="progress-card">
         <div class="progress-row">
@@ -222,7 +229,8 @@
   try { checked = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}"); } catch (e) {}
 
   function saveChecked() {
-    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(checked)); } catch (e) {}
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(checked)); }
+    catch (e) { console.warn("IOS checklist: failed to save progress", e); }
   }
 
   // Gate criteria
@@ -240,6 +248,8 @@
   const sectionsRoot = document.getElementById("sections");
   const progressText = document.getElementById("progress-text");
   const progressBar = document.getElementById("progress-bar");
+  const itemRefs = [];
+  const sectionRefreshers = [];
 
   function updateOverallProgress() {
     let total = 0, done = 0;
@@ -292,6 +302,7 @@
       secCount.textContent = doneCount + "/" + sec.items.length;
       secCount.classList.toggle("complete", doneCount === sec.items.length);
     }
+    sectionRefreshers.push(refreshCount);
 
     sec.items.forEach((text, ii) => {
       const key = "s" + si + "-" + ii;
@@ -300,8 +311,14 @@
       label.style.setProperty("--accent", accent);
       if (checked[key]) label.classList.add("done");
 
+      const input = document.createElement("input");
+      input.type = "checkbox";
+      input.className = "item-input";
+      input.checked = !!checked[key];
+
       const box = document.createElement("span");
       box.className = "item-box";
+      box.setAttribute("aria-hidden", "true");
       const check = document.createElement("span");
       check.className = "check";
       check.textContent = "✓";
@@ -311,17 +328,18 @@
       textSpan.className = "item-text";
       textSpan.textContent = text;
 
+      label.appendChild(input);
       label.appendChild(box);
       label.appendChild(textSpan);
-      label.addEventListener("click", (e) => {
-        e.preventDefault();
-        checked[key] = !checked[key];
+      input.addEventListener("change", () => {
+        checked[key] = input.checked;
         saveChecked();
-        label.classList.toggle("done", !!checked[key]);
+        label.classList.toggle("done", input.checked);
         refreshCount();
         updateOverallProgress();
       });
 
+      itemRefs.push({ key, input, label });
       section.appendChild(label);
     });
 
@@ -329,10 +347,21 @@
     sectionsRoot.appendChild(section);
   });
 
+  window.addEventListener("storage", (e) => {
+    if (e.key !== STORAGE_KEY) return;
+    try { checked = JSON.parse(e.newValue || "{}"); } catch (err) { checked = {}; }
+    itemRefs.forEach(({ key, input, label }) => {
+      const done = !!checked[key];
+      input.checked = done;
+      label.classList.toggle("done", done);
+    });
+    sectionRefreshers.forEach(fn => fn());
+    updateOverallProgress();
+  });
+
   updateOverallProgress();
 
   // Active-section highlighting in TOC
-  const gateLink = tocNav.querySelector('a[data-target="gate"]');
   const allLinks = Array.from(tocNav.querySelectorAll("a"));
   const observedIds = ["gate", ...SECTIONS.map(s => s.anchor)];
   const observedEls = observedIds.map(id => document.getElementById(id)).filter(Boolean);
@@ -349,6 +378,7 @@
       if (vis.length) setActive(vis[0].target.id);
     }, { rootMargin: "-10% 0px -75% 0px", threshold: 0 });
     observedEls.forEach(el => io.observe(el));
+    window.addEventListener("pagehide", () => io.disconnect(), { once: true });
   }
 })();
 </script>
