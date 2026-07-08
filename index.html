@@ -675,9 +675,9 @@ footer{border-top:1px solid var(--border);padding:20px 24px;text-align:center;co
         <div class="scout-hero-title">SCOUT</div>
         <div class="scout-hero-desc">Off-market sweep and spear sourcing. CoStar XLSX intake → deterministic pre-score → owner enrichment → ranked prospect list with debt profile and outreach angle.</div>
         <div class="scout-hero-chips">
-          <span class="scout-hero-chip">ATL · SAV · DFW · HOU</span>
-          <span class="scout-hero-chip">Industrial · Flex</span>
-          <span class="scout-hero-chip">$10M – $70M</span>
+          <span class="scout-hero-chip">DFW · HOU</span>
+          <span class="scout-hero-chip">Industrial Outdoor Storage</span>
+          <span class="scout-hero-chip">$2M+ (No Max)</span>
         </div>
       </div>
       <div class="scout-hero-right">
@@ -799,7 +799,7 @@ footer{border-top:1px solid var(--border);padding:20px 24px;text-align:center;co
 </div>
 
 </main>
-<footer id="footer-skill-count">RIDGE Intelligence Platform · Dalfen Industrial · 17 Skills Active · ATL · SAV · DFW · HOU</footer>
+<footer id="footer-skill-count">RIDGE Intelligence Platform · Dalfen Industrial · 21 Skills Active · DFW · HOU</footer>
 </div><!-- /#ridge-app -->
 
 <script>
@@ -1199,6 +1199,67 @@ Extract every relevant fact from the materials above before asking any questions
     steps:['Loading properties from RIDGE database...','Geocoding addresses...','Rendering map...'],
     system:'',
     prompt:null
+  },
+  {
+    id:'zoning', num:'18', icon:'🧭', name:'ZONING & ENTITLEMENT SCREENER',
+    badge:'Permitted-Use Gate Check',
+    desc:'Confirms whether Industrial Outdoor Storage is a permitted use on a specific parcel — by-right, SUP/CUP required, or prohibited. Includes mandatory deed-restriction check for Houston sites.',
+    shortDesc:'Zoning/entitlement gate check. PASS / NEEDS REVIEW / FAIL verdict.',
+    uploads:[{id:'doc1',label:'Zoning Letter / Deed / Title (optional)',hint:'Zoning verification letter, deed restriction doc, or title commitment if available',icon:'📄',accept:'.pdf,.docx',type:'pdf'}],
+    fields:[
+      {row:[{id:'addr',label:'Site Address',ph:'e.g. 4200 Trinity Blvd, Fort Worth, TX'},{id:'jur',label:'Jurisdiction',ph:'e.g. City of Fort Worth, or "Houston — unincorporated Harris County"'}]},
+      {row:[{id:'zoning',label:'Current Zoning (if known)',ph:'e.g. "I" Light Industrial'},{id:'use',label:'Intended Use',ph:'e.g. Trailer parking, container storage, contractor yard'}]},
+      {row:[{id:'existing',label:'Existing Site Use (if any)',ph:'e.g. Vacant, or currently used for outdoor storage'}]},
+      {row:[{id:'notes',label:'Additional Context',ph:'Known SUP history, neighboring uses, prior deed research...',type:'textarea'}]},
+    ],
+    steps:['Confirming jurisdiction controls...','Classifying use against ordinance/restriction...','Assessing entitlement path...','Checking deed restrictions...','Rendering verdict...'],
+    system:`You are RIDGE's Zoning & Entitlement Screener for Dalfen Industrial's Industrial Outdoor Storage acquisitions in DFW and Houston. You determine whether IOS is a permitted use on a specific parcel — by-right, requiring SUP/CUP, nonconforming, or prohibited — and render a PASS / NEEDS REVIEW / FAIL verdict. Houston has no zoning — deed restrictions control, and a deed restriction search is mandatory for every Houston site. Never default to PASS on an assumption; unconfirmed inputs mean NEEDS REVIEW. Always cite the specific ordinance section or deed document.`,
+    prompt:(d)=>`Run the Zoning & Entitlement Screener for: ${d.addr||'Subject Site'} | Jurisdiction: ${d.jur||'?'} | Current zoning: ${d.zoning||'unknown'} | Intended use: ${d.use||'IOS'} | Existing use: ${d.existing||'unknown'}.\n${d.notes?'Additional context: '+d.notes+'\n':''}${d.doc1_text?'\nDocument provided:\n'+d.doc1_text+'\n':''}\nProduce:\n## VERDICT\nPASS / NEEDS REVIEW / FAIL — one line, bolded.\n\n## SITE / JURISDICTION\nAddress, jurisdiction, controlling instrument (zoning ordinance vs. deed restriction — Houston), current zoning, intended use.\n\n## CLASSIFICATION\nBy-right / SUP-CUP required / Nonconforming / Prohibited / Unclear — with the specific ordinance section or deed language cited.\n\n## ENTITLEMENT PATH (if SUP/CUP required)\nProcess, estimated timeline, approval likelihood based on jurisdiction track record, anticipated conditions (screening/fencing/paving).\n\n## DEED RESTRICTION CHECK\nConfirmed clear / restriction found / search not performed — flag explicitly if not performed, especially for Houston.\n\n## RISK FLAGS\nNumbered list, severity HIGH/MEDIUM/LOW, each with a specific mitigant.\n\n## RECOMMENDATION\nWhat RIDGE should do next.`
+  },
+  {
+    id:'power-capacity', num:'19', icon:'🔌', name:'POWER & UTILITY CAPACITY',
+    badge:'Site Infrastructure Diligence',
+    desc:'Assesses a site\'s electrical service, utility capacity, and interconnection timeline against the intended IOS target-user load profile — reefer plug-in, EV charging, and equipment maintenance/rental yards carry real power requirements.',
+    shortDesc:'Power/utility diligence. Service, capacity, interconnection timeline.',
+    uploads:[{id:'doc1',label:'Utility Bill / Service Data (optional)',hint:'Existing meter data, panel photos, or utility correspondence',icon:'📄',accept:'.pdf,.xlsx',type:'mixed'}],
+    fields:[
+      {row:[{id:'addr',label:'Site Address',ph:'e.g. 4200 Trinity Blvd, Fort Worth, TX'},{id:'use',label:'Target-User Category',type:'select',opts:['Trailer Parking (Dry Van)','Trailer Parking (Reefer)','Container Storage','Contractor & Material Yard','Equipment Maintenance & Rental','Truck Terminal','Auto/Bus Storage Fleet']}]},
+      {row:[{id:'existing',label:'Existing Service (if known)',ph:'e.g. None / single-phase 200A / 3-phase 480V'},{id:'utility',label:'Serving Utility (if known)',ph:'e.g. Oncor, CenterPoint'}]},
+      {row:[{id:'notes',label:'Additional Context',ph:'Reefer plug count needed, EV fleet plans, shop equipment...',type:'textarea'}]},
+    ],
+    steps:['Confirming existing service...','Matching capacity to load profile...','Assessing interconnection timeline...','Estimating cost and timeline...'],
+    system:`You are RIDGE's Power & Utility Capacity module for Dalfen Industrial's Industrial Outdoor Storage acquisitions. You assess a site's electrical service against its intended target-user load profile — never assume IOS means no power is needed; reefer trailer parking, EV fleet charging, and equipment maintenance/rental yards carry material power requirements. Distinguish confirmed data (nameplate ratings, meter data) from estimates. State utility interconnection timelines as jurisdiction/utility-specific, never as a generic national average. Flag any cost estimate that isn't from an actual quote.`,
+    prompt:(d)=>`Run Power & Utility Capacity assessment for: ${d.addr||'Subject Site'} | Target-user category: ${d.use||'?'} | Existing service: ${d.existing||'unknown'} | Serving utility: ${d.utility||'unknown'}.\n${d.notes?'Additional context: '+d.notes+'\n':''}${d.doc1_text?'\nData provided:\n'+d.doc1_text+'\n':''}\nProduce:\n## EXISTING SERVICE\nService type, voltage, transformer capacity, panel size, serving utility.\n\n## TARGET-USER LOAD PROFILE\nLoad classification (Minimal/Light/Moderate/Material) and specific requirements (reefer plugs, EV chargers, shop equipment).\n\n## CAPACITY ASSESSMENT\nAdequate as-is? Upgrade required?\n\n## INTERCONNECTION TIMELINE\nEstimated timeline, known constraints — flag if not confirmed with the utility directly.\n\n## COST ESTIMATE\nEstimated range — flag if not from an actual quote. Cost responsibility per the LOI Power Capacity contingency.\n\n## RISK FLAGS\nNumbered, severity + mitigant.\n\n## RECOMMENDATION\nProceed / condition LOI / obtain utility quote before underwriting.`
+  },
+  {
+    id:'site-metrics', num:'20', icon:'📐', name:'SITE METRICS CALCULATOR',
+    badge:'Coverage & Acreage Math',
+    desc:'Computes building coverage % against the <30% gate, net usable acreage after easements/floodway/detention/setback deductions, and implied trailer/container spot capacity.',
+    shortDesc:'Building coverage gate + net usable acreage + implied spot count.',
+    uploads:[{id:'doc1',label:'Survey / Site Plan (optional)',hint:'Survey, plat, or site plan PDF',icon:'📄',accept:'.pdf',type:'pdf'}],
+    fields:[
+      {row:[{id:'addr',label:'Site Address',ph:'e.g. 4200 Trinity Blvd, Fort Worth, TX'},{id:'gross',label:'Gross Parcel Acreage',ph:'e.g. 12.4 acres'}]},
+      {row:[{id:'bldg',label:'Existing Building Footprint (SF)',ph:'e.g. 0, or 8,200 SF'},{id:'easements',label:'Easements / Floodway / Detention (acres)',ph:'e.g. 0.6 ac easement, 0.3 ac floodway'}]},
+      {row:[{id:'setback',label:'Setback Requirements (ft)',ph:'e.g. 25\' front, 10\' side, 15\' rear'},{id:'use',label:'Target-User Category',ph:'e.g. Trailer parking — 53\' spots'}]},
+      {row:[{id:'notes',label:'Additional Context',ph:'Anticipated future detention, spot size assumption source...',type:'textarea'}]},
+    ],
+    steps:['Calculating building coverage %...','Deducting easements/floodway/detention/setbacks...','Computing net usable acreage...','Estimating implied spot capacity...'],
+    system:`You are RIDGE's Site Metrics Calculator for Dalfen Industrial's Industrial Outdoor Storage acquisitions. You compute building coverage % against the <30% gate and net usable acreage net of easements, floodway, detention, and setbacks. Always show the arithmetic — never state a coverage % or usable acreage without the underlying formula visible. Never round a FAIL into a PASS. Distinguish floodway (deduct in full) from floodplain (flag separately, don't auto-deduct). Distinguish confirmed inputs (survey data) from assumptions (estimated setback deductions) and label accordingly.`,
+    prompt:(d)=>`Run Site Metrics Calculator for: ${d.addr||'Subject Site'} | Gross acreage: ${d.gross||'?'} | Building footprint: ${d.bldg||'0'} SF | Easements/floodway/detention: ${d.easements||'none stated'} | Setbacks: ${d.setback||'not stated'} | Target-user category: ${d.use||'?'}.\n${d.notes?'Additional context: '+d.notes+'\n':''}${d.doc1_text?'\nSurvey/site plan data:\n'+d.doc1_text+'\n':''}\nProduce:\n## BUILDING COVERAGE GATE CHECK\nShow the formula. Gross parcel SF, building footprint SF, coverage %, PASS (<30%) or FAIL (≥30%).\n\n## NET USABLE ACREAGE\nShow every deduction line item (building, easements, floodway, detention, setbacks) and the running total. Separate Current vs. Post-Development if anticipated future detention applies. Flag floodplain acreage separately (not deducted).\n\n## IMPLIED SITE CAPACITY\nSpot size assumption (with source), site efficiency factor (with source), implied spot count.\n\n## RISK FLAGS\nList every input that was an estimate rather than confirmed.\n\n## RECOMMENDATION\nGate status and what remains unconfirmed.`
+  },
+  {
+    id:'ordinance-ref', num:'21', icon:'📚', name:'MUNICIPAL ORDINANCE REFERENCE',
+    badge:'Jurisdiction Research Guide',
+    desc:'Jurisdiction-specific outdoor storage regulation research — DFW suburb-by-suburb zoning/paving/setback/screening requirements, and Houston deed-restriction search guidance.',
+    shortDesc:'Jurisdiction-specific IOS ordinance research: DFW zoning, Houston deed restrictions.',
+    uploads:[{id:'doc1',label:'Ordinance / Deed Excerpt (optional)',hint:'Zoning ordinance excerpt or deed restriction document if already sourced',icon:'📄',accept:'.pdf,.docx',type:'pdf'}],
+    fields:[
+      {row:[{id:'jur',label:'Jurisdiction',ph:'e.g. City of Mansfield, TX — or "Houston / unincorporated Harris County"'},{id:'use',label:'Intended Use',ph:'e.g. Trailer parking'}]},
+      {row:[{id:'notes',label:'Additional Context',ph:'Known prior research, specific ordinance section if known...',type:'textarea'}]},
+    ],
+    steps:['Identifying jurisdiction type...','Researching outdoor storage use status...','Checking site development conditions...','Checking approval track record / deed restrictions...'],
+    system:`You are RIDGE's Municipal Ordinance Reference for Dalfen Industrial's Industrial Outdoor Storage acquisitions. DFW is dozens of separate zoning jurisdictions, each with its own outdoor storage rules — never generalize across "DFW" as one regulatory environment. Houston has no zoning at all — deed restrictions control, and the research framework is fundamentally different (Harris County Clerk deed search, not zoning ordinance lookup). Always cite the specific ordinance section or deed document and date-stamp findings as "confirmed as of [date]." Flag first-time research on a jurisdiction as such, not with the same confidence as a previously verified finding.`,
+    prompt:(d)=>`Run Municipal Ordinance Reference research for: Jurisdiction: ${d.jur||'?'} | Intended use: ${d.use||'IOS'}.\n${d.notes?'Additional context: '+d.notes+'\n':''}${d.doc1_text?'\nDocument provided:\n'+d.doc1_text+'\n':''}\nProduce:\n## JURISDICTION TYPE\nIncorporated DFW suburb / Houston — no zoning / unincorporated Harris County.\n\n## OUTDOOR STORAGE USE STATUS\nBy-right / SUP-CUP required / Prohibited / deed-restriction-governed, with source citation.\n\n## SITE DEVELOPMENT CONDITIONS\nPaving, screening/fencing, setbacks, stacking/height limits, lighting.\n\n## APPROVAL TRACK RECORD (if SUP/CUP jurisdiction)\nRecent approvals/denials found, with dates.\n\n## [HOUSTON ONLY] DEED RESTRICTION FINDINGS\nFound/not found, enforcement holder, status.\n\n## RISK FLAGS\nAnything unconfirmed or requiring counsel/title follow-up.\n\nDate-stamp the output as "Confirmed as of [today's date]" and flag explicitly if this is first-time research on this jurisdiction.`
   }
 ];
 
@@ -1212,9 +1273,9 @@ TOOLS.forEach(t => { STATE[t.id] = { files:{}, metrics:{}, result:null }; });
 //  RENDER TOOLS
 // ═══════════════════════════════════════════════════════════
 var _SKILL_GROUP_MAP = {
-  'market-pulse':'sourcing','portfolio-map':'sourcing',
-  'lens':'underwriting','napkin':'underwriting','waterfall':'underwriting','isr':'underwriting','memo':'underwriting','debt':'underwriting','lease-comp':'underwriting',
-  'gavel':'execution','loi':'execution','dd-tracker':'execution','legal':'execution',
+  'market-pulse':'sourcing','portfolio-map':'sourcing','ordinance-ref':'sourcing',
+  'lens':'underwriting','napkin':'underwriting','waterfall':'underwriting','isr':'underwriting','memo':'underwriting','debt':'underwriting','lease-comp':'underwriting','site-metrics':'underwriting',
+  'gavel':'execution','loi':'execution','dd-tracker':'execution','legal':'execution','zoning':'execution','power-capacity':'execution',
   'canvas':'admin','lease-library':'admin','lease-stack':'admin','lease-compare':'admin'
 };
 var _SKILL_GROUP_META = [
@@ -1254,7 +1315,7 @@ function renderTools() {
   var hdrCount = document.getElementById('hdr-skill-count');
   if (hdrCount) hdrCount.textContent = TOOLS.length + ' Skills Active · v5.55';
   var ftrCount = document.getElementById('footer-skill-count');
-  if (ftrCount) ftrCount.textContent = 'RIDGE Intelligence Platform · Dalfen Industrial · ' + TOOLS.length + ' Skills Active · ATL · SAV · DFW · HOU';
+  if (ftrCount) ftrCount.textContent = 'RIDGE Intelligence Platform · Dalfen Industrial · ' + TOOLS.length + ' Skills Active · DFW · HOU';
 
   var grouped = {};
   _SKILL_GROUP_META.forEach(function(g){ grouped[g.id] = []; });
@@ -3244,6 +3305,42 @@ If CONDITIONAL: state exactly what must be verified before proceeding
 
     case 'pipeline':
       return '';
+
+    case 'zoning':
+      p = 'You are RIDGE\'s Zoning & Entitlement Screener for Dalfen Industrial\'s Industrial Outdoor Storage acquisitions in DFW and Houston.\n\n';
+      p += 'SITE: ' + (d.addr||'') + '\nJURISDICTION: ' + (d.jur||'') + '\nCURRENT ZONING: ' + (d.zoning||'unknown') + '\nINTENDED USE: ' + (d.use||'IOS') + '\nEXISTING SITE USE: ' + (d.existing||'unknown') + '\n';
+      if (d.notes) p += 'ADDITIONAL CONTEXT: ' + d.notes + '\n';
+      if (d.doc1_text) p += '\nDOCUMENT PROVIDED:\n' + d.doc1_text.slice(0, 18000) + '\n';
+      p += '\nHouston has no zoning — deed restrictions control there, and a deed restriction search is mandatory for every Houston site. Never default to PASS on an assumption; if a required input (zoning designation, ordinance text, or deed restriction search) was not actually confirmed, the verdict is NEEDS REVIEW, not PASS.\n\n';
+      p += 'Produce:\n## VERDICT\nPASS / NEEDS REVIEW / FAIL — one line, bolded.\n\n## SITE / JURISDICTION\nAddress, jurisdiction, controlling instrument (zoning ordinance vs. deed restriction — Houston), current zoning, intended use.\n\n## CLASSIFICATION\nBy-right / SUP-CUP required / Nonconforming / Prohibited / Unclear — cite the specific ordinance section or deed language.\n\n## ENTITLEMENT PATH (if SUP/CUP required)\nProcess, estimated timeline, approval likelihood based on jurisdiction track record, anticipated conditions (screening/fencing/paving).\n\n## DEED RESTRICTION CHECK\nConfirmed clear / restriction found / search not performed — flag explicitly if not performed, especially for Houston.\n\n## RISK FLAGS\nNumbered list, severity HIGH/MEDIUM/LOW, each with a specific mitigant.\n\n## RECOMMENDATION\nWhat RIDGE should do next — proceed, condition the LOI on the entitlement contingency, order a deed restriction search, or pass.';
+      return p;
+
+    case 'power-capacity':
+      p = 'You are RIDGE\'s Power & Utility Capacity module for Dalfen Industrial\'s Industrial Outdoor Storage acquisitions.\n\n';
+      p += 'SITE: ' + (d.addr||'') + '\nTARGET-USER CATEGORY: ' + (d.use||'') + '\nEXISTING SERVICE: ' + (d.existing||'unknown') + '\nSERVING UTILITY: ' + (d.utility||'unknown') + '\n';
+      if (d.notes) p += 'ADDITIONAL CONTEXT: ' + d.notes + '\n';
+      if (d.doc1_text) p += '\nDATA PROVIDED:\n' + d.doc1_text.slice(0, 18000) + '\n';
+      p += '\nNever assume IOS means no power is needed — reefer trailer parking, EV fleet charging, and equipment maintenance/rental yards carry material power requirements. Distinguish confirmed data (nameplate ratings, meter data) from estimates. State utility interconnection timelines as jurisdiction/utility-specific, never a generic national average. Flag any cost estimate that isn\'t from an actual quote.\n\n';
+      p += 'Produce:\n## EXISTING SERVICE\nService type, voltage, transformer capacity, panel size, serving utility.\n\n## TARGET-USER LOAD PROFILE\nLoad classification (Minimal/Light/Moderate/Material) and specific requirements (reefer plugs, EV chargers, shop equipment).\n\n## CAPACITY ASSESSMENT\nAdequate as-is? Upgrade required — describe.\n\n## INTERCONNECTION TIMELINE\nEstimated timeline, known constraints — flag if not confirmed with the utility directly.\n\n## COST ESTIMATE\nEstimated range — flag if not from an actual quote. Cost responsibility per the LOI Power Capacity contingency.\n\n## RISK FLAGS\nNumbered, severity + mitigant.\n\n## RECOMMENDATION\nProceed / condition LOI on power capacity contingency / obtain utility quote before underwriting the assumed target-user category.';
+      return p;
+
+    case 'site-metrics':
+      p = 'You are RIDGE\'s Site Metrics Calculator for Dalfen Industrial\'s Industrial Outdoor Storage acquisitions.\n\n';
+      p += 'SITE: ' + (d.addr||'') + '\nGROSS ACREAGE: ' + (d.gross||'') + '\nBUILDING FOOTPRINT: ' + (d.bldg||'0') + ' SF\nEASEMENTS/FLOODWAY/DETENTION: ' + (d.easements||'none stated') + '\nSETBACKS: ' + (d.setback||'not stated') + '\nTARGET-USER CATEGORY: ' + (d.use||'') + '\n';
+      if (d.notes) p += 'ADDITIONAL CONTEXT: ' + d.notes + '\n';
+      if (d.doc1_text) p += '\nSURVEY/SITE PLAN DATA:\n' + d.doc1_text.slice(0, 18000) + '\n';
+      p += '\nAlways show the arithmetic — never state a coverage % or usable acreage without the underlying formula visible. Never round a FAIL into a PASS against the <30% building coverage gate. Distinguish floodway (deduct in full) from floodplain (flag separately, don\'t auto-deduct). Label every input as confirmed (e.g. survey-sourced) or an assumption (e.g. estimated setback deduction).\n\n';
+      p += 'Produce:\n## BUILDING COVERAGE GATE CHECK\nShow the formula. Gross parcel SF, building footprint SF, coverage %, PASS (<30%) or FAIL (≥30%).\n\n## NET USABLE ACREAGE\nShow every deduction line item (building, easements, floodway, detention, setbacks) and the running total. Separate Current vs. Post-Development if anticipated future detention applies. Flag floodplain acreage separately (not deducted).\n\n## IMPLIED SITE CAPACITY\nSpot size assumption (with source), site efficiency factor (with source), implied spot count.\n\n## RISK FLAGS\nList every input that was an estimate rather than confirmed.\n\n## RECOMMENDATION\nGate status and what remains unconfirmed before this can be treated as final.';
+      return p;
+
+    case 'ordinance-ref':
+      p = 'You are RIDGE\'s Municipal Ordinance Reference for Dalfen Industrial\'s Industrial Outdoor Storage acquisitions.\n\n';
+      p += 'JURISDICTION: ' + (d.jur||'') + '\nINTENDED USE: ' + (d.use||'IOS') + '\n';
+      if (d.notes) p += 'ADDITIONAL CONTEXT: ' + d.notes + '\n';
+      if (d.doc1_text) p += '\nDOCUMENT PROVIDED:\n' + d.doc1_text.slice(0, 18000) + '\n';
+      p += '\nDFW is dozens of separate zoning jurisdictions, each with its own outdoor storage rules — never generalize across "DFW" as one regulatory environment. Houston has no zoning at all — deed restrictions control (Harris County Clerk deed search), not a zoning ordinance lookup. Always cite the specific ordinance section or deed document and date-stamp findings as "confirmed as of [date]." Flag first-time research on a jurisdiction as such.\n\n';
+      p += 'Produce:\n## JURISDICTION TYPE\nIncorporated DFW suburb / Houston — no zoning / unincorporated Harris County.\n\n## OUTDOOR STORAGE USE STATUS\nBy-right / SUP-CUP required / Prohibited / deed-restriction-governed, with source citation.\n\n## SITE DEVELOPMENT CONDITIONS\nPaving, screening/fencing, setbacks, stacking/height limits, lighting.\n\n## APPROVAL TRACK RECORD (if SUP/CUP jurisdiction)\nRecent approvals/denials found, with dates.\n\n## [HOUSTON ONLY] DEED RESTRICTION FINDINGS\nFound/not found, enforcement holder, status.\n\n## RISK FLAGS\nAnything unconfirmed or requiring counsel/title follow-up.\n\nDate-stamp the output as "Confirmed as of [today\'s date]" and flag explicitly if this is first-time research on this jurisdiction.';
+      return p;
 
     default:
       return 'Run ' + toolId + ' — I am ready to begin.';
@@ -6823,6 +6920,10 @@ async function exportToolReport(toolId) {
       case 'lease-stack':   _exportLeaseStack(wb, toolId, dateStr, paste); break;
       case 'canvas':      _exportCanvas(wb, toolId, dateStr, paste); break;
       case 'waterfall':   _exportWaterfall(wb, toolId, dateStr, paste); break;
+      case 'zoning':          _exportZoning(wb, toolId, dateStr, paste); break;
+      case 'power-capacity':  _exportPowerCapacity(wb, toolId, dateStr, paste); break;
+      case 'site-metrics':    _exportSiteMetrics(wb, toolId, dateStr, paste); break;
+      case 'ordinance-ref':   _exportOrdinanceRef(wb, toolId, dateStr, paste); break;
       default: showToast('No export configured'); return;
     }
 
@@ -7000,10 +7101,10 @@ function _exportMarket(wb, tid, dateStr, paste) {
 
   rcSecHead(ws, r, 'MARKET BENCHMARKS'); r++;
   r = rcKV(ws, [
-    ['Target Markets',      'ATL · SAV · DFW · HOU'],
-    ['Asset Type',          'Industrial / Flex Industrial'],
+    ['Target Markets',      'DFW · HOU'],
+    ['Asset Type',          'Industrial Outdoor Storage (IOS)'],
     ['Rent Benchmark Source','CoStar (not LoopNet asking rents)'],
-    ['Vacancy Signal Threshold','≥ 15% = opportunity signal'],
+    ['Core Demand Signal',  'Land absorption / truck parking demand — not vacancy rate'],
   ], r);
 
   r = rcAnalysis(ws, paste, r);
@@ -7093,9 +7194,9 @@ function _exportDebt(wb, tid, dateStr, paste) {
 
   rcSecHead(ws, r, 'DEBT CONSTRAINTS'); r++;
   r = rcKV(ws, [
-    ['Max LTV',       '65%'],
-    ['Min DSCR',      '1.25x'],
-    ['Deal Range',    '$10M – $70M'],
+    ['Max LTV',       '[VERIFY WITH USER] — unconfirmed for Dalfen'],
+    ['Min DSCR',      '[VERIFY WITH USER] — unconfirmed for Dalfen'],
+    ['Deal Range',    '$2M minimum, no maximum'],
     ['Amortization',  '25–30 years (conventional); interest-only for bridge'],
   ], r);
 
@@ -7309,6 +7410,79 @@ function _exportLegal(wb, tid, dateStr, paste) {
     ['Environmental Indemnification',        ''],
     ['FIRPTA / Tax Provisions',              ''],
     ['Dispute Resolution / Arbitration',     ''],
+  ], r);
+
+  r = rcAnalysis(ws, paste, r);
+}
+
+// ── ZONING & ENTITLEMENT SCREENER ────────────────────────
+function _exportZoning(wb, tid, dateStr, paste) {
+  var ws = wb.addWorksheet('Zoning Screen', { views:[{state:'frozen',xSplit:0,ySplit:3}] });
+  rcColWidths(ws, [26,20,12,12,12,12,12,12,12,12]);
+  var addr = rcGetField(tid,'addr');
+  var r = rcTitle(ws, 'ZONING & ENTITLEMENT SCREENER', addr, dateStr);
+
+  rcSecHead(ws, r, 'SITE / JURISDICTION'); r++;
+  r = rcKV(ws, [
+    ['Site',              rcGetField(tid,'addr')],
+    ['Jurisdiction',      rcGetField(tid,'jur')],
+    ['Current Zoning',    rcGetField(tid,'zoning')],
+    ['Intended Use',      rcGetField(tid,'use')],
+    ['Existing Site Use', rcGetField(tid,'existing')],
+  ], r);
+
+  r = rcAnalysis(ws, paste, r);
+}
+
+// ── POWER & UTILITY CAPACITY ─────────────────────────────
+function _exportPowerCapacity(wb, tid, dateStr, paste) {
+  var ws = wb.addWorksheet('Power Capacity', { views:[{state:'frozen',xSplit:0,ySplit:3}] });
+  rcColWidths(ws, [26,20,12,12,12,12,12,12,12,12]);
+  var addr = rcGetField(tid,'addr');
+  var r = rcTitle(ws, 'POWER & UTILITY CAPACITY', addr, dateStr);
+
+  rcSecHead(ws, r, 'SITE / SERVICE PROFILE'); r++;
+  r = rcKV(ws, [
+    ['Site',                  rcGetField(tid,'addr')],
+    ['Target-User Category',  rcGetField(tid,'use')],
+    ['Existing Service',      rcGetField(tid,'existing')],
+    ['Serving Utility',       rcGetField(tid,'utility')],
+  ], r);
+
+  r = rcAnalysis(ws, paste, r);
+}
+
+// ── SITE METRICS CALCULATOR ──────────────────────────────
+function _exportSiteMetrics(wb, tid, dateStr, paste) {
+  var ws = wb.addWorksheet('Site Metrics', { views:[{state:'frozen',xSplit:0,ySplit:3}] });
+  rcColWidths(ws, [26,20,12,12,12,12,12,12,12,12]);
+  var addr = rcGetField(tid,'addr');
+  var r = rcTitle(ws, 'SITE METRICS CALCULATOR', addr, dateStr);
+
+  rcSecHead(ws, r, 'SITE INPUTS'); r++;
+  r = rcKV(ws, [
+    ['Site',                      rcGetField(tid,'addr')],
+    ['Gross Parcel Acreage',      rcGetField(tid,'gross')],
+    ['Building Footprint (SF)',   rcGetField(tid,'bldg')],
+    ['Easements / Floodway / Detention', rcGetField(tid,'easements')],
+    ['Setback Requirements',      rcGetField(tid,'setback')],
+    ['Target-User Category',      rcGetField(tid,'use')],
+  ], r);
+
+  r = rcAnalysis(ws, paste, r);
+}
+
+// ── MUNICIPAL ORDINANCE REFERENCE ────────────────────────
+function _exportOrdinanceRef(wb, tid, dateStr, paste) {
+  var ws = wb.addWorksheet('Ordinance Reference', { views:[{state:'frozen',xSplit:0,ySplit:3}] });
+  rcColWidths(ws, [26,20,12,12,12,12,12,12,12,12]);
+  var jur = rcGetField(tid,'jur');
+  var r = rcTitle(ws, 'MUNICIPAL ORDINANCE REFERENCE', jur, dateStr);
+
+  rcSecHead(ws, r, 'RESEARCH PARAMETERS'); r++;
+  r = rcKV(ws, [
+    ['Jurisdiction',   rcGetField(tid,'jur')],
+    ['Intended Use',   rcGetField(tid,'use')],
   ], r);
 
   r = rcAnalysis(ws, paste, r);
@@ -13326,9 +13500,9 @@ async function ridgeExportPPT() {
     s1.addShape(pptx.ShapeType.rect,{x:0,y:0,w:0.2,h:7.5,fill:{color:GOLD},line:{color:GOLD}});
     s1.addText('INVESTMENT COMMITTEE',{x:0.5,y:0.85,w:12,h:0.32,fontSize:11,bold:true,color:BODY,charSpacing:3});
     s1.addText(addr,{x:0.5,y:1.22,w:12.3,h:1.10,fontSize:38,bold:true,color:NAVY,wrap:true,fontFace:'Cambria'});
-    s1.addText((d.type||'Industrial / Flex').toUpperCase()+'  ·  '+dateStr,{x:0.5,y:2.40,w:10,h:0.30,fontSize:11,color:BODY,charSpacing:1.5});
+    s1.addText((d.type||'Industrial Outdoor Storage (IOS)').toUpperCase()+'  ·  '+dateStr,{x:0.5,y:2.40,w:10,h:0.30,fontSize:11,color:BODY,charSpacing:1.5});
     s1.addShape(pptx.ShapeType.rect,{x:0.5,y:2.78,w:5,h:0.012,fill:{color:GOLD},line:{color:GOLD}});
-    [{v:fmtUSD(d.price),l:'PURCHASE PRICE'},{v:(d.sf||'—')+' SF',l:'BUILDING SIZE'},{v:pct2(d.cap),l:'GOING-IN CAP'}].forEach(function(st,i){
+    [{v:(d.sf||'—')+' AC',l:'ACREAGE'},{v:fmtUSD(d.price),l:'PURCHASE PRICE'},{v:fmtUSD(d.psf),l:'PRICE / ACRE'}].forEach(function(st,i){
       s1.addText(st.v,{x:0.5+i*4.1,y:2.95,w:3.9,h:0.55,fontSize:26,color:NAVY,bold:true,align:'center'});
       s1.addText(st.l,{x:0.5+i*4.1,y:3.50,w:3.9,h:0.24,fontSize:8.5,color:GOLD,align:'center',charSpacing:2});
     });
@@ -13372,8 +13546,8 @@ async function ridgeExportPPT() {
 
     // Row 2 — 4 KPIs: Equity Multiple / YOC Year 3 / NOI Year 1 / Exit NOI
     var kpi2r2 = [
-      {v:mult2(d.em),  l:'EQUITY MULTIPLE', s:'Floor 1.50×'},
-      {v:pct2(d.yoc),  l:'YOC YEAR 3',      s:'Anchor 7.50%'},
+      {v:mult2(d.em),  l:'EQUITY MULTIPLE', s:'Floor [VERIFY WITH USER]'},
+      {v:pct2(d.yoc),  l:'YOC YEAR 3',      s:'Anchor [VERIFY WITH USER]'},
       {v:_s2NOI1 ? fmtUSD(_s2NOI1) : (m.noi ? fmtUSD(m.noi) : '—'), l:'NOI YEAR 1', s:'In-place stabilized'},
       {v:_s2ExitNOI ? fmtUSD(_s2ExitNOI) : '—', l:'EXIT NOI', s:_s2HoldYrs ? 'Year '+(_s2HoldYrs+1)+' (capitalized)' : 'Capitalized at sale'}
     ];
