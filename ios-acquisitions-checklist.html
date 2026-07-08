@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>IOS Acquisitions Checklist — RIDGE</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Public+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body { margin: 0; background: #EEF1F5; color: #1A2129; font-family: "Public Sans", "Helvetica Neue", Arial, sans-serif; -webkit-font-smoothing: antialiased; }
+  a { color: #1F3A5F; text-decoration: none; }
+  a:hover { color: #163050; }
+
+  #paper { max-width: 1100px; margin: 0 auto; padding: 0 28px 80px; }
+
+  .back-link { display: inline-block; font-family: 'IBM Plex Mono', monospace; font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: #7C889A; margin-top: 18px; }
+  .back-link:hover { color: #1F3A5F; }
+
+  header { padding: 20px 0 22px; border-bottom: 1px solid #D8E0EA; margin-bottom: 26px; }
+  .eyebrow { font-family: 'IBM Plex Mono', monospace; font-size: 11px; letter-spacing: .18em; text-transform: uppercase; color: #1F3A5F; font-weight: 600; margin-bottom: 12px; }
+  h1 { font-size: 30px; line-height: 1.15; font-weight: 800; letter-spacing: -.01em; margin: 0 0 8px; color: #16202B; }
+  header p { margin: 0; font-size: 15px; color: #5A6572; font-weight: 400; }
+
+  #layout { display: grid; grid-template-columns: 220px 1fr; gap: 44px; align-items: start; }
+
+  /* TOC */
+  #toc { position: sticky; top: 20px; align-self: start; }
+  .toc-label { font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: .16em; text-transform: uppercase; color: #8A93A0; font-weight: 600; margin-bottom: 12px; }
+  #toc nav { display: flex; flex-direction: column; gap: 1px; border-left: 2px solid #DCE3EC; }
+  #toc nav a { font-size: 12.5px; padding: 5px 0 5px 12px; margin-left: -2px; color: #5A6572; font-weight: 400; line-height: 1.3; border-left: 2px solid transparent; }
+  #toc nav a.active { font-weight: 600; border-left: 2px solid var(--accent, #1F3A5F); color: var(--accent, #1F3A5F); }
+  #toc nav a .num { font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #A6AEBA; margin-right: 7px; }
+  #toc nav a.active .num { color: var(--accent, #1F3A5F); }
+
+  .progress-card { margin-top: 18px; padding: 12px 14px; background: #fff; border: 1px solid #DCE3EC; border-radius: 6px; }
+  .progress-row { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px; }
+  .progress-row span:first-child { font-size: 11px; color: #5A6572; font-weight: 500; }
+  #progress-text { font-family: 'IBM Plex Mono', monospace; font-size: 12px; font-weight: 600; color: #1F3A5F; }
+  .progress-track { height: 5px; background: #EAF0F6; border-radius: 3px; overflow: hidden; }
+  #progress-bar { height: 100%; width: 0%; background: #1F3A5F; border-radius: 3px; transition: width .2s; }
+
+  main { min-width: 0; }
+
+  /* Gate criteria */
+  #gate { background: #EAF0F6; border: 1px solid #D3DEEB; border-radius: 8px; padding: 22px 24px; margin-bottom: 34px; }
+  #gate .gate-head { display: flex; align-items: baseline; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; padding-bottom: 10px; border-bottom: 2px solid #1F3A5F; }
+  #gate h2 { font-size: 17px; font-weight: 700; color: #1F3A5F; margin: 0; letter-spacing: -.01em; }
+  #gate .gate-source { font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #7C889A; }
+  #gate dl { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 10px 20px; font-size: 13.5px; line-height: 1.5; }
+  #gate dt { font-weight: 600; color: #1F3A5F; white-space: nowrap; }
+  #gate dd { margin: 0; color: #2A3641; }
+
+  /* Sections */
+  section.checklist-section { margin-bottom: 30px; scroll-margin-top: 16px; }
+  section.checklist-section h2 { display: flex; align-items: baseline; gap: 11px; font-size: 16px; font-weight: 700; color: #16202B; letter-spacing: -.01em; margin: 0 0 11px; padding-bottom: 7px; border-bottom: 2px solid var(--accent, #1F3A5F); }
+  section.checklist-section h2 .sec-num { font-family: 'IBM Plex Mono', monospace; font-size: 13px; font-weight: 600; color: var(--accent, #1F3A5F); }
+  section.checklist-section h2 .sec-count { margin-left: auto; font-family: 'IBM Plex Mono', monospace; font-size: 11px; font-weight: 500; color: #9AA3AE; }
+  section.checklist-section h2 .sec-count.complete { color: var(--accent, #1F3A5F); }
+
+  .item { position: relative; display: flex; gap: 11px; align-items: flex-start; padding: 5px 0; cursor: pointer; user-select: none; }
+  .item-input { position: absolute; inset: 0; margin: 0; opacity: 0; cursor: pointer; }
+  .item-box { flex: 0 0 auto; width: 17px; height: 17px; margin-top: 2px; border-radius: 4px; display: flex; align-items: center; justify-content: center; border: 1.5px solid #B9C4D2; background: #fff; transition: background .12s, border-color .12s; }
+  .item-box .check { display: none; color: #fff; font-size: 11px; font-weight: 700; line-height: 1; }
+  .item-input:focus-visible + .item-box { outline: 2px solid var(--accent, #1F3A5F); outline-offset: 2px; }
+  .item.done .item-box { border: 1.5px solid var(--accent, #1F3A5F); background: var(--accent, #1F3A5F); }
+  .item.done .item-box .check { display: block; }
+  .item-text { font-size: 13.5px; line-height: 1.45; color: #2A3641; }
+  .item.done .item-text { color: #9AA3AE; text-decoration: line-through; text-decoration-color: #B9C4D2; }
+
+  footer { margin-top: 40px; padding-top: 16px; border-top: 1px solid #D8E0EA; font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #8A93A0; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
+
+  @media (max-width: 720px) {
+    #layout { display: block; }
+    #toc { position: static; margin-bottom: 24px; }
+  }
+
+  @media print {
+    @page { margin: 0.5in; }
+    html, body { background: #fff !important; }
+    * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+    .back-link { display: none !important; }
+    #toc { display: none !important; }
+    #layout { display: block !important; grid-template-columns: none !important; gap: 0 !important; }
+    #paper { padding: 0 !important; max-width: none !important; }
+    header { padding-top: 0 !important; }
+    h1 { font-size: 21pt !important; }
+    section.checklist-section, #gate { break-inside: avoid; page-break-inside: avoid; }
+    section.checklist-section > h2, #gate h2 { break-after: avoid; page-break-after: avoid; }
+    label { break-inside: avoid; page-break-inside: avoid; }
+    body { font-size: 10.5pt; }
+    footer { break-inside: avoid; }
+  }
+</style>
+</head>
+<body>
+
+<div id="paper">
+
+  <a class="back-link" href="index.html">← RIDGE</a>
+
+  <header>
+    <div class="eyebrow">Acquisitions · Internal Reference</div>
+    <h1>IOS Acquisitions Checklist — Dallas&ndash;Fort Worth &amp; Houston</h1>
+    <p>Sourcing through ongoing asset management</p>
+  </header>
+
+  <div id="layout">
+
+    <aside id="toc">
+      <div class="toc-label">On this page</div>
+      <nav id="toc-nav">
+        <a href="#gate" data-target="gate">Gate Criteria</a>
+      </nav>
+      <div class="progress-card">
+        <div class="progress-row">
+          <span>Progress</span>
+          <span id="progress-text">0/0</span>
+        </div>
+        <div class="progress-track"><div id="progress-bar"></div></div>
+      </div>
+    </aside>
+
+    <main>
+      <section id="gate">
+        <div class="gate-head">
+          <h2>Dalfen Acquisition Gate Criteria</h2>
+          <span class="gate-source">source: dalfen.com/ios</span>
+        </div>
+        <dl id="gate-list"></dl>
+      </section>
+
+      <div id="sections"></div>
+
+      <footer>
+        <span>IOS Acquisitions Checklist · DFW &amp; Houston</span>
+        <span>Progress saved locally to this browser</span>
+      </footer>
+    </main>
+  </div>
+</div>
+
+<script>
+(function () {
+  const NAVY = "#1F3A5F", MAROON = "#8A1F1F";
+  const STORAGE_KEY = "ios-checklist-v1";
+
+  const GATE = [
+    { label: "Deal size", value: "$2M minimum, no maximum" },
+    { label: "Building coverage", value: "<30% of site" },
+    { label: "Occupancy", value: "vacant or leased — either qualifies" },
+    { label: "Zoning", value: "IOS must be a permitted use (by-right or approved SUP)" },
+    { label: "Market", value: "top 40 U.S. MSA" },
+    { label: "Transaction type", value: "single asset, portfolio, sale-leaseback, entitlement, forward sale, development, covered land play" },
+    { label: "Target tenant/user", value: "trailer parking, container storage, auto/bus storage, contractor & material yards, equipment maintenance/rental, truck terminals" },
+  ];
+
+  const SECTIONS = [
+    { num: "01", anchor: "sec-1", title: "Sourcing & Preliminary Underwriting", short: "Sourcing", items: [
+      "Confirm site meets all Dalfen gate criteria above before further spend",
+      "Confirm usable acreage net of easements, detention, setbacks, floodway",
+      "Pull comp set: recent IOS land sales and rent comps in submarket",
+      "Check historical aerials for prior use (fuel, industrial, landfill)",
+      "Check TxRRC GIS for pipeline easements crossing the site",
+      "Run FEMA flood zone check (critical in Houston)",
+      "Prepare go/no-go screening memo for IC",
+    ] },
+    { num: "02", anchor: "sec-2", title: "Zoning & Entitlement", short: "Zoning", items: [
+      "Confirm current zoning/use classification and permitted-use status (Houston: no zoning — deed restrictions govern instead)",
+      "If not by-right, scope SUP/CUP path, timeline, and approval risk",
+      "Title search for deed restrictions prohibiting outdoor storage/industrial use",
+      "Confirm screening, paving, and setback standards for the specific municipality (DFW suburbs often require masonry/opaque screening)",
+      "Engage local land use counsel if entitlement is required",
+    ] },
+    { num: "03", anchor: "sec-3", title: "Physical, Environmental & Utility Diligence", short: "Diligence", items: [
+      "Order Phase I ESA; scope Phase II if a REC is identified",
+      "Check TCEQ database and UST history",
+      "Order geotechnical/soils and ALTA survey (expansive clay/subsidence risk elevated in Houston)",
+      "Assess pavement load-bearing capacity, fencing, lighting, drainage/detention",
+      "Confirm truck turning radius / circulation adequacy",
+      "Confirm electrical service (single vs. 3-phase), capacity, and upgrade cost/timeline",
+      "Confirm water/sewer, stormwater, and telecom availability",
+    ] },
+    { num: "04", anchor: "sec-4", title: "Title, Legal & Financial Underwriting", short: "Underwriting", items: [
+      "Review title commitment Schedule B exceptions in full",
+      "Check for severed mineral estate and surface use restrictions",
+      "Confirm acquisition entity structure with tax/legal counsel",
+      "Build acquisition pro forma (going-in cap, IRR, equity multiple) against fund hurdle",
+      "Obtain debt quotes; stress-test entitlement/power capex and timeline delay",
+      "Estimate post-purchase DCAD/HCAD reassessment",
+      "Prepare IC memo for approval",
+    ] },
+    { num: "05", anchor: "sec-5", title: "Tenant Diligence, Closing & Transition", short: "Closing", items: [
+      "If occupied: review rent roll, tenant credit, estoppels, SNDAs",
+      "Confirm tenant use complies with zoning/SUP",
+      "Confirm all diligence contingencies satisfied prior to closing",
+      "Coordinate title/escrow closing checklist and prorations",
+      "Transfer utility accounts and confirm insurance binder effective at close",
+      "Onboard into property management and asset management reporting",
+    ] },
+    { num: "06", anchor: "sec-6", title: "Transaction-Type Considerations", short: "Transaction Types", items: [
+      "Sale-leaseback: underwrite seller/tenant credit as the primary risk, not just real estate",
+      "Covered land play: model interim IOS income against long-term redevelopment basis",
+      "Forward sale: confirm entitlement and development milestones as closing conditions",
+      "Land entitlement deal: price in full SUP timeline, cost, and denial risk",
+      "Development for IOS use: confirm GC bids, permitting path, and power availability before committing capital",
+    ] },
+    { num: "07", anchor: "sec-7", title: "Dallas vs. Houston — Market-Specific", short: "DFW vs. Houston", maroon: true, items: [
+      "Houston: verify land use via deed restrictions, not a zoning map",
+      "Houston: check Harris County Flood Control District data and Harris-Galveston Subsidence District status",
+      "Houston: factor hurricane/wind exposure into insurance underwriting",
+      "DFW: confirm the specific municipality's outdoor storage ordinance and screening standard",
+      "DFW: weight proximity to Alliance (BNSF) and Union Pacific intermodal as a leasing driver",
+      "Both: confirm TxDOT access permit needs for highway frontage; budget annual property tax protest",
+    ] },
+    { num: "08", anchor: "sec-8", title: "Leasing & Ongoing Risk Monitoring", short: "Leasing & Monitoring", items: [
+      "Underwrite lease to Dalfen's target user list (trailer, container, contractor yard, equipment rental, truck terminal)",
+      "Allocate power/reefer/EV infrastructure cost in lease; assign paving maintenance responsibility",
+      "Maintain rolling lease expiration and renewal-risk calendar",
+      "File annual property tax protest; re-market insurance annually",
+      "Monitor power headroom, environmental compliance, and zoning/ordinance changes",
+      "Monitor Houston flood zone remapping updates",
+    ] },
+  ];
+
+  let checked = {};
+  try { checked = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}"); } catch (e) {}
+
+  function saveChecked() {
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(checked)); }
+    catch (e) { console.warn("IOS checklist: failed to save progress", e); }
+  }
+
+  // Gate criteria
+  const gateList = document.getElementById("gate-list");
+  GATE.forEach(g => {
+    const dt = document.createElement("dt");
+    dt.textContent = g.label;
+    const dd = document.createElement("dd");
+    dd.textContent = g.value;
+    gateList.appendChild(dt);
+    gateList.appendChild(dd);
+  });
+
+  const tocNav = document.getElementById("toc-nav");
+  const sectionsRoot = document.getElementById("sections");
+  const progressText = document.getElementById("progress-text");
+  const progressBar = document.getElementById("progress-bar");
+  const itemRefs = [];
+  const sectionRefreshers = [];
+
+  function updateOverallProgress() {
+    let total = 0, done = 0;
+    SECTIONS.forEach((sec, si) => {
+      sec.items.forEach((_, ii) => {
+        total++;
+        if (checked["s" + si + "-" + ii]) done++;
+      });
+    });
+    progressText.textContent = done + "/" + total;
+    progressBar.style.width = (total ? Math.round((done / total) * 100) : 0) + "%";
+  }
+
+  SECTIONS.forEach((sec, si) => {
+    const accent = sec.maroon ? MAROON : NAVY;
+
+    // TOC link
+    const link = document.createElement("a");
+    link.href = "#" + sec.anchor;
+    link.dataset.target = sec.anchor;
+    link.style.setProperty("--accent", accent);
+    const numSpan = document.createElement("span");
+    numSpan.className = "num";
+    numSpan.textContent = sec.num;
+    link.appendChild(numSpan);
+    link.appendChild(document.createTextNode(sec.short));
+    tocNav.appendChild(link);
+
+    // Section
+    const section = document.createElement("section");
+    section.className = "checklist-section";
+    section.id = sec.anchor;
+    section.style.setProperty("--accent", accent);
+
+    const h2 = document.createElement("h2");
+    const secNum = document.createElement("span");
+    secNum.className = "sec-num";
+    secNum.textContent = sec.num;
+    const secTitle = document.createElement("span");
+    secTitle.textContent = sec.title;
+    const secCount = document.createElement("span");
+    secCount.className = "sec-count";
+    h2.appendChild(secNum);
+    h2.appendChild(secTitle);
+    h2.appendChild(secCount);
+    section.appendChild(h2);
+
+    function refreshCount() {
+      const doneCount = sec.items.filter((_, ii) => checked["s" + si + "-" + ii]).length;
+      secCount.textContent = doneCount + "/" + sec.items.length;
+      secCount.classList.toggle("complete", doneCount === sec.items.length);
+    }
+    sectionRefreshers.push(refreshCount);
+
+    sec.items.forEach((text, ii) => {
+      const key = "s" + si + "-" + ii;
+      const label = document.createElement("label");
+      label.className = "item";
+      label.style.setProperty("--accent", accent);
+      if (checked[key]) label.classList.add("done");
+
+      const input = document.createElement("input");
+      input.type = "checkbox";
+      input.className = "item-input";
+      input.checked = !!checked[key];
+
+      const box = document.createElement("span");
+      box.className = "item-box";
+      box.setAttribute("aria-hidden", "true");
+      const check = document.createElement("span");
+      check.className = "check";
+      check.textContent = "✓";
+      box.appendChild(check);
+
+      const textSpan = document.createElement("span");
+      textSpan.className = "item-text";
+      textSpan.textContent = text;
+
+      label.appendChild(input);
+      label.appendChild(box);
+      label.appendChild(textSpan);
+      input.addEventListener("change", () => {
+        checked[key] = input.checked;
+        saveChecked();
+        label.classList.toggle("done", input.checked);
+        refreshCount();
+        updateOverallProgress();
+      });
+
+      itemRefs.push({ key, input, label });
+      section.appendChild(label);
+    });
+
+    refreshCount();
+    sectionsRoot.appendChild(section);
+  });
+
+  window.addEventListener("storage", (e) => {
+    if (e.key !== STORAGE_KEY) return;
+    try { checked = JSON.parse(e.newValue || "{}"); } catch (err) { checked = {}; }
+    itemRefs.forEach(({ key, input, label }) => {
+      const done = !!checked[key];
+      input.checked = done;
+      label.classList.toggle("done", done);
+    });
+    sectionRefreshers.forEach(fn => fn());
+    updateOverallProgress();
+  });
+
+  updateOverallProgress();
+
+  // Active-section highlighting in TOC
+  const allLinks = Array.from(tocNav.querySelectorAll("a"));
+  const observedIds = ["gate", ...SECTIONS.map(s => s.anchor)];
+  const observedEls = observedIds.map(id => document.getElementById(id)).filter(Boolean);
+
+  function setActive(id) {
+    allLinks.forEach(a => a.classList.toggle("active", a.dataset.target === id));
+  }
+  setActive("gate");
+
+  if ("IntersectionObserver" in window && observedEls.length) {
+    const io = new IntersectionObserver((entries) => {
+      const vis = entries.filter(e => e.isIntersecting)
+        .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top);
+      if (vis.length) setActive(vis[0].target.id);
+    }, { rootMargin: "-10% 0px -75% 0px", threshold: 0 });
+    observedEls.forEach(el => io.observe(el));
+    window.addEventListener("pagehide", () => io.disconnect(), { once: true });
+  }
+})();
+</script>
+</body>
+</html>
