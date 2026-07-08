@@ -1,9 +1,9 @@
 /* ═══════════════════════════════════════════════════════════════════════
-   RIDGE × ENTRADA — Design Tokens
+   RIDGE × DALFEN INDUSTRIAL — Design Tokens
    Single source of truth for color, type, spacing, shadow.
    The system runs in two paired modes:
-     • Web (RIDGE Intelligence app)   → dark surface, blue/navy execution
-     • Print/Brand (Entrada Partners) → light surface, navy + ice tones
+     • Web (RIDGE Intelligence app)     → dark surface, blue/navy execution
+     • Print/Brand (Dalfen Industrial)  → light surface, navy + ice tones
    ═════════════════════════════════════════════════════════════════════ */
 
 @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
@@ -14,12 +14,18 @@
 @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&display=swap');
 
 :root {
-  /* ── BRAND CORE (from Entrada Brand Guide PDF) ─────────────── */
-  --entrada-pms-300:        #005EB8;   /* PMS 300 C  — primary blue */
-  --entrada-pms-288:        #002D72;   /* PMS 288 C  — deep navy */
-  --entrada-stone:          #C7C1BB;   /* MP4929     — warm grey */
-  --entrada-ink:            #0D1314;   /* MP33653    — near-black */
-  --entrada-paper:          #FFFFFF;
+  /* ── BRAND CORE ──────────────────────────────────────────────
+     [VERIFY WITH USER] The 5 values below are Entrada Partners' actual
+     Pantone brand spec (PMS 300 C / PMS 288 C / MP4929 / MP33653), carried
+     over as placeholders only. Variable names are renamed to --dalfen-*
+     so nothing in the design system points at Entrada's identity, but the
+     COLOR VALUES themselves are not Dalfen's brand colors and must be
+     replaced once a Dalfen brand guide is available. */
+  --dalfen-pms-300:         #005EB8;   /* PLACEHOLDER — Entrada PMS 300 C value, not Dalfen's */
+  --dalfen-pms-288:         #002D72;   /* PLACEHOLDER — Entrada PMS 288 C value, not Dalfen's */
+  --dalfen-stone:           #C7C1BB;   /* PLACEHOLDER — Entrada MP4929 value, not Dalfen's */
+  --dalfen-ink:             #0D1314;   /* PLACEHOLDER — Entrada MP33653 value, not Dalfen's */
+  --dalfen-paper:           #FFFFFF;
 
   /* ── RIDGE WEB SURFACE (from index.html / config.js) ───────── */
   --bg:                     #0D1117;   /* page bg */
@@ -147,7 +153,7 @@ p,  .p  { font: 400 var(--fs-body)/var(--lh-body) var(--font-system); color: var
 .kpi-l  { font: 700 var(--fs-kpi-hero)/1 var(--font-mono); color: var(--text); letter-spacing: -.02em; }
 .kpi-label { font-size: var(--fs-micro); color: var(--text-on-navy-soft); letter-spacing: var(--ls-eyebrow); text-transform: uppercase; }
 
-/* Display serif — Entrada print + cover slides only.
+/* Display serif — Dalfen print + cover slides only.
    Pair with navy or ink, never blue. */
 .display { font-family: var(--font-display); font-weight: 500; letter-spacing: -.01em; }
 

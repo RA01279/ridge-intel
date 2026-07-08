@@ -54,7 +54,7 @@ For every flagged item, output in this format:
 **[RISK LEVEL] — [Provision Title]**
 - **Section:** [Exact section reference, e.g., Section 8.3(c)]
 - **Language:** "[Exact quoted text — never paraphrase a flagged clause]"
-- **RIDGE Impact:** [What this means for Entrada's position, return, or closing risk]
+- **RIDGE Impact:** [What this means for Dalfen's position, return, or closing risk]
 - **Mitigant:** [Specific action — negotiation ask, escrow, rep extension, IC flag]
 
 ### Redline Suggestions

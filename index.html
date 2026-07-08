@@ -649,7 +649,7 @@ footer{border-top:1px solid var(--border);padding:20px 24px;text-align:center;co
     <div class="ridge-hdr-left">
       <span class="ridge-hdr-logo">RIDGE</span>
       <span class="ridge-hdr-badge" id="hdr-skill-count">18 Skills Active · v5.55</span>
-      <span class="ridge-hdr-firm">Entrada Partners</span>
+      <span class="ridge-hdr-firm">Dalfen Industrial</span>
     </div>
     <div class="ridge-hdr-right">
       <button class="ridge-nav-btn" onclick="showHistoryPanel()">History</button>
@@ -801,7 +801,7 @@ footer{border-top:1px solid var(--border);padding:20px 24px;text-align:center;co
 </div>
 
 </main>
-<footer id="footer-skill-count">RIDGE Intelligence Platform · Entrada Partners · 17 Skills Active · ATL · SAV · DFW · HOU</footer>
+<footer id="footer-skill-count">RIDGE Intelligence Platform · Dalfen Industrial · 17 Skills Active · ATL · SAV · DFW · HOU</footer>
 </div><!-- /#ridge-app -->
 
 <script>
@@ -832,7 +832,7 @@ var TOOLS = [
       {row:[{id:'notes',label:'Additional Context',ph:'e.g. Off-market, owner motivated, debt maturing Q3...',type:'textarea'}]},
     ],
     steps:['Reading OM narrative...','Stripping broker assumptions...','Re-underwriting at RIDGE criteria...','Building Bear / Base / Bull scenarios...','Calculating max entry price...','Generating teardown report...'],
-    system:`You are a senior acquisitions officer at Entrada Partners. Your job is to tear apart a broker OM and re-underwrite the deal at RIDGE criteria. RIDGE criteria: IRR ≥14.75%, EM 1.8x–2.2x, YOC 7.5–8.0% at Yr3/4, max LTV 65%, hold 5 years, deal size $10M–$70M, markets: ATL/SAV/DFW/HOU. Be brutally honest. Identify what the broker is obscuring. Lead with conviction.`,
+    system:`You are a senior acquisitions officer at Dalfen Industrial. Your job is to tear apart a broker OM and re-underwrite the deal at RIDGE criteria. RIDGE criteria: IRR ≥14.75%, EM 1.8x–2.2x, YOC 7.5–8.0% at Yr3/4, max LTV 65%, hold 5 years, deal size $10M–$70M, markets: ATL/SAV/DFW/HOU. Be brutally honest. Identify what the broker is obscuring. Lead with conviction.`,
     prompt:(d)=>`Tear apart this broker OM for ${d.addr||'the subject property'} (${d.type||'industrial/flex'}). Asking: ${d.ask||'see OM'}. SF: ${d.sf||'see OM'}.\n\n${d.notes?'Context: '+d.notes+'\n\n':''}${d.om_text||''}\n\nProduce:\n## BROKER NARRATIVE vs. REALITY\nTable: What broker claims | RIDGE read | Verdict\n\n## RE-UNDERWRITE AT RIDGE CRITERIA\nReconstruct NOI from scratch. Show your work. Flag every assumption.\n\n## BEAR / RIDGE BASE / BULL SCENARIOS\nTable: Scenario | Entry Price | IRR | EM | YOC | Key Assumption\n\n## MAX ENTRY PRICE\nThe exact price at which this deal hits RIDGE's 14.75% IRR hurdle. Show the math.\n\n## RED FLAGS\n3–5 specific things the broker is hiding or glossing over.\n\n## VERDICT\nBUY AT MAX / PASS / WATCH — one sentence why.`
   },
   {
@@ -879,7 +879,7 @@ var TOOLS = [
       {row:[{id:'notes',label:'Notes',type:'textarea',ph:'Deal context, LP name, fund...'}]}
     ],
     steps:['Returning capital...','Calculating pref...','Running catch-up...','Splitting tiers...','Finalizing waterfall...'],
-    system:`You are RIDGE, a senior acquisitions officer at Entrada Partners. Analyze GP/LP waterfall distributions with institutional precision. Comment on LP-friendliness, GP carry, and market norms for industrial CRE. Be direct.`,
+    system:`You are RIDGE, a senior acquisitions officer at Dalfen Industrial. Analyze GP/LP waterfall distributions with institutional precision. Comment on LP-friendliness, GP carry, and market norms for industrial CRE. Be direct.`,
     prompt: null
   },
   {
@@ -952,12 +952,12 @@ var TOOLS = [
     ],
     isISR:true,
     steps:['Parsing acquisition model...','Extracting return metrics...','Analyzing cash flows...','Cross-referencing OM...','Building investment thesis...','Running risk assessment...','Drafting IC recommendation...','Assembling report...'],
-    system:`You are a senior acquisitions officer at Entrada Partners. RIDGE criteria: IRR ≥14.75%, EM 1.8x–2.2x, YOC 7.5–8.0% at Yr3/4, max LTV 65%, 5yr hold, $10M–$70M, markets ATL/SAV/DFW/HOU. Generate an institutional IC report.`
+    system:`You are a senior acquisitions officer at Dalfen Industrial. RIDGE criteria: IRR ≥14.75%, EM 1.8x–2.2x, YOC 7.5–8.0% at Yr3/4, max LTV 65%, 5yr hold, $10M–$70M, markets ATL/SAV/DFW/HOU. Generate an institutional IC report.`
   },
   {
     id:'memo', num:'07a', icon:'📋', name:'DEAL MEMO',
     badge:'IC Narrative · Multi-Turn', badgeBlue:true,
-    desc:'Section-by-section IC narrative for an Entrada acquisition. Upload OM, acquisition model, and market reports. Guided interview produces polished Deal Overview, Business Plan, and Case Studies — plus an Entrada-branded PPTX deck.',
+    desc:'Section-by-section IC narrative for a Dalfen acquisition. Upload OM, acquisition model, and market reports. Guided interview produces polished Deal Overview, Business Plan, and Case Studies — plus a Dalfen-branded PPTX deck.',
     shortDesc:'Upload docs → guided IC narrative + PPTX.',
     uploads:[
       {id:'om',     label:'Offering Memorandum *', hint:'Primary deal narrative source — PDF',                     icon:'📄', accept:'.pdf',       type:'pdf'},
@@ -972,7 +972,7 @@ var TOOLS = [
     ],
     isMemo: true,
     steps:['Reading source materials...','Extracting deal data...','Beginning Deal Overview...'],
-    system:`You are drafting the text content for an Entrada Partners IC investment memo. This memo will be pasted into a pre-formatted PowerPoint template. Your only job is to produce tight, polished, IC-ready copy.
+    system:`You are drafting the text content for a Dalfen Industrial IC investment memo. This memo will be pasted into a pre-formatted PowerPoint template. Your only job is to produce tight, polished, IC-ready copy.
 
 VOICE & TONE: Direct, confident, factual. No fluff, no hype, no filler phrases ("exciting opportunity", "unique chance", "pleased to present", "attractive", "compelling", "strong fundamentals"). State facts and let them do the work. Write the way a sharp acquisitions professional talks to an IC they respect: clear thesis, honest on risks, specific on numbers. Active voice. Short sentences. 4 tight paragraphs max for narrative sections. Do not editorialize on financial returns or investment quality — present the numbers and let the IC draw conclusions.
 
@@ -1026,9 +1026,9 @@ Extract every relevant fact from the materials above before asking any questions
   },
   {
     id:'loi', num:'08', icon:'📄', name:'LOI GENERATOR',
-    badge:'Entrada Template',
-    desc:'Draft-ready LOI using Entrada\'s exact template. Nine variable fields — everything else is locked firm boilerplate.',
-    shortDesc:'Draft-ready LOI. Entrada defaults locked in.',
+    badge:'Dalfen Template',
+    desc:'Draft-ready LOI using Dalfen\'s exact template. Nine variable fields — everything else is locked firm boilerplate.',
+    shortDesc:'Draft-ready LOI. Dalfen defaults locked in.',
     uploads:[{id:'model',label:'Acquisition Model or Deal Summary',hint:'Optional: .xlsx model or PDF deal summary to auto-fill terms',icon:'📊',accept:'.xlsx,.pdf',type:'mixed'}],
     fields:[
       {row:[{id:'date',label:'LOI Date',ph:'e.g. April 1, 2026'},{id:'broker',label:'Broker Name & Firm',ph:'e.g. Alex Carter, CBRE'}]},
@@ -1037,9 +1037,9 @@ Extract every relevant fact from the materials above before asking any questions
       {row:[{id:'deposit',label:'Deposit Amount *',ph:'e.g. $250,000'},{id:'ext',label:'Extension Deposit',ph:'e.g. $100,000'}]},
       {row:[{id:'exp',label:'LOI Expiration Date',ph:'e.g. April 15, 2026'}]},
     ],
-    steps:['Loading Entrada template...','Populating deal terms...','Verifying boilerplate...','Drafting LOI...'],
-    system:`You are the LOI GENERATOR for Entrada Partners. You draft letters of intent using Entrada's exact template format. Buyer entity is always "Entrada Partners Acquisitions, LLC or Assignee". DD period is always 30 days. Closing is always 30 days from DD. Extension right is 15 days with additional deposit. Never modify the fixed boilerplate.`,
-    prompt:(d)=>`Draft an LOI for:\nDate: ${d.date||'[DATE]'}\nBroker: ${d.broker||'[BROKER]'}\nProperty: ${d.addr||'[ADDRESS]'}, ${d.city||''}\nTotal SF: ${d.sf||'[SF]'}\nPurchase Price: ${d.price||'[PRICE]'}\nDeposit: ${d.deposit||'[DEPOSIT]'}\nExtension Deposit: ${d.ext||'$100,000'}\nExpiration: ${d.exp||'10 business days from date'}\n${d.model_text?'Deal data:\n'+d.model_text+'\n\n':''}\nProduce the complete LOI in Entrada's exact format:\n- Header with date and broker attn line\n- RE: line with property address\n- Entrada firm description paragraph (standard text)\n- Two-column table format with all terms: Asset Description, Purchase Price (written out in full), Deposit, Leasing Costs, Due Diligence, Contingencies, Closing, Environmental, DD Period Access, Title Insurance, Escrow Fees, Brokerage Representation, New Contracts, Deliveries\n- Closing paragraph with expiration deadline\n- Non-binding disclaimer paragraph\n- Signature block: Reuben Berman, Justin Schuman, Joshua Bar-Yadin / Principal x3\n- Agreed and Accepted signature line`
+    steps:['Loading Dalfen template...','Populating deal terms...','Verifying boilerplate...','Drafting LOI...'],
+    system:`You are the LOI GENERATOR for Dalfen Industrial. You draft letters of intent using Dalfen's exact template format. Buyer entity is always "[VERIFY WITH USER: confirm Dalfen acquisition entity name] or Assignee". DD period is always 30 days. Closing is always 30 days from DD. Extension right is 15 days with additional deposit. Never modify the fixed boilerplate.`,
+    prompt:(d)=>`Draft an LOI for:\nDate: ${d.date||'[DATE]'}\nBroker: ${d.broker||'[BROKER]'}\nProperty: ${d.addr||'[ADDRESS]'}, ${d.city||''}\nTotal SF: ${d.sf||'[SF]'}\nPurchase Price: ${d.price||'[PRICE]'}\nDeposit: ${d.deposit||'[DEPOSIT]'}\nExtension Deposit: ${d.ext||'$100,000'}\nExpiration: ${d.exp||'10 business days from date'}\n${d.model_text?'Deal data:\n'+d.model_text+'\n\n':''}\nProduce the complete LOI in Dalfen's exact format:\n- Header with date and broker attn line\n- RE: line with property address\n- Dalfen firm description paragraph (standard text — [VERIFY WITH USER: firm description not yet provided])\n- Two-column table format with all terms: Asset Description, Purchase Price (written out in full), Deposit, Leasing Costs, Due Diligence, Contingencies, Closing, Environmental, DD Period Access, Title Insurance, Escrow Fees, Brokerage Representation, New Contracts, Deliveries\n- Closing paragraph with expiration deadline\n- Non-binding disclaimer paragraph\n- Signature block: [VERIFY WITH USER: confirm Dalfen deal-team principals]\n- Agreed and Accepted signature line`
   },
   {
     id:'gavel', num:'09', icon:'⚖️', name:'THE GAVEL — LEASE ADMIN',
@@ -1082,7 +1082,7 @@ Extract every relevant fact from the materials above before asking any questions
       {row:[{id:'notes',label:'Focus / Notes',ph:'e.g. Prioritize >50k SF or distressed only'}]},
     ],
     steps:['Parsing CoStar folder...','Scoring signals deterministically...','Pre-fetching context (DB + Voyage)...','Awaiting approval to enrich...','Enriching candidates (web_search/web_fetch)...','Synthesizing report...','Writing verified properties to database...'],
-    system:`You are SCOUT, RIDGE's off-market sourcing engine for Entrada Partners. You produce a ranked list of acquisition prospects from CoStar data, enriched with verified owner intelligence and distress signals. Every claim in your output must cite a tool result. Never fabricate owner names, dollar amounts, debt facts, or distress signals. Null is better than invented.`,
+    system:`You are SCOUT, RIDGE's off-market sourcing engine for Dalfen Industrial. You produce a ranked list of acquisition prospects from CoStar data, enriched with verified owner intelligence and distress signals. Every claim in your output must cite a tool result. Never fabricate owner names, dollar amounts, debt facts, or distress signals. Null is better than invented.`,
     prompt: null // SCOUT runs its own pipeline via _scoutRunPipeline; buildTrigger returns __SCOUT_HANDLED__ sentinel
   },
   {
@@ -1119,11 +1119,11 @@ Extract every relevant fact from the materials above before asking any questions
       {row:[{id:'doc1_label',label:'Document 1 — Name / Address',ph:'e.g. 4200 Commerce Pkwy — Tenant A Proposal'},{id:'doc2_label',label:'Document 2 — Name / Address',ph:'e.g. 7100 Distribution Dr — Counter-Proposal'},{id:'doc3_label',label:'Document 3 — Name / Address (optional)',ph:'e.g. Prior executed lease for comp'}]},
       {row:[{id:'mkt_rent',label:'Market Rent PSF',ph:'e.g. $12.50 NNN'},{id:'mkt_ti',label:'Market TI PSF',ph:'e.g. $25–30 PSF'},{id:'sf',label:'Rentable SF',ph:'e.g. 48,500'}]},
       {row:[{id:'mkt',label:'Market',type:'select',opts:['Atlanta, GA','Savannah, GA','Dallas–Fort Worth, TX','Houston, TX','Austin, TX (Watch)']},{id:'sub',label:'Submarket',ph:'e.g. Gwinnett / Buford (optional)'}]},
-      {row:[{id:'mode',label:'Comparison Mode',type:'select',opts:['Proposal vs Proposal (pick the better deal)','Proposal vs Executed Lease (is this standard?)','Two Executed Leases (acquisition DD)','Counter-Proposal Analysis','Single Document Deep Review']},{id:'role',label:'Entrada Role',type:'select',opts:['Landlord — maximize NOI and protect asset value','Buyer / Acquirer — evaluate inherited leases','Tenant — minimize cost and maximize flexibility']}]},
+      {row:[{id:'mode',label:'Comparison Mode',type:'select',opts:['Proposal vs Proposal (pick the better deal)','Proposal vs Executed Lease (is this standard?)','Two Executed Leases (acquisition DD)','Counter-Proposal Analysis','Single Document Deep Review']},{id:'role',label:'Dalfen Role',type:'select',opts:['Landlord — maximize NOI and protect asset value','Buyer / Acquirer — evaluate inherited leases','Tenant — minimize cost and maximize flexibility']}]},
       {row:[{id:'notes',label:'Context & Priority Issues',ph:'Tenant credit, deal urgency, specific concerns, prior negotiations...',type:'textarea'}]},
     ],
     steps:['Reading document 1...','Reading document 2...','Extracting all economic terms...','Building comparison matrix...','Flagging risk provisions...','Benchmarking to market...','Generating negotiation strategy...'],
-    system:`You are a senior CRE attorney and acquisitions officer at Entrada Partners. You specialize in industrial and flex lease negotiation across Atlanta, Savannah, DFW, and Houston. You know exactly what provisions protect landlord value at exit, what institutional buyers require in lease abstracts, and what is genuinely market-standard in Southeast and Sun Belt industrial markets. You are direct, specific, and quantify economic impacts whenever possible.`
+    system:`You are a senior CRE attorney and acquisitions officer at Dalfen Industrial. You specialize in industrial and flex lease negotiation across Atlanta, Savannah, DFW, and Houston. You know exactly what provisions protect landlord value at exit, what institutional buyers require in lease abstracts, and what is genuinely market-standard in Southeast and Sun Belt industrial markets. You are direct, specific, and quantify economic impacts whenever possible.`
   },
   {
     id:'lease-stack', num:'14', icon:'🗂️', name:'LEASE STACK ANALYZER',
@@ -1153,12 +1153,12 @@ Extract every relevant fact from the materials above before asking any questions
             {id:'sub', label:'Submarket', ph:'e.g. Gwinnett / Buford (optional)'}]},
       {row:[{id:'context', label:'Analysis Context', type:'select',
              opts:['Acquisition Due Diligence','Asset Management Review','Renewal / Lease-Up Prep','Disposition / Sale Prep','Refinance / Lender DD']},
-            {id:'role',    label:'Entrada Role',    type:'select',
+            {id:'role',    label:'Dalfen Role',    type:'select',
              opts:['Buyer / Acquirer — evaluate inherited lease','Landlord — manage existing tenant','Both']}]},
       {row:[{id:'notes', label:'Additional Context', ph:'Credit quality, relationship notes, market context, known issues...', type:'textarea'}]},
     ],
     steps:['Reading master lease...','Parsing amendments...','Reconstructing current terms...','Building consolidated abstract...','Mapping amendment deltas...','Analyzing tenant leverage...','Generating acquisition summary...'],
-    system:`You are a senior CRE attorney and acquisitions officer at Entrada Partners. You specialize in reconstructing the effective current terms of industrial and flex leases from a master lease and a chain of amendments. You understand what long-tenured tenants negotiate over time, how amendment history reveals tenant leverage, and what provisions will concern institutional buyers at exit. Be specific — quote provisions, cite amendment numbers, and quantify economic impacts.`
+    system:`You are a senior CRE attorney and acquisitions officer at Dalfen Industrial. You specialize in reconstructing the effective current terms of industrial and flex leases from a master lease and a chain of amendments. You understand what long-tenured tenants negotiate over time, how amendment history reveals tenant leverage, and what provisions will concern institutional buyers at exit. Be specific — quote provisions, cite amendment numbers, and quantify economic impacts.`
   },
   {
     id:'lease-library', num:'15', icon:'🗄', name:'LEASE LIBRARY',
@@ -1256,7 +1256,7 @@ function renderTools() {
   var hdrCount = document.getElementById('hdr-skill-count');
   if (hdrCount) hdrCount.textContent = TOOLS.length + ' Skills Active · v5.55';
   var ftrCount = document.getElementById('footer-skill-count');
-  if (ftrCount) ftrCount.textContent = 'RIDGE Intelligence Platform · Entrada Partners · ' + TOOLS.length + ' Skills Active · ATL · SAV · DFW · HOU';
+  if (ftrCount) ftrCount.textContent = 'RIDGE Intelligence Platform · Dalfen Industrial · ' + TOOLS.length + ' Skills Active · ATL · SAV · DFW · HOU';
 
   var grouped = {};
   _SKILL_GROUP_META.forEach(function(g){ grouped[g.id] = []; });
@@ -2536,9 +2536,9 @@ function copyAndLaunch() {
 async function buildTrigger(toolId, d) {
   switch(toolId) {
     case 'lens':
-      p = 'You are RIDGE Assistant — an expert full-stack developer and institutional CRE analyst embedded at Entrada Partners, a private equity firm focused on industrial and flex acquisitions. You are performing an institutional-grade broker OM teardown.\n\n';
+      p = 'You are RIDGE Assistant — an expert full-stack developer and institutional CRE analyst embedded at Dalfen Industrial, a private equity firm focused on industrial and flex acquisitions. You are performing an institutional-grade broker OM teardown.\n\n';
       p += 'PROPERTY: ' + (d.addr||'') + '\nASSET TYPE: ' + (d.type||'') + '\nSIZE: ' + (d.sf||'') + ' SF\nASKING: $' + (d.ask||'') + '\nCONTEXT: ' + (d.notes||'') + '\n\n';
-      p += 'ENTRADA CRITERIA: $10M-$70M | Atlanta/Savannah/DFW/Houston | 14.75%+ levered IRR | 7.5-8.0% YOC Yr3/4 | 95% off-market\n\n';
+      p += 'DALFEN CRITERIA: $10M-$70M | Atlanta/Savannah/DFW/Houston | 14.75%+ levered IRR | 7.5-8.0% YOC Yr3/4 | 95% off-market\n\n';
       p += 'Produce:\n## BROKER NARRATIVE vs REALITY\nWhat the broker is claiming vs what the data actually supports. Be specific and cite numbers.\n\n## RE-UNDERWRITE\nRebuild the return stack from scratch using RIDGE assumptions (60-65% LTV, market debt terms, realistic vacancy, market exit cap). Show your math.\n\n## SCENARIO ANALYSIS\nThree scenarios — Bear / Base / Bull — re-underwritten at RIDGE return thresholds (15% IRR Bear/Base, 18%+ Bull; 1.8x EM Bear, 2.0x Base, 2.2x+ Bull; 7.5%/7.75%/8.0% Yr3 YOC). Back-solve the maximum entry price for each scenario.\n- Bear: -15% NOI, +50bps exit cap (downside protection).\n- Base: RIDGE base case (in-line with broker if reasonable, conservative if broker is bullish).\n- Bull: +5% rent growth, -25bps exit cap (upside).\n\n| Scenario | Entry Price | IRR | EM | YOC | Key Assumption |\n|---|---|---|---|---|---|\n| Bear | $X.XM | XX.X% | X.XXx | X.X% | <one sentence — the single most consequential variable> |\n| Base | $X.XM | XX.X% | X.XXx | X.X% | <one sentence> |\n| Bull | $X.XM | XX.X% | X.XXx | X.X% | <one sentence> |\n\n## WHAT THE BROKER IS HIDING\nFlag every assumption that is aggressive, missing, or impossible to verify. Be direct.\n\n## MAX ENTRY PRICE\nThe exact price where this deal clears 14.75% IRR under RIDGE assumptions. Dollar amount and PSF.\n\n## VERDICT\nPURSUE | CONDITIONAL | PASS — one word, then one paragraph defending it. If CONDITIONAL, state exactly what has to be true.';
       p += '\n\nNote: In your BROKER NARRATIVE vs REALITY section, explicitly flag any delta between the broker\'s stated rent assumptions and market rate comps if data cross-reference flags are present above.';
       p += '\n\nNote: RIDGE will automatically parse this OM into structured data after your analysis. ' +
@@ -2550,8 +2550,8 @@ async function buildTrigger(toolId, d) {
 
     case 'napkin':
       var calc = _napkinCalc(d);
-      var p = 'You are RIDGE Assistant — an expert full-stack developer and institutional CRE analyst embedded at Entrada Partners, a private equity firm focused on industrial and flex acquisitions. You are running a 60-second back-of-envelope acquisition screen.\n\n';
-      p += 'ENTRADA INVESTMENT CRITERIA:\n';
+      var p = 'You are RIDGE Assistant — an expert full-stack developer and institutional CRE analyst embedded at Dalfen Industrial, a private equity firm focused on industrial and flex acquisitions. You are running a 60-second back-of-envelope acquisition screen.\n\n';
+      p += 'DALFEN INVESTMENT CRITERIA:\n';
       p += '- Asset types: Industrial, Flex Industrial, Single-story Office (conversion only)\n';
       p += '- Target markets: Atlanta (primary), Savannah (primary), DFW, Houston\n';
       p += '- Deal size sweet spot: $25M\u2013$35M (full range $10M\u2013$70M)\n';
@@ -2586,7 +2586,7 @@ async function buildTrigger(toolId, d) {
       p += '## DEAL SNAPSHOT\nTwo sentences max. Asset quality, location, tenancy, why it crossed our desk.\n\n';
       if (calc) {
         p += '## RETURN STACK (PRE-CALCULATED — USE THESE EXACT NUMBERS, DO NOT RECALCULATE)\n';
-        p += '| Metric | Value | vs Entrada Hurdle |\n';
+        p += '| Metric | Value | vs Dalfen Hurdle |\n';
         p += '|---|---|---|\n';
         p += '| Going-in Cap Rate | ' + calc.goingInCap + '% | ' + (parseFloat(calc.goingInCap) >= 6.5 ? '✓ Acceptable' : '⚠️ Compressed') + ' |\n';
         p += '| Price PSF | $' + calc.psf + ' | Market context needed |\n';
@@ -2642,7 +2642,7 @@ async function buildTrigger(toolId, d) {
 
     case 'waterfall':
       var calc = _waterfallCalc(d);
-      var p = 'You are RIDGE, a senior acquisitions officer at Entrada Partners. Analyze this GP/LP waterfall distribution and provide institutional commentary.\n\n';
+      var p = 'You are RIDGE, a senior acquisitions officer at Dalfen Industrial. Analyze this GP/LP waterfall distribution and provide institutional commentary.\n\n';
       if (calc) {
         p += 'WATERFALL RESULTS (PRE-CALCULATED — DO NOT RECALCULATE):\n\n';
         p += 'EQUITY STRUCTURE:\n';
@@ -2666,9 +2666,9 @@ async function buildTrigger(toolId, d) {
 
     case 'market-pulse':
       // benchmark injection handled pre-run via _mpBenchmarkContext in runRidgeAPI
-      p = 'You are a senior acquisitions officer at Entrada Partners. Run a comprehensive market intelligence report.\n\n';
+      p = 'You are a senior acquisitions officer at Dalfen Industrial. Run a comprehensive market intelligence report.\n\n';
       p += 'MODE: ' + (d.mode||'Full Market') + '\nMARKET: ' + (d.mkt||'') + '\nSUBMARKET: ' + (d.sub||'') + '\nACTIVE DEAL: ' + (d.deal||'None') + '\n\n';
-      p += 'Produce:\n## MARKET DASHBOARD\nTable: Vacancy | Asking Rent (Class A/B/C) | Net Absorption (TTM) | New Supply (Under Construction) | Cap Rate Range | YoY Rent Growth\n\n## SUBMARKET DEEP DIVE\nFor the specific submarket: vacancy trend (24-month direction), largest recent leases signed, active tenants in the market, key demand drivers, new supply risk.\n\n## COMPARABLE TRANSACTIONS\nLast 6 months: minimum 5 industrial/flex sales. For each: address, SF, sale price, PSF, cap rate, buyer, seller, date. Bold the most relevant comp to active deal if provided.\n\n## RENT FORECAST\n12-month and 24-month rent trajectory. What drives it — supply/demand balance, tenant demand, macro. Be specific.\n\n## ACQUISITION IMPLICATIONS\nFor Entrada specifically: where are the best basis opportunities right now? Which submarkets are showing motivated seller activity? Where are rents running ahead of cap rate compression?\n\n## CONVICTION CALL\nOne paragraph: if Entrada is buying industrial/flex in this market today, what is the specific thesis and where exactly should we be looking?';
+      p += 'Produce:\n## MARKET DASHBOARD\nTable: Vacancy | Asking Rent (Class A/B/C) | Net Absorption (TTM) | New Supply (Under Construction) | Cap Rate Range | YoY Rent Growth\n\n## SUBMARKET DEEP DIVE\nFor the specific submarket: vacancy trend (24-month direction), largest recent leases signed, active tenants in the market, key demand drivers, new supply risk.\n\n## COMPARABLE TRANSACTIONS\nLast 6 months: minimum 5 industrial/flex sales. For each: address, SF, sale price, PSF, cap rate, buyer, seller, date. Bold the most relevant comp to active deal if provided.\n\n## RENT FORECAST\n12-month and 24-month rent trajectory. What drives it — supply/demand balance, tenant demand, macro. Be specific.\n\n## ACQUISITION IMPLICATIONS\nFor Dalfen specifically: where are the best basis opportunities right now? Which submarkets are showing motivated seller activity? Where are rents running ahead of cap rate compression?\n\n## CONVICTION CALL\nOne paragraph: if Dalfen is buying industrial/flex in this market today, what is the specific thesis and where exactly should we be looking?';
       p += '\n\n## RIDGE MARKET DATA\n';
       p += 'After your analysis, output a single valid JSON object (no markdown fences) with these exact keys:\n';
       p += '{"market":"<string>","submarket":"<string or null>","asset_class":"Industrial","report_date":"<YYYY-MM-DD>","vacancy_rate":<number or null>,"asking_rent_psf":<number or null>,"effective_rent_psf":<number or null>,"absorption_sf":<number or null>,"new_supply_sf":<number or null>,"cap_rate":<number or null>,"market_summary":"<2-3 sentences>"}\n';
@@ -2722,9 +2722,9 @@ async function buildTrigger(toolId, d) {
       return p;
 
     case 'debt':
-      p = 'You are a senior acquisitions officer at Entrada Partners modeling the capital stack.\n\n';
+      p = 'You are a senior acquisitions officer at Dalfen Industrial modeling the capital stack.\n\n';
       p += 'PROPERTY: ' + (d.addr||'') + '\nPURCHASE PRICE: $' + (d.price||'') + '\nYEAR 1 NOI: $' + (d.noi||'') + '\nTARGET LTV: ' + (d.ltv||'65') + '%\nSCENARIO: ' + (d.type||'Permanent') + '\nHOLD: ' + (d.hold||'5') + ' years\n\n';
-      p += 'ENTRADA DEBT PARAMETERS: Max LTV 65% | Min DSCR 1.25x | Prefer fixed-rate for core-plus, bridge acceptable for value-add | 5-year term standard\n\n';
+      p += 'DALFEN DEBT PARAMETERS: Max LTV 65% | Min DSCR 1.25x | Prefer fixed-rate for core-plus, bridge acceptable for value-add | 5-year term standard\n\n';
       (function() {
         var pre = _debtCalc(d.price, d.noi, d.ltv, d.rate);
         if (pre && pre.length) {
@@ -2759,7 +2759,7 @@ async function buildTrigger(toolId, d) {
           console.warn('[RIDGE] ISR market rent fetch error:', e.message);
         }
       }
-      p = `You are a senior acquisitions officer at Entrada Partners preparing an institutional investment committee presentation.
+      p = `You are a senior acquisitions officer at Dalfen Industrial preparing an institutional investment committee presentation.
 
 ${d.model_text ? '=== ACQUISITION MODEL (rent roll, cash flows, assumptions) ===\n' + d.model_text.slice(0, 12000) + '\n\n' : ''}PROPERTY: ${d.addr||''}
 ASSET TYPE: ${d.type||''}
@@ -2778,7 +2778,7 @@ Classify this deal as one of three types:
 - VALUE-ADD: Near-term rollover, below-market rents, deferred capex, execution risk present
 - DISTRESSED/REPOSITIONING: Busted cap stack, significant vacancy, full repositioning required
 
-ENTRADA HURDLE THRESHOLDS BY DEAL TYPE:
+DALFEN HURDLE THRESHOLDS BY DEAL TYPE:
 Levered IRR: Core+/Stabilized 13.50%-14.00% acceptable | Value-Add 14.75% floor -- no exceptions | Distressed 14.75% floor, 17.00%+ target
 Equity Multiple: 1.50x universal floor | 1.70x-2.20x target | Between 1.50x-1.70x: evaluated on hold period, exit cap conservatism, and business plan execution -- not automatic rejection
 YOC: 7.50%-8.00% at Year 3, Year 4, AND Year 5
@@ -2819,7 +2819,7 @@ Table 1: IRR by Purchase Price × Hold Period
 Table 2: IRR by Purchase Price × Exit Cap Rate
 Color commentary: green = clears hurdle, yellow = borderline, red = fails
 
-## ENTRADA HURDLE CONFIRMATION
+## DALFEN HURDLE CONFIRMATION
 Deal Type: [CORE+/STABILIZED | VALUE-ADD | DISTRESSED/REPOSITIONING]
 Classification Basis: [one sentence — why this deal is classified as above, based on functionality, year built, tenant quality, and location]
 
@@ -2903,41 +2903,41 @@ If CONDITIONAL: state exactly what must be verified before proceeding
       return p;
 
     case 'loi':
-      p = 'You are a senior acquisitions officer at Entrada Partners drafting a letter of intent.\n\n';
+      p = 'You are a senior acquisitions officer at Dalfen Industrial drafting a letter of intent.\n\n';
       p += 'PROPERTY: ' + (d.addr||'') + ', ' + (d.city||'') + '\nSF: ' + (d.sf||'') + '\nPURCHASE PRICE: $' + (d.price||'') + '\nDEPOSIT: $' + (d.deposit||'') + '\nBROKER: ' + (d.broker||'') + '\nEXPIRATION: ' + (d.exp||'') + '\n\n';
-      p += 'ENTRADA STANDARD TERMS:\n- Buyer: Entrada Partners Acquisitions, LLC or Assignee\n- DD Period: 30 days\n- Closing Period: 30 days after DD\n- Principals: Reuben Berman, Justin Schuman, Joshua Bar-Yadin\n- Deposit: Hard at close of DD unless otherwise negotiated\n\n';
-      p += 'Draft a complete, professional LOI in the Steve Reynolds format. Include:\n1. Opening paragraph identifying buyer, seller, property\n2. Purchase price and PSF\n3. Earnest money deposit — amount, when hard, held by whom\n4. Due diligence period — length, what it covers, termination right\n5. Closing period\n6. Financing contingency (or none if all-cash)\n7. Broker acknowledgment\n8. LOI expiration\n9. Non-binding language\n10. Signature block for Entrada Partners\n\nWrite in formal legal letter format. No bullet points in the LOI itself — full paragraphs. Professional tone throughout.';
+      p += 'DALFEN STANDARD TERMS:\n- Buyer: [VERIFY WITH USER: confirm Dalfen acquisition entity name] or Assignee\n- DD Period: 30 days\n- Closing Period: 30 days after DD\n- Principals: [VERIFY WITH USER: confirm Dalfen deal-team principals]\n- Deposit: Hard at close of DD unless otherwise negotiated\n\n';
+      p += 'Draft a complete, professional LOI. Include:\n1. Opening paragraph identifying buyer, seller, property\n2. Purchase price and PSF\n3. Earnest money deposit — amount, when hard, held by whom\n4. Due diligence period — length, what it covers, termination right\n5. Closing period\n6. Financing contingency (or none if all-cash)\n7. Broker acknowledgment\n8. LOI expiration\n9. Non-binding language\n10. Signature block for Dalfen Industrial\n\nWrite in formal legal letter format. No bullet points in the LOI itself — full paragraphs. Professional tone throughout.';
       return p;
 
     case 'gavel':
-      p = 'You are a senior acquisitions officer at Entrada Partners reviewing a lease document for an acquisition target.\n\n';
+      p = 'You are a senior acquisitions officer at Dalfen Industrial reviewing a lease document for an acquisition target.\n\n';
       p += 'PROPERTY: ' + (d.addr||'') + '\nTENANT: ' + (d.tenant||'') + '\nREVIEW FOCUS: ' + (d.notes||'All material provisions') + '\n\n';
       p += 'LEASE DOCUMENT TEXT:\n' + (d.lease_text ? d.lease_text.slice(0, 20000) : '[No lease document uploaded — request the lease before proceeding]') + '\n\n';
-      p += 'Produce an institutional lease abstract and risk assessment:\n\n## LEASE ABSTRACT\nTable format — Field | Details:\nTenant | Landlord | Commencement | Expiration | Lease Term | Rentable SF | Tenant\'s Share | Base Rent Year 1 | Escalations | Options | TI Allowance | Free Rent | Security Deposit | Permitted Use | Assignment Rights\n\n## CRITICAL DATES\nTable: Date | Action Required | Risk Level (High/Medium/Low)\n\n## RENT SCHEDULE\nFull rent schedule table: Year | Months | Rate PSF | Monthly Rent | Annual Rent\n\n## RISK FLAGS\nOrganized by severity:\n🔴 CRITICAL: Provisions that could kill deal value or create major liability\n🟡 MODERATE: Provisions that affect underwriting or require negotiation\n🟢 LOW: Standard provisions, minor concerns\n\nFor each flag: specific clause reference, dollar impact if quantifiable, recommended action.\n\n## LANDLORD OBLIGATIONS\nWhat Entrada inherits as landlord. CapEx obligations, TI commitments, maintenance responsibilities, any ongoing landlord covenants.\n\n## ACQUISITION IMPACT\nTable: Factor | Impact | Assessment\nNOI contribution, mark-to-market upside/downside, rollover risk, credit quality, occupancy risk, lease structure quality.\n\n## CONVICTION STATEMENT\nOne paragraph: does this lease support or undermine the acquisition thesis? What must be true for this lease to not be a problem at exit?\n\nIMPORTANT: At the very end of your response, after all analysis, append this exact JSON block with extracted lease data (use null for any field not found):\n\n```json\n{"sf":null,"base_rent_psf":null,"lease_term_months":null,"commencement_date":null,"expiration_date":null,"lease_type":null,"ti_psf":null,"rent_escalation_pct":null,"free_rent_months":null,"landlord":null,"guarantor":null,"security_deposit":null,"renewal_option_count":null,"renewal_option_terms":null,"permitted_use":null,"assignment_consent_required":null}\n```\n\nReplace null values with actual extracted data. commencement_date and expiration_date in YYYY-MM-DD format. sf as integer. rent_escalation_pct as number only. Do not add any text after the JSON block.';
+      p += 'Produce an institutional lease abstract and risk assessment:\n\n## LEASE ABSTRACT\nTable format — Field | Details:\nTenant | Landlord | Commencement | Expiration | Lease Term | Rentable SF | Tenant\'s Share | Base Rent Year 1 | Escalations | Options | TI Allowance | Free Rent | Security Deposit | Permitted Use | Assignment Rights\n\n## CRITICAL DATES\nTable: Date | Action Required | Risk Level (High/Medium/Low)\n\n## RENT SCHEDULE\nFull rent schedule table: Year | Months | Rate PSF | Monthly Rent | Annual Rent\n\n## RISK FLAGS\nOrganized by severity:\n🔴 CRITICAL: Provisions that could kill deal value or create major liability\n🟡 MODERATE: Provisions that affect underwriting or require negotiation\n🟢 LOW: Standard provisions, minor concerns\n\nFor each flag: specific clause reference, dollar impact if quantifiable, recommended action.\n\n## LANDLORD OBLIGATIONS\nWhat Dalfen inherits as landlord. CapEx obligations, TI commitments, maintenance responsibilities, any ongoing landlord covenants.\n\n## ACQUISITION IMPACT\nTable: Factor | Impact | Assessment\nNOI contribution, mark-to-market upside/downside, rollover risk, credit quality, occupancy risk, lease structure quality.\n\n## CONVICTION STATEMENT\nOne paragraph: does this lease support or undermine the acquisition thesis? What must be true for this lease to not be a problem at exit?\n\nIMPORTANT: At the very end of your response, after all analysis, append this exact JSON block with extracted lease data (use null for any field not found):\n\n```json\n{"sf":null,"base_rent_psf":null,"lease_term_months":null,"commencement_date":null,"expiration_date":null,"lease_type":null,"ti_psf":null,"rent_escalation_pct":null,"free_rent_months":null,"landlord":null,"guarantor":null,"security_deposit":null,"renewal_option_count":null,"renewal_option_terms":null,"permitted_use":null,"assignment_consent_required":null}\n```\n\nReplace null values with actual extracted data. commencement_date and expiration_date in YYYY-MM-DD format. sf as integer. rent_escalation_pct as number only. Do not add any text after the JSON block.';
       return p;
 
     case 'legal':
-      p = 'You are a senior acquisitions officer at Entrada Partners with deep CRE legal expertise. You are reviewing a transaction document during due diligence. Your job is to protect Entrada\'s interests, flag every non-standard provision, and tell the deal team exactly what to negotiate.\n\n';
+      p = 'You are a senior acquisitions officer at Dalfen Industrial with deep CRE legal expertise. You are reviewing a transaction document during due diligence. Your job is to protect Dalfen\'s interests, flag every non-standard provision, and tell the deal team exactly what to negotiate.\n\n';
       p += 'DOCUMENT TYPE: ' + (d.dtype||'CRE Document') + '\n';
       p += 'PROPERTY: ' + (d.addr||'Subject Property') + '\n';
       p += 'REVIEW FOCUS: ' + (d.focus||'All material provisions') + '\n\n';
       p += 'DOCUMENT TEXT:\n' + (d.doc1_text ? d.doc1_text.slice(0, 25000) : '[No document uploaded — upload the document to proceed]') + '\n\n';
       if (d.doc2_text) p += 'SECONDARY DOCUMENT:\n' + d.doc2_text.slice(0, 10000) + '\n\n';
-      p += 'ENTRADA CONTEXT: Industrial/flex acquisitions $10M-$70M | Atlanta, Savannah, DFW, Houston | Value-add strategy | Institutional LP capital | 5-year hold\n\n';
+      p += 'DALFEN CONTEXT: Industrial/flex acquisitions $10M-$70M | Atlanta, Savannah, DFW, Houston | Value-add strategy | Institutional LP capital | 5-year hold\n\n';
       p += 'Produce a complete legal review at the level of experienced CRE counsel. Structure as follows:\n\n';
       p += '## DOCUMENT IDENTIFICATION\n';
       p += 'Document type, parties, property, key dates, transaction overview. Two paragraphs.\n\n';
       p += '## EXECUTIVE SUMMARY\n';
-      p += 'One paragraph: overall assessment of this document. Is it buyer-friendly, seller-friendly, or market-standard? What is the single biggest issue Entrada needs to address before executing?\n\n';
+      p += 'One paragraph: overall assessment of this document. Is it buyer-friendly, seller-friendly, or market-standard? What is the single biggest issue Dalfen needs to address before executing?\n\n';
       p += '## 🔴 HIGH PRIORITY FLAGS\n';
       p += 'Provisions that require immediate attention, negotiation, or outside counsel before proceeding. For each:\n';
-      p += '- **Provision name** (Section X.X): Exact issue, why it is problematic for Entrada, dollar impact if quantifiable, recommended redline language\n\n';
+      p += '- **Provision name** (Section X.X): Exact issue, why it is problematic for Dalfen, dollar impact if quantifiable, recommended redline language\n\n';
       p += '## 🟡 MODERATE FLAGS\n';
       p += 'Provisions that are above market or create risk but are negotiable. Same format as above.\n\n';
       p += '## 🟢 STANDARD PROVISIONS\n';
       p += 'Brief confirmation of provisions that are market-standard and acceptable as written.\n\n';
       p += '## MISSING PROVISIONS\n';
-      p += 'Standard protections that should be in this document type but are absent. What Entrada should request be added, and why.\n\n';
+      p += 'Standard protections that should be in this document type but are absent. What Dalfen should request be added, and why.\n\n';
       p += '## KEY ECONOMIC TERMS\n';
       p += 'Extract and table all economic terms: purchase price, deposits (amount, when hard, held by whom), DD period, closing timeline, extension rights, termination fees, break-up fees, prorations, adjustments. For lease proposals/leases: base rent, escalations, term, TI allowance, free rent, options, assignment rights.\n\n';
       p += '## CRITICAL DATES & DEADLINES\n';
@@ -2946,7 +2946,7 @@ If CONDITIONAL: state exactly what must be verified before proceeding
       p += '## MARKET STANDARD COMPARISON\n';
       p += 'For each major provision category, assess: Is this market-standard for institutional CRE transactions in the Southeast? If not, specify the deviation and the market norm.\n\n';
       p += '## NEGOTIATION STRATEGY\n';
-      p += 'Prioritized list of redlines Entrada should push for, in order of importance:\n';
+      p += 'Prioritized list of redlines Dalfen should push for, in order of importance:\n';
       p += '1. Must-have (walk if not obtained)\n';
       p += '2. Should-have (push hard but can compromise)\n';
       p += '3. Nice-to-have (raise but accept pushback)\n\n';
@@ -2959,9 +2959,9 @@ If CONDITIONAL: state exactly what must be verified before proceeding
       return '__SCOUT_HANDLED__';
 
     case 'canvas':
-      p = 'You are a senior acquisitions officer at Entrada Partners running tenant intelligence.\n\n';
+      p = 'You are a senior acquisitions officer at Dalfen Industrial running tenant intelligence.\n\n';
       p += 'MODE: ' + (d.mode||'Fill') + '\nPROPERTY: ' + (d.addr||'') + '\nAVAILABLE SF: ' + (d.sf||'') + '\nTARGET RENT: $' + (d.rent||'') + ' PSF\nSUBMARKET: ' + (d.sub||'') + '\nIDEAL PROFILE: ' + (d.notes||'') + '\n\n';
-      p += 'ENTRADA TENANT CRITERIA: Industrial/flex users | NNN leases | 3-7yr terms | creditworthy | no retail or office users\n\n';
+      p += 'DALFEN TENANT CRITERIA: Industrial/flex users | NNN leases | 3-7yr terms | creditworthy | no retail or office users\n\n';
       p += 'Produce:\n## DEMAND ANALYSIS\nWho is actively looking for space in this submarket right now? What size ranges are in demand? What rent tolerance? Which tenant categories are expanding vs contracting?\n\n## TIER 1 PROSPECTS (Immediate)\n| Company | Industry | Est SF Need | Current Location | Why They Move | Contact Angle |\nMinimum 5 prospects. These are companies actively in the market or clearly need to move.\n\n## TIER 2 PROSPECTS (Cultivate)\nMinimum 5 prospects. Companies that should need this space within 12-24 months based on growth signals, lease expirations, or business conditions.\n\n## DISPLACEMENT PLAYS\nTenants currently in inferior space (older building, wrong configuration, below-market location) who would upgrade to this asset. Specific names and why.\n\n## LEASING STRATEGY\nRecommended deal structure to attract the highest-quality tenant: asking rent, term, TI package, free rent. What concessions are market and what is above market.\n\n## HIGHEST CONVICTION TARGET\nOne company. Why them specifically. How to get in front of the decision maker.';
       return p;
 
@@ -2976,9 +2976,9 @@ If CONDITIONAL: state exactly what must be verified before proceeding
       if (d.doc2_text && d.doc2_text.startsWith('[PDF')) {
         return 'Document 2 appears to be a scanned or image-based PDF — text could not be extracted. Lease Negotiation Analyzer requires text-based PDFs. Please provide a digitally created document or copy and paste the text.';
       }
-      p = 'You are RIDGE Assistant — an expert full-stack developer and institutional CRE analyst embedded at Entrada Partners, a private equity firm focused on industrial and flex acquisitions. You are performing a lease negotiation comparison analysis.\n\n';
+      p = 'You are RIDGE Assistant — an expert full-stack developer and institutional CRE analyst embedded at Dalfen Industrial, a private equity firm focused on industrial and flex acquisitions. You are performing a lease negotiation comparison analysis.\n\n';
       p += 'COMPARISON MODE: ' + (d.mode||'Proposal vs Proposal') + '\n';
-      p += 'ENTRADA ROLE: ' + (d.role||'Landlord — maximize NOI and protect asset value') + '\n';
+      p += 'DALFEN ROLE: ' + (d.role||'Landlord — maximize NOI and protect asset value') + '\n';
       if (d.addr) p += 'PROPERTY ADDRESS: ' + d.addr + '\n';
       p += 'RENTABLE SF: ' + (d.sf||'[not provided]') + '\n';
       p += 'MARKET RENT: ' + (d.mkt_rent||'[not provided — estimate from submarket data]') + '\n';
@@ -3035,7 +3035,7 @@ If CONDITIONAL: state exactly what must be verified before proceeding
       p += '- Net effective rent ($/SF/year)\n\n';
 
       p += '## 🔴 HIGH PRIORITY FLAGS\n';
-      p += 'Provisions that materially harm Entrada\'s position, create significant liability, or would concern an institutional buyer at exit. For each:\n';
+      p += 'Provisions that materially harm Dalfen\'s position, create significant liability, or would concern an institutional buyer at exit. For each:\n';
       p += '**[Provision Name]** (Doc X, Section Y.Z): What it says → Why it\'s a problem → Dollar impact → Recommended redline\n\n';
 
       p += '## 🟡 MODERATE FLAGS\n';
@@ -3045,7 +3045,7 @@ If CONDITIONAL: state exactly what must be verified before proceeding
       p += 'Provisions that are market-standard or landlord-favorable. Brief confirmation.\n\n';
 
       p += '## ACQUISITION / EXIT IMPACT\n';
-      p += 'If Entrada is buying or selling this asset: how does this lease (or the better of the two) underwrite? Specifically:\n';
+      p += 'If Dalfen is buying or selling this asset: how does this lease (or the better of the two) underwrite? Specifically:\n';
       p += '- NOI contribution at in-place rent vs. at market\n';
       p += '- Mark-to-market upside or downside\n';
       p += '- WALT impact\n';
@@ -3053,21 +3053,21 @@ If CONDITIONAL: state exactly what must be verified before proceeding
       p += '- Cap rate impact of any problematic provisions\n\n';
 
       p += '## NEGOTIATION STRATEGY\n';
-      p += 'Prioritized redline list for Entrada\'s role (' + (d.role||'Landlord') + '):\n\n';
+      p += 'Prioritized redline list for Dalfen\'s role (' + (d.role||'Landlord') + '):\n\n';
       p += '**MUST-HAVE** (walk if not obtained):\n';
-      p += '[numbered list — these are non-negotiable for Entrada]\n\n';
+      p += '[numbered list — these are non-negotiable for Dalfen]\n\n';
       p += '**SHOULD-HAVE** (push hard, can compromise on details):\n';
       p += '[numbered list]\n\n';
       p += '**NICE-TO-HAVE** (raise it, accept pushback):\n';
       p += '[numbered list]\n\n';
-      p += '**GIVE THESE** (concessions Entrada can offer to get the must-haves):\n';
+      p += '**GIVE THESE** (concessions Dalfen can offer to get the must-haves):\n';
       p += '[numbered list — what to trade away]\n\n';
 
       p += '## VERDICT\n';
       if (d.doc2_text) {
-        p += 'Which document is better for Entrada and why? Quantify the difference in NER, total landlord cost, and exit risk. Recommended next step in one paragraph.';
+        p += 'Which document is better for Dalfen and why? Quantify the difference in NER, total landlord cost, and exit risk. Recommended next step in one paragraph.';
       } else {
-        p += 'Is this document acceptable as written, acceptable with negotiation, or a non-starter? One paragraph with the specific redlines required before Entrada should proceed.';
+        p += 'Is this document acceptable as written, acceptable with negotiation, or a non-starter? One paragraph with the specific redlines required before Dalfen should proceed.';
       }
 
       p += '\n\n## LEASE COMP TABLE\n';
@@ -3086,14 +3086,14 @@ If CONDITIONAL: state exactly what must be verified before proceeding
       if (d.master_text && d.master_text.startsWith('[PDF')) {
         return 'The master lease appears to be a scanned or image-based PDF — text could not be extracted. Lease Stack requires a text-based PDF. Please use a digitally created lease document, or copy and paste the lease text into the Additional Context field.';
       }
-      p  = 'You are RIDGE Assistant — an expert full-stack developer and institutional CRE analyst embedded at Entrada Partners, a private equity firm focused on industrial and flex acquisitions. You are performing a full lease stack review.\n\n';
+      p  = 'You are RIDGE Assistant — an expert full-stack developer and institutional CRE analyst embedded at Dalfen Industrial, a private equity firm focused on industrial and flex acquisitions. You are performing a full lease stack review.\n\n';
       p += 'PROPERTY: '         + (d.addr       || '[not provided]') + '\n';
       p += 'TENANT: '           + (d.tenant     || '[not provided]') + '\n';
       p += 'MASTER LEASE DATE: '+ (d.exec_date  || '[not provided]') + '\n';
       p += 'LEASED SF: '        + (d.sf         || '[not provided]') + '\n';
       p += 'CURRENT MARKET RENT:'+ (d.mkt_rent  || '[not provided]') + '\n';
       p += 'ANALYSIS CONTEXT: ' + (d.context    || 'Acquisition Due Diligence') + '\n';
-      p += 'ENTRADA ROLE: '     + (d.role       || 'Buyer / Acquirer') + '\n';
+      p += 'DALFEN ROLE: '     + (d.role       || 'Buyer / Acquirer') + '\n';
       if (d.notes) p += 'ADDITIONAL CONTEXT: ' + d.notes + '\n';
       p += 'AMENDMENTS UPLOADED: ' + amdCount + '\n\n';
 
@@ -3160,14 +3160,14 @@ If CONDITIONAL: state exactly what must be verified before proceeding
       p += '- What does the amendment pattern suggest about this tenant\'s credit, operational health, and market leverage?\n\n';
 
       p += '## 🔴 HIGH PRIORITY FLAGS\n';
-      p += 'Provisions that materially harm Entrada\'s position, create significant liability, or will concern an institutional buyer at exit. For each:\n';
+      p += 'Provisions that materially harm Dalfen\'s position, create significant liability, or will concern an institutional buyer at exit. For each:\n';
       p += '**[Provision Name]** (Amd # or Master, Section Y.Z): What it says → Why it\'s a problem → Dollar/cap rate impact → Recommended action\n\n';
 
       p += '## 🟡 MODERATE FLAGS\n';
       p += 'Above-market, tenant-favorable, or unusual provisions that are negotiable or worth monitoring. Same format.\n\n';
 
       p += '## ACQUISITION / UNDERWRITING IMPACT\n';
-      p += 'For Entrada as ' + (d.role || 'Buyer / Acquirer') + ':\n';
+      p += 'For Dalfen as ' + (d.role || 'Buyer / Acquirer') + ':\n';
       p += '- In-place NOI contribution (current rent × SF)\n';
       p += '- Mark-to-market gap: in-place rent vs. current market rent of ' + (d.mkt_rent || '[market]') + '\n';
       p += '- Remaining WALT (weighted average lease term)\n';
@@ -3186,7 +3186,7 @@ If CONDITIONAL: state exactly what must be verified before proceeding
       p += '- Any landlord delivery or construction obligations\n\n';
 
       p += '## VERDICT\n';
-      p += 'One paragraph: Is this lease a net positive or negative for an acquisition at current pricing? What are the two or three most important things Entrada must address before closing or during asset management?';
+      p += 'One paragraph: Is this lease a net positive or negative for an acquisition at current pricing? What are the two or three most important things Dalfen must address before closing or during asset management?';
 
       p += '\n\n## LEASE COMP TABLE\n';
       p += 'Produce a pipe-delimited table with these exact columns:\n';
@@ -3914,9 +3914,9 @@ async function _ridgeChatSend(text) {
     var retrieved = await _ridgeChatRetrieve(query);
     var context = _ridgeChatBuildContext(retrieved);
 
-    var systemPrompt = 'You are RIDGE Assistant, an AI analyst for Entrada Partners, ' +
+    var systemPrompt = 'You are RIDGE Assistant, an AI analyst for Dalfen Industrial, ' +
       'an institutional private equity firm focused on industrial and flex CRE acquisitions. ' +
-      'You have access to Entrada\'s proprietary deal database including lease comps, sale comps, ' +
+      'You have access to Dalfen\'s proprietary deal database including lease comps, sale comps, ' +
       'active pipeline properties, and prior deal analysis. ' +
       'Answer concisely and specifically. Lead with data from the database. ' +
       'If data is insufficient, say so directly. Never hallucinate comp figures.\n\n' +
@@ -5486,7 +5486,7 @@ async function plSaveEdit(id) {
 function plLaunchReport() {
   var deals = getPipelineDeals().filter(function(d) { return d.stage !== 'Dead'; });
   if (!deals.length) { showToast('No active deals to report on'); return; }
-  var lines = ['ENTRADA PARTNERS — DEAL PIPELINE REPORT — ' + new Date().toLocaleDateString(), ''];
+  var lines = ['DALFEN INDUSTRIAL — DEAL PIPELINE REPORT — ' + new Date().toLocaleDateString(), ''];
   var byStage = {};
   deals.forEach(function(d) { if (!byStage[d.stage]) byStage[d.stage] = []; byStage[d.stage].push(d); });
   PL_STAGES.forEach(function(s) {
@@ -5859,7 +5859,7 @@ function memoExportPPTX() {
   var dealLabel  = (_memoDealName || _memoAddr || 'Deal Memo').toUpperCase();
   var cleanText  = _memoAccumText.replace(/\[SECTION_\d_COMPLETE\]/g,'').replace(/\[COMPILE_COMPLETE\]/g,'').trim();
 
-  // ── Color palette (Entrada brand) ────────────────────────────
+  // ── Color palette (Dalfen brand) ────────────────────────────
   var NAVY   = '1E2761';
   var WHITE  = 'FFFFFF';
   var ORANGE = 'E05C2A';
@@ -5896,7 +5896,7 @@ function memoExportPPTX() {
   var s1 = pptx.addSlide();
   s1.addShape(pptx.ShapeType.rect, { x:0, y:0, w:'100%', h:'100%', fill:{color:NAVY} });
   s1.addShape(pptx.ShapeType.rect, { x:0, y:3.6, w:'100%', h:0.06, fill:{color:ORANGE} });
-  s1.addText('ENTRADA PARTNERS', { x:0.5, y:0.6, w:12.4, h:0.5, fontSize:13, bold:true, color:BLUE,  fontFace:'Calibri', align:'center', charSpacing:4 });
+  s1.addText('DALFEN INDUSTRIAL', { x:0.5, y:0.6, w:12.4, h:0.5, fontSize:13, bold:true, color:BLUE,  fontFace:'Calibri', align:'center', charSpacing:4 });
   s1.addText('INVESTMENT COMMITTEE MEMO', { x:0.5, y:1.15, w:12.4, h:0.45, fontSize:11, color:'7AB3D4', fontFace:'Calibri', align:'center', charSpacing:3 });
   s1.addShape(pptx.ShapeType.rect, { x:1.5, y:1.8, w:10.4, h:1.6, fill:{color:'0D1836'}, line:{color:ORANGE, pt:1} });
   s1.addText(dealLabel, { x:1.6, y:1.95, w:10.2, h:0.8, fontSize:26, bold:true, color:WHITE, fontFace:'Calibri', align:'center' });
@@ -5965,7 +5965,7 @@ function memoExportPPTX() {
   s5.background = { color: WHITE };
   _rcTitle(s5, 'EXECUTION TRACK RECORD', dealLabel, _memoAddr, dateStr);
   if (!caseStudyText || caseStudyText.toLowerCase().indexOf('to be completed') !== -1) {
-    s5.addText('[Case Studies — to be completed]\n\nAdd comparable Entrada deal writeups when ready.', {
+    s5.addText('[Case Studies — to be completed]\n\nAdd comparable Dalfen deal writeups when ready.', {
       x:0.5, y:2.0, w:12.4, h:4.0,
       fontSize:11, color:'A0AEC0', fontFace:'Calibri', italic:true, align:'center'
     });
@@ -6009,13 +6009,13 @@ function memoExportPPTX() {
     fill:{ color:'162050' },
     rowH: 0.55
   });
-  s6.addText('Generated by RIDGE · Entrada Partners · ' + dateStr, {
+  s6.addText('Generated by RIDGE · Dalfen Industrial · ' + dateStr, {
     x:0.5, y:7.15, w:12.4, h:0.25, fontSize:7.5, color:'2A3A5A', fontFace:'Calibri', align:'center', charSpacing:1.5
   });
 
   // ── Export ────────────────────────────────────────────────────
   var safeTitle = (_memoDealName || _memoAddr || 'deal-memo').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
-  pptx.writeFile({ fileName: 'entrada-ic-memo-' + safeTitle + '.pptx' })
+  pptx.writeFile({ fileName: 'dalfen-ic-memo-' + safeTitle + '.pptx' })
     .then(function(){ showToast('✓ PPTX exported', 'success'); })
     .catch(function(e){ showToast('PPTX export error — check console'); console.error('[MEMO PPTX]', e); });
 }
@@ -6346,7 +6346,7 @@ async function _renderLeaseCompMap() {
           '.footer { margin-top:24px; padding-top:10px; border-top:1px solid #c7c1bb; font-size:8pt; color:#888; display:flex; justify-content:space-between; }' +
           '@media print { body { print-color-adjust:exact; -webkit-print-color-adjust:exact; } }' +
           '</style></head><body><div class="page">' +
-          '<div class="header"><div><h1>ENTRADA PARTNERS</h1><p>Lease Comp Analysis</p></div><div style="text-align:right;font-size:9pt;color:#8b9fc4;">' + dateStr + '</div></div>' +
+          '<div class="header"><div><h1>DALFEN INDUSTRIAL</h1><p>Lease Comp Analysis</p></div><div style="text-align:right;font-size:9pt;color:#8b9fc4;">' + dateStr + '</div></div>' +
           '<div class="address">' + _hEsc(addrStr) + '</div>' + subjRow +
           '<div class="section-title">Comp Map</div>' +
           (mapImg ? '<img src="' + mapImg + '" class="map-img" />' : '<p style="color:#888;font-size:10pt;">Map unavailable.</p>') +
@@ -6354,7 +6354,7 @@ async function _renderLeaseCompMap() {
           (chartImg ? '<img src="' + chartImg + '" class="chart-img" />' : '<p style="color:#888;font-size:10pt;">Chart unavailable.</p>') +
           '<div class="section-title">Lease Comp Table</div>' +
           '<table><thead><tr><th>Address</th><th>Tenant</th><th>SF</th><th>Lease Date</th><th>Eff. Rate /SF</th><th>Type</th></tr></thead><tbody>' + tableRows + '</tbody></table>' +
-          '<div class="footer"><span>Entrada Partners &middot; Lease Comp Analysis &middot; ' + dateStr + '</span><span>RIDGE Intelligence</span></div>' +
+          '<div class="footer"><span>Dalfen Industrial &middot; Lease Comp Analysis &middot; ' + dateStr + '</span><span>RIDGE Intelligence</span></div>' +
           '</div></body></html>';
         var w = window.open('', '_blank');
         if (!w) { showToast('⚠ Pop-up blocked — allow pop-ups and try again'); return; }
@@ -6381,7 +6381,7 @@ async function _renderLeaseCompMap() {
         html2canvas(wrapEl, { backgroundColor: '#ffffff', useCORS: true, scale: 2 })
           .then(function(canvas) {
             var link = document.createElement('a');
-            link.download = 'entrada-lcm-' + addrSlug + '-' + dateSlug + '.png';
+            link.download = 'dalfen-lcm-' + addrSlug + '-' + dateSlug + '.png';
             link.href = canvas.toDataURL('image/png');
             link.click();
           })
@@ -6677,14 +6677,14 @@ function rcTitle(ws, toolName, subtitle, dateStr) {
   var W = 10;
   ws.mergeCells('A1:J1');
   var c1 = ws.getCell('A1');
-  c1.value = 'ENTRADA PARTNERS  ·  ' + toolName;
+  c1.value = 'DALFEN INDUSTRIAL  ·  ' + toolName;
   c1.font = { bold:true, size:14, color:{ argb:RC.WHITE }, name:'Calibri' };
   c1.fill = rcF(RC.NAVY); c1.alignment = { vertical:'middle', indent:2 };
   ws.getRow(1).height = 30;
 
   ws.mergeCells('A2:J2');
   var c2 = ws.getCell('A2');
-  c2.value = (subtitle ? subtitle + '  ·  ' : '') + dateStr + '  ·  ENTRADA PARTNERS — CONFIDENTIAL';
+  c2.value = (subtitle ? subtitle + '  ·  ' : '') + dateStr + '  ·  DALFEN INDUSTRIAL — CONFIDENTIAL';
   c2.font = { size:9, color:{ argb:RC.ACCENT }, name:'Calibri' };
   c2.fill = rcF(RC.NAVY); c2.alignment = { vertical:'middle', indent:2 };
   ws.getRow(2).height = 18;
@@ -6781,7 +6781,7 @@ async function exportToolReport(toolId) {
     var m       = (STATE[toolId] || {}).metrics || {};
 
     var wb = new ExcelJS.Workbook();
-    wb.creator = 'Entrada Partners';
+    wb.creator = 'Dalfen Industrial';
 
     switch(toolId) {
       case 'lens':        _exportLens(wb, toolId, dateStr, paste); break;
@@ -6802,7 +6802,7 @@ async function exportToolReport(toolId) {
     var buf = await wb.xlsx.writeBuffer();
     var addr = rcGetField(toolId, 'addr') || tool.name;
     var slug = addr.split(',')[0].replace(/[^a-zA-Z0-9]/g,'_').replace(/_+/g,'_');
-    downloadBlob(buf, 'Entrada_' + tool.name.replace(/[^a-zA-Z0-9]/g,'_').replace(/_+/g,'_') + '_' + slug + '_' + fileDate + '.xlsx');
+    downloadBlob(buf, 'Dalfen_' + tool.name.replace(/[^a-zA-Z0-9]/g,'_').replace(/_+/g,'_') + '_' + slug + '_' + fileDate + '.xlsx');
     showToast('✓ Report downloaded');
   } catch(err) {
     showToast('Export error: ' + err.message);
@@ -6948,7 +6948,7 @@ function _exportNapkinPPTX() {
   s.addText(outputText.slice(0, 4000), { x:0.5, y:3.55, w:12.3, h:3.6, fontSize:9, color:BODY, valign:'top' });
 
   // Footer
-  s.addText('RIDGE  |  Entrada Partners  |  ' + new Date().toLocaleDateString(), { x:0.5, y:7.15, w:12.3, h:0.25, fontSize:8, color:MUTED, align:'right' });
+  s.addText('RIDGE  |  Dalfen Industrial  |  ' + new Date().toLocaleDateString(), { x:0.5, y:7.15, w:12.3, h:0.25, fontSize:8, color:MUTED, align:'right' });
 
   var fname = 'NAPKIN_' + (d.addr || 'deal').replace(/[^A-Za-z0-9]/g, '_').slice(0, 30) + '_' + new Date().toISOString().slice(0, 10) + '.pptx';
   pptx.writeFile({ fileName: fname });
@@ -7093,14 +7093,14 @@ function _exportLOI(wb, tid, dateStr, paste) {
 
   // Title block
   ws.mergeCells('A1:B1');
-  ws.getCell('A1').value = 'ENTRADA PARTNERS  ·  LOI GENERATOR';
+  ws.getCell('A1').value = 'DALFEN INDUSTRIAL  ·  LOI GENERATOR';
   ws.getCell('A1').font = { bold:true, size:14, color:{ argb:RC.WHITE }, name:'Calibri' };
   ws.getCell('A1').fill = rcF(RC.NAVY);
   ws.getCell('A1').alignment = { vertical:'middle', indent:2 };
   ws.getRow(1).height = 30;
 
   ws.mergeCells('A2:B2');
-  ws.getCell('A2').value = addr + (city ? ', ' + city : '') + '  ·  ' + date + '  ·  ENTRADA PARTNERS — CONFIDENTIAL';
+  ws.getCell('A2').value = addr + (city ? ', ' + city : '') + '  ·  ' + date + '  ·  DALFEN INDUSTRIAL — CONFIDENTIAL';
   ws.getCell('A2').font = { size:9, color:{ argb:RC.ACCENT }, name:'Calibri' };
   ws.getCell('A2').fill = rcF(RC.NAVY);
   ws.getCell('A2').alignment = { vertical:'middle', indent:2 };
@@ -7129,7 +7129,7 @@ function _exportLOI(wb, tid, dateStr, paste) {
   rn = addLine(rn, '');
   rn = addLine(rn, 'Dear ' + brokerName + ',');
   rn = addLine(rn, '');
-  rn = addLine(rn, 'On behalf of Entrada Partners Acquisitions, LLC or Assignee (the "Buyer"), we are pleased to submit this non-binding Letter of Intent to purchase the above-referenced property. This LOI is intended to outline the basic terms and conditions under which the Buyer proposes to acquire the property from the seller.');
+  rn = addLine(rn, 'On behalf of Dalfen Industrial Acquisitions, LLC or Assignee (the "Buyer"), we are pleased to submit this non-binding Letter of Intent to purchase the above-referenced property. This LOI is intended to outline the basic terms and conditions under which the Buyer proposes to acquire the property from the seller.');
   rn = addLine(rn, '');
 
   var terms = [
@@ -7143,7 +7143,7 @@ function _exportLOI(wb, tid, dateStr, paste) {
     ['8.  FINANCING', 'This LOI is NOT contingent on financing. Buyer reserves the right to obtain financing at Buyer\'s discretion'],
     ['9.  TITLE', 'Seller to deliver insurable fee simple title, free and clear of all liens and encumbrances except those approved by Buyer'],
     ['10. CLOSING COSTS', 'Each party responsible for their own attorney fees. Transfer taxes and title insurance per local custom'],
-    ['11. BUYER ENTITY', 'Entrada Partners Acquisitions, LLC or Assignee'],
+    ['11. BUYER ENTITY', 'Dalfen Industrial Acquisitions, LLC or Assignee'],
     ['12. EXCLUSIVITY', 'Seller agrees to negotiate exclusively with Buyer for 15 days from acceptance of this LOI'],
     ['13. EXPIRATION', 'This LOI expires at 5:00 PM ET on ' + (exp || '[Expiration Date]')],
   ];
@@ -7177,11 +7177,11 @@ function _exportLOI(wb, tid, dateStr, paste) {
   rn = addLine(rn, '');
   rn = addLine(rn, 'Sincerely,', false, 10);
   rn = addLine(rn, '');
-  rn = addLine(rn, 'Entrada Partners Acquisitions, LLC', true, 10);
+  rn = addLine(rn, 'Dalfen Industrial Acquisitions, LLC', true, 10);
   rn = addLine(rn, '');
   rn = addLine(rn, '_________________________');
   rn = addLine(rn, 'Authorized Signatory');
-  rn = addLine(rn, 'Entrada Partners Acquisitions, LLC');
+  rn = addLine(rn, 'Dalfen Industrial Acquisitions, LLC');
 }
 
 // ── THE GAVEL — Lease Abstract ────────────────────────────
@@ -7297,7 +7297,7 @@ function _exportLeaseCompare(wb, tid, dateStr, paste) {
     ['Property',          rcGetField(tid,'addr')],
     ['Rentable SF',       rcGetField(tid,'sf')],
     ['Comparison Mode',   rcGetField(tid,'mode')],
-    ['Entrada Role',      rcGetField(tid,'role')],
+    ['Dalfen Role',      rcGetField(tid,'role')],
     ['Market Rent PSF',   rcGetField(tid,'mkt_rent')],
     ['Market TI PSF',     rcGetField(tid,'mkt_ti')],
     ['Context / Notes',   rcGetField(tid,'notes')],
@@ -7368,7 +7368,7 @@ function _exportLeaseStack(wb, tid, dateStr, paste) {
     ['Leased SF',           rcGetField(tid,'sf')],
     ['Current Market Rent', rcGetField(tid,'mkt_rent')],
     ['Analysis Context',    rcGetField(tid,'context')],
-    ['Entrada Role',        rcGetField(tid,'role')],
+    ['Dalfen Role',        rcGetField(tid,'role')],
     ['Additional Context',  rcGetField(tid,'notes')],
   ], r);
 
@@ -7638,11 +7638,11 @@ function generateLOI(){
     p(''),
     p('RE: Letter of Intent to purchase '+addr,{bold:true}),
     p(''),
-    p('This Letter summarizes the basic business terms and conditions upon which Entrada Partners Acquisitions, LLC or Assignee ("Purchaser") would purchase '+addr+' ("Property"), from the Owner ("Seller").'),
+    p('This Letter summarizes the basic business terms and conditions upon which [VERIFY WITH USER: confirm Dalfen acquisition entity name] or Assignee ("Purchaser") would purchase '+addr+' ("Property"), from the Owner ("Seller").'),
     p(''),
-    p('Entrada Partners is a real estate investment firm led by Reuben Berman, Justin Schuman and Josh Bar-Yadin. Over the past 15 years, Entrada\'s principals have owned and/or managed all product types at a value of over $1.3 billion on behalf of institutional clients. Entrada\'s current portfolio consists of over $700 million of industrial, retail, office and multifamily located throughout Dallas-Fort Worth, San Antonio, Houston and Atlanta.'),
+    p('[VERIFY WITH USER: Dalfen Industrial firm description paragraph not yet provided — placeholder below must be replaced before this LOI is sent externally.] Dalfen Industrial is an industrial real estate investment firm focused on Industrial Outdoor Storage (IOS) acquisitions in Dallas-Fort Worth and Houston.'),
     p(''),
-    p('Additional information about our portfolio and the company can be found at: www.entradapartners.com'),
+    p('Additional information about our portfolio and the company can be found at: dalfen.com [VERIFY WITH USER: confirm exact URL]'),
     hr(),
     new D.Table({width:{size:100,type:D.WidthType.PERCENTAGE},rows:terms.map(function(t){return termRow(t[0],t[1],t[2]);}),borders:{top:{style:'none'},bottom:{style:'none'},left:{style:'none'},right:{style:'none'},insideH:{style:'single',color:'DDDDDD',size:1},insideV:{style:'none'}}}),
     hr(),
@@ -7654,11 +7654,11 @@ function generateLOI(){
     p(''),
     p('Sincerely,'),
     p(''),
-    p('Entrada Partners,'),
+    p('Dalfen Industrial,'),
     p(''),
     p(''),
     p('_______________________________          _______________________________          _______________________________',{size:18}),
-    p('Reuben Berman                            Justin Schuman                           Joshua Bar-Yadin',{size:18}),
+    p('[VERIFY: Principal 1]                     [VERIFY: Principal 2]                    [VERIFY: Principal 3]',{size:18}),
     p('Principal                                Principal                                Principal',{size:18}),
     p(''),
     p('AGREED AND ACCEPTED:',{bold:true}),
@@ -7671,7 +7671,7 @@ function generateLOI(){
     var url=URL.createObjectURL(blob);
     var a=document.createElement('a');
     a.href=url;
-    a.download='Entrada_LOI_'+addr.replace(/[^a-zA-Z0-9]/g,'_').replace(/_+/g,'_')+'.docx';
+    a.download='Dalfen_LOI_'+addr.replace(/[^a-zA-Z0-9]/g,'_').replace(/_+/g,'_')+'.docx';
     a.click();
     URL.revokeObjectURL(url);
     showToast('LOI downloaded');
@@ -9145,7 +9145,7 @@ function _scoutCloseApproveModal() {
 //   3. Post-hoc validator (_scoutValidateDossier) — strips any value-without-source.
 // We do not trust the AI to follow rules; the validator enforces them.
 
-var _SCOUT_ENRICHMENT_SYSTEM_PROMPT = "You are SCOUT, RIDGE's off-market sourcing engine for Entrada Partners, "
+var _SCOUT_ENRICHMENT_SYSTEM_PROMPT = "You are SCOUT, RIDGE's off-market sourcing engine for Dalfen Industrial, "
   + "an industrial/flex private equity firm. You enrich CoStar-sourced property candidates "
   + "with verified owner intelligence and distress signals.\n\n"
   + "ABSOLUTE RULES — VIOLATIONS DISQUALIFY THE RUN:\n\n"
@@ -9530,7 +9530,7 @@ async function _scoutSynthesize(dossiers) {
   var market     = first.market || 'Unknown';
   var assetClass = first.asset_class || first.asset || 'Unknown';
 
-  var systemPrompt = "You are SCOUT's synthesis pass for Entrada Partners, "
+  var systemPrompt = "You are SCOUT's synthesis pass for Dalfen Industrial, "
     + "an industrial/flex private equity acquisitions firm. You receive enriched property "
     + "dossiers — each already validated, every fact already sourced. Your job: produce "
     + "a ranked markdown intelligence briefing for the acquisitions team.\n\n"
@@ -9681,7 +9681,7 @@ function _scoutRenderReport(markdown, dossiers) {
 // Exports the SCOUT briefing as a PDF via the print-window pattern (mirrors
 // ridgeExportPDF) — no PDF library. Builds a clean print document from the
 // report markdown, opens a window, writes the doc, calls print(). Styling is
-// deliberately plain — the Entrada Executive brand pass is a separate block.
+// deliberately plain — the Dalfen Executive brand pass is a separate block.
 function _scoutExportPDF() {
   var md = window._scoutReportMarkdown || '';
   if (!md.trim()) {
@@ -9738,7 +9738,7 @@ function _scoutExportPDF() {
     + '<title>' + _hEsc(fileName) + '</title><style>' + css + '</style></head><body>'
     + '<div class="page">'
     +   '<div class="hdr"><h1>SCOUT — Off-Market Sourcing Briefing</h1>'
-    +   '<div class="firm">Entrada Partners</div></div>'
+    +   '<div class="firm">Dalfen Industrial</div></div>'
     +   '<div class="submeta">' + submeta + '</div>'
     +   '<div class="body">' + briefingHTML + '</div>'
     +   '<div class="ftr">Generated by RIDGE · ' + _hEsc(genStr) + '</div>'
@@ -10686,11 +10686,11 @@ async function runRidgeAPI(skillName, prompt, runInputs, runToolId) {
   var copyBtn   = document.getElementById('ridge-copy-btn');
   var accumulated = '';
   var systemPrompts = {
-    'RIDGE': 'You are RIDGE, a senior acquisitions officer at Entrada Partners. Target markets: Atlanta, Savannah, DFW, Houston. Deal criteria: $10M–$70M industrial and flex assets, 14.75%+ levered IRR, 7.5–8.0% YOC at Year 3/4, 95% off-market sourcing. Begin a live sourcing session. Ask which market to focus on, whether I have a CoStar export or want a cold sweep, then run SCOUT and deliver a ranked prospect list with owner intel, debt profile, and outreach angle.',
+    'RIDGE': 'You are RIDGE, a senior acquisitions officer at Dalfen Industrial. Target markets: Atlanta, Savannah, DFW, Houston. Deal criteria: $10M–$70M industrial and flex assets, 14.75%+ levered IRR, 7.5–8.0% YOC at Year 3/4, 95% off-market sourcing. Begin a live sourcing session. Ask which market to focus on, whether I have a CoStar export or want a cold sweep, then run SCOUT and deliver a ranked prospect list with owner intel, debt profile, and outreach angle.',
     'Pipeline Report': 'You are RIDGE. Analyze this pipeline data and deliver a concise report covering: deals closest to closing, overdue next steps, total potential acquisition volume, and recommended focus for this week. Be direct and actionable.',
-    'ACQUISITION INVESTMENT REPORT': 'You are a senior acquisitions officer at Entrada Partners preparing an institutional investment committee presentation. RIDGE underwriting criteria: IRR ≥14.75% levered, Equity Multiple ≥1.8x, YOC 7.5–8.0% at Year 3/4, max LTV 65%, 5-year hold, deal size $10M–$70M, markets: Atlanta, Savannah, DFW, Houston. Write at the level of a senior PE professional presenting to a sophisticated IC — specific, data-driven, no filler language. Format all output in clean markdown with ## section headers and pipe-delimited tables exactly as instructed. Never fabricate return metrics. Always complete every requested section.',
-    'DEAL MEMO': 'You are drafting IC narrative copy for Entrada Partners. Be direct, factual, and precise. No filler language. Every number must be traceable to an uploaded source or explicit user confirmation.',
-    'default': 'You are RIDGE, a senior acquisitions officer at Entrada Partners, an institutional private equity firm. You specialize in industrial and flex CRE acquisitions in Atlanta, Savannah, DFW, and Houston. You are running the ' + skillName + ' module. Be precise, data-driven, and direct. Write like a senior professional presenting to an investment committee. Format all output in clean markdown with tables where data warrants it. Never hedge excessively — state your conviction and defend it.'
+    'ACQUISITION INVESTMENT REPORT': 'You are a senior acquisitions officer at Dalfen Industrial preparing an institutional investment committee presentation. RIDGE underwriting criteria: IRR ≥14.75% levered, Equity Multiple ≥1.8x, YOC 7.5–8.0% at Year 3/4, max LTV 65%, 5-year hold, deal size $10M–$70M, markets: Atlanta, Savannah, DFW, Houston. Write at the level of a senior PE professional presenting to a sophisticated IC — specific, data-driven, no filler language. Format all output in clean markdown with ## section headers and pipe-delimited tables exactly as instructed. Never fabricate return metrics. Always complete every requested section.',
+    'DEAL MEMO': 'You are drafting IC narrative copy for Dalfen Industrial. Be direct, factual, and precise. No filler language. Every number must be traceable to an uploaded source or explicit user confirmation.',
+    'default': 'You are RIDGE, a senior acquisitions officer at Dalfen Industrial, an institutional private equity firm. You specialize in industrial and flex CRE acquisitions in Atlanta, Savannah, DFW, and Houston. You are running the ' + skillName + ' module. Be precise, data-driven, and direct. Write like a senior professional presenting to an investment committee. Format all output in clean markdown with tables where data warrants it. Never hedge excessively — state your conviction and defend it.'
   };
   var systemPrompt = systemPrompts[skillName] || systemPrompts['default'];
   // Personalize: replace generic title with officer name if set
@@ -10839,7 +10839,7 @@ async function runRidgeAPI(skillName, prompt, runInputs, runToolId) {
     if (_lastRunToolId === 'isr') {
       var _isrBtn2 = document.getElementById('pptx-btn-isr');
       if (_isrBtn2) { _isrBtn2.disabled = true; _isrBtn2.textContent = '⏳ Extracting data...'; }
-      var _isrSections = ['RENT ROLL ANALYSIS','LEASE COMP ANALYSIS','SALE COMPS','SENSITIVITY ANALYSIS','RISK MATRIX','IC RECOMMENDATION','ENTRADA HURDLE CONFIRMATION'];
+      var _isrSections = ['RENT ROLL ANALYSIS','LEASE COMP ANALYSIS','SALE COMPS','SENSITIVITY ANALYSIS','RISK MATRIX','IC RECOMMENDATION','DALFEN HURDLE CONFIRMATION'];
       var _trimmedMemo = _isrSections.map(function(s){ return _extractKeySection(accumulated, s); }).filter(Boolean).map(function(s){ return s.slice(0, 1500); }).join('\n\n').slice(0, 10000);
       _isrExtractJSON(_trimmedMemo);
       // ── PIPELINE: auto-add from ISR run ──
@@ -11983,7 +11983,7 @@ function ridgeExportPDF() {
         '<div class="header-left"><h1>RIDGE</h1><p>REAL INTELLIGENCE FOR DEAL GENERATION &amp; EVALUATION</p></div>',
         '<div class="header-right">',
           '<div style="font-size:11pt;font-weight:700;color:#fff;">THE NAPKIN</div>',
-          '<div>Entrada Partners \u2014 Confidential</div>',
+          '<div>Dalfen Industrial \u2014 Confidential</div>',
           '<div>'+dateStr+'</div>',
         '</div>',
       '</div>',
@@ -12032,7 +12032,7 @@ function ridgeExportPDF() {
         '<div class="section-title">Next Steps</div><div class="flags">'+stepsHTML+'</div>',
       '</div></div>',
       '<div class="footer">',
-        '<span>Entrada Partners \u2014 Confidential \u2014 Internal Use Only</span>',
+        '<span>Dalfen Industrial \u2014 Confidential \u2014 Internal Use Only</span>',
         '<span>Generated '+genStr+'</span>',
       '</div></div>'
     ].join('');
@@ -12099,8 +12099,8 @@ function _napkinExportPDF() {
     '@media print{button{display:none}}',
   ].join('');
 
-  var html = '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Entrada — The Napkin — ' + addr + '</title><style>' + css + '</style></head><body>';
-  html += '<div class="hd"><div class="hd-firm">Entrada Partners</div><div class="hd-title">THE NAPKIN — 60-Second Deal Screen</div><div class="hd-sub">' + addr + ' &nbsp;·&nbsp; ' + dateStr + '</div></div>';
+  var html = '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Dalfen — The Napkin — ' + addr + '</title><style>' + css + '</style></head><body>';
+  html += '<div class="hd"><div class="hd-firm">Dalfen Industrial</div><div class="hd-title">THE NAPKIN — 60-Second Deal Screen</div><div class="hd-sub">' + addr + ' &nbsp;·&nbsp; ' + dateStr + '</div></div>';
 
   if (snap.length) {
     html += '<div class="sec"><div class="sh">Property Inputs</div><table class="pt">';
@@ -12151,7 +12151,7 @@ async function ridgeExportXLS() {
   var el = document.getElementById('ridge-panel-content');
   var skillName = document.getElementById('ridge-panel-skill-name').textContent;
   var wb = new ExcelJS.Workbook();
-  wb.creator = 'Entrada Partners';
+  wb.creator = 'Dalfen Industrial';
   wb.created = new Date();
 
   var NAVY = 'FF1E2761';
@@ -12190,7 +12190,7 @@ async function ridgeExportXLS() {
   }
 
   function addBrandFooter(ws, rowNum) {
-    ws.getRow(rowNum + 2).getCell(1).value = 'Entrada Partners — Confidential';
+    ws.getRow(rowNum + 2).getCell(1).value = 'Dalfen Industrial — Confidential';
     ws.getRow(rowNum + 2).getCell(1).font = { size: 9, color: { argb: 'FF999999' }, italic: true, name: 'Calibri' };
   }
 
@@ -12208,7 +12208,7 @@ async function ridgeExportXLS() {
 
     ws1.mergeCells('A1:C1');
     var titleRow = ws1.getRow(1);
-    titleRow.getCell(1).value = 'ENTRADA PARTNERS — THE NAPKIN';
+    titleRow.getCell(1).value = 'DALFEN INDUSTRIAL — THE NAPKIN';
     styleTitleRow(titleRow);
 
     ws1.mergeCells('A2:C2');
@@ -12294,7 +12294,7 @@ async function ridgeExportXLS() {
 
       ws2.addRow([]);
 
-      var rsHeader = ws2.addRow(['Metric', 'Value', 'vs Entrada Hurdle']);
+      var rsHeader = ws2.addRow(['Metric', 'Value', 'vs Dalfen Hurdle']);
       styleHeader(rsHeader, NAVY);
 
       var returnData = [
@@ -12402,7 +12402,7 @@ async function ridgeExportXLS() {
     });
   }
 
-  var fname = 'Entrada_' + skillName.replace(/[^a-zA-Z0-9]/g,'_') + '_' + new Date().toISOString().slice(0,10) + '.xlsx';
+  var fname = 'Dalfen_' + skillName.replace(/[^a-zA-Z0-9]/g,'_') + '_' + new Date().toISOString().slice(0,10) + '.xlsx';
   var buf = await wb.xlsx.writeBuffer();
   var blob = new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
   var a = document.createElement('a');
@@ -12425,7 +12425,7 @@ async function _napkinExportXLS() {
 
   var NAVY='FF1E2761', WHITE='FFFFFFFF', LT_GREEN='FFE8F5E9', LT_RED='FFFFEBEE', LT_GREY='FFF5F5F5';
 
-  var wb = new ExcelJS.Workbook(); wb.creator='Entrada Partners'; wb.created=new Date();
+  var wb = new ExcelJS.Workbook(); wb.creator='Dalfen Industrial'; wb.created=new Date();
 
   // ─ Sheet 1: Deal Screen ────────────────────────────────────
   var ws = wb.addWorksheet('Deal Screen');
@@ -12443,9 +12443,9 @@ async function _napkinExportXLS() {
   }
 
   // Row 1 — title banner
-  var r1 = ws.addRow(['ENTRADA PARTNERS — THE NAPKIN']);
+  var r1 = ws.addRow(['DALFEN INDUSTRIAL — THE NAPKIN']);
   ws.mergeCells(1,1,1,5);
-  r1.getCell(1).value = 'ENTRADA PARTNERS — THE NAPKIN';
+  r1.getCell(1).value = 'DALFEN INDUSTRIAL — THE NAPKIN';
   r1.getCell(1).font = { bold:true, size:18, color:{argb:WHITE}, name:'Calibri' };
   r1.getCell(1).fill = { type:'pattern', pattern:'solid', fgColor:{argb:NAVY} };
   r1.getCell(1).alignment = { vertical:'middle', horizontal:'center' };
@@ -12579,7 +12579,7 @@ async function _napkinExportXLS() {
   // ─ Sheet 2: Returns Chart Data ─────────────────────────────
   var ws2 = wb.addWorksheet('Returns Chart Data');
   ws2.columns=[{key:'a',width:28},{key:'b',width:18},{key:'c',width:22},{key:'d',width:12}];
-  var hdr2=ws2.addRow(['Metric','Actual','Entrada Benchmark','Status']);
+  var hdr2=ws2.addRow(['Metric','Actual','Dalfen Benchmark','Status']);
   hdr2.eachCell(function(cell){ cell.font={bold:true,size:11,color:{argb:WHITE},name:'Calibri'}; cell.fill={type:'pattern',pattern:'solid',fgColor:{argb:NAVY}}; cell.alignment={horizontal:'center',vertical:'middle'}; });
   hdr2.height=22;
   var benchmarks=[
@@ -12605,7 +12605,7 @@ async function _napkinExportXLS() {
     });
   }
 
-  var fname='Entrada_Napkin_'+addr.replace(/[^a-zA-Z0-9]/g,'_').replace(/_+/g,'_').slice(0,40)+'_'+new Date().toISOString().slice(0,10)+'.xlsx';
+  var fname='Dalfen_Napkin_'+addr.replace(/[^a-zA-Z0-9]/g,'_').replace(/_+/g,'_').slice(0,40)+'_'+new Date().toISOString().slice(0,10)+'.xlsx';
   var buf=await wb.xlsx.writeBuffer();
   var blob=new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
   var a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=fname; a.click(); URL.revokeObjectURL(a.href);
@@ -12951,7 +12951,7 @@ async function ridgeExportPPT() {
         s1.addText(sb.label,{x:bx,y:4.45,w:3.2,h:0.35,fontSize:9,color:MUTED,fontFace:'Courier New',align:'center',charSpacing:2});
       });
       s1.addShape(pptx.ShapeType.rect,{x:0,y:6.9,w:13.33,h:0.6,fill:{color:NAVY}});
-      s1.addText('Entrada Partners  ·  CONFIDENTIAL',{x:0.5,y:6.95,w:9,h:0.45,fontSize:10,color:MUTED,fontFace:'Courier New'});
+      s1.addText('Dalfen Industrial  ·  CONFIDENTIAL',{x:0.5,y:6.95,w:9,h:0.45,fontSize:10,color:MUTED,fontFace:'Courier New'});
       s1.addText(dateStr,{x:9.5,y:6.95,w:3.3,h:0.45,fontSize:10,color:MUTED,fontFace:'Courier New',align:'right'});
 
       // ════════════════════════════════════
@@ -12985,7 +12985,7 @@ async function ridgeExportPPT() {
         {text:calc.yoc34+'%',options:{bold:true,color:calc.meetsYOC?GREEN:RED,fontSize:11,fontFace:'Courier New',fill:{color:MID},align:'center'}}
       ]],{x:0.35,y:4.7,w:12.63,h:0.55,colW:[2.1,2.1,2.1,2.1,2.1,2.1],border:{pt:1,color:'30363D'}});
       s2.addShape(pptx.ShapeType.rect,{x:0,y:6.9,w:13.33,h:0.6,fill:{color:NAVY}});
-      s2.addText('Entrada Partners  ·  CONFIDENTIAL',{x:0.5,y:6.95,w:9,h:0.45,fontSize:10,color:MUTED,fontFace:'Courier New'});
+      s2.addText('Dalfen Industrial  ·  CONFIDENTIAL',{x:0.5,y:6.95,w:9,h:0.45,fontSize:10,color:MUTED,fontFace:'Courier New'});
       s2.addText(dateStr,{x:9.5,y:6.95,w:3.3,h:0.45,fontSize:10,color:MUTED,fontFace:'Courier New',align:'right'});
 
       // ════════════════════════════════════
@@ -13035,7 +13035,7 @@ async function ridgeExportPPT() {
       s3.addText('$'+calc.maxPrice,{x:7.1,y:5.1,w:5.7,h:0.65,fontSize:28,bold:true,color:GREEN,fontFace:'Courier New',align:'center'});
       s3.addText('$'+calc.maxPricePSF+' PSF  ·  $'+calc.priceReduction+' BELOW ASK',{x:7.1,y:5.8,w:5.7,h:0.35,fontSize:9,color:MUTED,fontFace:'Courier New',align:'center'});
       s3.addShape(pptx.ShapeType.rect,{x:0,y:6.9,w:13.33,h:0.6,fill:{color:NAVY}});
-      s3.addText('Entrada Partners  ·  CONFIDENTIAL',{x:0.5,y:6.95,w:9,h:0.45,fontSize:10,color:MUTED,fontFace:'Courier New'});
+      s3.addText('Dalfen Industrial  ·  CONFIDENTIAL',{x:0.5,y:6.95,w:9,h:0.45,fontSize:10,color:MUTED,fontFace:'Courier New'});
       s3.addText(dateStr,{x:9.5,y:6.95,w:3.3,h:0.45,fontSize:10,color:MUTED,fontFace:'Courier New',align:'right'});
 
       // ════════════════════════════════════
@@ -13095,7 +13095,7 @@ async function ridgeExportPPT() {
       s4.addText('< 12% (FAIL)  ·  ★ = Current Assumptions',{x:6.8,y:4.45,w:6.3,h:0.25,fontSize:9,color:MUTED,fontFace:'Courier New'});
       s4.addText('Hold sensitivity uses base exit cap ('+calc.exitCap+'%); Cap sensitivity uses 5-yr hold.',{x:0.35,y:4.82,w:12.63,h:0.35,fontSize:9,color:MUTED,fontFace:'Courier New'});
       s4.addShape(pptx.ShapeType.rect,{x:0,y:6.9,w:13.33,h:0.6,fill:{color:NAVY}});
-      s4.addText('Entrada Partners  ·  CONFIDENTIAL',{x:0.5,y:6.95,w:9,h:0.45,fontSize:10,color:MUTED,fontFace:'Courier New'});
+      s4.addText('Dalfen Industrial  ·  CONFIDENTIAL',{x:0.5,y:6.95,w:9,h:0.45,fontSize:10,color:MUTED,fontFace:'Courier New'});
       s4.addText(dateStr,{x:9.5,y:6.95,w:3.3,h:0.45,fontSize:10,color:MUTED,fontFace:'Courier New',align:'right'});
 
       // ════════════════════════════════════
@@ -13137,9 +13137,9 @@ async function ridgeExportPPT() {
         s5.addText('• Confirm off-market / broker relationship\n• Schedule site visit and market tour\n• Request T-12 operating statements\n• Run waterfall and full IC model',{x:0.5,y:4.9,w:12.33,h:1.65,fontSize:11,color:TEXT,fontFace:'Courier New',valign:'top'});
       }
       s5.addShape(pptx.ShapeType.rect,{x:0,y:6.9,w:13.33,h:0.6,fill:{color:NAVY}});
-      s5.addText('Entrada Partners  ·  CONFIDENTIAL  ·  '+dateStr,{x:0.5,y:6.95,w:12.63,h:0.45,fontSize:10,color:MUTED,fontFace:'Courier New',align:'center'});
+      s5.addText('Dalfen Industrial  ·  CONFIDENTIAL  ·  '+dateStr,{x:0.5,y:6.95,w:12.63,h:0.45,fontSize:10,color:MUTED,fontFace:'Courier New',align:'center'});
 
-      var fname='Entrada_Napkin_'+safeAddr+'_'+new Date().toISOString().slice(0,10)+'.pptx';
+      var fname='Dalfen_Napkin_'+safeAddr+'_'+new Date().toISOString().slice(0,10)+'.pptx';
       await pptx.writeFile({fileName:fname});
       return;
     }
@@ -13207,7 +13207,7 @@ async function ridgeExportPPT() {
 
     try {
 
-    // ── Entrada Executive palette ──────────────────────────────
+    // ── Dalfen Executive palette ──────────────────────────────
     var BG    = 'FAF8F6';
     var NAVY  = '002D72';
     var BLUE  = '005EB8';
@@ -13248,7 +13248,7 @@ async function ridgeExportPPT() {
     }
     function addFtr(sl){
       sl.addShape(pptx.ShapeType.rect,{x:1,y:10.59,w:18,h:0.02,fill:{color:RULE},line:{color:RULE}});
-      sl.addText(addr+' · ENTRADA PARTNERS · CONFIDENTIAL & PROPRIETARY',{x:1,y:10.75,w:18,h:0.3,fontSize:12,color:BODY,bold:true});
+      sl.addText(addr+' · DALFEN INDUSTRIAL · CONFIDENTIAL & PROPRIETARY',{x:1,y:10.75,w:18,h:0.3,fontSize:12,color:BODY,bold:true});
     }
     // ISSUE 3: kpiCard accepts optional bgColor/txtColor for navy/green rows
     function kpiCard(sl,x,y,w,h,val,label,bgColor,txtColor,fontSize){
@@ -13293,7 +13293,7 @@ async function ridgeExportPPT() {
       s1.addText(m2.l,{x:0.5+i*2.47,y:3.88,w:2.37,h:0.22,fontSize:7.5,color:BODY,charSpacing:1.5});
       s1.addText(m2.v,{x:0.5+i*2.47,y:4.12,w:2.37,h:0.32,fontSize:13,color:NAVY,bold:true});
     });
-    s1.addText('ENTRADA PARTNERS  ·  CONFIDENTIAL & PROPRIETARY',{x:0.5,y:7.05,w:12.3,h:0.28,fontSize:8.5,color:BODY,align:'center'});
+    s1.addText('DALFEN INDUSTRIAL  ·  CONFIDENTIAL & PROPRIETARY',{x:0.5,y:7.05,w:12.3,h:0.28,fontSize:8.5,color:BODY,align:'center'});
 
     var cfModelRows = await _extractCashFlows();
 
@@ -14247,32 +14247,32 @@ async function ridgeExportPPT() {
     }
     if(sumTxt14){var fs14=sumTxt14.length<150?13:sumTxt14.length<250?11.5:10.5;s14.addText(sumTxt14,{x:0.25,y:2.58,w:12.83,h:0.65,fontSize:fs14,color:TEXT2,wrap:true,valign:'top'});}
 
-    // 4. Entrada Hurdle Confirmation — try ISR raw output first, then panelText
+    // 4. Dalfen Hurdle Confirmation — try ISR raw output first, then panelText
     var _isrRaw14=(_skillRawOutputs&&_skillRawOutputs['isr'])||'';
     console.log('[RIDGE] raw ISR last 500 chars:', _isrRaw14.slice(-500));
     console.log('[RIDGE] ISR contains HURDLE:', _isrRaw14.indexOf('HURDLE'));
-    console.log('[RIDGE] ISR contains ENTRADA:', _isrRaw14.indexOf('ENTRADA'));
+    console.log('[RIDGE] ISR contains DALFEN:', _isrRaw14.indexOf('DALFEN'));
     var _hurdleRaw14=
-      _extractKeySection(_isrRaw14,'ENTRADA HURDLE CONFIRMATION')||
+      _extractKeySection(_isrRaw14,'DALFEN HURDLE CONFIRMATION')||
       _extractKeySection(_isrRaw14,'HURDLE CONFIRMATION')||
-      _extractKeySection(_isrRaw14,'Entrada Hurdle Confirmation')||
-      extractSection(_isrRaw14,'ENTRADA HURDLE CONFIRMATION')||
-      extractSection(panelText,'ENTRADA HURDLE CONFIRMATION')||
+      _extractKeySection(_isrRaw14,'Dalfen Hurdle Confirmation')||
+      extractSection(_isrRaw14,'DALFEN HURDLE CONFIRMATION')||
+      extractSection(panelText,'DALFEN HURDLE CONFIRMATION')||
       '';
     console.log('[RIDGE] hurdle raw extracted:', _hurdleRaw14?_hurdleRaw14.slice(0,150):'STILL EMPTY');
-    // Broader fallback: find any ## ENTRADA... section when HURDLE keyword is absent
+    // Broader fallback: find any ## DALFEN... section when HURDLE keyword is absent
     if (!_hurdleRaw14) {
-      var _entradaHdr = _isrRaw14.match(/##\s+ENTRADA[^\n]*/i);
-      if (_entradaHdr) {
-        var _hIdx = _isrRaw14.indexOf(_entradaHdr[0]);
+      var _dalfenHdr = _isrRaw14.match(/##\s+DALFEN[^\n]*/i);
+      if (_dalfenHdr) {
+        var _hIdx = _isrRaw14.indexOf(_dalfenHdr[0]);
         var _hNext = _isrRaw14.indexOf('\n## ', _hIdx + 4);
         _hurdleRaw14 = _hNext > -1 ? _isrRaw14.slice(_hIdx, _hNext) : _isrRaw14.slice(_hIdx, _hIdx + 3000);
       }
     }
     if (!_hurdleRaw14) {
-      var _entradaPt = panelText.match(/##\s+ENTRADA[^\n]*/i);
-      if (_entradaPt) {
-        var _hIdxPt = panelText.indexOf(_entradaPt[0]);
+      var _dalfenPt = panelText.match(/##\s+DALFEN[^\n]*/i);
+      if (_dalfenPt) {
+        var _hIdxPt = panelText.indexOf(_dalfenPt[0]);
         var _hNextPt = panelText.indexOf('\n## ', _hIdxPt + 4);
         _hurdleRaw14 = _hNextPt > -1 ? panelText.slice(_hIdxPt, _hNextPt) : panelText.slice(_hIdxPt, _hIdxPt + 3000);
       }
@@ -14283,7 +14283,7 @@ async function ridgeExportPPT() {
     }
     var hurdleTxt14=_hurdleRaw14.replace(/^##?[^\n]*/,'').trim();
     s14.addShape(pptx.ShapeType.rect,{x:0.25,y:3.32,w:0.06,h:1.35,fill:{color:NAVY},line:{color:NAVY}});
-    s14.addText('ENTRADA HURDLE CONFIRMATION',{x:0.38,y:3.32,w:12.7,h:0.26,fontSize:9,color:NAVY,bold:true,charSpacing:1.5,fontFace:'Cambria'});
+    s14.addText('DALFEN HURDLE CONFIRMATION',{x:0.38,y:3.32,w:12.7,h:0.26,fontSize:9,color:NAVY,bold:true,charSpacing:1.5,fontFace:'Cambria'});
     if(hurdleTxt14){
       var hurdleLines14=hurdleTxt14.split('\n').filter(function(l){return l.trim();}).slice(0,6);
       hurdleLines14.forEach(function(line,li){
@@ -14357,7 +14357,7 @@ async function ridgeExportPPT() {
     }
 
     s14.addShape(pptx.ShapeType.rect,{x:0.25,y:7.05,w:12.83,h:0.012,fill:{color:MGREY},line:{color:MGREY}});
-    s14.addText('ENTRADA PARTNERS  ·  CONFIDENTIAL & PROPRIETARY  ·  '+dateStr.toUpperCase(),{x:0.25,y:7.08,w:12.83,h:0.18,fontSize:7.5,color:MUTED,align:'center'});
+    s14.addText('DALFEN INDUSTRIAL  ·  CONFIDENTIAL & PROPRIETARY  ·  '+dateStr.toUpperCase(),{x:0.25,y:7.08,w:12.83,h:0.18,fontSize:7.5,color:MUTED,align:'center'});
     } catch(e14) {
       console.warn('[RIDGE] Slide 14 build error:', e14.message);
       s14.addText('Slide build error — re-run ISR to populate.',{x:0.25,y:2.5,w:12.83,h:1,fontSize:12,color:'888888',align:'center'});
@@ -14369,7 +14369,7 @@ async function ridgeExportPPT() {
       return;
     }
 
-    var fname = 'Entrada_IC_Report_'+String(d.addr||'Deal').replace(/[^a-zA-Z0-9]/g,'_').slice(0,30)+'_'+new Date().toISOString().slice(0,10)+'.pptx';
+    var fname = 'Dalfen_IC_Report_'+String(d.addr||'Deal').replace(/[^a-zA-Z0-9]/g,'_').slice(0,30)+'_'+new Date().toISOString().slice(0,10)+'.pptx';
     console.log('ISR PPT writing file...');
     try {
       await pptx.writeFile({ fileName: fname });
@@ -14387,7 +14387,7 @@ async function ridgeExportPPT() {
   var s0=pptx.addSlide();
   s0.background={color:'0D1117'};
   s0.addText(skillName,{x:0.5,y:2.2,w:12.3,h:1.4,fontSize:44,bold:true,color:'2196F3',fontFace:'Courier New',align:'center'});
-  s0.addText('Entrada Partners  ·  '+dateStr,{x:0.5,y:3.8,w:12.3,h:0.6,fontSize:16,color:'8B949E',align:'center'});
+  s0.addText('Dalfen Industrial  ·  '+dateStr,{x:0.5,y:3.8,w:12.3,h:0.6,fontSize:16,color:'8B949E',align:'center'});
   var h2s=el.querySelectorAll('h2');
   if (h2s.length===0) {
     var sg=pptx.addSlide();
@@ -14407,7 +14407,7 @@ async function ridgeExportPPT() {
       if (bullets.length) sl.addText(bullets,{x:0.5,y:1.4,w:12.3,h:5.8,valign:'top',wrap:true});
     });
   }
-  var fname='Entrada_'+skillName.replace(/[^a-zA-Z0-9]/g,'_')+'_'+new Date().toISOString().slice(0,10)+'.pptx';
+  var fname='Dalfen_'+skillName.replace(/[^a-zA-Z0-9]/g,'_')+'_'+new Date().toISOString().slice(0,10)+'.pptx';
   await pptx.writeFile({fileName:fname});
 }
 
@@ -15674,7 +15674,7 @@ async function _llExportLeases() {
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(toRows(occ)),  'Occupied Only');
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(toRows(vac)),  'Vacant');
   var dateStr = new Date().toISOString().slice(0,10);
-  XLSX.writeFile(wb, 'Entrada_Lease_Library_' + dateStr + '.xlsx');
+  XLSX.writeFile(wb, 'Dalfen_Lease_Library_' + dateStr + '.xlsx');
   showToast('✅ Exported ' + all.length + ' leases');
 }
 

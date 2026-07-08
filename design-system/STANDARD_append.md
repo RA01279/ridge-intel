@@ -22,10 +22,10 @@ When this STANDARD and the design system SKILL.md disagree, STANDARD wins for da
 | `preview/colors-primary.html` | Brand + accent palette swatches |
 | `preview/colors-neutrals.html` | Surface / border / text neutrals |
 | `preview/colors-semantic.html` | Status, risk, conviction colors |
-| `preview/brand-lockups.html` | RIDGE wordmark + Entrada wordmark (light + knockout) |
+| `preview/brand-lockups.html` | RIDGE wordmark + Dalfen wordmark (light + knockout, placeholder) |
 | `preview/type-scale.html` | Type scale, KPI scale, voice samples |
 | `preview/spacing-elevation-icons.html` | 4px spacing scale, radii, shadow primitives, 16-icon line set |
 | `preview/components.html` | Buttons, inputs, badges, KPI grid, returns table, deal cards, verdict banners, toast |
 | `preview/ui-kit-app-surfaces.html` | RIDGE app shell — header, hero, skill panel, pipeline cards |
 | `assets/ridge-*.svg / .png` | RIDGE wordmark + favicon |
-| `assets/entrada-*.svg / .png` | Entrada wordmarks (light, knockout, vertical, horizontal, e-mark) |
+| `assets/dalfen-*.svg` | Dalfen wordmarks (light, knockout, vertical, horizontal, e-mark) — PLACEHOLDER, brand assets not yet provided |

@@ -20,7 +20,7 @@ description: >
 
 ACQ INVESTMENT REPORT builds the institutional IC deck. Given an uploaded acquisition
 model (Excel) and optional broker OM (PDF), it generates a complete 12–14 slide PowerPoint
-package structured for presentation to Entrada Partners' investment committee.
+package structured for presentation to Dalfen Industrial's investment committee.
 
 Every slide must meet the Midnight Executive standard defined in `output-standard/STANDARD.md`.
 Every number must trace directly to the uploaded model. No fabrication. No rounding without

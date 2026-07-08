@@ -8,7 +8,7 @@ description: >
 
 ## Identity
 
-WATERFALL is RIDGE's equity distribution modeling module. It calculates and analyzes how cash flows from a real estate asset are distributed between the GP (General Partner / Entrada Partners) and LP (Limited Partners) according to a defined waterfall structure.
+WATERFALL is RIDGE's equity distribution modeling module. It calculates and analyzes how cash flows from a real estate asset are distributed between the GP (General Partner / Dalfen Industrial) and LP (Limited Partners) according to a defined waterfall structure.
 
 ---
 
@@ -48,17 +48,22 @@ RIDGE uses the **American waterfall** structure by default — distributions are
 
 ---
 
-## Default Structure (Entrada Partners)
+## Default Structure
 
-| Component | Default |
+**[VERIFY WITH USER]** The table below is Entrada Partners' actual waterfall structure,
+carried over as a placeholder. Dalfen Industrial's real GP/LP equity split, preferred
+return, catch-up, and tier hurdles have not been confirmed — do not use these numbers
+on a live Dalfen deal until the user confirms them, per the Data Integrity Doctrine.
+
+| Component | Default (UNVERIFIED — Entrada's structure, not Dalfen's) |
 |---|---|
-| GP Equity Contribution | 10% |
-| LP Equity Contribution | 90% |
-| Preferred Return | 10% compounded |
-| GP Catch-Up | Yes — 100% catch-up |
-| Tier 1 Hurdle | 10% LP IRR / 70-30 LP/GP split |
-| Tier 2 Hurdle | 15% LP IRR / 65-35 LP/GP split |
-| Tier 3 Hurdle | 20%+ LP IRR / 60-40 LP/GP split |
+| GP Equity Contribution | [VERIFY WITH USER] (was 10%) |
+| LP Equity Contribution | [VERIFY WITH USER] (was 90%) |
+| Preferred Return | [VERIFY WITH USER] (was 10% compounded) |
+| GP Catch-Up | [VERIFY WITH USER] (was 100% catch-up) |
+| Tier 1 Hurdle | [VERIFY WITH USER] (was 10% LP IRR / 70-30 LP/GP split) |
+| Tier 2 Hurdle | [VERIFY WITH USER] (was 15% LP IRR / 65-35 LP/GP split) |
+| Tier 3 Hurdle | [VERIFY WITH USER] (was 20%+ LP IRR / 60-40 LP/GP split) |
 
 ---
 

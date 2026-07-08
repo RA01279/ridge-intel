@@ -1,6 +1,6 @@
-# Design System SKILL — RIDGE × Entrada
+# Design System SKILL — RIDGE × Dalfen Industrial
 
-**Single source of truth for visual language across the RIDGE Intelligence app, Entrada print collateral, and every PPTX/PDF/Excel deliverable produced by a RIDGE skill.**
+**Single source of truth for visual language across the RIDGE Intelligence app, Dalfen print collateral, and every PPTX/PDF/Excel deliverable produced by a RIDGE skill.**
 
 This skill defines tokens and components. It is paired with — and never overrides — `output-standard/STANDARD.md`, which governs data integrity, hurdle formatting, and QA protocol on shipped deliverables.
 
@@ -13,9 +13,9 @@ The system runs in two paired modes. Tokens cover both; choose by surface.
 | Surface | Background | Type voice | Primary mark | Used for |
 |---|---|---|---|---|
 | **RIDGE — Web/App** | Dark (`--bg #0D1117`) | System sans + JetBrains Mono | RIDGE wordmark (action blue) | `index.html`, skill panels, in-app deliverables |
-| **Entrada — Print/IC** | Light (`#FFFFFF`) | Display serif + Plus Jakarta Sans | Entrada wordmark (PMS 288) | IC memos, cover slides, PDF reports, brand collateral |
+| **Dalfen — Print/IC** | Light (`#FFFFFF`) | Display serif + Plus Jakarta Sans | Dalfen wordmark (PLACEHOLDER — Entrada PMS 288 value, not Dalfen's) | IC memos, cover slides, PDF reports, brand collateral |
 
-Within a single PPTX deck, an Entrada-branded cover/divider may pair with RIDGE-styled content slides — that is the canonical "Midnight Executive" treatment in `STANDARD.md §3.1`.
+Within a single PPTX deck, a Dalfen-branded cover/divider may pair with RIDGE-styled content slides — that is the canonical "Midnight Executive" treatment in `STANDARD.md §3.1`.
 
 ---
 
@@ -33,7 +33,7 @@ Within a single PPTX deck, an Entrada-branded cover/divider may pair with RIDGE-
 
 All tokens live in `colors_and_type.css`. Categories:
 
-- **Brand core** — `--entrada-pms-300/288`, `--entrada-stone`, `--entrada-ink`
+- **Brand core** — `--dalfen-pms-300/288`, `--dalfen-stone`, `--dalfen-ink`
 - **RIDGE surface** — `--bg`, `--surface`, `--surface-2`, `--border`, `--border-strong`
 - **RIDGE accent** — `--navy`, `--navy-deep`, `--blue`, `--blue-dim`, `--ice`, `--ice-row`
 - **Semantic** — `--green`, `--amber`, `--red`, plus risk-specific `--green-mitigant`, `--amber-warm`
@@ -85,7 +85,7 @@ Built and previewed under `preview/`. Each is a token-driven, drop-in pattern:
 ## 7 · Files
 
 - `colors_and_type.css` — token source of truth
-- `assets/ridge-wordmark.svg`, `assets/ridge-favicon.svg`, `assets/entrada-wordmark.svg`, `assets/entrada-wordmark-knockout.svg`
+- `assets/ridge-wordmark.svg`, `assets/ridge-favicon.svg`, `assets/dalfen-wordmark.svg`, `assets/dalfen-wordmark-knockout.svg`
 - `preview/*.html` — every preview card, registered to the Design System tab
 - `output-standard/STANDARD.md` — paired deliverable QA rules
 
