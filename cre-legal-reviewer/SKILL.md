@@ -77,6 +77,27 @@ For HIGH-risk provisions, provide suggested contract language changes:
 - Force majeure: what events excuse performance?
 - 1031 exchange cooperation: is seller requesting accommodation?
 
+## IOS-Specific Watch Items (check on every PSA for an Industrial Outdoor Storage deal)
+
+- **Entitlement contingency:** Is closing expressly contingent on IOS being a permitted use
+  (by-right or approved SUP/CUP)? If the PSA is silent, flag as HIGH — this is the single
+  most common gap in a non-IOS-specialist seller's counsel draft.
+- **SUP timing conditions:** If entitlement is not yet by-right, does the PSA tie the due
+  diligence period, extension rights, and termination mechanics to the SUP/CUP approval
+  timeline? Flag if the DD period is fixed-length and does not extend for entitlement delay.
+- **Deed-restriction representation:** Does the seller represent that no recorded deed
+  restriction, covenant, or CC&R prohibits outdoor storage or industrial use on the property?
+  Absence of this rep is HIGH severity — critical in Houston, where deed restrictions (not
+  zoning) are the primary use control, but check every market.
+- **Environmental use restriction on outdoor storage:** Does the PSA (or an attached exhibit)
+  address what the seller has historically stored or permitted on site (fuel, hazardous
+  materials, vehicle maintenance/washing), and does the seller represent no known
+  contamination from prior outdoor storage/industrial use? Flag if silent — this is the
+  IOS-specific analog to a standard environmental rep and is easy for non-specialist counsel
+  to omit.
+- **Mineral estate / surface use:** Is the mineral estate severed, and if so, does the PSA
+  address surface use restrictions that could affect site development or expansion?
+
 ## JV / Operating Agreement Watch Items
 
 - Preferred return: rate, simple vs. compound, accrual mechanics

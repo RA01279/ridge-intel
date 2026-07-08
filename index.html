@@ -1062,11 +1062,11 @@ Extract every relevant fact from the materials above before asking any questions
     shortDesc:'PSA, JV, loan docs, PMA. Flags risk, suggests redlines.',
     uploads:[{id:'doc1',label:'Primary Document *',hint:'PSA, JV agreement, loan docs, or PMA — PDF',icon:'📄',accept:'.pdf,.docx',type:'pdf'},{id:'doc2',label:'Secondary Document',hint:'Optional: second document for comparison or cross-reference',icon:'📄',accept:'.pdf,.docx',type:'pdf'}],
     fields:[
-      {row:[{id:'dtype',label:'Document Type',type:'select',opts:['Purchase & Sale Agreement (PSA)','JV / Operating Agreement','Loan Documents / Mortgage','Property Management Agreement (PMA)','Other']},{id:'addr',label:'Property / Deal',ph:'e.g. 4200 Commerce Pkwy, Savannah, GA'}]},
+      {row:[{id:'dtype',label:'Document Type',type:'select',opts:['Purchase & Sale Agreement (PSA)','JV / Operating Agreement','Loan Documents / Mortgage','Property Management Agreement (PMA)','Other']},{id:'addr',label:'Property / Deal',ph:'e.g. 4200 Trinity Blvd, Fort Worth, TX'}]},
       {row:[{id:'focus',label:'Review Focus / Key Concerns',ph:'Flag any seller rep gaps, earnest money hard provisions, waterfall mechanics...',type:'textarea'}]},
     ],
     steps:['Reading document...','Mapping key provisions...','Flagging risk clauses...','Checking RIDGE-specific concerns...','Generating redline suggestions...','Assembling review report...'],
-    system:`You are RIDGE's CRE Legal Reviewer. You review commercial real estate legal documents for industrial and flex acquisitions. Flag anything that threatens RIDGE's position, return, or control. Be specific — quote the clause, cite the section, state the risk. Intended audience is asset managers, not attorneys. Balance legal precision with plain-language explanations.`,
+    system:`You are RIDGE's CRE Legal Reviewer. You review commercial real estate legal documents for Industrial Outdoor Storage (IOS) acquisitions in DFW/Houston. Flag anything that threatens RIDGE's position, return, or control — including entitlement contingency gaps, missing deed-restriction representations, and missing environmental use restrictions on outdoor storage, which are the IOS-specific gaps a generalist counsel draft most often misses. Be specific — quote the clause, cite the section, state the risk. Intended audience is asset managers, not attorneys. Balance legal precision with plain-language explanations.`,
     prompt:(d)=>`Review this ${d.dtype||'CRE legal document'} for ${d.addr||'the subject deal'}.\n${d.focus?'Focus areas: '+d.focus+'\n':''}\n${d.doc1_text||'[Document uploaded]'}\n${d.doc2_text?'Secondary document:\n'+d.doc2_text+'\n':''}\nProduce:\n## DOCUMENT SUMMARY\nParties, purpose, key dates, transaction structure in 3–5 sentences.\n\n## KEY PROVISIONS TABLE\nTable: Section | Provision | Summary | Risk Level\n\n## RED FLAGS\nFor each flag: Section reference, what it says, why it's a problem, suggested fix or redline language.\n\n## RIDGE-SPECIFIC CONCERNS\nAnything that affects: earnest money refundability, financing contingency, assignment rights, seller reps on leases, waterfall/preferred return (if JV), prepayment/defeasance (if loan docs), termination rights (if PMA).\n\n## MISSING PROVISIONS\nAnything RIDGE typically requires that is absent from this document.\n\n## RECOMMENDED REDLINES\n3–5 specific changes with proposed language.`
   },
   {
@@ -1115,15 +1115,15 @@ Extract every relevant fact from the materials above before asking any questions
       {id:'doc3',label:'Document 3',hint:'Optional: third scenario, prior executed lease, or market comp',icon:'📑',accept:'.pdf,.docx',type:'pdf'}
     ],
     fields:[
-      {row:[{id:'addr',label:'Property Address',ph:'e.g. 4200 Commerce Pkwy, Atlanta, GA'}]},
-      {row:[{id:'doc1_label',label:'Document 1 — Name / Address',ph:'e.g. 4200 Commerce Pkwy — Tenant A Proposal'},{id:'doc2_label',label:'Document 2 — Name / Address',ph:'e.g. 7100 Distribution Dr — Counter-Proposal'},{id:'doc3_label',label:'Document 3 — Name / Address (optional)',ph:'e.g. Prior executed lease for comp'}]},
-      {row:[{id:'mkt_rent',label:'Market Rent PSF',ph:'e.g. $12.50 NNN'},{id:'mkt_ti',label:'Market TI PSF',ph:'e.g. $25–30 PSF'},{id:'sf',label:'Rentable SF',ph:'e.g. 48,500'}]},
-      {row:[{id:'mkt',label:'Market',type:'select',opts:['Atlanta, GA','Savannah, GA','Dallas–Fort Worth, TX','Houston, TX','Austin, TX (Watch)']},{id:'sub',label:'Submarket',ph:'e.g. Gwinnett / Buford (optional)'}]},
+      {row:[{id:'addr',label:'Property Address',ph:'e.g. 4200 Trinity Blvd, Fort Worth, TX'}]},
+      {row:[{id:'doc1_label',label:'Document 1 — Name / Address',ph:'e.g. 4200 Trinity Blvd — Tenant A Proposal'},{id:'doc2_label',label:'Document 2 — Name / Address',ph:'e.g. 7100 Distribution Dr — Counter-Proposal'},{id:'doc3_label',label:'Document 3 — Name / Address (optional)',ph:'e.g. Prior executed lease for comp'}]},
+      {row:[{id:'mkt_rent',label:'Market Rate ($/acre/yr)',ph:'e.g. $14,000/acre/yr'},{id:'mkt_ti',label:'Market Site-Work Allowance',ph:'e.g. $2-6/SF of site'},{id:'sf',label:'Total Acreage',ph:'e.g. 5.4'}]},
+      {row:[{id:'mkt',label:'Market',type:'select',opts:['Dallas–Fort Worth, TX','Houston, TX']},{id:'sub',label:'Submarket',ph:'e.g. Alliance/Fort Worth (optional)'}]},
       {row:[{id:'mode',label:'Comparison Mode',type:'select',opts:['Proposal vs Proposal (pick the better deal)','Proposal vs Executed Lease (is this standard?)','Two Executed Leases (acquisition DD)','Counter-Proposal Analysis','Single Document Deep Review']},{id:'role',label:'Dalfen Role',type:'select',opts:['Landlord — maximize NOI and protect asset value','Buyer / Acquirer — evaluate inherited leases','Tenant — minimize cost and maximize flexibility']}]},
       {row:[{id:'notes',label:'Context & Priority Issues',ph:'Tenant credit, deal urgency, specific concerns, prior negotiations...',type:'textarea'}]},
     ],
     steps:['Reading document 1...','Reading document 2...','Extracting all economic terms...','Building comparison matrix...','Flagging risk provisions...','Benchmarking to market...','Generating negotiation strategy...'],
-    system:`You are a senior CRE attorney and acquisitions officer at Dalfen Industrial. You specialize in industrial and flex lease negotiation across Atlanta, Savannah, DFW, and Houston. You know exactly what provisions protect landlord value at exit, what institutional buyers require in lease abstracts, and what is genuinely market-standard in Southeast and Sun Belt industrial markets. You are direct, specific, and quantify economic impacts whenever possible.`
+    system:`You are a senior CRE attorney and acquisitions officer at Dalfen Industrial. You specialize in Industrial Outdoor Storage (IOS) lease negotiation across DFW and Houston. You know exactly what provisions protect landlord value at exit (power/EV infrastructure allocation, paving maintenance, gate/security access, environmental use restrictions, subleasing of storage spots), what institutional buyers require in lease abstracts, and what is genuinely market-standard for IOS in Texas. You are direct, specific, and quantify economic impacts whenever possible.`
   },
   {
     id:'lease-stack', num:'14', icon:'🗂️', name:'LEASE STACK ANALYZER',
@@ -2955,7 +2955,8 @@ If CONDITIONAL: state exactly what must be verified before proceeding
       p += 'REVIEW FOCUS: ' + (d.focus||'All material provisions') + '\n\n';
       p += 'DOCUMENT TEXT:\n' + (d.doc1_text ? d.doc1_text.slice(0, 25000) : '[No document uploaded — upload the document to proceed]') + '\n\n';
       if (d.doc2_text) p += 'SECONDARY DOCUMENT:\n' + d.doc2_text.slice(0, 10000) + '\n\n';
-      p += 'DALFEN CONTEXT: Industrial/flex acquisitions $10M-$70M | Atlanta, Savannah, DFW, Houston | Value-add strategy | Institutional LP capital | 5-year hold\n\n';
+      p += 'DALFEN CONTEXT: Industrial Outdoor Storage (IOS) acquisitions, $2M minimum no maximum | DFW/Houston only | Institutional LP capital\n';
+      p += 'IOS-SPECIFIC WATCH ITEMS — check these on every PSA regardless of REVIEW FOCUS above: (1) entitlement contingency — is closing contingent on IOS being a permitted use, by-right or approved SUP/CUP; (2) SUP timing — does the DD period extend for entitlement delay; (3) deed-restriction representation — does seller represent no recorded restriction prohibits outdoor storage/industrial use (critical in Houston); (4) environmental use restriction — does seller represent no contamination from prior outdoor storage/industrial use.\n\n';
       p += 'Produce a complete legal review at the level of experienced CRE counsel. Structure as follows:\n\n';
       p += '## DOCUMENT IDENTIFICATION\n';
       p += 'Document type, parties, property, key dates, transaction overview. Two paragraphs.\n\n';

@@ -1,10 +1,10 @@
 ---
 name: loi-generator
 description: >
-  LOI GENERATOR produces institutional-quality letters of intent for industrial and flex
+  LOI GENERATOR produces institutional-quality letters of intent for Industrial Outdoor Storage (IOS)
   acquisitions on behalf of Dalfen Industrial. Use this skill whenever the user needs to
   draft an LOI, letter of intent, or offer letter for a property acquisition. Collects
-  9 variable fields, populates Dalfen's exact boilerplate template, and outputs a
+  10 variable fields, populates Dalfen's exact boilerplate template, and outputs a
   formatted Word document (.docx). Never modifies fixed Dalfen language. Trigger on:
   "draft an LOI", "generate an LOI", "write up the LOI", "put together an offer letter",
   "LOI for [address]", "we need to get an LOI out", "draft the offer terms", or any
@@ -15,7 +15,7 @@ description: >
 
 ## Identity
 
-LOI GENERATOR produces institutional-quality letters of intent for industrial and flex
+LOI GENERATOR produces institutional-quality letters of intent for Industrial Outdoor Storage (IOS)
 acquisitions. Fast, specific, and structured to protect RIDGE's position while keeping
 the seller engaged.
 
@@ -37,11 +37,12 @@ These are the only fields that change deal to deal. Everything else is fixed Dal
 | Broker name & firm | Attn: line at top (e.g., "Maggie Dominguez, JLL") |
 | Property address(es) | Full address(es) — RE: line and Asset Description table |
 | City, State | For Asset Description narrative |
-| Total SF | Square footage of property or portfolio |
+| Total acreage | Site acreage of property or portfolio |
 | Purchase price | Numerals + written out (e.g., "Twenty Seven Million Dollars ($27,000,000)") |
 | Deposit amount | Numerals + written out (e.g., "Three Hundred Thousand Dollars ($300,000)") |
 | Extension deposit | Additional deposit for 15-day closing extension (default $100,000) |
 | LOI expiration date | Deadline for seller to accept — default 10 business days from LOI date |
+| Entitlement status | By-right, or SUP/CUP required — drives whether the Entitlement Contingency section applies |
 
 ### Fixed Dalfen Boilerplate (never changes)
 
@@ -50,7 +51,7 @@ These are the only fields that change deal to deal. Everything else is fixed Dal
 - DD period: 30 days from PSA execution
 - Closing: 30 days from end of DD
 - Extension right: 15 days with additional non-refundable deposit
-- Leasing costs, contingencies, environmental, access, title, escrow, brokerage, new contracts, deliveries sections — all fixed
+- Leasing costs, contingencies, environmental (Phase I/II), entitlement, power capacity, access, title, escrow, brokerage, new contracts, deliveries sections — all fixed
 - Signature block: [VERIFY WITH USER: confirm Dalfen deal-team principals] / Principal x3
 
 ---
@@ -83,10 +84,10 @@ dalfen.com [VERIFY WITH USER: confirm exact URL]
 
 ─────────────────────────────────────────────────────────────────────────
 
-Asset Description:    Industrial properties located at
+Asset Description:    Industrial Outdoor Storage properties located at
                         • ⟦PROPERTY ADDRESS LINE 1⟧
-                        • ⟦PROPERTY ADDRESS LINE 2 (if multi-building)⟧
-                      in ⟦CITY, STATE⟧, totaling ⟦TOTAL SF⟧ square feet.
+                        • ⟦PROPERTY ADDRESS LINE 2 (if multi-parcel)⟧
+                      in ⟦CITY, STATE⟧, totaling ⟦TOTAL ACREAGE⟧ acres.
                       The Property will be delivered free and clear of any
                       existing loans.
 
@@ -94,10 +95,10 @@ Purchase Price:       The purchase price shall be a total of ⟦PURCHASE PRICE
                       WRITTEN OUT ($NUMERALS)⟧.
 
                       This Offer is made in reliance upon Purchaser's assumption
-                      that the roofs, HVAC systems, and overall physical condition
-                      of the Property do not require material repair or replacement.
-                      This Offer is expressly contingent upon the results of
-                      Purchaser's due diligence investigation of the Property.
+                      that the pavement, fencing/gate, drainage, and overall physical
+                      condition of the Property do not require material repair or
+                      replacement. This Offer is expressly contingent upon the results
+                      of Purchaser's due diligence investigation of the Property.
 
 Deposit:              Within Two (2) business days of execution of the purchase
                       and sale agreement, Purchaser shall deposit ⟦DEPOSIT AMOUNT
@@ -120,7 +121,17 @@ Due Diligence:        Closing of this transaction shall be expressly contingent
                       review. Any interest earned on the Deposit will be credited
                       to the Purchaser.
 
-Contingencies:        All physical, financial and Title review.
+Contingencies:        All physical, financial, Title, entitlement, environmental, and
+                      power capacity review, as further described below.
+
+Entitlement:          Closing is expressly contingent upon confirmation that Industrial
+                      Outdoor Storage is a permitted use on the Property — either by-right,
+                      or by an approved Special Use Permit ("SUP") or Conditional Use Permit
+                      ("CUP") obtained on terms acceptable to Purchaser, in Purchaser's sole
+                      discretion, prior to the expiration of the Due Diligence Period. If a
+                      SUP/CUP is required and has not been approved by the end of the Due
+                      Diligence Period, Purchaser may terminate this Agreement and receive a
+                      full refund of the Deposit.
 
 Closing:              Closing shall occur no later than thirty (30) days from the
                       end of the due diligence period. Purchaser shall have the
@@ -129,13 +140,23 @@ Closing:              Closing shall occur no later than thirty (30) days from th
                       ⟦EXTENSION DEPOSIT AMOUNT⟧ that will be applied toward the
                       purchase price.
 
-Environmental:        Purchaser shall have the right to conduct environmental tests
-                      it deems necessary, including soil vapor testing.
+Environmental:        Purchaser shall have the right, at Purchaser's expense, to obtain a
+                      Phase I Environmental Site Assessment and, if a recognized
+                      environmental condition is identified, a Phase II Environmental Site
+                      Assessment, including any tests Purchaser deems necessary such as soil
+                      vapor testing. Closing is contingent upon results reasonably
+                      satisfactory to Purchaser.
+
+Power Capacity:       Purchaser shall have the right to confirm, at Purchaser's expense,
+                      existing electrical service type and capacity (single- vs. 3-phase),
+                      availability of additional capacity for reefer/EV infrastructure if
+                      applicable, and the utility interconnection queue timeline for any
+                      required upgrade. Closing is contingent upon confirmation reasonably
+                      satisfactory to Purchaser.
 
 Due Diligence         Purchaser and its agents shall be allowed reasonable access
 Period:               to the Property prior to closing for the purpose of making
-                      all inspections it requires, including access to all
-                      occupied suites.
+                      all inspections it requires, including access to the entire site.
 
 Title Insurance:      Seller agrees to pay for a base title insurance policy,
                       subject to exceptions approved by Purchaser.
@@ -192,7 +213,7 @@ Date:  _______________________________
 
 ## Output Instructions
 
-1. Collect the 9 variable fields. If any are missing, ask specifically. Do not draft with blanks.
+1. Collect the 10 variable fields. If any are missing, ask specifically. Do not draft with blanks.
 2. Populate all ⟦BRACKETS⟧ with deal-specific data. Every other word in the template is fixed Dalfen language — do not alter it.
 3. **Purchase price formatting:** Always write out in full — "Twenty Seven Million Dollars ($27,000,000)." Confirm spelling of dollar amount.
 4. **Multi-building deals:** List each address as a bullet under Asset Description. Update RE: line to include all addresses.
