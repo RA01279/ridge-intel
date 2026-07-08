@@ -61,14 +61,14 @@ Active skills and their paths:
 | Skill | File | Purpose |
 |---|---|---|
 | RIDGE | `RIDGE_SKILL.md` | Core deal analysis engine, conviction framework |
-| Canvas | `Canvas_SKILL.md` | Tenant intelligence, displacement scoring |
+| Canvas | `Canvas_SKILL.md` | IOS demand-side sourcing — trailer parking, container storage, contractor yards, equipment rental, truck terminals |
 | Pipeline | `pipeline/SKILL.md` | Deal CRM, kanban stages, outreach logging |
 | Daily Signal | `daily-signal/SKILL.md` | CoStar XLSX parsing, prospect scoring (0–15 pts) |
 | Waterfall | `waterfall/SKILL.md` | GP/LP distribution waterfall, IRR tiers, LP assessment |
 | LOI Generator | `loi-generator/SKILL.md` | Letter of intent automation |
 | Napkin | `napkin/SKILL.md` | 60-second deal screen, back-of-envelope underwriting |
 | Debt Tool | `debt-tool/SKILL.md` | Capital stack modeling, debt scenarios |
-| Market Pulse | `market-pulse/SKILL.md` | Submarket intelligence, vacancy/rent benchmarks |
+| Market Pulse | `market-pulse/SKILL.md` | Submarket intelligence, land absorption/outdoor storage demand |
 | DD Tracker | `dd-tracker/SKILL.md` | Due diligence checklist and tracking |
 | Deal Memory | `deal-memory/SKILL.md` | Session memory, pipeline context |
 | Acq Investment Report | `acq-investment-report/SKILL.md` | IC deck generation (PPTX) |
@@ -77,6 +77,10 @@ Active skills and their paths:
 | LENS | `lens/SKILL.md` | Broker OM teardown, re-underwrite at RIDGE criteria |
 | SCOUT | `scout/SKILL.md` | Off-market sourcing, owner enrichment, submarket sweep |
 | Lease Comp Map | `lease-comp-map/SKILL.md` | Comp analysis, rent benchmarking (HTML + PDF) |
+| Zoning & Entitlement Screener | `zoning-entitlement-screener/SKILL.md` | Permitted-use gate check, deed-restriction search |
+| Power & Utility Capacity | `power-utility-capacity/SKILL.md` | Electrical service, interconnection timeline, reefer/EV load |
+| Site Metrics Calculator | `site-metrics-calculator/SKILL.md` | Building coverage gate, net usable acreage, implied spot count |
+| Municipal Ordinance Reference | `municipal-ordinance-reference/SKILL.md` | DFW suburb ordinance research, Houston deed-restriction guidance |
 
 ### Data Persistence
 localStorage is the current persistence layer (migration to Supabase Postgres underway). Target state: all deal pipeline, session state, and user data persisted to Supabase with real-time sync across devices.
@@ -92,13 +96,16 @@ CoStar XLSX upload
 
 ## Investment Criteria (Hardcoded Into System Logic)
 
-These thresholds are referenced throughout the skills and should not be changed without intentional business decision:
-- **Target markets:** Atlanta (primary), Savannah (primary), DFW, Houston, Austin (watch)
-- **Deal size sweet spot:** $25M–$35M (full range $10M–$70M)
-- **IRR floor:** 14.75% (stretch; requires explicit justification)
-- **Target IRR:** 15%+ over 60 months
-- **Equity multiple:** 1.8×–2.2×
-- **Year 3/4 YOC target:** 7.5%–8.0%
+RIDGE runs Dalfen Industrial's Industrial Outdoor Storage (IOS) mandate. Full detail lives in
+`RIDGE_SKILL.md` § Investment Criteria — this is the summary:
+- **Asset type:** Industrial Outdoor Storage (IOS) only
+- **Target markets:** Dallas-Fort Worth, TX and Houston, TX only — no secondary or watch markets
+- **Deal size:** $2M minimum, no maximum
+- **Site & use gate:** building coverage below 30%, vacant or leased, IOS a permitted use (by-right or approved SUP/CUP)
+- **Return thresholds (IRR/EM/YOC) and hold period:** **[VERIFY WITH USER]** — Dalfen's actual
+  hurdles have not been confirmed. Do not carry over the prior Entrada Partners numbers
+  (14.75% IRR floor, 1.70x–2.20x equity multiple, 7.50%–8.00% YOC) — they belonged to a
+  different fund, asset type, and hold-period assumption.
 - **Sourcing:** 95% non-marketed / off-market
 
 ## Output Quality Standard
@@ -107,14 +114,14 @@ All output-producing skills reference `output-standard/STANDARD.md`.
 
 This file defines formatting, color palette (Midnight Executive), typography, data integrity rules, and QA protocol for all PPTX, PDF, and Excel deliverables. It supersedes any defaults in individual skill files.
 
-Skills covered: acq-investment-report, the-gavel, cre-legal-reviewer, lens, scout, lease-comp-map, canvas, napkin, market-pulse, dd-tracker, debt-tool.
+Skills covered: acq-investment-report, the-gavel, cre-legal-reviewer, lens, scout, lease-comp-map, canvas, napkin, market-pulse, dd-tracker, debt-tool, zoning-entitlement-screener, power-utility-capacity, site-metrics-calculator, municipal-ordinance-reference.
 
 ## Key Files
 
 - `index.html` — entire application
 - `napkin.html` — standalone quick math/modeling tool
 - `RIDGE_SKILL.md` — core RIDGE identity, session structure, sourcing framework, conviction states
-- `Canvas_SKILL.md` — tenant intelligence system (Fill mode vs. Hunt mode, scoring tiers)
+- `Canvas_SKILL.md` — IOS demand-side sourcing system (Fill mode vs. Hunt mode, scoring tiers)
 - `pipeline/SKILL.md` — pipeline stage definitions, deal record schema, command parsing
 - `daily-signal/SKILL.md` — CoStar scoring rules, re-signal logic
 - `waterfall/SKILL.md` — GP/LP waterfall structure, tier calculations, LP/GP assessment framework

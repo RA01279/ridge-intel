@@ -284,7 +284,11 @@ When any document is uploaded during a RIDGE session, route it immediately using
 | Full diligence package (lease + PSA or other docs) | **Both** — Lease Admin on the lease, CRE Legal Reviewer on everything else; cross-reference findings in session summary |
 | Acquisition model (.xlsx), underwriting model | **Acquisition Investment Report** | `/mnt/skills/user/acq-investment-report/SKILL.md` |
 | Lease comp data (screenshot, Excel, CSV, or pasted text) + target property | **Lease Comp Map** | `/mnt/skills/user/lease-comp-map/SKILL.md` |
-| Tenant sourcing request, building fill request, demand analysis, CoStar tenant export | **CANVAS** | `Canvas_SKILL.md` |
+| IOS demand sourcing request, site fill request, demand analysis, municipal permit filing data | **CANVAS** | `Canvas_SKILL.md` |
+| Permitted-use / entitlement question, deed restriction check | **Zoning & Entitlement Screener** | `zoning-entitlement-screener/SKILL.md` |
+| Electrical service / utility capacity question | **Power & Utility Capacity** | `power-utility-capacity/SKILL.md` |
+| Building coverage %, usable acreage, or implied spot-count calculation | **Site Metrics Calculator** | `site-metrics-calculator/SKILL.md` |
+| Jurisdiction-specific outdoor storage ordinance or Houston deed-restriction research | **Municipal Ordinance Reference** | `municipal-ordinance-reference/SKILL.md` |
 
 If document type is ambiguous, classify it explicitly and confirm with the user before proceeding.
 
@@ -361,27 +365,83 @@ Read `/mnt/skills/user/lease-comp-map/SKILL.md` in full before executing any com
 
 ---
 
-### CANVAS — Tenant Intelligence & Space Matching Engine
+### CANVAS — IOS Demand Intelligence & Site Matching Engine
 
-RIDGE's demand-side sourcing engine. Identifies, scores, and ranks businesses that are likely tenants for small and mid-bay industrial and flex space (2,000–25,000 SF). Closes the loop between supply-side acquisition targeting and demand-side leasing confidence.
+RIDGE's demand-side sourcing engine. Identifies, scores, and ranks businesses that are likely users of Industrial Outdoor Storage sites — trailer parking operators, container storage users, contractor & material yards, equipment maintenance/rental operators, truck terminals, and auto/bus storage fleets — in DFW and Houston. Closes the loop between supply-side acquisition targeting and demand-side lease-up confidence.
 
-**Trigger phrases:** "find tenants for this building", "run CANVAS", "fill this building", "tenant search", "who's looking for space", "demand analysis", "who should lease this space", "hunt for tenants", or any request to source, identify, or rank potential tenants for industrial or flex assets.
+**Trigger phrases:** "find users for this site", "run CANVAS", "fill this site", "IOS demand search", "who needs outdoor storage", "demand analysis", "who should lease this yard", "hunt for IOS users", or any request to source, identify, or rank potential IOS users for a site or submarket.
 
 **Two operating modes:**
-- **Fill** — You have a specific building under contract, in LOI, or in the pipeline. Find businesses in the trade area that fit the space and are likely to lease it.
-- **Hunt** — Scan a market or submarket for businesses showing displacement signals. Output feeds directly back into RIDGE as acquisition targets — demand-validated sourcing is more defensible than vacancy signal alone.
+- **Fill** — You have a specific IOS site under contract, in LOI, or in the pipeline. Find businesses in the trade area that fit the site and are likely to lease it.
+- **Hunt** — Scan a market or submarket for businesses showing growth or displacement signals — fleet expansion, municipal permit filings for outdoor storage use, or displacement from a redeveloped industrial site. Output feeds directly back into RIDGE as acquisition targets — demand-validated sourcing is more defensible than a vacant-site signal alone.
 
 **Every run produces three deliverables — always all three:**
-1. `CANVAS_[Property/Market]_Prospects_[YYYYMMDD].xlsx` — Ranked tenant prospect list, scored 0–100, tiered (Tier 1 Priority / Tier 2 Active / Tier 3 Watch)
-2. `CANVAS_[Property/Market]_Report_[YYYYMMDD].pdf` — Tier 1 profiles (one page each) + summary report
-3. **RIDGE Acquisition Feed** (Hunt mode) — Submarket pockets with ≥3 Tier 1/2 tenants flagged as implied acquisition targets, formatted for direct pipeline ingestion
+1. `CANVAS_[Site/Market]_Prospects_[YYYYMMDD].xlsx` — Ranked IOS user prospect list, scored 0–100, tiered (Tier 1 Priority / Tier 2 Active / Tier 3 Watch)
+2. `CANVAS_[Site/Market]_Report_[YYYYMMDD].pdf` — Tier 1 profiles (one page each) + summary report
+3. **RIDGE Acquisition Feed** (Hunt mode) — Submarket pockets with ≥3 Tier 1/2 users flagged as implied acquisition targets, formatted for direct pipeline ingestion
 
 **RIDGE integration:**
-- Fill mode output is the strongest acquisition conversation opener — "we have tenants ready" before you approach the owner
+- Fill mode output is the strongest acquisition conversation opener — "we have users ready" before you approach the owner
 - Hunt mode Acquisition Feed appends directly to the RIDGE Daily Prospect Report pipeline
-- ≥3 confirmed Tier 1 tenants + submarket vacancy below 10% + no new supply = High Conviction acquisition feed signal
+- ≥3 confirmed Tier 1 users + confirmed IOS-permitted zoning/SUP precedent in the pocket + no comparable competing supply nearby = High Conviction acquisition feed signal
 
-Read `Canvas_SKILL.md` in full before executing any tenant sourcing or demand analysis task.
+Read `Canvas_SKILL.md` in full before executing any IOS demand sourcing or demand analysis task.
+
+---
+
+### Zoning & Entitlement Screener
+
+RIDGE's IOS permitted-use gate-check engine. Determines whether IOS is a permitted use on a specific parcel — by-right, requiring SUP/CUP, nonconforming, or prohibited — and renders a PASS / NEEDS REVIEW / FAIL verdict against the Site & Use Gate Criteria's zoning requirement.
+
+**Trigger phrases:** "is IOS a permitted use here", "check zoning for this site", "does this need a SUP", "entitlement check", "deed restriction check", or any request to determine whether Industrial Outdoor Storage is a permitted use on a specific parcel.
+
+**Output:** A structured verdict with classification, entitlement path (if SUP/CUP required), a mandatory deed-restriction check (Houston has no zoning — deed restrictions control there), risk flags, and a recommendation. Never defaults to PASS on an unconfirmed input.
+
+**RIDGE integration:** Feeds the Site & Use Gate Criteria check directly — a deal cannot be treated as clearing the zoning gate until this screener returns PASS or an acceptable NEEDS REVIEW mitigation path. A NEEDS REVIEW or FAIL verdict should trigger the Entitlement Contingency section of the LOI.
+
+Read `zoning-entitlement-screener/SKILL.md` in full before treating a site as cleared on the zoning/entitlement gate criterion.
+
+---
+
+### Power & Utility Capacity
+
+RIDGE's site infrastructure diligence module. Confirms a site's existing electrical service, capacity, and utility interconnection timeline against its intended IOS target-user load profile — material for reefer trailer parking, EV fleet charging, and equipment maintenance/rental yards.
+
+**Trigger phrases:** "check power capacity for this site", "is there 3-phase power", "reefer plug capacity", "EV charging feasibility", "utility interconnection timeline", or any request to assess a site's power or utility infrastructure ahead of acquisition or LOI.
+
+**Output:** Existing service type/capacity, target-user load classification, capacity adequacy assessment, interconnection timeline, and cost estimate — with confirmed data (nameplate ratings) distinguished from estimates.
+
+**RIDGE integration:** Supports the Power Capacity contingency in the LOI Generator. A "Material" load classification with no confirmed adequate service is a HIGH risk flag in CRE Legal Reviewer's IOS-Specific Watch Items and the Risk Matrix slide of the Acquisition Investment Report.
+
+Read `power-utility-capacity/SKILL.md` in full before confirming a site's power capacity is adequate for its intended IOS use.
+
+---
+
+### Site Metrics Calculator
+
+RIDGE's site-area and building-coverage math engine. Enforces the building coverage below 30% gate and computes net usable acreage after deducting easements, floodway, detention, and setbacks — plus implied trailer/container spot capacity.
+
+**Trigger phrases:** "calculate usable acreage", "what's the building coverage here", "how many trailer spots fit on this site", "does this clear the 30% coverage gate", or any request to compute site-area math for an IOS site.
+
+**Output:** Always shows the underlying arithmetic — building coverage % with formula, net usable acreage with every deduction line item, and implied spot count with stated assumptions.
+
+**RIDGE integration:** The calculation engine behind the Site & Use Gate Criteria's building coverage check. Feeds `lens`/`napkin`'s land-basis underwriting (price per acre should use net usable acreage, not gross) and the Land-Basis / Acre Economics slide in the Acquisition Investment Report.
+
+Read `site-metrics-calculator/SKILL.md` in full before stating a site's building coverage % or usable acreage as a confirmed number.
+
+---
+
+### Municipal Ordinance Reference
+
+RIDGE's jurisdiction-specific outdoor storage regulation research guide. DFW is dozens of separate zoning jurisdictions, each with its own outdoor storage rules; Houston has no zoning at all — deed restrictions control. This is a research-guidance skill, not a static database.
+
+**Trigger phrases:** "what does [suburb] require for outdoor storage", "does this require paving", "how do I search deed restrictions in Houston", "what are the setback rules here", or any request for jurisdiction-specific IOS regulatory requirements.
+
+**Output:** Jurisdiction type, outdoor storage use status with source citation, site development conditions (paving/screening/setbacks), SUP/CUP approval track record where applicable, and (Houston only) deed-restriction findings — always date-stamped "confirmed as of."
+
+**RIDGE integration:** Primary supporting reference for the Zoning & Entitlement Screener and Site Metrics Calculator. Feeds SCOUT's zoning/deed-restriction compatibility signal in the sourcing scoring model.
+
+Read `municipal-ordinance-reference/SKILL.md` in full when a specific DFW suburb or Houston-area jurisdiction needs to be researched for outdoor storage requirements.
 
 ---
 

@@ -137,17 +137,22 @@ ridge-intel/
 
 ### `config.js`
 **Owns:** All hardcoded thresholds and runtime config placeholders
+
+> **Note:** The values below reflect Entrada Partners' old criteria and are stale relative to
+> the current Dalfen Industrial IOS mandate (see `RIDGE_SKILL.md` § Investment Criteria). This
+> plan document was written pre-pivot and has not been re-executed. If this refactor is ever
+> carried out, source these constants from the live `*_UNVERIFIED` module constants in
+> `index.html` and the confirmed Dalfen criteria, not from the example below.
 ```js
 // Investment thresholds (do not change without business decision)
-export const IRR_FLOOR     = 14.75;       // %
-export const IRR_TARGET    = 15.0;        // %
-export const EQUITY_MULT   = [1.8, 2.2];  // range
-export const YOC_TARGET    = [7.5, 8.0];  // Yr3/4 %
-export const MAX_LTV       = 65;          // %
-export const DSCR_FLOOR    = 1.25;
-export const DEAL_RANGE    = [10, 70];    // $M
-export const HOLD_PERIOD   = 5;           // years
-export const TARGET_MARKETS = ['Atlanta','Savannah','DFW','Houston','Austin'];
+export const IRR_FLOOR     = null;        // [VERIFY WITH USER] — Dalfen's IRR floor unconfirmed
+export const EQUITY_MULT   = null;        // [VERIFY WITH USER] — Dalfen's equity multiple target unconfirmed
+export const YOC_TARGET    = null;        // [VERIFY WITH USER] — Dalfen's YOC target unconfirmed
+export const MAX_LTV       = null;        // [VERIFY WITH USER] — Dalfen's max LTV unconfirmed
+export const DSCR_FLOOR    = null;        // [VERIFY WITH USER] — Dalfen's min DSCR unconfirmed
+export const DEAL_RANGE    = [2, null];   // $2M minimum, no maximum
+export const HOLD_PERIOD   = null;        // [VERIFY WITH USER] — Dalfen's target hold period unconfirmed
+export const TARGET_MARKETS = ['DFW','Houston'];
 
 // Runtime (loaded from Supabase session_state, NOT hardcoded)
 export let ANTHROPIC_KEY   = '';
