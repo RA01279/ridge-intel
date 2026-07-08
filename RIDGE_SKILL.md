@@ -333,7 +333,7 @@ RIDGE's IC presentation engine. Reads an uploaded Excel acquisition model and pr
 
 **Trigger phrases:** "create a deck from my model", "IC deck", "investment committee presentation", "turn this into a deck", "build me a report", "IC-ready output", "deal summary from the model", or any uploaded `.xlsx` that is an acquisition or underwriting model.
 
-**Output:** One `.pptx` file — 11 slides minimum, Midnight Executive color palette, institutional format. IC recommendation logic: IRR ≥ 14% = RECOMMEND; 11–14% = CONDITIONAL; <11% = PASS.
+**Output:** One `.pptx` file — 11 slides minimum, Midnight Executive color palette, institutional format. IC recommendation logic references Dalfen's confirmed return hurdle (see Investment Criteria § Return Thresholds) — **[VERIFY WITH USER]**, not yet confirmed. Do not use Entrada's old IRR ≥ 14% = RECOMMEND / 11–14% = CONDITIONAL / <11% = PASS thresholds as Dalfen's real logic. Includes a land-basis/acre-economics slide variant for deals without a building-NOI basis (vacant land, entitlement, covered land play).
 
 **RIDGE underwriting integration:**
 - Return metrics pulled directly into session conviction scoring
@@ -353,9 +353,9 @@ RIDGE's leasing intelligence engine. Takes comp data in any format (screenshot, 
 **Output:** Three files every time — HTML map (Leaflet.js, interactive), PDF (2-page, print-ready), Excel workbook (2-sheet, analysis-ready). Naming convention: `[Submarket]_Lease_Comp_Map.[ext]`
 
 **RIDGE underwriting integration:**
-- Comp rents feed directly into market reset analysis and Year 3/4 YOC target validation
+- Comp rents feed directly into market reset analysis and Year 3/4 YOC target validation ([VERIFY WITH USER]: Dalfen's actual YOC target is unconfirmed — see Investment Criteria)
 - Comp map package is standard output for any deal where RIDGE is preparing owner outreach — shows market context before the conversation
-- Use alongside Lease Admin output to compare in-place rent vs. market on any acquisition target
+- Use alongside Lease Admin output to compare in-place rate vs. market ($/acre, $/spot, or $/SF — same basis to same basis) on any acquisition target
 
 Read `/mnt/skills/user/lease-comp-map/SKILL.md` in full before executing any comp map task.
 

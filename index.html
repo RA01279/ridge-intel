@@ -731,7 +731,7 @@ footer{border-top:1px solid var(--border);padding:20px 24px;text-align:center;co
           <div class="fg"><label class="fl">Address *</label><input type="text" id="pla-addr" placeholder="e.g. 4200 Commerce Pkwy, Savannah, GA" style="background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:8px 10px;color:var(--text);font-size:12px;width:100%;outline:none;"></div>
           <div class="fg"><label class="fl">Asset Type</label>
             <select id="pla-type" style="background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:8px 10px;color:var(--text);font-size:12px;width:100%;">
-              <option>Flex Industrial</option><option>Industrial / Warehouse</option><option>Multi-Tenant Industrial</option><option>Single-Story Office Conversion</option><option>Office</option><option>Other</option>
+              <option>Industrial Outdoor Storage (IOS)</option><option>Other</option>
             </select>
           </div>
         </div>
@@ -825,15 +825,15 @@ var TOOLS = [
     shortDesc:'Broker OM teardown. Bear / Base / Bull · max entry price.',
     uploads:[{id:'om',label:'Offering Memorandum *',hint:'PDF · Broker OM, BOV, or investment summary',icon:'📄',accept:'.pdf',type:'pdf'}],
     fields:[
-      {row:[{id:'addr',label:'Property Address',ph:'e.g. 4200 Commerce Pkwy, Savannah, GA'},{id:'type',label:'Asset Type',type:'select',opts:['Flex Industrial','Industrial / Warehouse','Single-Story Office Conversion','Multi-Tenant Industrial','Office']}]},
+      {row:[{id:'addr',label:'Property Address',ph:'e.g. 4200 Commerce Pkwy, Fort Worth, TX'},{id:'type',label:'Asset Type',type:'select',opts:['Industrial Outdoor Storage (IOS)']}]},
       {row:[{id:'mkt',label:'Market *',type:'select',opts:['— Select Market —']}]},
-      {row:[{id:'ask',label:'Asking Price',ph:'e.g. $11,200,000'},{id:'sf',label:'Building SF',ph:'e.g. 62,000'}]},
+      {row:[{id:'ask',label:'Asking Price',ph:'e.g. $11,200,000'},{id:'sf',label:'Total Acreage',ph:'e.g. 6.2'}]},
       {row:[{id:'cap',label:'Going-In Cap Rate',helper:'Used to back-solve implied purchase price from OM in-place NOI',type:'number',ph:'7.00',min:1,max:20,step:0.01,suffix:'%'}]},
       {row:[{id:'notes',label:'Additional Context',ph:'e.g. Off-market, owner motivated, debt maturing Q3...',type:'textarea'}]},
     ],
     steps:['Reading OM narrative...','Stripping broker assumptions...','Re-underwriting at RIDGE criteria...','Building Bear / Base / Bull scenarios...','Calculating max entry price...','Generating teardown report...'],
-    system:`You are a senior acquisitions officer at Dalfen Industrial. Your job is to tear apart a broker OM and re-underwrite the deal at RIDGE criteria. RIDGE criteria: IRR ≥14.75%, EM 1.8x–2.2x, YOC 7.5–8.0% at Yr3/4, max LTV 65%, hold 5 years, deal size $10M–$70M, markets: ATL/SAV/DFW/HOU. Be brutally honest. Identify what the broker is obscuring. Lead with conviction.`,
-    prompt:(d)=>`Tear apart this broker OM for ${d.addr||'the subject property'} (${d.type||'industrial/flex'}). Asking: ${d.ask||'see OM'}. SF: ${d.sf||'see OM'}.\n\n${d.notes?'Context: '+d.notes+'\n\n':''}${d.om_text||''}\n\nProduce:\n## BROKER NARRATIVE vs. REALITY\nTable: What broker claims | RIDGE read | Verdict\n\n## RE-UNDERWRITE AT RIDGE CRITERIA\nReconstruct NOI from scratch. Show your work. Flag every assumption.\n\n## BEAR / RIDGE BASE / BULL SCENARIOS\nTable: Scenario | Entry Price | IRR | EM | YOC | Key Assumption\n\n## MAX ENTRY PRICE\nThe exact price at which this deal hits RIDGE's 14.75% IRR hurdle. Show the math.\n\n## RED FLAGS\n3–5 specific things the broker is hiding or glossing over.\n\n## VERDICT\nBUY AT MAX / PASS / WATCH — one sentence why.`
+    system:`You are a senior acquisitions officer at Dalfen Industrial. Your job is to tear apart a broker OM and re-underwrite the deal on a $/acre land basis at RIDGE criteria. RIDGE criteria: building coverage <30% (hard gate, check first), IOS must be permitted use (by-right or approved SUP), deal size $2M minimum no maximum, markets: DFW/Houston only. Return hurdles (IRR/EM/YOC) are [VERIFY WITH USER] — Dalfen's actual thresholds have not been confirmed, do not assume Entrada's old 14.75% IRR / 1.8x-2.2x EM / 7.5-8.0% YOC. Be brutally honest. Identify what the broker is obscuring. Lead with conviction.`,
+    prompt:(d)=>`Tear apart this broker OM for ${d.addr||'the subject property'} (${d.type||'Industrial Outdoor Storage'}). Asking: ${d.ask||'see OM'}. Acreage: ${d.sf||'see OM'}.\n\n${d.notes?'Context: '+d.notes+'\n\n':''}${d.om_text||''}\n\nProduce:\n## BUILDING COVERAGE GATE CHECK\nState building coverage % and whether it clears Dalfen's <30% gate. If it fails, say so immediately — this is a hard pass regardless of price.\n\n## BROKER NARRATIVE vs. REALITY\nTable: What broker claims | RIDGE read | Verdict\n\n## RE-UNDERWRITE AT RIDGE CRITERIA\nReconstruct income from scratch on a $/acre basis. Show your work. Flag every assumption, including entitlement status and timeline.\n\n## BEAR / RIDGE BASE / BULL SCENARIOS\nTable: Scenario | Entry Price ($/acre) | IRR | EM | YOC | Key Assumption\n\n## MAX ENTRY PRICE\nThe exact price at which this deal hits RIDGE's IRR hurdle — state the hurdle as [VERIFY WITH USER] if not confirmed this session, and show the math as a function of the hurdle rather than assuming Entrada's old 14.75%.\n\n## RED FLAGS\n3–5 specific things the broker is hiding or glossing over — entitlement risk, deed restrictions, and environmental history are the most common on an IOS deal.\n\n## VERDICT\nBUY AT MAX / PASS / WATCH — one sentence why.`
   },
   {
     id:'napkin', num:'02', icon:'📝', name:'THE NAPKIN',
@@ -845,10 +845,10 @@ var TOOLS = [
       {id:'rentroll',label:'Rent Roll (optional)',hint:'Upload rent roll to auto-calculate in-place NOI',icon:'📋',accept:'.xlsx,.csv',type:'mixed'}
     ],
     fields:[
-      {row:[{id:'addr',label:'Property Address *',ph:'e.g. 7100 Distribution Dr, Dallas, TX'},{id:'type',label:'Asset Type',type:'select',opts:['Flex Industrial','Industrial / Warehouse','Single-Story Office Conversion','Multi-Tenant Industrial / Small Bay','Office']}]},
+      {row:[{id:'addr',label:'Property Address *',ph:'e.g. 7100 Distribution Dr, Dallas, TX'},{id:'type',label:'Asset Type',type:'select',opts:['Industrial Outdoor Storage (IOS)']}]},
       {row:[{id:'mkt',label:'Market *',type:'select',opts:['— Select Market —']}]},
-      {row:[{id:'sub',label:'Submarket (Optional)',ph:'e.g. South Atlanta, North DFW'}]},
-      {row:[{id:'ask',label:'Asking Price *',ph:'e.g. $16,800,000'},{id:'sf',label:'Building SF *',ph:'e.g. 94,000'}]},
+      {row:[{id:'sub',label:'Submarket (Optional)',ph:'e.g. North DFW, Northwest Houston'}]},
+      {row:[{id:'ask',label:'Asking Price *',ph:'e.g. $3,800,000'},{id:'sf',label:'Total Acreage *',ph:'e.g. 4.5'}]},
       {row:[{id:'occ',label:'Current Occupancy',ph:'e.g. 74%'},{id:'noi',label:'In-Place NOI (if known)',ph:'e.g. $810,000'}]},
       {row:[{id:'mktrent',label:'Market Rent PSF',ph:'e.g. $13.75 NNN'},{id:'inplace',label:'In-Place Rent PSF',ph:'e.g. $10.50 NNN'}]},
       {row:[{id:'notes',label:'Known Facts',ph:'e.g. 4 tenants, avg 18 mo remaining, NNN leases, 2 docks per bay...',type:'textarea'}]},
@@ -857,7 +857,7 @@ var TOOLS = [
       {row:[{id:'exitcap',label:'Exit Cap Rate (%)',ph:'Leave blank to use going-in + 35bps'}]},
     ],
     steps:['Calculating in-place metrics...','Reverse-engineering stabilized NOI...','Running YOC at Year 3/4...','Checking RIDGE hurdles...','Generating verdict...'],
-    system:`You are THE NAPKIN, RIDGE's 60-second deal screen. Your job is to quickly determine if a deal is worth pursuing before committing to full underwriting. RIDGE hurdles: IRR ≥14.75%, YOC 7.5–8.0% at Yr3/4, EM ≥1.8x, max LTV 65%. Be direct. Give a clear Go/No-Go. If No-Go, state exactly what price would make it work.`,
+    system:`You are THE NAPKIN, RIDGE's 60-second deal screen for Industrial Outdoor Storage (IOS) deals. Your job is to quickly determine if a deal is worth pursuing before committing to full underwriting, on a $/acre land basis. Check the building coverage <30% gate first — a deal that fails it is an automatic hard pass. RIDGE return hurdles (IRR/YOC/EM) are [VERIFY WITH USER] — Dalfen's actual thresholds are unconfirmed, do not assume Entrada's old 14.75%/7.5-8.0%/1.8x numbers. Be direct. Give a clear Go/No-Go. If No-Go, state exactly what price would make it work.`,
     prompt: null
   },
   {
@@ -885,19 +885,19 @@ var TOOLS = [
   {
     id:'market-pulse', num:'04', icon:'📡', name:'MARKET PULSE',
     badge:'Live Benchmarks',
-    desc:'Submarket intelligence engine. Vacancy, Class A/B rents, absorption, supply pipeline, cap rates. Covers ATL, SAV, DFW, HOU, AUS.',
-    shortDesc:'Submarket benchmarks. Vacancy, rents, absorption, cap rates.',
+    desc:'Submarket intelligence engine. Land absorption, outdoor storage rents, truck parking demand, warehouse construction pipeline. Covers DFW and Houston.',
+    shortDesc:'Submarket benchmarks. Land absorption, storage rents, truck parking demand.',
     uploads:[
       {id:'data',label:'CoStar Data / Broker Report',hint:'Optional: CoStar export or broker submarket report PDF',icon:'📊',accept:'.xlsx,.csv,.pdf',type:'mixed'},
       {id:'submarket',label:'CoStar Submarket Export',hint:'Optional: CoStar submarket XLSX/CSV for grounded benchmarks',icon:'📊',accept:'.xlsx,.csv',type:'xlsx'}
     ],
     fields:[
-      {row:[{id:'mkt',label:'Market',type:'select',opts:['— Select Market —','Atlanta','Savannah','DFW','Houston','Austin','All Markets']},{id:'sub',label:'Specific Submarket',ph:'e.g. Gwinnett/Buford, NE Atlanta (optional)'}]},
+      {row:[{id:'mkt',label:'Market',type:'select',opts:['— Select Market —','DFW','Houston','All Markets']},{id:'sub',label:'Specific Submarket',ph:'e.g. Alliance/Fort Worth, Port Houston (optional)'}]},
       {row:[{id:'mode',label:'Report Type',type:'select',opts:['Full Market Report','Quick Update','Submarket Matrix','Benchmark Update for Active Deal']},{id:'deal',label:'Active Deal Address',ph:'Leave blank for market-only report'}]},
     ],
     steps:['Pulling market data...','Benchmarking vacancy rates...','Analyzing absorption trends...','Reviewing supply pipeline...','Generating RIDGE implications...'],
-    system:`You are MARKET PULSE, RIDGE's submarket intelligence engine. You pull and synthesize current industrial and flex market data for Atlanta, Savannah, DFW, Houston, and Austin. Always translate data into RIDGE underwriting implications. Flag estimates clearly with ★ ESTIMATE. Never cite LoopNet asking rents as market benchmarks.`,
-    prompt:(d)=>`Run Market Pulse: ${d.mkt||'Atlanta, GA'}${d.sub?', '+d.sub:''} | Mode: ${d.mode||'Full Market Report'}${d.deal?' | Active deal: '+d.deal:''}.\n${d.data_text?'CoStar/broker data provided:\n'+d.data_text+'\n\n':''}${d.submarket_text?'CoStar submarket export:\n'+d.submarket_text+'\n\n':''}\nProduce in this format:\n## HEADLINE METRICS\nTable: Metric | Value | vs. 12 Mo Ago | Trend\nVacancy rate, Direct ask rent NNN (Class A & B), Net absorption TTM, New supply under construction, Market cap rate range, Rent growth 12mo\n\n## SUBMARKET BREAKDOWN\nTable: Submarket | Vacancy | Ask Rent | Trend | RIDGE Priority\n\n## SUPPLY PIPELINE\nDelivering <6mo, 6–12mo, under construction. Flag if spec >15% of inventory.\n\n## CAP RATE CONTEXT\nIndustrial stabilized, flex stabilized, value-add premium, RIDGE exit assumption check.\n\n## RIDGE UNDERWRITING IMPLICATIONS\nMarket rent benchmark to use, vacancy assumption, rent growth for 5-yr model, exit cap recommendation.\n\n**Verdict: FAVORABLE / NEUTRAL / CAUTIOUS** — one paragraph.`
+    system:`You are MARKET PULSE, RIDGE's submarket intelligence engine. You pull and synthesize current Industrial Outdoor Storage (IOS) market data for DFW and Houston. Industrial vacancy rate is NOT the core metric — track land absorption near intermodal/port nodes, truck parking demand, warehouse-under-construction pipeline (leading indicator of future IOS demand), and outdoor storage rent trends instead. Always translate data into RIDGE underwriting implications. Flag estimates clearly with ★ ESTIMATE. Never cite LoopNet asking rents as market benchmarks.`,
+    prompt:(d)=>`Run Market Pulse: ${d.mkt||'DFW'}${d.sub?', '+d.sub:''} | Mode: ${d.mode||'Full Market Report'}${d.deal?' | Active deal: '+d.deal:''}.\n${d.data_text?'CoStar/broker data provided:\n'+d.data_text+'\n\n':''}${d.submarket_text?'CoStar submarket export:\n'+d.submarket_text+'\n\n':''}\nProduce in this format:\n## HEADLINE METRICS\nTable: Metric | Value | vs. 12 Mo Ago | Trend\nLand absorption (acres, near intermodal/port), Outdoor storage rent ($/acre/yr or $/spot/mo), Truck parking demand, Warehouse under construction (leading indicator), Storage rent growth 12mo\n\n## SUBMARKET BREAKDOWN\nTable: Submarket | Land Absorption | Storage Rent | Trend | RIDGE Priority\n\n## WAREHOUSE CONSTRUCTION PIPELINE\nDelivering <6mo, 6–12mo, under construction. Read as a leading indicator of future IOS tenant demand, not a competing supply risk.\n\n## EXIT BASIS CONTEXT\nLand appreciation trend, stabilized IOS income cap rate range if leased comps exist, RIDGE exit assumption check ([VERIFY WITH USER] if unconfirmed).\n\n## RIDGE UNDERWRITING IMPLICATIONS\nOutdoor storage rent benchmark to use, land absorption trend, rent growth for hold-period model.\n\n**Verdict: FAVORABLE / NEUTRAL / CAUTIOUS** — one paragraph.`
   },
   {
     id:'lease-comp', num:'05', icon:'🗺️', name:'LEASE COMP MAP',
@@ -906,9 +906,9 @@ var TOOLS = [
     shortDesc:'Comp data in, interactive map + analysis out.',
     uploads:[{id:'comps',label:'Comp Data',hint:'Excel, CSV, or PDF with lease comp data',icon:'📊',accept:'.xlsx,.csv,.pdf',type:'mixed'},{id:'om',label:'Subject Property / OM',hint:'Optional: PDF of OM or deal summary for context',icon:'📄',accept:'.pdf',type:'pdf'}],
     fields:[
-      {row:[{id:'market',label:'Market',type:'select',opts:['Atlanta, GA','Savannah, GA','Dallas–Fort Worth, TX','Houston, TX','Austin, TX (Watch)']},{id:'sub',label:'Submarket',ph:'e.g. Savannah Industrial'}]},
-      {row:[{id:'addr',label:'Subject Property Address *',ph:'e.g. 4200 Commerce Pkwy, Savannah, GA'},{id:'rent',label:'Current In-Place Rent PSF',ph:'e.g. $10.25'}]},
-      {row:[{id:'sf',label:'Building SF',ph:'e.g. 58,000'},{id:'asset_class',label:'Asset Class',type:'select',opts:['Any','Industrial / Warehouse','Flex Industrial','Multi-Tenant Industrial']}]},
+      {row:[{id:'market',label:'Market',type:'select',opts:['Dallas–Fort Worth, TX','Houston, TX']},{id:'sub',label:'Submarket',ph:'e.g. Alliance/Fort Worth'}]},
+      {row:[{id:'addr',label:'Subject Property Address *',ph:'e.g. 4200 Trinity Blvd, Fort Worth, TX'},{id:'rent',label:'Current In-Place Rate',ph:'e.g. $12,000/acre/yr'}]},
+      {row:[{id:'sf',label:'Total Acreage',ph:'e.g. 5.8'},{id:'asset_class',label:'Asset Class',type:'select',opts:['Industrial Outdoor Storage (IOS)']}]},
       {row:[{id:'clear_ht',label:'Clear Height (ft)',ph:'e.g. 28'},{id:'dock_doors',label:'Dock High Doors',ph:'e.g. 4'}]},
       {row:[{id:'grade_doors',label:'Grade Level Doors',ph:'e.g. 2'},{id:'radius',label:'Radius (mi)',ph:'e.g. 10'}]},
     ],
@@ -929,13 +929,13 @@ var TOOLS = [
       {row:[{id:'type',label:'Debt Scenario',type:'select',opts:['Compare All Types','Senior / Conventional','CMBS','Agency (Fannie/Freddie)','Bridge','Construction / Heavy Value-Add']},{id:'hold',label:'Hold Period',ph:'5 years'}]},
     ],
     steps:['Modeling debt scenarios...','Calculating DSCR...','Sizing maximum proceeds...','Running sensitivity...','Building comparison grid...'],
-    system:`You are the DEBT TOOL, RIDGE's capital stack modeling engine. You model, compare, and stress-test debt structures for industrial and flex acquisitions. RIDGE constraints: max LTV 65%, DSCR ≥1.25x, deal range $10M–$70M. Always model at least 3 scenarios. Flag any structure that breaks RIDGE thresholds.`,
+    system:`You are the DEBT TOOL, RIDGE's capital stack modeling engine. You model, compare, and stress-test debt structures for Industrial Outdoor Storage (IOS) acquisitions in DFW/Houston, deal size $2M minimum no maximum. RIDGE constraints (max LTV, min DSCR): [VERIFY WITH USER] — Dalfen's actual constraints are unconfirmed; do not assume Entrada's old 65% LTV / 1.25x DSCR. Always model at least 3 scenarios. Flag any structure that breaks RIDGE thresholds once confirmed.`,
     prompt:(d)=>`Model debt for: ${d.addr||'Subject Property'} | Price: ${d.price||'?'} | Yr1 NOI: ${d.noi||'?'} | SF: ${d.sf||'?'} | Target LTV: ${d.ltv||'65%'} | Hold: ${d.hold||'5 years'}.\n${d.model_text?'Model data:\n'+d.model_text+'\n\n':''}Debt type: ${d.type||'Compare All Types'}. Rate (if provided): ${d.rate||'use current market'}.\n\nProduce:\n## DEBT SCENARIO COMPARISON\nTable: Type | Loan Amount | LTV | Rate | Term | IO Period | DSCR Yr1 | Debt Yield | Max Proceeds | Notes\nInclude: Conventional, CMBS, Bridge (if value-add), Agency (if stabilized)\n\n## RECOMMENDED STRUCTURE\nBest fit for this deal and why. What lender type, sizing, and terms.\n\n## DSCR & COVERAGE ANALYSIS\nYear-by-year DSCR for hold period. Flag any year below 1.20x.\n\n## EQUITY REQUIRED\nFor each scenario: equity in, total capitalization, LTC.\n\n## RISK FLAGS\nAnything that could prevent financing or require equity cure.`
   },
   {
     id:'isr', num:'07', icon:'📊', name:'ACQUISITION INVESTMENT REPORT',
     badge:'IC Deck · Triple Upload', badgeBlue:true,
-    desc:'Upload your Excel model + broker OM + lease comps. Get a full IC analysis and 12-slide PowerPoint deck. IRR ≥14.75% = RECOMMEND · 11–14% = CONDITIONAL · <11% = PASS.',
+    desc:'Upload your Excel model + broker OM + lease comps. Get a full IC analysis and 12-slide PowerPoint deck. IC recommendation logic references Dalfen\'s confirmed return hurdle — [VERIFY WITH USER], not yet confirmed.',
     shortDesc:'Upload model → IC analysis + 12-slide deck.',
     uploads:[
       {id:'model',label:'Acquisition Model *',hint:'Excel model · All sheets parsed',icon:'📊',accept:'.xlsx,.xls',type:'xlsx'},
@@ -943,16 +943,16 @@ var TOOLS = [
       {id:'comps',label:'Lease Comp Data',hint:'Optional · Excel, CSV, or PDF · CoStar comp export or broker comp grid',icon:'📋',accept:'.xlsx,.csv,.pdf',type:'mixed'}
     ],
     fields:[
-      {row:[{id:'addr',label:'Property Address',ph:'e.g. 7100 Distribution Dr, Dallas, TX'},{id:'type',label:'Asset Type',type:'select',opts:['Flex Industrial','Industrial / Warehouse','Single-Story Office Conversion','Multi-Tenant Industrial','Office']}]},
+      {row:[{id:'addr',label:'Property Address',ph:'e.g. 7100 Distribution Dr, Dallas, TX'},{id:'type',label:'Asset Type',type:'select',opts:['Industrial Outdoor Storage (IOS)']}]},
       {row:[{id:'mkt',label:'Market *',type:'select',opts:['— Select Market —']}]},
-      {row:[{id:'sf',label:'Building SF',ph:'e.g. 94,000'},{id:'price',label:'Purchase Price',ph:'e.g. $15,500,000'},{id:'psf',label:'Price PSF',ph:'e.g. $165'}]},
+      {row:[{id:'sf',label:'Total Acreage',ph:'e.g. 8.3'},{id:'price',label:'Purchase Price',ph:'e.g. $4,500,000'},{id:'psf',label:'Price Per Acre',ph:'e.g. $542,000'}]},
       {row:[{id:'irr',label:'Levered IRR',ph:'e.g. 15.8%'},{id:'em',label:'Equity Multiple',ph:'e.g. 2.04x'},{id:'cap',label:'Going-In Cap',ph:'e.g. 5.3%'}]},
       {row:[{id:'yoc',label:'YOC (Yr 3/4)',ph:'e.g. 7.9%'},{id:'ltv',label:'LTV',ph:'e.g. 65%'},{id:'hold',label:'Hold Period',ph:'e.g. 5 years'}]},
       {row:[{id:'thesis',label:'Investment Thesis',type:'textarea',rows:8,ph:'Investment thesis — paste your 4 thesis points here, or write free-form notes.\n\nExample:\n1. [Headline] — [supporting detail with specific data]\n2. [Headline] — [supporting detail]\n3. [Headline] — [supporting detail]\n4. [Headline] — [supporting detail]\n\nAny notes here feed directly into the Investment Thesis slide.'}]},
     ],
     isISR:true,
     steps:['Parsing acquisition model...','Extracting return metrics...','Analyzing cash flows...','Cross-referencing OM...','Building investment thesis...','Running risk assessment...','Drafting IC recommendation...','Assembling report...'],
-    system:`You are a senior acquisitions officer at Dalfen Industrial. RIDGE criteria: IRR ≥14.75%, EM 1.8x–2.2x, YOC 7.5–8.0% at Yr3/4, max LTV 65%, 5yr hold, $10M–$70M, markets ATL/SAV/DFW/HOU. Generate an institutional IC report.`
+    system:`You are a senior acquisitions officer at Dalfen Industrial. RIDGE criteria: building coverage <30% (hard gate), IOS must be permitted use, deal size $2M minimum no maximum, markets DFW/Houston only. Return hurdles (IRR/EM/YOC/LTV) are [VERIFY WITH USER] — Dalfen's actual thresholds are unconfirmed; do not assume Entrada's old 14.75% IRR / 1.8x-2.2x EM / 7.5-8.0% YOC / 65% LTV / 5yr hold. Generate an institutional IC report on a $/acre land basis.`
   },
   {
     id:'memo', num:'07a', icon:'📋', name:'DEAL MEMO',
@@ -1175,7 +1175,7 @@ Extract every relevant fact from the materials above before asking any questions
     shortDesc:'Generate DD checklist, track completion, get overdue alerts.',
     uploads:[],
     fields:[
-      {row:[{id:'addr',label:'Property Address *',ph:'e.g. 123 Industrial Blvd, Atlanta, GA'},{id:'type',label:'Asset Type',type:'select',opts:['Industrial','Flex Industrial','Mixed-Use','Office']}]},
+      {row:[{id:'addr',label:'Property Address *',ph:'e.g. 4200 Trinity Blvd, Fort Worth, TX'},{id:'type',label:'Asset Type',type:'select',opts:['Industrial Outdoor Storage (IOS)']}]},
       {row:[{id:'close_date',label:'Target Close Date',ph:'e.g. 06/30/2026'},{id:'dd_end',label:'DD Period End',ph:'e.g. 05/15/2026'}]},
       {row:[{id:'notes',label:'Deal Notes',type:'textarea',ph:'Key deal context, special concerns, known issues...'}]}
     ],
@@ -2536,11 +2536,12 @@ function copyAndLaunch() {
 async function buildTrigger(toolId, d) {
   switch(toolId) {
     case 'lens':
-      p = 'You are RIDGE Assistant — an expert full-stack developer and institutional CRE analyst embedded at Dalfen Industrial, a private equity firm focused on industrial and flex acquisitions. You are performing an institutional-grade broker OM teardown.\n\n';
-      p += 'PROPERTY: ' + (d.addr||'') + '\nASSET TYPE: ' + (d.type||'') + '\nSIZE: ' + (d.sf||'') + ' SF\nASKING: $' + (d.ask||'') + '\nCONTEXT: ' + (d.notes||'') + '\n\n';
-      p += 'DALFEN CRITERIA: $10M-$70M | Atlanta/Savannah/DFW/Houston | 14.75%+ levered IRR | 7.5-8.0% YOC Yr3/4 | 95% off-market\n\n';
-      p += 'Produce:\n## BROKER NARRATIVE vs REALITY\nWhat the broker is claiming vs what the data actually supports. Be specific and cite numbers.\n\n## RE-UNDERWRITE\nRebuild the return stack from scratch using RIDGE assumptions (60-65% LTV, market debt terms, realistic vacancy, market exit cap). Show your math.\n\n## SCENARIO ANALYSIS\nThree scenarios — Bear / Base / Bull — re-underwritten at RIDGE return thresholds (15% IRR Bear/Base, 18%+ Bull; 1.8x EM Bear, 2.0x Base, 2.2x+ Bull; 7.5%/7.75%/8.0% Yr3 YOC). Back-solve the maximum entry price for each scenario.\n- Bear: -15% NOI, +50bps exit cap (downside protection).\n- Base: RIDGE base case (in-line with broker if reasonable, conservative if broker is bullish).\n- Bull: +5% rent growth, -25bps exit cap (upside).\n\n| Scenario | Entry Price | IRR | EM | YOC | Key Assumption |\n|---|---|---|---|---|---|\n| Bear | $X.XM | XX.X% | X.XXx | X.X% | <one sentence — the single most consequential variable> |\n| Base | $X.XM | XX.X% | X.XXx | X.X% | <one sentence> |\n| Bull | $X.XM | XX.X% | X.XXx | X.X% | <one sentence> |\n\n## WHAT THE BROKER IS HIDING\nFlag every assumption that is aggressive, missing, or impossible to verify. Be direct.\n\n## MAX ENTRY PRICE\nThe exact price where this deal clears 14.75% IRR under RIDGE assumptions. Dollar amount and PSF.\n\n## VERDICT\nPURSUE | CONDITIONAL | PASS — one word, then one paragraph defending it. If CONDITIONAL, state exactly what has to be true.';
-      p += '\n\nNote: In your BROKER NARRATIVE vs REALITY section, explicitly flag any delta between the broker\'s stated rent assumptions and market rate comps if data cross-reference flags are present above.';
+      p = 'You are RIDGE Assistant — an expert full-stack developer and institutional CRE analyst embedded at Dalfen Industrial, a private equity firm focused on Industrial Outdoor Storage (IOS) acquisitions. You are performing an institutional-grade broker OM teardown on a $/acre land basis.\n\n';
+      p += 'PROPERTY: ' + (d.addr||'') + '\nASSET TYPE: ' + (d.type||'Industrial Outdoor Storage') + '\nACREAGE: ' + (d.sf||'') + '\nASKING: $' + (d.ask||'') + '\nCONTEXT: ' + (d.notes||'') + '\n\n';
+      p += 'DALFEN CRITERIA: $2M minimum, no maximum | DFW/Houston only | Building coverage <30% (hard gate — check first) | IOS must be permitted use (by-right or approved SUP) | 95% off-market\n';
+      p += 'RETURN HURDLES: [VERIFY WITH USER] — Dalfen\'s actual IRR/EM/YOC hurdles are unconfirmed. Do not assume Entrada\'s old 14.75% IRR / 1.8x-2.2x EM / 7.5-8.0% YOC — state any return threshold you reference as unconfirmed unless the user has provided it this session.\n\n';
+      p += 'Produce:\n## BUILDING COVERAGE GATE CHECK\nState building coverage % and whether it clears the <30% gate. If it fails, say so immediately, before anything else — this is a hard pass regardless of price.\n\n## BROKER NARRATIVE vs REALITY\nWhat the broker is claiming vs what the data actually supports. Be specific and cite numbers.\n\n## RE-UNDERWRITE\nRebuild the income/return stack from scratch on a $/acre basis using RIDGE assumptions (market debt terms, entitlement timeline if SUP required, realistic occupancy/income, market exit basis). Show your math.\n\n## SCENARIO ANALYSIS\nThree scenarios — Bear / Base / Bull — re-underwritten at RIDGE\'s confirmed return thresholds (state them as [VERIFY WITH USER] if not confirmed this session, and use the broker\'s or a clearly-labeled placeholder range instead of silently substituting Entrada\'s old numbers). Back-solve the maximum entry price for each scenario.\n- Bear: entitlement denied/delayed 12+ months or income -15%, exit basis +50bps/-5% (downside protection).\n- Base: RIDGE base case (in-line with broker if reasonable, conservative if broker is bullish).\n- Bull: +5% income growth, entitlement approved on schedule (upside).\n\n| Scenario | Entry Price ($/acre) | IRR | EM | YOC | Key Assumption |\n|---|---|---|---|---|---|\n| Bear | $X/acre | XX.X% | X.XXx | X.X% | <one sentence — the single most consequential variable> |\n| Base | $X/acre | XX.X% | X.XXx | X.X% | <one sentence> |\n| Bull | $X/acre | XX.X% | X.XXx | X.X% | <one sentence> |\n\n## WHAT THE BROKER IS HIDING\nFlag every assumption that is aggressive, missing, or impossible to verify — entitlement risk, deed restrictions, and environmental history are the most commonly soft-pedaled items in an IOS OM. Be direct.\n\n## MAX ENTRY PRICE\nThe exact price where this deal clears RIDGE\'s IRR hurdle. State the hurdle used and flag it [VERIFY WITH USER] if unconfirmed. Dollar amount and $/acre.\n\n## VERDICT\nPURSUE | CONDITIONAL | PASS — one word, then one paragraph defending it. If CONDITIONAL, state exactly what has to be true — an unconfirmed entitlement path or unconfirmed return hurdle are both valid CONDITIONAL triggers.';
+      p += '\n\nNote: In your BROKER NARRATIVE vs REALITY section, explicitly flag any delta between the broker\'s stated rate assumptions and market rate comps if data cross-reference flags are present above.';
       p += '\n\nNote: RIDGE will automatically parse this OM into structured data after your analysis. ' +
         'Focus your response on: (1) investment thesis strength, (2) key risks and how to mitigate them, ' +
         '(3) your recommended entry price and why, (4) what additional diligence is needed before LOI. ' +
@@ -2550,16 +2551,15 @@ async function buildTrigger(toolId, d) {
 
     case 'napkin':
       var calc = _napkinCalc(d);
-      var p = 'You are RIDGE Assistant — an expert full-stack developer and institutional CRE analyst embedded at Dalfen Industrial, a private equity firm focused on industrial and flex acquisitions. You are running a 60-second back-of-envelope acquisition screen.\n\n';
+      var p = 'You are RIDGE Assistant — an expert full-stack developer and institutional CRE analyst embedded at Dalfen Industrial, a private equity firm focused on Industrial Outdoor Storage (IOS) acquisitions. You are running a 60-second back-of-envelope acquisition screen on a $/acre land basis.\n\n';
       p += 'DALFEN INVESTMENT CRITERIA:\n';
-      p += '- Asset types: Industrial, Flex Industrial, Single-story Office (conversion only)\n';
-      p += '- Target markets: Atlanta (primary), Savannah (primary), DFW, Houston\n';
-      p += '- Deal size sweet spot: $25M\u2013$35M (full range $10M\u2013$70M)\n';
-      p += '- IRR hurdle: 14.75% levered minimum, target 17%+\n';
-      p += '- Year 3/4 YOC target: 7.5%\u20138.0% (primary underwriting anchor)\n';
-      p += '- Equity multiple: 1.8x\u20132.2x\n';
-      p += '- Max LTV: 65%\n';
-      p += '- Hold: 5 years standard\n';
+      p += '- Asset type: Industrial Outdoor Storage (IOS) only\n';
+      p += '- Target markets: Dallas-Fort Worth, Houston only\n';
+      p += '- Deal size: $2M minimum, no maximum\n';
+      p += '- Building coverage: <30% of site \u2014 hard gate, check first\n';
+      p += '- Zoning: IOS must be a permitted use (by-right or approved SUP)\n';
+      p += '- Return hurdles (IRR/YOC/EM): [VERIFY WITH USER] \u2014 Dalfen\u2019s actual thresholds are unconfirmed; do not treat Entrada\u2019s old 14.75% IRR / 7.5-8.0% YOC / 1.8x-2.2x EM as Dalfen\u2019s real hurdles\n';
+      p += '- Hold: [VERIFY WITH USER], carried over as 5 years pending confirmation\n';
       p += '- Target LTV: ' + (d.ltv || '60') + '%\n';
       p += '- Interest Rate: ' + (d.rate || '6.75') + '%\n';
       p += '- Amortization: ' + (d.amort || '25') + ' years\n';
@@ -2586,31 +2586,32 @@ async function buildTrigger(toolId, d) {
       p += '## DEAL SNAPSHOT\nTwo sentences max. Asset quality, location, tenancy, why it crossed our desk.\n\n';
       if (calc) {
         p += '## RETURN STACK (PRE-CALCULATED — USE THESE EXACT NUMBERS, DO NOT RECALCULATE)\n';
-        p += '| Metric | Value | vs Dalfen Hurdle |\n';
+        p += 'NOTE: hurdle comparisons below use UNVERIFIED placeholder thresholds carried over from Entrada (IRR ' + (NAPKIN_IRR_HURDLE_UNVERIFIED*100).toFixed(2) + '%, YOC ' + (NAPKIN_YOC_TARGET_UNVERIFIED*100).toFixed(2) + '%, EM ' + NAPKIN_EM_FLOOR_UNVERIFIED.toFixed(2) + 'x). Present them as [VERIFY WITH USER] — do not state Dalfen actually requires these numbers.\n';
+        p += '| Metric | Value | vs [VERIFY WITH USER] Hurdle |\n';
         p += '|---|---|---|\n';
-        p += '| Going-in Cap Rate | ' + calc.goingInCap + '% | ' + (parseFloat(calc.goingInCap) >= 6.5 ? '✓ Acceptable' : '⚠️ Compressed') + ' |\n';
-        p += '| Price PSF | $' + calc.psf + ' | Market context needed |\n';
-        p += '| Year 1 NOI (in-place) | $' + calc.noi1 + ' | Baseline |\n';
-        p += '| Stabilized NOI | $' + calc.noiStab + ' | Market rents, 95% occ |\n';
-        p += '| Year 4 NOI | $' + calc.noi4 + ' | 2% annual escalation |\n';
-        p += '| Year 3/4 YOC | ' + calc.yoc34 + '% | ' + (calc.meetsYOC ? '✓ Meets 7.5% floor' : '❌ Below 7.5% floor') + ' |\n';
+        p += '| Going-in Yield | ' + calc.goingInCap + '% | ' + (parseFloat(calc.goingInCap) >= 6.5 ? '✓ Acceptable' : '⚠️ Compressed') + ' |\n';
+        p += '| Price per Acre | $' + calc.psf + ' | Market context needed |\n';
+        p += '| Year 1 Income (in-place) | $' + calc.noi1 + ' | Baseline |\n';
+        p += '| Stabilized Income | $' + calc.noiStab + ' | Market rate, 95% occ |\n';
+        p += '| Year 4 Income | $' + calc.noi4 + ' | 2% annual escalation |\n';
+        p += '| Year 3/4 YOC | ' + calc.yoc34 + '% | ' + (calc.meetsYOC ? '✓ Meets UNVERIFIED ' + (NAPKIN_YOC_TARGET_UNVERIFIED*100).toFixed(2) + '% floor' : '❌ Below UNVERIFIED ' + (NAPKIN_YOC_TARGET_UNVERIFIED*100).toFixed(2) + '% floor') + ' |\n';
         p += '| Loan Amount (' + (d.ltv||'60') + '% LTV) | $' + calc.loanAmt + ' | |\n';
         p += '| Equity Required | $' + calc.equity + ' | |\n';
         p += '| Annual Debt Service | $' + calc.annualDS + ' | ' + (calc.ioYrs > 0 ? 'IO Yrs 1-' + calc.ioYrs : 'Fully amortizing') + ' |\n';
         p += '| Year 1 Levered Cash Flow | $' + calc.yr1LevCF + ' | |\n';
-        p += '| Levered IRR | ' + calc.irr + '% | ' + (calc.meetsIRR ? '✓ Clears 14.75% hurdle' : '❌ Below 14.75% hurdle') + ' |\n';
-        p += '| Equity Multiple | ' + calc.em + 'x | ' + (calc.meetsEM ? '✓ Meets 1.75x minimum' : '❌ Below 1.75x minimum') + ' |\n';
+        p += '| Levered IRR | ' + calc.irr + '% | ' + (calc.meetsIRR ? '✓ Clears UNVERIFIED ' + (NAPKIN_IRR_HURDLE_UNVERIFIED*100).toFixed(2) + '% hurdle' : '❌ Below UNVERIFIED ' + (NAPKIN_IRR_HURDLE_UNVERIFIED*100).toFixed(2) + '% hurdle') + ' |\n';
+        p += '| Equity Multiple | ' + calc.em + 'x | ' + (calc.meetsEM ? '✓ Meets UNVERIFIED ' + NAPKIN_EM_FLOOR_UNVERIFIED.toFixed(2) + 'x minimum' : '❌ Below UNVERIFIED ' + NAPKIN_EM_FLOOR_UNVERIFIED.toFixed(2) + 'x minimum') + ' |\n';
         p += '| DSCR Year 1 | ' + calc.dscr + 'x | ' + (parseFloat(calc.dscr) >= 1.25 ? '✓ Acceptable' : '⚠️ Tight') + ' |\n';
-        p += '| Exit Value | $' + calc.salePrice + ' | At ' + calc.exitCap + '% exit cap |\n\n';
+        p += '| Exit Value | $' + calc.salePrice + ' | At ' + calc.exitCap + '% exit basis |\n\n';
         p += '## PRICE TO MAKE IT WORK\n';
         var priceRed = parseFloat(calc.priceReduction.replace(/[^0-9.-]/g,''));
         if (priceRed <= 0) {
-          p += 'Deal clears 14.75% IRR hurdle at ask price. Maximum supportable price is $' + calc.maxPrice + ' ($' + calc.maxPricePSF + ' PSF) — $' + Math.abs(priceRed).toLocaleString() + ' above ask.\n';
+          p += 'Deal clears the UNVERIFIED ' + (NAPKIN_IRR_HURDLE_UNVERIFIED*100).toFixed(2) + '% IRR hurdle at ask price. Maximum supportable price is $' + calc.maxPrice + ' ($' + calc.maxPricePSF + '/acre) — $' + Math.abs(priceRed).toLocaleString() + ' above ask. Confirm Dalfen\'s real hurdle before treating this as final.\n';
         } else {
-          p += 'Deal does NOT clear 14.75% IRR at ask. Maximum price to hit hurdle: $' + calc.maxPrice + ' ($' + calc.maxPricePSF + ' PSF). Required reduction: $' + calc.priceReduction + '.\n';
+          p += 'Deal does NOT clear the UNVERIFIED ' + (NAPKIN_IRR_HURDLE_UNVERIFIED*100).toFixed(2) + '% IRR hurdle at ask. Maximum price to hit that placeholder hurdle: $' + calc.maxPrice + ' ($' + calc.maxPricePSF + '/acre). Required reduction: $' + calc.priceReduction + '. Confirm Dalfen\'s real hurdle before treating this as final.\n';
         }
-        p += 'These numbers are pre-calculated by RIDGE. Do NOT recalculate or second-guess them. Use them as given.\n\n';
-        p += '## SCENARIO BAND — BEAR / BASE / BULL\nBack-solve the maximum entry price for each scenario at RIDGE return thresholds:\n- Bear: 15% IRR floor, -15% market rent, +50bps exit cap, 90% stabilized occupancy\n- Base: 15% IRR floor, market rent as given, exit cap as given, 95% stabilized occupancy\n- Bull: 18% IRR floor, +5% market rent, -25bps exit cap, 95% stabilized occupancy\n\n| Scenario | Max Entry | $/PSF | YOC Yr3 | EM | Key Assumption |\n|---|---|---|---|---|---|\n| Bear | $X.XM | $XXX | X.X% | X.Xx | <single most consequential variable> |\n| Base | $X.XM | $XXX | X.X% | X.Xx | <single most consequential variable> |\n| Bull | $X.XM | $XXX | X.X% | X.Xx | <single most consequential variable> |\n\nCompare each to the asking price and call out the implied negotiating room or premium.\n\n';
+        p += 'These numbers are pre-calculated by RIDGE. Do NOT recalculate or second-guess the arithmetic — but do flag the hurdle itself as unverified.\n\n';
+        p += '## SCENARIO BAND — BEAR / BASE / BULL\nBack-solve the maximum entry price for each scenario. Use RIDGE\'s confirmed return thresholds if the user has provided them this session; otherwise flag the whole band as provisional against UNVERIFIED placeholder hurdles.\n- Bear: entitlement denied/delayed 12+ months or income -15%, exit basis +50bps/-5% (downside protection).\n- Base: RIDGE base case, entitlement on schedule.\n- Bull: +5% income growth, entitlement approved ahead of schedule (upside).\n\n| Scenario | Max Entry | $/Acre | YOC Yr3 | EM | Key Assumption |\n|---|---|---|---|---|---|\n| Bear | $X.XM | $XXX,XXX | X.X% | X.Xx | <single most consequential variable> |\n| Base | $X.XM | $XXX,XXX | X.X% | X.Xx | <single most consequential variable> |\n| Bull | $X.XM | $XXX,XXX | X.X% | X.Xx | <single most consequential variable> |\n\nCompare each to the asking price and call out the implied negotiating room or premium.\n\n';
       } else {
         p += '## RETURN STACK\nInsufficient inputs for pre-calculation — estimate based on available data.\n\n';
       }
@@ -2666,17 +2667,32 @@ async function buildTrigger(toolId, d) {
 
     case 'market-pulse':
       // benchmark injection handled pre-run via _mpBenchmarkContext in runRidgeAPI
-      p = 'You are a senior acquisitions officer at Dalfen Industrial. Run a comprehensive market intelligence report.\n\n';
+      p = 'You are a senior acquisitions officer at Dalfen Industrial. Run a comprehensive Industrial Outdoor Storage (IOS) market intelligence report for DFW or Houston.\n\n';
       p += 'MODE: ' + (d.mode||'Full Market') + '\nMARKET: ' + (d.mkt||'') + '\nSUBMARKET: ' + (d.sub||'') + '\nACTIVE DEAL: ' + (d.deal||'None') + '\n\n';
-      p += 'Produce:\n## MARKET DASHBOARD\nTable: Vacancy | Asking Rent (Class A/B/C) | Net Absorption (TTM) | New Supply (Under Construction) | Cap Rate Range | YoY Rent Growth\n\n## SUBMARKET DEEP DIVE\nFor the specific submarket: vacancy trend (24-month direction), largest recent leases signed, active tenants in the market, key demand drivers, new supply risk.\n\n## COMPARABLE TRANSACTIONS\nLast 6 months: minimum 5 industrial/flex sales. For each: address, SF, sale price, PSF, cap rate, buyer, seller, date. Bold the most relevant comp to active deal if provided.\n\n## RENT FORECAST\n12-month and 24-month rent trajectory. What drives it — supply/demand balance, tenant demand, macro. Be specific.\n\n## ACQUISITION IMPLICATIONS\nFor Dalfen specifically: where are the best basis opportunities right now? Which submarkets are showing motivated seller activity? Where are rents running ahead of cap rate compression?\n\n## CONVICTION CALL\nOne paragraph: if Dalfen is buying industrial/flex in this market today, what is the specific thesis and where exactly should we be looking?';
+      p += 'Produce:\n## MARKET DASHBOARD\nTable: Land Absorption (TTM, near intermodal/port) | Outdoor Storage Rent ($/acre/yr or $/spot/mo) | Truck Parking Demand | Warehouse Under Construction (leading indicator) | YoY Storage Rent Growth\n\n## SUBMARKET DEEP DIVE\nFor the specific submarket: land absorption trend (24-month direction), largest recent IOS leases/land sales signed, active fleet/trucking tenants in the market, key demand drivers, warehouse construction pipeline as a leading indicator.\n\n## COMPARABLE TRANSACTIONS\nLast 6 months: minimum 5 IOS land or leased-yard sales. For each: address, acreage, sale price, $/acre, buyer, seller, date. Bold the most relevant comp to active deal if provided.\n\n## RENT FORECAST\n12-month and 24-month outdoor storage rent trajectory. What drives it — supply/demand balance, fleet/trucking demand, macro. Be specific.\n\n## ACQUISITION IMPLICATIONS\nFor Dalfen specifically: where are the best basis opportunities right now? Which submarkets are showing motivated seller activity? Where is storage rent running ahead of land basis?\n\n## CONVICTION CALL\nOne paragraph: if Dalfen is buying IOS in this market today, what is the specific thesis and where exactly should we be looking?';
       p += '\n\n## RIDGE MARKET DATA\n';
       p += 'After your analysis, output a single valid JSON object (no markdown fences) with these exact keys:\n';
-      p += '{"market":"<string>","submarket":"<string or null>","asset_class":"Industrial","report_date":"<YYYY-MM-DD>","vacancy_rate":<number or null>,"asking_rent_psf":<number or null>,"effective_rent_psf":<number or null>,"absorption_sf":<number or null>,"new_supply_sf":<number or null>,"cap_rate":<number or null>,"market_summary":"<2-3 sentences>"}\n';
+      // NOTE: keys below (vacancy_rate, asking_rent_psf, absorption_sf, new_supply_sf,
+      // cap_rate) are the existing Supabase market-database schema and are left unchanged
+      // to avoid an unreviewed schema migration. Map IOS-equivalent values into them:
+      // vacancy_rate <- N/A for land (send null), asking_rent_psf <- $/acre/yr or $/spot/mo,
+      // absorption_sf <- land absorption converted to SF (1 acre = 43,560 SF),
+      // new_supply_sf <- warehouse-under-construction SF, cap_rate <- stabilized IOS income
+      // cap rate if a leased comp, else null. [VERIFY WITH USER / FOLLOW-UP] This schema
+      // should be migrated to acreage/$-per-acre native columns once approved.
+      p += '{"market":"<string>","submarket":"<string or null>","asset_class":"Industrial Outdoor Storage","report_date":"<YYYY-MM-DD>","vacancy_rate":null,"asking_rent_psf":<$/acre/yr or $/spot/mo, number or null>,"effective_rent_psf":<number or null>,"absorption_sf":<land absorption in acres * 43560, number or null>,"new_supply_sf":<warehouse under construction SF, number or null>,"cap_rate":<stabilized IOS income cap rate if applicable, number or null>,"market_summary":"<2-3 sentences>"}\n';
       p += 'This JSON is machine-read and will be stored in the RIDGE market database. Output it on its own line at the very end of your response.\n';
       p += _mpBenchmarkContext;
       return p;
 
     case 'lease-comp':
+      // [VERIFY WITH USER / FOLLOW-UP] lease-comp-map/SKILL.md now documents a comp data
+      // model spanning $/acre, $/spot, and $/SF pricing bases for IOS. The Lease Library
+      // Supabase schema this case queries (_lcmQuerySupabase) is still building-field-native
+      // (clear_ht, dock_doors, grade_doors) and has NOT been migrated to add acreage/spot
+      // columns — that's a live, populated table and a schema migration is out of scope for
+      // this pass. This case still works for any building-component IOS comp; acreage/spot
+      // comps must be handled via manually pasted/uploaded data until the schema is extended.
       var p = 'Run Lease Comp Map';
       if (d.addr) p += ' for ' + d.addr;
       if (d.sub)  p += ' in ' + d.sub;
@@ -2722,9 +2738,9 @@ async function buildTrigger(toolId, d) {
       return p;
 
     case 'debt':
-      p = 'You are a senior acquisitions officer at Dalfen Industrial modeling the capital stack.\n\n';
-      p += 'PROPERTY: ' + (d.addr||'') + '\nPURCHASE PRICE: $' + (d.price||'') + '\nYEAR 1 NOI: $' + (d.noi||'') + '\nTARGET LTV: ' + (d.ltv||'65') + '%\nSCENARIO: ' + (d.type||'Permanent') + '\nHOLD: ' + (d.hold||'5') + ' years\n\n';
-      p += 'DALFEN DEBT PARAMETERS: Max LTV 65% | Min DSCR 1.25x | Prefer fixed-rate for core-plus, bridge acceptable for value-add | 5-year term standard\n\n';
+      p = 'You are a senior acquisitions officer at Dalfen Industrial modeling the capital stack for an Industrial Outdoor Storage (IOS) deal.\n\n';
+      p += 'PROPERTY: ' + (d.addr||'') + '\nPURCHASE PRICE: $' + (d.price||'') + '\nYEAR 1 INCOME: $' + (d.noi||'') + '\nTARGET LTV: ' + (d.ltv||'65') + '%\nSCENARIO: ' + (d.type||'Permanent') + '\nHOLD: ' + (d.hold||'5') + ' years\n\n';
+      p += 'DALFEN DEBT PARAMETERS: [VERIFY WITH USER] — Dalfen\'s actual max LTV, min DSCR, and preferred structure by transaction type are unconfirmed. Do not assume Entrada\'s old 65% LTV / 1.25x DSCR ceiling — flag any threshold you reference as unverified unless the user has confirmed it this session.\n\n';
       (function() {
         var pre = _debtCalc(d.price, d.noi, d.ltv, d.rate);
         if (pre && pre.length) {
@@ -2746,7 +2762,7 @@ async function buildTrigger(toolId, d) {
         try {
           _isrMarketRentData = await _isrFetchMarketRent({
             address: d.addr || '',
-            assetClass: d.type || 'Industrial',
+            assetClass: d.type || 'Industrial Outdoor Storage',
             sf: parseFloat(String(d.sf||'').replace(/[^0-9.]/g,'')) || 50000,
             clearHeight: 0,
             dockDoors: 0
@@ -2762,9 +2778,9 @@ async function buildTrigger(toolId, d) {
       p = `You are a senior acquisitions officer at Dalfen Industrial preparing an institutional investment committee presentation.
 
 ${d.model_text ? '=== ACQUISITION MODEL (rent roll, cash flows, assumptions) ===\n' + d.model_text.slice(0, 12000) + '\n\n' : ''}PROPERTY: ${d.addr||''}
-ASSET TYPE: ${d.type||''}
-SIZE: ${d.sf||''} SF
-PURCHASE PRICE: $${_cleanPrice} ($${_cleanPSF} PSF)
+ASSET TYPE: ${d.type||'Industrial Outdoor Storage'}
+ACREAGE: ${d.sf||''}
+PURCHASE PRICE: $${_cleanPrice} ($${_cleanPSF} per acre)
 LEVERED IRR: ${d.irr||''}
 EQUITY MULTIPLE: ${d.em||''}
 GOING-IN CAP: ${d.cap||''}
@@ -2773,19 +2789,26 @@ LTV: ${d.ltv||''}
 HOLD: ${d.hold||''}
 
 ${d.thesis ? 'ACQUISITION TEAM NOTES (use these directly in the Investment Thesis slide — do not override with generic content):\n' + d.thesis + '\n\n' : ''}DEAL TYPE CLASSIFICATION
-Classify this deal as one of three types:
-- CORE+/STABILIZED: Institutional quality asset, strong location, creditworthy tenants, functional building, newer construction or well-maintained vintage
-- VALUE-ADD: Near-term rollover, below-market rents, deferred capex, execution risk present
-- DISTRESSED/REPOSITIONING: Busted cap stack, significant vacancy, full repositioning required
+Classify this deal as one of Dalfen's transaction types:
+- SINGLE ASSET / PORTFOLIO (leased, stabilized): Existing IOS use, creditworthy tenant(s), functional site
+- SALE-LEASEBACK: Underwrite seller/tenant credit as the primary risk, not just the real estate
+- LAND ENTITLEMENT / FORWARD SALE / DEVELOPMENT FOR IOS USE: Entitlement timeline and denial risk are the primary underwriting variables
+- COVERED LAND PLAY: Interim IOS income vs. long-term redevelopment basis
 
 DALFEN HURDLE THRESHOLDS BY DEAL TYPE:
-Levered IRR: Core+/Stabilized 13.50%-14.00% acceptable | Value-Add 14.75% floor -- no exceptions | Distressed 14.75% floor, 17.00%+ target
-Equity Multiple: 1.50x universal floor | 1.70x-2.20x target | Between 1.50x-1.70x: evaluated on hold period, exit cap conservatism, and business plan execution -- not automatic rejection
-YOC: 7.50%-8.00% at Year 3, Year 4, AND Year 5
-LTV: 65% universal ceiling | 60% ceiling if occupancy at close is below 50%
-DSCR: 1.25x minimum by end of Year 1
+[VERIFY WITH USER] — Dalfen's actual return hurdles by transaction type have not been confirmed.
+The thresholds below (Levered IRR tiers, Equity Multiple floor/target, YOC, LTV, DSCR) are
+Entrada's old numbers, carried over as placeholders only — do NOT present them to the user as
+Dalfen's real hurdles. State every PASS/FAIL/CONDITIONAL call in this section as provisional
+against an unconfirmed hurdle, and flag clearly that IC sign-off requires the user to confirm
+the real thresholds first:
+Levered IRR (UNVERIFIED — was: Core+/Stabilized 13.50%-14.00% | Value-Add 14.75% floor | Distressed 14.75%/17.00%+ target)
+Equity Multiple (UNVERIFIED — was: 1.50x universal floor | 1.70x-2.20x target)
+YOC (UNVERIFIED — was: 7.50%-8.00% at Year 3, Year 4, AND Year 5)
+LTV (UNVERIFIED — was: 65% universal ceiling | 60% if occupancy at close below 50%)
+DSCR (UNVERIFIED — was: 1.25x minimum by end of Year 1)
 Hold Period: Evaluated on absolute IRR -- no IRR premium required for shorter holds
-Geography: Criteria applied universally across all markets -- no market-tier adjustments
+Geography: Criteria applied universally across DFW and Houston -- no market-tier adjustments
 
 ${d.om_text ? 'OFFERING MEMORANDUM:\n' + d.om_text.slice(0, 16000) + '\n\n' : ''}${d.comps_text ? 'LEASE COMP DATA:\n' + d.comps_text.slice(0, 10000) + '\n\n' : ''}FORMAT: IC memo structure below. Senior PE level — specific, data-driven, no filler.
 
@@ -2802,17 +2825,20 @@ Table: Metric | Value | Deal-Type Hurdle | Status. All returns at purchase price
 Sources and uses table. Debt terms. Equity required. LTV. DSCR.
 
 ## MARKET & SUBMARKET
-Submarket fundamentals: vacancy, rents, absorption, new supply. Recent comparable sale transactions (minimum 3) with address, SF, price, PSF, cap rate, buyer, date. Why this submarket now.
+Submarket fundamentals: land absorption near intermodal/port, truck parking demand, warehouse-under-construction pipeline (leading indicator), outdoor storage rent trends. Recent comparable land/IOS sale transactions (minimum 3) with address, acreage, price, $/acre, buyer, date. Why this submarket now.
 
-## RENT ROLL ANALYSIS
+## LAND-BASIS / ACRE ECONOMICS (produce this section for every deal — it is the primary economics slide)
+Table: Metric | Value. Total acreage, building coverage % (vs. <30% gate), price per acre, entitlement status (by-right or SUP with timeline), stabilized income per acre (if leased/sale-leaseback) or land appreciation basis (if covered land play/entitlement deal), exit basis assumption. This replaces a building-NOI-based economics slide — do not force a per-SF or per-unit building metric onto a land deal that doesn't have one.
+
+## RENT ROLL ANALYSIS (only if the property is leased or sale-leaseback — skip entirely for vacant land/entitlement/covered-land-play deals and say so explicitly instead of producing an empty table)
 Extract the tenant rent roll from the OM or model. Output as a pipe-delimited table with this exact header row first:
-Tenant | SF | % NRA | Expiration | Rent PSF | Mkt PSF | Delta
+Tenant | Acreage/Spot Count | % of Site | Expiration | Rate ($/acre/yr or $/spot/mo) | Mkt Rate | Delta
 Then one row per tenant with real data from the uploaded documents. After the table: WALT (calculated), rollover schedule summary, mark-to-market upside commentary.
 
-## LEASE COMP ANALYSIS
+## LEASE COMP ANALYSIS (only if there is in-place or comparable lease income — skip for raw land deals with no income basis)
 Extract all lease comps from the OM or uploaded comp data. Output as a pipe-delimited table with this exact header row first:
-Property | Size (SF) | Lease Date | Term | Rate PSF | Type | Tenant
-Then one row per comp with real data. After the table: brief commentary on how subject property compares to market, rent spread vs. in-place rents, and underwriting support.
+Property | Acreage/Spot Count | Lease Date | Term | Rate ($/acre/yr or $/spot/mo) | Type | Tenant
+Then one row per comp with real data. After the table: brief commentary on how subject property compares to market, rate spread vs. in-place rates, and underwriting support.
 
 ## SENSITIVITY ANALYSIS
 Table 1: IRR by Purchase Price × Hold Period
@@ -2820,32 +2846,38 @@ Table 2: IRR by Purchase Price × Exit Cap Rate
 Color commentary: green = clears hurdle, yellow = borderline, red = fails
 
 ## DALFEN HURDLE CONFIRMATION
-Deal Type: [CORE+/STABILIZED | VALUE-ADD | DISTRESSED/REPOSITIONING]
-Classification Basis: [one sentence — why this deal is classified as above, based on functionality, year built, tenant quality, and location]
+**[VERIFY WITH USER]** Dalfen's actual return hurdles are unconfirmed — every PASS/FAIL call
+below is provisional until the user confirms real thresholds. Do not let this section imply
+Entrada's old numbers are Dalfen's real bar.
 
-IRR Hurdle ([state the applicable threshold: Core+ 13.50%-14.00% | Value-Add 14.75% | Distressed 14.75%/17.00%+]):
-  Underwritten: [X.XX]% — [PASSES / FAILS by X bps]
+Deal Type: [SINGLE ASSET/PORTFOLIO | SALE-LEASEBACK | LAND ENTITLEMENT/FORWARD SALE/DEVELOPMENT | COVERED LAND PLAY]
+Classification Basis: [one sentence — why this deal is classified as above, based on occupancy status, entitlement status, and transaction structure]
+Building Coverage Gate: [X]% of site — [PASSES <30% gate / FAILS — hard pass regardless of returns]
 
-Equity Multiple (1.50x universal floor / 1.70x-2.20x target):
-  Underwritten: [X.XX]x — [PASSES FLOOR / BELOW TARGET / FAILS FLOOR]
-  If between 1.50x-1.70x: note what is driving the compression (hold period, exit cap conservatism, business plan execution)
+IRR Hurdle ([VERIFY WITH USER] — no confirmed threshold; state the underwritten IRR and flag it against the placeholder Entrada figures only for directional context):
+  Underwritten: [X.XX]% — [PASSES / FAILS / CONDITIONAL] pending hurdle confirmation
 
-YOC Year 3/4/5 (7.50%-8.00% target):
-  Year 3: [X.XX]% | Year 4: [X.XX]% | Year 5: [X.XX]% — [ALL PASS / YEAR X FAILS]
+Equity Multiple ([VERIFY WITH USER] — no confirmed threshold):
+  Underwritten: [X.XX]x — [PASSES / FAILS / CONDITIONAL] pending hurdle confirmation
 
-LTV ([65% ceiling standard | 60% ceiling if occupancy at close below 50%]):
-  At Close Occupancy: [X]% — Applicable Ceiling: [65% or 60%]
-  Underwritten: [X.XX]% — [PASSES / FAILS]
+YOC Year 3/4/5 ([VERIFY WITH USER] — no confirmed target):
+  Year 3: [X.XX]% | Year 4: [X.XX]% | Year 5: [X.XX]% — pending target confirmation
 
-DSCR (1.25x minimum by Year 1):
-  Year 1: [X.XX]x — [PASSES / FAILS]
+LTV ([VERIFY WITH USER] — no confirmed ceiling):
+  Underwritten: [X.XX]% — pending ceiling confirmation
+
+DSCR ([VERIFY WITH USER] — no confirmed minimum):
+  Year 1: [X.XX]x — pending minimum confirmation
+
+Entitlement Status (if applicable): [By-right / SUP pending — est. months to approval / SUP denied]
+  If SUP required and unconfirmed: this alone caps the verdict at CONDITIONAL, regardless of return metrics.
 
 IC Recommendation Logic:
-  PURSUE: All hurdles clear for the classified deal type
-  CONDITIONAL: Hurdles near threshold — state specifically which hurdles are short and by how much; state what verification or price adjustment would close the gap; location quality and asset functionality drive the risk assessment
-  PASS: Fundamental return gap that cannot be closed by reasonable price adjustment or assumption refinement
+  PURSUE: All hurdles clear for the classified deal type AND return hurdles have been confirmed by the user this session
+  CONDITIONAL: Hurdles unconfirmed, near threshold, or entitlement pending — state specifically what needs to be verified or what price adjustment would close the gap
+  PASS: Fundamental return gap that cannot be closed by reasonable price adjustment or assumption refinement, or building coverage gate fails
 
-Overall: [CLEARS ALL HURDLES — PURSUE / FAILS X OF 5 — CONDITIONAL based on location/functionality / PASS — fundamental return gap]
+Overall: [CLEARS ALL HURDLES — PURSUE / HURDLES UNCONFIRMED OR ENTITLEMENT PENDING — CONDITIONAL / PASS — fundamental gap or gate failure]
 
 ## RISK MATRIX
 Table: Risk Factor | Severity (High/Medium/Low) | Mitigant
@@ -2868,7 +2900,7 @@ If CONDITIONAL: state exactly what must be verified before proceeding
       var _isrCity = (d.addr||'').split(',')[1] ? (d.addr||'').split(',')[1].trim() : '';
       if (_isrCity && _sbOk && _sb) {
         try {
-          var _isrMktBenchmarks = await _fetchMarketBenchmark(_isrCity, d.type || 'Industrial');
+          var _isrMktBenchmarks = await _fetchMarketBenchmark(_isrCity, d.type || 'Industrial Outdoor Storage');
           if (_isrMktBenchmarks && _isrMktBenchmarks.length) {
             p += '\n\n[RIDGE MARKET INTELLIGENCE DATABASE]\n' +
               'Real CoStar market data for ' + _isrMktBenchmarks[0].market + ':\n' +
@@ -3274,12 +3306,13 @@ async function _initMarketDropdown(fieldId, extraOpts) {
     return m.status === 'Active' || m.status === 'Watch';
   });
   if (!activeMarkets.length) {
+    // [VERIFY WITH USER / FOLLOW-UP] Fallback only — the authoritative market list lives in
+    // the Supabase `markets` table. That table still needs a manual data update to remove
+    // Atlanta/Savannah/Austin and confirm DFW/Houston as the only Active markets; this
+    // fallback is just what renders if that table is empty or unreachable.
     activeMarkets = [
-      {name:'Atlanta', status:'Active'},
-      {name:'Savannah', status:'Active'},
       {name:'DFW', status:'Active'},
-      {name:'Houston', status:'Active'},
-      {name:'Austin', status:'Watch'}
+      {name:'Houston', status:'Active'}
     ];
   }
   var marketOpts = activeMarkets.map(function(m) {
@@ -4493,7 +4526,7 @@ async function _lensParseOM(omText, askingPrice) {
       '    "address": "<full address or null>",\n' +
       '    "market": "<city or null>",\n' +
       '    "submarket": "<submarket or null>",\n' +
-      '    "asset_class": "<Flex Industrial|Industrial / Warehouse|Single-Story Office Conversion|Multi-Tenant Industrial|Office — pick the single best fit; do not invent new values>",\n' +
+      '    "asset_class": "Industrial Outdoor Storage",\n' +
       '    "asking_price": <number or null>,\n' +
       '    "price_psf": <number or null>,\n' +
       '    "building_sf": <number or null>,\n' +
@@ -4590,31 +4623,27 @@ async function _lensParseOM(omText, askingPrice) {
       '  }\n' +
       '}\n\n' +
       'SCENARIO COMPUTATION — RIDGE return anchors\n\n' +
-      'You must produce three scenarios — Bear, Base, Bull — that re-underwrite this deal at RIDGE assumptions and back-solve to the maximum entry price at each scenario.\n\n' +
-      'RIDGE return thresholds (these are the targets — back-solve max entry price to HIT these, not exceed them):\n' +
-      '- Levered IRR: 15.0% minimum (Bear/Base), 18.0%+ acceptable on Bull\n' +
-      '- Equity Multiple: 1.8x minimum (Bear), 2.0x (Base), 2.2x+ (Bull)\n' +
-      '- Year 3 YOC: 7.5% minimum (Bear), 7.75% (Base), 8.0%+ (Bull)\n' +
-      '- Hold: 5 years standard, may extend to 7 if Bull case requires\n\n' +
+      'You must produce three scenarios — Bear, Base, Bull — that re-underwrite this deal at RIDGE assumptions on a $/acre land basis and back-solve to the maximum entry price at each scenario.\n\n' +
+      'RIDGE return thresholds: [VERIFY WITH USER] — Dalfen\'s actual IRR/EM/YOC thresholds by scenario have not been confirmed. Do not treat the figures below as real — they are Entrada\'s old placeholder numbers (15.0%/18.0%+ IRR, 1.8x-2.2x EM, 7.5-8.0% YOC), carried over only so the Bear/Base/Bull spread has a directional shape. Flag every scenario\'s IRR/EM/YOC as provisional against an unconfirmed hurdle.\n\n' +
       'RIDGE assumptions per scenario:\n\n' +
       'BEAR — downside protection, deal still pencils:\n' +
-      '- Rent growth: 2.0% annual\n' +
-      '- Stabilized vacancy: market vacancy + 200 bps (penalty)\n' +
-      '- Exit cap: going-in cap + 50 bps (cap expansion)\n' +
-      '- Capex/TI: assume broker number is light, add 15% contingency\n' +
-      '- Key question: what is the maximum we could pay and still hit 15% IRR / 1.8x EM / 7.5% YOC under stressed conditions?\n\n' +
+      '- Income growth: 2.0% annual\n' +
+      '- Entitlement: denied or delayed 12+ months if SUP required\n' +
+      '- Exit basis: going-in basis + 50 bps or -5% land value (basis expansion)\n' +
+      '- Site work: assume broker number is light, add 15% contingency\n' +
+      '- Key question: what is the maximum we could pay and still hit the (unconfirmed) IRR/EM/YOC hurdles under stressed conditions?\n\n' +
       'BASE — RIDGE base case:\n' +
-      '- Rent growth: 3.0–3.5% annual (use submarket data if available, else 3.0%)\n' +
-      '- Stabilized vacancy: market vacancy\n' +
-      '- Exit cap: going-in cap (flat — no cap expansion or compression)\n' +
-      '- Capex/TI: broker number as stated\n' +
-      '- Key question: maximum entry price at expected market conditions hitting 15% IRR / 2.0x EM / 7.75% YOC\n\n' +
+      '- Income growth: 3.0–3.5% annual (use submarket data if available, else 3.0%)\n' +
+      '- Entitlement: on schedule if SUP required\n' +
+      '- Exit basis: going-in basis (flat — no expansion or compression)\n' +
+      '- Site work: broker number as stated\n' +
+      '- Key question: maximum entry price at expected market conditions hitting the (unconfirmed) IRR/EM/YOC hurdles\n\n' +
       'BULL — upside case, justifies aggressive offer:\n' +
-      '- Rent growth: 4.0%+ annual (only if submarket supports)\n' +
-      '- Stabilized vacancy: market vacancy minus 100 bps\n' +
-      '- Exit cap: going-in cap minus 25 bps (modest compression)\n' +
-      '- Capex/TI: broker number, possibly less if value-add scope is overstated\n' +
-      '- Key question: maximum entry price assuming favorable conditions hitting 18%+ IRR / 2.2x+ EM / 8.0%+ YOC\n\n' +
+      '- Income growth: 4.0%+ annual (only if submarket supports)\n' +
+      '- Entitlement: approved ahead of schedule\n' +
+      '- Exit basis: going-in basis minus 25 bps or +5% land value (modest compression/appreciation)\n' +
+      '- Site work: broker number, possibly less if value-add scope is overstated\n' +
+      '- Key question: maximum entry price assuming favorable conditions, still against the (unconfirmed) hurdles\n\n' +
       'If implied_purchase_price was computed (broker NOI ÷ user-entered going-in cap), use that as the Base scenario anchor — Base max_entry_price should be near or below that figure if RIDGE thresholds are met at the implied price. If RIDGE thresholds are NOT met at the implied price in the Base case, max_entry_price must be lower than implied_purchase_price.\n\n' +
       'Bear max_entry_price will typically be 10–25% below Base. Bull max_entry_price may be 5–15% above Base.\n\n' +
       'For each scenario, key_assumption must identify the SINGLE most consequential variable driving that scenario\'s outcome — not a generic statement. Bad example: "Market conditions stay favorable." Good example: "Market rent growth holds at 3.5% as e-commerce demand absorbs Q3 2026 deliveries in submarket."\n\n' +
@@ -6821,20 +6850,21 @@ function _exportLens(wb, tid, dateStr, paste) {
   r = rcKV(ws, [
     ['Address',      rcGetField(tid,'addr')],
     ['Asset Type',   rcGetField(tid,'type')],
-    ['Building SF',  rcGetField(tid,'sf')],
+    ['Acreage',      rcGetField(tid,'sf')],
     ['Asking Price', rcGetField(tid,'ask')],
-    ['Price PSF',    rcGetField(tid,'sf') && rcGetField(tid,'ask') ? ('$' + (parseFloat(rcGetField(tid,'ask').replace(/[^0-9.]/g,'')) / parseFloat(rcGetField(tid,'sf').replace(/[^0-9.]/g,''))).toFixed(0) + ' PSF') : '—'],
+    ['Price Per Acre', rcGetField(tid,'sf') && rcGetField(tid,'ask') ? ('$' + (parseFloat(rcGetField(tid,'ask').replace(/[^0-9.]/g,'')) / parseFloat(rcGetField(tid,'sf').replace(/[^0-9.]/g,''))).toFixed(0)) : '—'],
     ['Context',      rcGetField(tid,'notes')],
   ], r);
 
   rcSecHead(ws, r, 'INVESTMENT HURDLE CHECK'); r++;
   r = rcKV(ws, [
-    ['Target IRR',    '≥ 14.75%'],
-    ['Equity Multiple','≥ 1.8x'],
-    ['YOC (Yr 3/4)',  '7.5% – 8.0%'],
-    ['Max LTV',       '65%'],
-    ['Deal Size',     '$10M – $70M'],
-    ['Markets',       'ATL · SAV · DFW · HOU'],
+    ['Target IRR',    '[VERIFY WITH USER]'],
+    ['Equity Multiple','[VERIFY WITH USER]'],
+    ['YOC (Yr 3/4)',  '[VERIFY WITH USER]'],
+    ['Max LTV',       '[VERIFY WITH USER]'],
+    ['Building Coverage', '< 30% of site'],
+    ['Deal Size',     '$2M minimum, no maximum'],
+    ['Markets',       'DFW · Houston'],
   ], r);
 
   r = rcAnalysis(ws, paste, r);
@@ -6877,30 +6907,31 @@ function _exportNapkin(wb, tid, dateStr, paste) {
   var mktRent = parseFloat((rcGetField(tid,'mktrent')||'').replace(/[^0-9.]/g,'')) || 0;
 
   var capRate   = ask && noi ? (noi / ask * 100).toFixed(2) + '%' : '—';
-  var psf       = ask && sf  ? '$' + (ask/sf).toFixed(0) + ' PSF' : '—';
+  var psf       = ask && sf  ? '$' + (ask/sf).toFixed(0) : '—';
   var potNOI    = sf && mktRent ? '$' + Math.round(sf * mktRent * (occ/100 || 0.9)).toLocaleString() : '—';
 
   rcSecHead(ws, r, 'DEAL INPUTS'); r++;
   r = rcKV(ws, [
     ['Address',         rcGetField(tid,'addr')],
     ['Asset Type',      rcGetField(tid,'type')],
-    ['Building SF',     rcGetField(tid,'sf')],
+    ['Acreage',         rcGetField(tid,'sf')],
     ['Asking Price',    rcGetField(tid,'ask')],
-    ['Price PSF',       psf],
+    ['Price Per Acre',  psf],
     ['Current Occupancy', rcGetField(tid,'occ')],
-    ['In-Place NOI',    rcGetField(tid,'noi')],
-    ['Market Rent PSF', rcGetField(tid,'mktrent')],
-    ['In-Place Rent PSF', rcGetField(tid,'inplace')],
+    ['In-Place Income', rcGetField(tid,'noi')],
+    ['Market Rate ($/acre/yr)', rcGetField(tid,'mktrent')],
+    ['In-Place Rate ($/acre/yr)', rcGetField(tid,'inplace')],
     ['Known Facts',     rcGetField(tid,'notes')],
   ], r);
 
   rcSecHead(ws, r, 'QUICK MATH'); r++;
   r = rcKV(ws, [
-    ['Going-In Cap Rate',   capRate],
-    ['Price PSF',           psf],
-    ['Potential NOI (mkt rent × occ)', potNOI],
-    ['IRR Hurdle',    '≥ 14.75%'],
-    ['YOC Target',    '7.5% – 8.0% at Yr3/4'],
+    ['Going-In Yield',   capRate],
+    ['Price Per Acre',   psf],
+    ['Potential Income (mkt rate × occ)', potNOI],
+    ['IRR Hurdle',    '[VERIFY WITH USER]'],
+    ['YOC Target',    '[VERIFY WITH USER]'],
+    ['Building Coverage Gate', '< 30% of site'],
   ], r);
 
   r = rcAnalysis(ws, paste, r);
@@ -10686,11 +10717,11 @@ async function runRidgeAPI(skillName, prompt, runInputs, runToolId) {
   var copyBtn   = document.getElementById('ridge-copy-btn');
   var accumulated = '';
   var systemPrompts = {
-    'RIDGE': 'You are RIDGE, a senior acquisitions officer at Dalfen Industrial. Target markets: Atlanta, Savannah, DFW, Houston. Deal criteria: $10M–$70M industrial and flex assets, 14.75%+ levered IRR, 7.5–8.0% YOC at Year 3/4, 95% off-market sourcing. Begin a live sourcing session. Ask which market to focus on, whether I have a CoStar export or want a cold sweep, then run SCOUT and deliver a ranked prospect list with owner intel, debt profile, and outreach angle.',
+    'RIDGE': 'You are RIDGE, a senior acquisitions officer at Dalfen Industrial. Target markets: Dallas-Fort Worth, Houston only. Deal criteria: $2M minimum no maximum Industrial Outdoor Storage (IOS) assets, building coverage <30%, IOS must be a permitted use, 95% off-market sourcing. Return hurdles are [VERIFY WITH USER] — Dalfen\'s actual IRR/YOC thresholds are unconfirmed. Begin a live sourcing session. Ask which market to focus on, whether I have a CoStar export or want a cold sweep, then run SCOUT and deliver a ranked prospect list with owner intel, debt profile, and outreach angle.',
     'Pipeline Report': 'You are RIDGE. Analyze this pipeline data and deliver a concise report covering: deals closest to closing, overdue next steps, total potential acquisition volume, and recommended focus for this week. Be direct and actionable.',
-    'ACQUISITION INVESTMENT REPORT': 'You are a senior acquisitions officer at Dalfen Industrial preparing an institutional investment committee presentation. RIDGE underwriting criteria: IRR ≥14.75% levered, Equity Multiple ≥1.8x, YOC 7.5–8.0% at Year 3/4, max LTV 65%, 5-year hold, deal size $10M–$70M, markets: Atlanta, Savannah, DFW, Houston. Write at the level of a senior PE professional presenting to a sophisticated IC — specific, data-driven, no filler language. Format all output in clean markdown with ## section headers and pipe-delimited tables exactly as instructed. Never fabricate return metrics. Always complete every requested section.',
+    'ACQUISITION INVESTMENT REPORT': 'You are a senior acquisitions officer at Dalfen Industrial preparing an institutional investment committee presentation for an Industrial Outdoor Storage (IOS) deal on a $/acre land basis. RIDGE underwriting criteria: building coverage <30% (hard gate), IOS must be a permitted use, deal size $2M minimum no maximum, markets DFW/Houston only. Return hurdles (IRR/EM/YOC/LTV) are [VERIFY WITH USER] — Dalfen\'s actual thresholds are unconfirmed; do not assume Entrada\'s old 14.75%/1.8x-2.2x/7.5-8.0%/65% numbers. Write at the level of a senior PE professional presenting to a sophisticated IC — specific, data-driven, no filler language. Format all output in clean markdown with ## section headers and pipe-delimited tables exactly as instructed. Never fabricate return metrics. Always complete every requested section.',
     'DEAL MEMO': 'You are drafting IC narrative copy for Dalfen Industrial. Be direct, factual, and precise. No filler language. Every number must be traceable to an uploaded source or explicit user confirmation.',
-    'default': 'You are RIDGE, a senior acquisitions officer at Dalfen Industrial, an institutional private equity firm. You specialize in industrial and flex CRE acquisitions in Atlanta, Savannah, DFW, and Houston. You are running the ' + skillName + ' module. Be precise, data-driven, and direct. Write like a senior professional presenting to an investment committee. Format all output in clean markdown with tables where data warrants it. Never hedge excessively — state your conviction and defend it.'
+    'default': 'You are RIDGE, a senior acquisitions officer at Dalfen Industrial, an institutional private equity firm. You specialize in Industrial Outdoor Storage (IOS) acquisitions in Dallas-Fort Worth and Houston only. You are running the ' + skillName + ' module. Be precise, data-driven, and direct. Write like a senior professional presenting to an investment committee. Format all output in clean markdown with tables where data warrants it. Never hedge excessively — state your conviction and defend it.'
   };
   var systemPrompt = systemPrompts[skillName] || systemPrompts['default'];
   // Personalize: replace generic title with officer name if set
@@ -11658,6 +11689,13 @@ var NAPKIN_IRR_HURDLE_UNVERIFIED = 0.1475;
 var NAPKIN_YOC_TARGET_UNVERIFIED = 0.075;
 var NAPKIN_EM_FLOOR_UNVERIFIED   = 1.75;
 
+// [VERIFY WITH USER] Same doctrine as above, for the ISR/acq-investment-report sensitivity
+// table color tiers and IC recommendation legend — Entrada's old Value-Add/Core+/Distressed
+// IRR tiers, carried over as unverified placeholders only.
+var ISR_IRR_HURDLE_UNVERIFIED = 14.75;
+var ISR_IRR_TIER2_UNVERIFIED  = 13.5;
+var ISR_IRR_TIER3_UNVERIFIED  = 12;
+
 function _napkinCalc(d) {
   var ask = parseFloat((d.ask||'0').toString().replace(/[^0-9.]/g,''));
   var sf = parseFloat((d.sf||'0').toString().replace(/[^0-9.]/g,''));
@@ -11997,25 +12035,26 @@ function ridgeExportPDF() {
       '<div class="address">'+(d.addr||'Subject Property')+'</div>',
       '<div class="meta-row">',
         '<div class="meta-item"><div class="meta-label">Asset Type</div><div class="meta-value">'+(d.type||'\u2014')+'</div></div>',
-        '<div class="meta-item"><div class="meta-label">Building SF</div><div class="meta-value">'+sfFmt+'</div></div>',
+        '<div class="meta-item"><div class="meta-label">Acreage</div><div class="meta-value">'+sfFmt+'</div></div>',
         '<div class="meta-item"><div class="meta-label">Asking Price</div><div class="meta-value">'+askFmt+'</div></div>',
-        '<div class="meta-item"><div class="meta-label">Price PSF</div><div class="meta-value">$'+calc.psf+'</div></div>',
+        '<div class="meta-item"><div class="meta-label">Price Per Acre</div><div class="meta-value">$'+calc.psf+'</div></div>',
         '<div class="meta-item"><div class="meta-label">Occupancy</div><div class="meta-value">'+(d.occ||'\u2014')+'%</div></div>',
-        '<div class="meta-item"><div class="meta-label">Going-in Cap</div><div class="meta-value">'+calc.goingInCap+'%</div></div>',
+        '<div class="meta-item"><div class="meta-label">Going-in Yield</div><div class="meta-value">'+calc.goingInCap+'%</div></div>',
       '</div>',
       '<div class="two-col"><div>',
-        '<div class="section-title">Return Stack</div>',
+        '<div class="section-title">Return Stack (hurdles UNVERIFIED \u2014 see note)</div>',
         '<table><tr><th>Metric</th><th>Value</th><th>Hurdle</th></tr>',
-          '<tr class="'+(parseFloat(calc.goingInCap)>=6.5?'pass':'warn')+'"><td>Going-in Cap</td><td>'+calc.goingInCap+'%</td><td>'+(parseFloat(calc.goingInCap)>=6.5?'\u2713':'\u26a0')+'</td></tr>',
-          '<tr><td>Year 1 NOI</td><td>$'+calc.noi1+'</td><td>\u2014</td></tr>',
-          '<tr><td>Stabilized NOI</td><td>$'+calc.noiStab+'</td><td>\u2014</td></tr>',
-          '<tr><td>Year 4 NOI</td><td>$'+calc.noi4+'</td><td>\u2014</td></tr>',
-          '<tr class="'+(calc.meetsYOC?'pass':'fail')+'"><td>YOC Yr 3/4</td><td>'+calc.yoc34+'%</td><td>7.5\u20138.0%</td></tr>',
-          '<tr class="'+(calc.meetsIRR?'pass':'fail')+'"><td><strong>Levered IRR</strong></td><td><strong>'+calc.irr+'%</strong></td><td>14.75%</td></tr>',
-          '<tr class="'+(calc.meetsEM?'pass':'fail')+'"><td>Equity Multiple</td><td>'+calc.em+'x</td><td>1.75x</td></tr>',
+          '<tr class="'+(parseFloat(calc.goingInCap)>=6.5?'pass':'warn')+'"><td>Going-in Yield</td><td>'+calc.goingInCap+'%</td><td>'+(parseFloat(calc.goingInCap)>=6.5?'\u2713':'\u26a0')+'</td></tr>',
+          '<tr><td>Year 1 Income</td><td>$'+calc.noi1+'</td><td>\u2014</td></tr>',
+          '<tr><td>Stabilized Income</td><td>$'+calc.noiStab+'</td><td>\u2014</td></tr>',
+          '<tr><td>Year 4 Income</td><td>$'+calc.noi4+'</td><td>\u2014</td></tr>',
+          '<tr class="'+(calc.meetsYOC?'pass':'fail')+'"><td>YOC Yr 3/4</td><td>'+calc.yoc34+'%</td><td>'+(NAPKIN_YOC_TARGET_UNVERIFIED*100).toFixed(2)+'% (UNVERIFIED)</td></tr>',
+          '<tr class="'+(calc.meetsIRR?'pass':'fail')+'"><td><strong>Levered IRR</strong></td><td><strong>'+calc.irr+'%</strong></td><td>'+(NAPKIN_IRR_HURDLE_UNVERIFIED*100).toFixed(2)+'% (UNVERIFIED)</td></tr>',
+          '<tr class="'+(calc.meetsEM?'pass':'fail')+'"><td>Equity Multiple</td><td>'+calc.em+'x</td><td>'+NAPKIN_EM_FLOOR_UNVERIFIED.toFixed(2)+'x (UNVERIFIED)</td></tr>',
           '<tr class="'+(parseFloat(calc.dscr)>=1.25?'pass':'warn')+'"><td>DSCR Yr 1</td><td>'+calc.dscr+'x</td><td>1.25x</td></tr>',
           '<tr><td>Exit Value</td><td>$'+calc.salePrice+'</td><td>'+calc.exitCap+'% cap</td></tr>',
         '</table>',
+        '<div style="font-size:8pt;color:#8b949e;margin-top:2px;">Hurdles above are Entrada\'s old placeholder thresholds, carried over UNVERIFIED. Confirm Dalfen\'s actual return hurdles before treating this as a final verdict.</div>',
         '<div class="section-title">Debt Structure</div>',
         '<table>',
           '<tr><td>Loan Amount</td><td>$'+calc.loanAmt+' ('+(d.ltv||'60')+'% LTV)</td></tr>',
@@ -12031,9 +12070,9 @@ function ridgeExportPDF() {
           '<div class="conviction-text">'+convPara+'</div>',
         '</div>',
         '<div class="max-price-box">',
-          '<div class="max-price-label">Max Price @ 14.75% IRR</div>',
+          '<div class="max-price-label">Max Price @ '+(NAPKIN_IRR_HURDLE_UNVERIFIED*100).toFixed(2)+'% IRR (UNVERIFIED)</div>',
           '<div class="max-price-value">$'+calc.maxPrice+'</div>',
-          '<div style="font-size:9pt;color:#1565C0;margin-top:4px;">$'+calc.maxPricePSF+' PSF \u00b7 '+maxPriceNote+'</div>',
+          '<div style="font-size:9pt;color:#1565C0;margin-top:4px;">$'+calc.maxPricePSF+'/acre \u00b7 '+maxPriceNote+'</div>',
         '</div>',
         '<div class="section-title">Red Flags</div><div class="flags">'+flagsHTML+'</div>',
         '<div class="section-title">Next Steps</div><div class="flags">'+stepsHTML+'</div>',
@@ -12271,7 +12310,7 @@ async function ridgeExportXLS() {
     ws1.addRow([]);
 
     if (calc) {
-      var convText = calc.meetsIRR ? 'CONDITIONAL / HIGH CONVICTION' : 'PASS — Does not clear 14.75% hurdle';
+      var convText = calc.meetsIRR ? 'CONDITIONAL / HIGH CONVICTION (vs UNVERIFIED hurdle)' : 'PASS — Does not clear UNVERIFIED ' + (NAPKIN_IRR_HURDLE_UNVERIFIED*100).toFixed(2) + '% hurdle';
       var convColor = calc.meetsIRR ? GREEN_BG : RED_BG;
       var convHeader = ws1.addRow(['CONVICTION', '', '']);
       styleHeader(convHeader, calc.meetsIRR ? 'FF1E2761' : 'FF7B0000');
@@ -12310,13 +12349,13 @@ async function ridgeExportXLS() {
         ['Year 1 NOI (in-place)', '$' + calc.noi1, 'Baseline'],
         ['Stabilized NOI', '$' + calc.noiStab, 'Market rents, 95% occ'],
         ['Year 4 NOI', '$' + calc.noi4, '2% annual escalation'],
-        ['Year 3/4 YOC', calc.yoc34 + '%', calc.meetsYOC ? '✓ Meets 7.5% floor' : '❌ Below 7.5% floor'],
+        ['Year 3/4 YOC', calc.yoc34 + '%', calc.meetsYOC ? '✓ Meets UNVERIFIED ' + (NAPKIN_YOC_TARGET_UNVERIFIED*100).toFixed(2) + '% floor' : '❌ Below UNVERIFIED ' + (NAPKIN_YOC_TARGET_UNVERIFIED*100).toFixed(2) + '% floor'],
         ['Loan Amount (' + (d.ltv||'60') + '% LTV)', '$' + calc.loanAmt, ''],
         ['Equity Required', '$' + calc.equity, ''],
         ['Annual Debt Service', '$' + calc.annualDS, calc.ioYrs > 0 ? 'IO Yrs 1-' + calc.ioYrs : 'Fully amortizing'],
         ['Year 1 Levered Cash Flow', '$' + calc.yr1LevCF, ''],
-        ['Levered IRR', calc.irr + '%', calc.meetsIRR ? '✓ Clears 14.75% hurdle' : '❌ Below 14.75% hurdle'],
-        ['Equity Multiple', calc.em + 'x', calc.meetsEM ? '✓ Meets 1.75x minimum' : '❌ Below 1.75x minimum'],
+        ['Levered IRR', calc.irr + '%', calc.meetsIRR ? '✓ Clears UNVERIFIED ' + (NAPKIN_IRR_HURDLE_UNVERIFIED*100).toFixed(2) + '% hurdle' : '❌ Below UNVERIFIED ' + (NAPKIN_IRR_HURDLE_UNVERIFIED*100).toFixed(2) + '% hurdle'],
+        ['Equity Multiple', calc.em + 'x', calc.meetsEM ? '✓ Meets UNVERIFIED ' + NAPKIN_EM_FLOOR_UNVERIFIED.toFixed(2) + 'x minimum' : '❌ Below UNVERIFIED ' + NAPKIN_EM_FLOOR_UNVERIFIED.toFixed(2) + 'x minimum'],
         ['DSCR Year 1', calc.dscr + 'x', parseFloat(calc.dscr) >= 1.25 ? '✓ Acceptable' : '⚠ Tight'],
         ['Exit Value', '$' + calc.salePrice, 'At ' + calc.exitCap + '% exit cap'],
       ];
@@ -12335,7 +12374,7 @@ async function ridgeExportXLS() {
 
       ws2.addRow([]);
       var priceRedNum = parseFloat(calc.priceReduction.replace(/[^0-9.-]/g,''));
-      var maxRow = ws2.addRow(['MAX PRICE TO HIT 14.75% IRR', '$' + calc.maxPrice + ' ($' + calc.maxPricePSF + ' PSF)', priceRedNum <= 0 ? '✓ Deal works at ask' : '⚠ Requires $' + calc.priceReduction + ' reduction']);
+      var maxRow = ws2.addRow(['MAX PRICE TO HIT UNVERIFIED ' + (NAPKIN_IRR_HURDLE_UNVERIFIED*100).toFixed(2) + '% IRR', '$' + calc.maxPrice + ' ($' + calc.maxPricePSF + '/acre)', priceRedNum <= 0 ? '✓ Deal works at ask' : '⚠ Requires $' + calc.priceReduction + ' reduction']);
       maxRow.eachCell(function(cell) {
         cell.font = { bold: true, size: 12, name: 'Calibri', color: { argb: priceRedNum <= 0 ? 'FF1B5E20' : 'FF7B0000' } };
         cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: priceRedNum <= 0 ? GREEN_BG : RED_BG } };
@@ -12590,9 +12629,9 @@ async function _napkinExportXLS() {
   hdr2.eachCell(function(cell){ cell.font={bold:true,size:11,color:{argb:WHITE},name:'Calibri'}; cell.fill={type:'pattern',pattern:'solid',fgColor:{argb:NAVY}}; cell.alignment={horizontal:'center',vertical:'middle'}; });
   hdr2.height=22;
   var benchmarks=[
-    {key:'IRR',            bench:'≥ 14.75% (target 17%+)'},
-    {key:'YOC',            bench:'7.5%–8.0% at Year 3/4'},
-    {key:'Equity Multiple',bench:'1.8x–2.2x'},
+    {key:'IRR',            bench:'[VERIFY WITH USER]'},
+    {key:'YOC',            bench:'[VERIFY WITH USER]'},
+    {key:'Equity Multiple',bench:'[VERIFY WITH USER]'},
     {key:'DSCR',           bench:'≥ 1.25x Year 1'},
   ];
   if (returnTable) {
@@ -13019,9 +13058,9 @@ async function ridgeExportPPT() {
          {text:'VALUE',options:{bold:true,color:BLUE,fontSize:9,fontFace:'Courier New',fill:{color:NAVY},align:'center'}},
          {text:'HURDLE',options:{bold:true,color:BLUE,fontSize:9,fontFace:'Courier New',fill:{color:NAVY},align:'center'}},
          {text:'STATUS',options:{bold:true,color:BLUE,fontSize:9,fontFace:'Courier New',fill:{color:NAVY},align:'center'}}],
-        _retRow('Levered IRR',calc.irr+'%','14.75%',calc.meetsIRR),
-        _retRow('Equity Multiple',calc.em+'x','1.75x',calc.meetsEM),
-        _retRow('YR 3/4 YOC',calc.yoc34+'%','7.50%',calc.meetsYOC),
+        _retRow('Levered IRR',calc.irr+'%','UNVERIFIED',calc.meetsIRR),
+        _retRow('Equity Multiple',calc.em+'x','UNVERIFIED',calc.meetsEM),
+        _retRow('YR 3/4 YOC',calc.yoc34+'%','UNVERIFIED',calc.meetsYOC),
         _retRow('YR 1 Lev. CF','$'+calc.yr1LevCF,'—',null),
         _retRow('DSCR',calc.dscr+'x','1.20x',dscrN>=1.2),
         _retRow('Exit Sale Price','$'+calc.salePrice,'—',null)
@@ -13038,9 +13077,9 @@ async function ridgeExportPPT() {
       ],{x:7.0,y:1.0,w:5.9,h:3.4,colW:[2.8,3.1],border:{pt:1,color:'30363D'}});
 
       s3.addShape(pptx.ShapeType.rect,{x:7.0,y:4.55,w:5.9,h:1.85,fill:{color:NAVY},line:{color:BLUE,pt:2}});
-      s3.addText('MAX PRICE @ 14.75% IRR',{x:7.1,y:4.65,w:5.7,h:0.4,fontSize:9,bold:true,color:BLUE,fontFace:'Courier New',align:'center',charSpacing:2});
+      s3.addText('MAX PRICE @ UNVERIFIED IRR HURDLE',{x:7.1,y:4.65,w:5.7,h:0.4,fontSize:9,bold:true,color:BLUE,fontFace:'Courier New',align:'center',charSpacing:2});
       s3.addText('$'+calc.maxPrice,{x:7.1,y:5.1,w:5.7,h:0.65,fontSize:28,bold:true,color:GREEN,fontFace:'Courier New',align:'center'});
-      s3.addText('$'+calc.maxPricePSF+' PSF  ·  $'+calc.priceReduction+' BELOW ASK',{x:7.1,y:5.8,w:5.7,h:0.35,fontSize:9,color:MUTED,fontFace:'Courier New',align:'center'});
+      s3.addText('$'+calc.maxPricePSF+'/acre  ·  $'+calc.priceReduction+' BELOW ASK',{x:7.1,y:5.8,w:5.7,h:0.35,fontSize:9,color:MUTED,fontFace:'Courier New',align:'center'});
       s3.addShape(pptx.ShapeType.rect,{x:0,y:6.9,w:13.33,h:0.6,fill:{color:NAVY}});
       s3.addText('Dalfen Industrial  ·  CONFIDENTIAL',{x:0.5,y:6.95,w:9,h:0.45,fontSize:10,color:MUTED,fontFace:'Courier New'});
       s3.addText(dateStr,{x:9.5,y:6.95,w:3.3,h:0.45,fontSize:10,color:MUTED,fontFace:'Courier New',align:'right'});
@@ -13276,9 +13315,9 @@ async function ridgeExportPPT() {
       var n=parseFloat(String(v||'').replace(/[%\s]/g,''));
       if(isNaN(n)||v===undefined||v===null||v==='') return {text:'—',options:{fontSize:10,color:BODY,fill:{color:BG},align:'center'}};
       var bg,tc;
-      if(n>=14.75){bg='E8F5EC';tc=PASS;}
-      else if(n>=13.5){bg='FEF3C7';tc=WARN;}
-      else if(n>=12){bg='EBF4FF';tc=FLOOR;}
+      if(n>=ISR_IRR_HURDLE_UNVERIFIED){bg='E8F5EC';tc=PASS;}
+      else if(n>=ISR_IRR_TIER2_UNVERIFIED){bg='FEF3C7';tc=WARN;}
+      else if(n>=ISR_IRR_TIER3_UNVERIFIED){bg='EBF4FF';tc=FLOOR;}
       else{bg='FFE8E8';tc=FAIL;}
       return {text:pct2(n),options:{fontSize:10,color:tc,bold:true,fill:{color:bg},align:'center'}};
     }
@@ -13296,7 +13335,7 @@ async function ridgeExportPPT() {
       s1.addText(st.l,{x:0.5+i*4.1,y:3.50,w:3.9,h:0.24,fontSize:8.5,color:GOLD,align:'center',charSpacing:2});
     });
     // Bottom strip: 5 items — Hold/IRR/EM labeled as (PROJ), Asset Type and Date are not projected
-    [{l:'ASSET TYPE',v:d.type||'Flex Industrial'},{l:'HOLD PERIOD (PROJ)',v:d.hold||'5 Years'},{l:'LEVERED IRR (PROJ)',v:pct2(d.irr)},{l:'EQUITY MULTIPLE (PROJ)',v:mult2(d.em)},{l:'DATE',v:dateStr}].forEach(function(m2,i){
+    [{l:'ASSET TYPE',v:d.type||'Industrial Outdoor Storage (IOS)'},{l:'HOLD PERIOD (PROJ)',v:d.hold||'5 Years'},{l:'LEVERED IRR (PROJ)',v:pct2(d.irr)},{l:'EQUITY MULTIPLE (PROJ)',v:mult2(d.em)},{l:'DATE',v:dateStr}].forEach(function(m2,i){
       s1.addText(m2.l,{x:0.5+i*2.47,y:3.88,w:2.37,h:0.22,fontSize:7.5,color:BODY,charSpacing:1.5});
       s1.addText(m2.v,{x:0.5+i*2.47,y:4.12,w:2.37,h:0.32,fontSize:13,color:NAVY,bold:true});
     });
@@ -13317,9 +13356,9 @@ async function ridgeExportPPT() {
 
     // Row 1 — 4 KPIs: Purchase Price / Going-In Cap / Levered IRR / Exit Sale Price
     var kpi2r1 = [
-      {v:fmtUSD(d.price),         l:'PURCHASE PRICE',  s:fmtPSF(d.psf)+' / SF'},
-      {v:pct2(d.cap),             l:'GOING-IN CAP',    s:'NOI Yr 1 '+(_s2NOI1 ? fmtUSD(_s2NOI1) : (m.noi ? fmtUSD(m.noi) : '—'))},
-      {v:pct2(d.irr),             l:'LEVERED IRR',     s:'Floor 14.75%'},
+      {v:fmtUSD(d.price),         l:'PURCHASE PRICE',  s:fmtPSF(d.psf)+' / acre'},
+      {v:pct2(d.cap),             l:'GOING-IN YIELD',  s:'Income Yr 1 '+(_s2NOI1 ? fmtUSD(_s2NOI1) : (m.noi ? fmtUSD(m.noi) : '—'))},
+      {v:pct2(d.irr),             l:'LEVERED IRR',     s:'Floor [VERIFY WITH USER]'},
       {v:_s2ExitPrice ? fmtUSD(_s2ExitPrice) : '—', l:'EXIT SALE PRICE', s:_s2ExitCap ? 'At '+pct2(_s2ExitCap)+' exit cap' : 'Exit cap TBD'}
     ];
     kpi2r1.forEach(function(k,i){
@@ -14046,9 +14085,9 @@ async function ridgeExportPPT() {
     // 4-tier IRR color helper — muted institutional palette
     function irrColors(irr) {
       if (irr === null || irr === undefined) return {bg:BG, tc:TEXT2};
-      if (irr >= 14.75) return {bg:'2E7D32', tc:WHITE};
-      if (irr >= 13.50) return {bg:'B8860B', tc:WHITE};
-      if (irr >= 12.00) return {bg:'A0522D', tc:WHITE};
+      if (irr >= ISR_IRR_HURDLE_UNVERIFIED) return {bg:'2E7D32', tc:WHITE};
+      if (irr >= ISR_IRR_TIER2_UNVERIFIED) return {bg:'B8860B', tc:WHITE};
+      if (irr >= ISR_IRR_TIER3_UNVERIFIED) return {bg:'A0522D', tc:WHITE};
       return {bg:'8B1A1A', tc:WHITE};
     }
 
@@ -14179,10 +14218,10 @@ async function ridgeExportPPT() {
 
     // Legend
     var lgnd = [
-      {color:'2E7D32', label:'\u25a0  \u2265 14.75%  VALUE-ADD HURDLE'},
-      {color:'B8860B', label:'\u25a0  13.50\u201314.74%  CORE+/STABILIZED RANGE'},
-      {color:'A0522D', label:'\u25a0  12.00\u201313.49%  APPROACHING FLOOR'},
-      {color:'8B1A1A', label:'\u25a0  < 12.00%  FAILS ALL HURDLES'}
+      {color:'2E7D32', label:'\u25a0  \u2265 ' + ISR_IRR_HURDLE_UNVERIFIED + '%  CLEARS (UNVERIFIED HURDLE)'},
+      {color:'B8860B', label:'\u25a0  ' + ISR_IRR_TIER2_UNVERIFIED.toFixed(2) + '\u2013' + (ISR_IRR_HURDLE_UNVERIFIED-0.01).toFixed(2) + '%  BORDERLINE'},
+      {color:'A0522D', label:'\u25a0  ' + ISR_IRR_TIER3_UNVERIFIED.toFixed(2) + '\u2013' + (ISR_IRR_TIER2_UNVERIFIED-0.01).toFixed(2) + '%  APPROACHING FLOOR'},
+      {color:'8B1A1A', label:'\u25a0  < ' + ISR_IRR_TIER3_UNVERIFIED.toFixed(2) + '%  FAILS'}
     ];
     var lx12 = 0.35;
     lgnd.forEach(function(li) {
@@ -14311,12 +14350,12 @@ async function ridgeExportPPT() {
       var _yocNum14=parseFloat(String(d.yoc||'0').replace(/[%\s]/g,''));
       var _ltvNum14=parseFloat(String(d.ltv||'0').replace(/[%\s]/g,''));
       var _hurdleLines14=[
-        'Deal Type: VALUE-ADD (near-term rollover, execution risk)',
-        'IRR Hurdle: 14.75% floor',
-        'Underwritten IRR: '+pct2(d.irr)+(!isNaN(_irrNum14)?(_irrNum14>=14.75?' \u2014 PASSES':' \u2014 FAILS'):''),
-        'Equity Multiple: '+mult2(d.em)+(!isNaN(_emNum14)?(_emNum14>=1.70?' \u2014 PASSES TARGET':_emNum14>=1.50?' \u2014 ABOVE FLOOR / BELOW TARGET':' \u2014 FAILS FLOOR'):''),
-        'YOC Yr 3: '+pct2(d.yoc)+(!isNaN(_yocNum14)?(_yocNum14>=7.50?' \u2014 PASSES':' \u2014 FAILS'):''),
-        'LTV: '+pct2(d.ltv)+(!isNaN(_ltvNum14)?(_ltvNum14<=65?' \u2014 PASSES':' \u2014 FAILS'):'')
+        'Deal Type: [VERIFY WITH USER \u2014 deal type classification not extracted]',
+        'IRR Hurdle: [VERIFY WITH USER] \u2014 Dalfen\'s actual hurdle is unconfirmed',
+        'Underwritten IRR: '+pct2(d.irr)+(!isNaN(_irrNum14)?' \u2014 vs UNVERIFIED '+ISR_IRR_HURDLE_UNVERIFIED+'% (Entrada\'s old floor, not Dalfen\'s): '+(_irrNum14>=ISR_IRR_HURDLE_UNVERIFIED?'PASSES':'FAILS'):''),
+        'Equity Multiple: '+mult2(d.em)+' \u2014 [VERIFY WITH USER] target unconfirmed',
+        'YOC Yr 3: '+pct2(d.yoc)+' \u2014 [VERIFY WITH USER] target unconfirmed',
+        'LTV: '+pct2(d.ltv)+' \u2014 [VERIFY WITH USER] ceiling unconfirmed'
       ];
       _hurdleLines14.forEach(function(line,li){
         var passes=line.match(/PASSES/i), fails=line.match(/FAILS/i);
