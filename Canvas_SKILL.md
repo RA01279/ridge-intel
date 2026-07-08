@@ -1,31 +1,35 @@
 ---
 name: canvas
 description: >
-  CANVAS is RIDGE's tenant intelligence and space matching engine. Use this skill ANY TIME
-  the user wants to find tenants for a specific property, identify businesses that need
-  industrial or flex space, or build a demand-side prospect list. Trigger on: "find tenants
-  for this building", "who should lease this space", "run CANVAS", "tenant search",
-  "fill this building", "who's looking for space", "find me tenants", "tenant prospects",
-  "demand analysis", "what businesses are in this area", "hunt for tenants", or any request
-  to source, identify, or rank potential tenants for industrial or flex assets. CANVAS
-  operates in two modes — Fill (you have the building, find the tenants) and Hunt (find
-  businesses that need space, feed back into RIDGE acquisition targeting). Always load this
-  skill before executing any tenant sourcing or demand analysis task.
+  CANVAS is RIDGE's IOS demand-side intelligence and land matching engine. Use this skill
+  ANY TIME the user wants to find users for a specific IOS site, identify businesses that
+  need trailer parking, container storage, contractor/material yard, equipment rental, or
+  truck terminal space, or build a demand-side prospect list for Dalfen Industrial. Trigger
+  on: "find users for this site", "who should lease this yard", "run CANVAS", "IOS demand
+  search", "fill this site", "who needs outdoor storage", "find me trailer parking users",
+  "IOS prospects", "demand analysis", "what fleets are in this area", "hunt for IOS users",
+  or any request to source, identify, or rank potential Industrial Outdoor Storage users
+  for a site or submarket. CANVAS operates in two modes — Fill (you have the site, find the
+  users) and Hunt (find businesses that need IOS space, feed back into RIDGE acquisition
+  targeting). Always load this skill before executing any IOS demand sourcing or demand
+  analysis task.
 ---
 
 > **Output Standard:** Before generating any output, read and apply `output-standard/STANDARD.md` (repo root). All formatting, color, typography, and QA requirements defined there supersede any defaults in this skill. CANVAS applies: PDF standard (Section 4) and Excel standard (Section 5).
 
-# CANVAS — Tenant Intelligence & Space Matching Engine
+# CANVAS — IOS Demand Intelligence & Site Matching Engine
 
 ## Identity
 
-CANVAS is RIDGE's demand-side sourcing engine. It identifies, scores, and ranks businesses
-that are likely tenants for small and mid-bay industrial and flex space (2,000–25,000 SF).
-It operates in two modes and uses three data sources in a tiered stack.
+CANVAS is RIDGE's demand-side sourcing engine for Industrial Outdoor Storage. It
+identifies, scores, and ranks businesses that are likely users of IOS sites in Dallas–Fort
+Worth and Houston — trailer parking operators, container storage users, contractor and
+material yards, equipment maintenance and rental operators, truck terminals, and auto/bus
+storage fleets. It operates in two modes and uses a four-source data stack.
 
 **Every run produces three deliverables — always all three:**
-1. `CANVAS_[Property/Market]_Prospects_[YYYYMMDD].xlsx` — Ranked tenant prospect list
-2. `CANVAS_[Property/Market]_Report_[YYYYMMDD].pdf` — Summary report, top-tier candidates
+1. `CANVAS_[Site/Market]_Prospects_[YYYYMMDD].xlsx` — Ranked IOS user prospect list
+2. `CANVAS_[Site/Market]_Report_[YYYYMMDD].pdf` — Summary report, top-tier candidates
 3. **RIDGE Feed** — Hunt mode candidates with implied acquisition targets flagged for RIDGE pipeline
 
 ---
@@ -33,39 +37,40 @@ It operates in two modes and uses three data sources in a tiered stack.
 ## Operating Modes
 
 ### Mode 1 — FILL
-**When to use:** You have a specific building under contract, in LOI, or in the pipeline.
-You need to identify businesses in the trade area that fit the space and are likely to lease it.
+**When to use:** You have a specific IOS site under contract, in LOI, or in the pipeline.
+You need to identify businesses in the trade area that fit the site and are likely to lease it.
 
 **Input required:**
-- Property address
-- Total SF and bay configuration (drive-in / dock-high / both)
-- Clear height
-- Asking rent range ($/SF NNN)
+- Site address
+- Total acreage and building coverage % (if any building on site)
+- Fencing / gate / paving condition
+- Zoning and entitlement status (permitted use / SUP required)
+- Asking rate ($/acre or $/spot per month)
 - Target move-in timeline
-- CoStar tenant export (optional but preferred — see Data Sources)
+- Municipal permit filing data (optional but preferred — see Data Sources)
 
-**Logic:** Start with the building spec. Work outward into the trade area. Match businesses
-by space need, industry cluster, and displacement signals. Rank by fit score.
+**Logic:** Start with the site spec. Work outward into the trade area. Match businesses
+by space need, target-user category, and displacement signals. Rank by fit score.
 
 ---
 
 ### Mode 2 — HUNT
 **When to use:** You are scanning a market or submarket for businesses showing displacement
-signals — outgrown their space, operating from suboptimal locations, growing headcount without
-a corresponding space upgrade. Output feeds directly back into RIDGE as acquisition targets.
+or growth signals — fleet expansion, permit filings for outdoor storage use, or displacement
+from a redeveloped industrial site. Output feeds directly back into RIDGE as acquisition targets.
 
 **Input required:**
-- Target market / submarket or radius anchor point
-- Industry filters (default: all active clusters — see Industry Clusters)
+- Target market / submarket or radius anchor point (DFW or Houston only)
+- Target-user filters (default: all active categories — see Target-User Profile)
 - Search parameters (default or custom — see Parameter Set)
-- CoStar tenant export (optional but preferred — see Data Sources)
+- Municipal permit filing data (optional but preferred — see Data Sources)
 
 **Logic:** Identify businesses showing growth or displacement signals first. Derive their
-implied space requirement. Then identify the buildings they should be in — flag those
-buildings as RIDGE acquisition candidates.
+implied acreage requirement. Then identify the sites they should be in — flag those
+sites as RIDGE acquisition candidates.
 
 **RIDGE integration:** Every Hunt mode output includes a RIDGE Acquisition Feed section —
-a list of buildings implied by the tenant demand identified, with ownership signal notes
+a list of sites implied by the tenant demand identified, with ownership signal notes
 where assessor data is available.
 
 ---
@@ -76,91 +81,106 @@ Use all available sources. Degrade gracefully if a source is unavailable — nev
 the run, just note the limitation.
 
 ### Source 1 — Google Maps / Places (Always Available)
-**Role:** Wide-net discovery. Find businesses by industry category within the defined radius.
+**Role:** Wide-net discovery. Find businesses by target-user category within the defined radius.
 **Use for:**
 - Initial business identification by category
 - Physical presence confirmation (not a virtual/residential address)
-- Street view operational signals — trucks, equipment, yard usage, visible overcrowding,
-  outdoor storage suggesting space constraint
+- Street view / satellite operational signals — trailer counts, container stacks, yard
+  overflow onto shoulders or adjacent lots, visible fleet growth suggesting space constraint
 - Business tenure proxy (Google listing age, review history depth)
 
-**Search approach:** Query by industry category + geography. Cross-reference street view
-for every top-tier candidate before including in output.
+**Search approach:** Query by target-user category + geography. Cross-reference satellite/
+street view for every top-tier candidate before including in output.
 
-### Source 2 — CoStar Tenant Export (User-Provided Upload)
-**Role:** Precision layer. Existing tenant-in-market data with lease signals.
-**Upload format:** Standard CoStar tenant export (.xlsx). User pulls this from CoStar
-and uploads at session start. Filename pattern: `CoStar_Tenant_[Market]_[Date].xlsx`
+### Source 2 — Municipal Permit Filings (User-Provided or Public Record Pull)
+**Role:** Precision layer — the highest-signal, IOS-specific data source. Tracks
+businesses actively seeking or holding entitlement for outdoor storage use.
+**Pull format:** City/county permit and zoning case records (SUP/CUP applications,
+site plan filings referencing "outdoor storage," "trailer parking," or "laydown yard").
+Filename pattern if user-provided: `Permits_[Jurisdiction]_[Date].xlsx`
 
-**If upload is present, extract:**
-- Current tenant address and SF occupied
-- Lease expiration date → proximity signal (≤18 months = high priority)
-- Rent paid vs. market (below market = captive tenant risk; above market = motivated to move)
-- Lease type (NNN / modified gross / gross)
-- Tenant industry / use type
+**If filings are available, extract:**
+- Applicant / business name and current address
+- Filing type (SUP/CUP application, site plan, zoning variance)
+- Filing status and date → urgency signal (active application = near-term space need)
+- Site acreage referenced in the filing
+- Jurisdiction (see `municipal-ordinance-reference/SKILL.md` for DFW suburb and Houston
+  deed-restriction context)
 
-**If upload is not present:** Proceed with Google Maps + LinkedIn only. Note in output
-header: "CoStar tenant export not provided — lease expiration signals unavailable."
+**If filings are not available:** Proceed with Google Maps + fleet/trucking growth
+signals only. Note in output header: "Municipal permit filings not provided — entitlement
+urgency signals unavailable."
 
-### Source 3 — LinkedIn (Available)
-**Role:** Growth signal layer. Identifies businesses with expanding headcount that will
-need space before they know they need it.
+### Source 3 — Fleet / Trucking Growth Signals (Web Search + Company Sources)
+**Role:** Growth signal layer. Identifies fleets and logistics operators expanding
+headcount or truck/trailer count that will need yard space before they know it.
 **Use for:**
-- Headcount trajectory over 12/24 months (growing = space need incoming)
-- Active job postings in target market (hiring surge = displacement signal)
-- Decision maker identification — ops manager, facilities director, owner/principal
+- Fleet size trajectory over 12/24 months (growing fleet = space need incoming)
+- Active driver/yard-hand job postings in target market (hiring surge = displacement signal)
+- DOT/FMCSA carrier registration growth where available (new power units registered)
+- Decision maker identification — fleet manager, terminal manager, owner/principal
 - Company age and market tenure confirmation
+
+### Source 4 — Displacement Tracking — Redeveloped Industrial Sites (Web Search + Public Record)
+**Role:** Identifies businesses being pushed out of existing industrial buildings and
+yards by redevelopment, and back-fills their prior footprint into implied IOS demand.
+**Use for:**
+- Building permit / demolition permit activity on existing industrial parcels
+  (redevelopment of an old industrial building or yard displaces its outdoor-storage users)
+- News/press coverage of industrial site sales or redevelopment announcements
+- Identifying the outgoing tenant/user of a site slated for redevelopment and their
+  next-site search status
 
 ---
 
-## Industry Clusters
+## Target-User Profile
 
-### Active by Default (Small/Mid Bay Primary Users)
-These clusters are always included unless user explicitly removes them.
+### Active by Default (Primary Dalfen IOS Users)
+These categories are always included unless user explicitly removes them.
 
-| Cluster | Typical SF Range | Bay Type | Displacement Signal |
+| Category | Typical Acreage Range | Site Config | Displacement Signal |
 |---|---|---|---|
-| Home Services (HVAC, plumbing, electrical, pest, landscaping) | 2,000–8,000 SF | Drive-in | Van/equipment overflow, outdoor storage |
-| Construction Trades & Specialty Contractors | 3,000–12,000 SF | Drive-in | Material staging, tool/equipment storage |
-| Auto Services & Fleet Maintenance | 4,000–15,000 SF | Drive-in | Bay capacity constraint, overflow parking |
-| E-Commerce Fulfillment & Returns Processing | 3,000–20,000 SF | Both | Volume growth, residential address operation |
-| Last-Mile / Courier Depot Ops | 2,500–12,000 SF | Both | Route expansion, van fleet growth |
-| Med Device & Specialty Distribution | 2,000–10,000 SF | Drive-in | Clean space need, security requirement |
+| Trailer Parking Operators | 2–15 acres | Paved, fenced, no building required | Fleet growth, yard overflow onto shoulders |
+| Container Storage Users | 2–20 acres | Paved or compacted base, fenced/gated | Import/export volume growth, chassis pool expansion |
+| Contractor & Material Yards | 1–10 acres | Fenced, partial paving, small office/shop optional | Material staging overflow, equipment storage growth |
+| Equipment Maintenance & Rental Yards | 2–12 acres | Fenced, shop building + yard | Fleet expansion, service bay capacity constraint |
+| Truck Terminals (LTL/parking, non-cross-dock) | 3–25 acres | Paved, fenced, fueling/parking focus | Route expansion, driver domicile growth |
+| Auto / Bus Storage Fleets | 2–15 acres | Paved or compacted base, fenced/gated | Fleet growth, municipal contract expansion |
 
-### Conditional (Size/Config Dependent)
+### Conditional (Size/Zoning Dependent)
 Include when parameter set supports it or user activates explicitly.
 
-| Cluster | Condition to Include |
+| Category | Condition to Include |
 |---|---|
-| Light Manufacturing & Contract Assembly | Sub-15,000 SF ops only |
-| Building Materials & Trade Supply | Local/regional operators only, not big-box |
-| Government / Municipal Contractor Ops | Only when defense or infrastructure contract signals present |
+| Municipal / Public Works Yards | Only when a municipal contract or franchise signal is present |
+| Building Materials Laydown (regional supplier) | Regional/wholesale operators only, not retail |
+| Heavy Equipment Dealer Overflow Lots | Only where the dealer's primary lot is at capacity |
 
 ### Excluded by Default
-| Cluster | Reason |
+| Category | Reason |
 |---|---|
-| Food Production / Cold Storage | Separate product — build-out cost complicates standard flex underwriting |
-| Heavy Manufacturing | Wrong size range |
-| Large-Format Logistics / Distribution | Wrong size range |
+| Small-bay industrial/flex tenants (office/warehouse users) | Wrong asset class — building-based leasing, not IOS |
+| Cold storage / food distribution | Separate product — refrigeration infra not part of the IOS gate criteria |
+| Retail / last-mile parcel depots requiring building improvements | Wrong use — building-dependent, not open-yard |
 
 ---
 
 ## Dynamic Parameter Set
 
-All parameters are adjustable per run. Defaults are calibrated for small/mid bay
-industrial and flex in Atlanta, Savannah, and DFW.
+All parameters are adjustable per run. Defaults are calibrated for IOS demand in
+Dallas–Fort Worth and Houston only.
 
 | Parameter | Tight | Default | Wide |
 |---|---|---|---|
-| Search radius | 3 mi | 10 mi | 25 mi |
+| Search radius | 5 mi | 15 mi | 35 mi |
 | Business tenure in market | 5+ yrs | 3+ yrs | 1+ yr |
-| Employee count (min) | 20+ | 10+ | 5+ |
-| Implied space need (SF) | 5,000+ SF | 2,500+ SF | 1,000+ SF |
-| Lease expiration window | ≤12 months | ≤18 months | ≤36 months |
-| Industry clusters | Selected only | All active defaults | Add conditional clusters |
+| Fleet size / employee count (min) | 20+ | 10+ | 5+ |
+| Implied space need (acres) | 3+ acres | 1+ acres | 0.5+ acres |
+| Permit filing / lease urgency window | ≤6 months | ≤12 months | ≤24 months |
+| Target-user categories | Selected only | All active defaults | Add conditional categories |
 
 **To adjust:** User states parameter changes at session start or mid-run.
-Example: "Tighten radius to 5 miles, expand tenure to 1+ years."
+Example: "Tighten radius to 8 miles, expand tenure to 1+ years."
 CANVAS confirms the adjusted parameter set before executing.
 
 **Parameter memory:** CANVAS retains the last-used parameter set within a session.
@@ -178,31 +198,34 @@ in all outputs.
 
 | Signal | Weight | Max Points |
 |---|---|---|
-| Space need match (implied SF vs. available SF) | 25% | 25 |
+| Space need match (implied acreage vs. available acreage) | 25% | 25 |
 | Displacement signal strength | 25% | 25 |
-| Industry cluster fit (active default = full credit) | 20% | 20 |
+| Target-user category fit (active default = full credit) | 20% | 20 |
 | Business tenure in market | 15% | 15 |
-| Growth signal (LinkedIn headcount / job postings) | 10% | 10 |
+| Growth signal (fleet size / job postings) | 10% | 10 |
 | Decision maker identifiable | 5% | 5 |
 
 ### Space Need Match (25 pts)
-- Implied SF within 20% of available SF → 25 pts
-- Implied SF within 40% → 15 pts
-- Implied SF outside 40% but still workable → 5 pts
+- Implied acreage within 20% of available acreage → 25 pts
+- Implied acreage within 40% → 15 pts
+- Implied acreage outside 40% but still workable (subdivide/partial site) → 5 pts
 - No match → 0 pts
 
 ### Displacement Signal Strength (25 pts)
 Score the strongest signal present:
-- Lease expiring ≤12 months (CoStar confirmed) → 25 pts
-- Lease expiring 13–18 months → 20 pts
-- Operating from residential or clearly undersized address (Google Maps confirmed) → 18 pts
-- Visible outdoor storage / overflow / overcrowding (street view confirmed) → 15 pts
-- Lease expiring 19–36 months → 10 pts
+- Active SUP/CUP or site plan filing for outdoor storage use, ≤6 months old (municipal
+  filing confirmed) → 25 pts
+- Displacement from a redeveloped industrial site — confirmed demolition/redevelopment
+  permit on prior site → 22 pts
+- Filing 7–12 months old → 18 pts
+- Visible yard overflow / trailer or container overcrowding (satellite/street view
+  confirmed) → 15 pts
+- Filing 13–24 months old → 10 pts
 - No confirmed displacement signal → 0 pts
 
-### Industry Cluster Fit (20 pts)
-- Active default cluster → 20 pts
-- Conditional cluster (activated) → 12 pts
+### Target-User Category Fit (20 pts)
+- Active default category → 20 pts
+- Conditional category (activated) → 12 pts
 - Adjacent / unlisted but logical → 5 pts
 
 ### Business Tenure in Market (15 pts)
@@ -212,15 +235,15 @@ Score the strongest signal present:
 - 1–3 years → 4 pts
 - Under 1 year → 0 pts
 
-### Growth Signal — LinkedIn (10 pts)
-- Headcount growth 20%+ over 12 months + active job postings → 10 pts
-- Headcount growth 10–20% or active postings only → 6 pts
-- Flat headcount, no postings → 2 pts
-- LinkedIn not found → 0 pts (note in output)
+### Growth Signal — Fleet / Hiring (10 pts)
+- Fleet or headcount growth 20%+ over 12 months + active job postings → 10 pts
+- Fleet or headcount growth 10–20% or active postings only → 6 pts
+- Flat fleet size, no postings → 2 pts
+- No growth data found → 0 pts (note in output)
 
 ### Decision Maker Identifiable (5 pts)
 - Owner / principal identified with contact → 5 pts
-- Ops manager or facilities contact identified → 3 pts
+- Fleet manager or terminal manager identified → 3 pts
 - Business phone only, no named contact → 1 pt
 - No contact found → 0 pts
 
@@ -238,31 +261,32 @@ Score the strongest signal present:
 
 ### Fill Mode — Step by Step
 
-**Step 1: Ingest building spec**
-Confirm with user: address, SF, bay type, clear height, asking rent, timeline.
-If CoStar tenant export is uploaded, load it now.
+**Step 1: Ingest site spec**
+Confirm with user: address, acreage, building coverage %, fencing/gate/paving condition,
+zoning/entitlement status, asking rate, timeline.
+If municipal permit filings are provided, load them now.
 
 **Step 2: Define trade area**
-Apply radius parameter. Note any hard geographic boundaries (highways, industrial
-corridors, municipal lines) that would logically constrain the trade area.
+Apply radius parameter. Note any hard geographic boundaries (highways, rail corridors,
+port/terminal access, municipal lines) that would logically constrain the trade area.
 
 **Step 3: Google Maps discovery**
-Search each active industry cluster within the defined radius. For every result:
+Search each active target-user category within the defined radius. For every result:
 - Confirm physical address (not residential, not virtual)
-- Pull street view — note operational signals (trucks, equipment, outdoor storage,
-  visible overcrowding)
-- Estimate implied SF need based on business type, employee count, visible operation scale
+- Pull satellite/street view — note operational signals (trailer count, container stacks,
+  yard overflow, visible fleet growth)
+- Estimate implied acreage need based on business type, fleet size, visible operation scale
 
-**Step 4: CoStar tenant layer (if export provided)**
-Cross-reference Google Maps results against CoStar export.
-Flag any CoStar tenants in the radius not captured by Google Maps — add to prospect list.
-Apply lease expiration and rent signals to all matched records.
+**Step 4: Municipal permit layer (if filings provided)**
+Cross-reference Google Maps results against permit filing data.
+Flag any filers in the radius not captured by Google Maps — add to prospect list.
+Apply filing status and urgency signals to all matched records.
 
-**Step 5: LinkedIn growth layer**
+**Step 5: Fleet growth + displacement layer**
 For every Tier 1 and Tier 2 candidate from Steps 3–4:
-- Search company on LinkedIn
-- Record headcount trend and active job postings
-- Identify decision maker (owner, ops, facilities)
+- Search company fleet size trend and active job postings
+- Check for redevelopment/demolition activity on their current site
+- Identify decision maker (owner, fleet manager, terminal manager)
 
 **Step 6: Score and tier**
 Apply CANVAS Fit Score to every prospect. Assign tier. Drop below-threshold results.
@@ -275,32 +299,34 @@ Generate all three deliverables. See Output Specifications below.
 ### Hunt Mode — Step by Step
 
 **Step 1: Define search parameters**
-Confirm market / submarket / radius anchor. Confirm industry filters and parameter set.
-If CoStar tenant export is uploaded, load it now.
+Confirm market / submarket / radius anchor (DFW or Houston only). Confirm target-user
+filters and parameter set. If municipal permit filings are provided, load them now.
 
 **Step 2: Lead with displacement signals**
 Priority order:
-1. CoStar tenants with lease expiration ≤18 months (if export provided)
-2. Google Maps businesses operating from residential or clearly undersized addresses
-3. LinkedIn — businesses with 20%+ headcount growth and no corresponding address upgrade
-4. Street view — visible overcrowding, outdoor storage, overflow parking
+1. Active SUP/CUP or site plan filings for outdoor storage use, ≤12 months (if filings provided)
+2. Businesses displaced by a redeveloped industrial site (demolition/redevelopment permit confirmed)
+3. Fleet/trucking operators with 20%+ growth and no corresponding yard upgrade
+4. Satellite/street view — visible trailer/container overcrowding, yard overflow
 
 **Step 3: Derive implied space requirement**
-For each displaced business, estimate SF need:
-- Employee count × 250–400 SF (light industrial / flex rule of thumb)
-- Adjust up for equipment-heavy operations, adjust down for distribution-heavy ops
-- Bay type requirement: drive-in vs. dock-high based on industry cluster
+For each displaced business, estimate acreage need:
+- Trailer/container count × typical stacking density for the category
+  (see `site-metrics-calculator/SKILL.md` for usable-acreage math)
+- Adjust up for equipment-heavy or maintenance-yard operations, adjust down for
+  pure parking/storage operations
+- Site config requirement: paving/fencing level based on target-user category
 
-**Step 4: Google Maps and LinkedIn enrichment**
-Same as Fill mode Steps 3 and 5 — confirm physical presence, growth signals,
+**Step 4: Google Maps and growth-signal enrichment**
+Same as Fill mode Steps 3 and 5 — confirm physical presence, fleet growth signals,
 decision maker identification.
 
 **Step 5: Score and tier**
 Apply CANVAS Fit Score. Assign tier.
 
 **Step 6: RIDGE Acquisition Feed**
-For each Tier 1 and Tier 2 prospect, identify the building type they need.
-Flag submarkets with cluster concentration — multiple displaced tenants in the same
+For each Tier 1 and Tier 2 prospect, identify the site type they need.
+Flag submarkets with category concentration — multiple displaced users in the same
 radius = demand signal for an acquisition target in that pocket.
 Output RIDGE feed as a separate section in the Excel and PDF.
 
@@ -318,7 +344,7 @@ Read `/mnt/skills/public/xlsx/SKILL.md` before generating.
 **Tab 1 — Prospect List**
 Columns in order:
 
-| # | Business Name | Address | Market | Industry Cluster | Implied SF Need | Bay Type | Tenure (yrs) | Displacement Signal | LinkedIn Growth | Decision Maker | Contact | CANVAS Score | Tier |
+| # | Business Name | Address | Market | Target-User Category | Implied Acreage Need | Site Config | Tenure (yrs) | Displacement Signal | Fleet Growth | Decision Maker | Contact | CANVAS Score | Tier |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|
 
 - Sort by CANVAS Score descending
@@ -327,24 +353,24 @@ Columns in order:
   - Tier 2 = amber `8B6914`
   - Tier 3 = navy `1A3A5C`
 
-**Tab 2 — CoStar Lease Signals** (only if CoStar export provided)
-Columns: Business Name | Current Address | Current SF | Lease Expiration | Months to Expiry |
-Rent/SF | vs. Market | Roll Risk
+**Tab 2 — Permit Filing Signals** (only if municipal permit data provided)
+Columns: Business Name | Current Address | Filing Type | Filing Status | Filing Date |
+Months Since Filing | Site Acreage Referenced | Jurisdiction | Urgency
 
-- Sort by months to expiry ascending
-- Highlight leases expiring ≤12 months in red `8B0000`
-- Highlight leases expiring 13–18 months in orange `CC5500`
+- Sort by months since filing ascending
+- Highlight filings ≤6 months old in red `8B0000`
+- Highlight filings 7–12 months old in orange `CC5500`
 
 **Tab 3 — RIDGE Acquisition Feed** (Hunt mode only)
-Columns: Submarket | Implied Demand (SF) | Bay Type | # Tenants Identified | Top Tenant | Signal Strength | RIDGE Conviction
+Columns: Submarket | Implied Demand (Acres) | Site Config | # Users Identified | Top User | Signal Strength | RIDGE Conviction
 
 - Signal Strength: High / Medium / Watch
 - RIDGE Conviction feeds directly into session deal review
 
 **Tab 4 — Run Parameters**
 Record the exact parameter set used for this run:
-radius, tenure floor, employee minimum, SF floor, lease expiration window,
-industry clusters active, data sources used, run date.
+radius, tenure floor, fleet/employee minimum, acreage floor, permit filing urgency window,
+target-user categories active, data sources used, run date.
 This enables parameter comparison across sessions.
 
 ---
@@ -365,29 +391,29 @@ Read `/mnt/skills/public/pdf/SKILL.md` before generating.
 **Tier 1 Profile Template (one page per prospect):**
 ```
 BUSINESS NAME                          CANVAS SCORE: XX/100 — TIER 1
-Address | Industry Cluster | Est. SF Need | Bay Type Requirement
+Address | Target-User Category | Est. Acreage Need | Site Config Requirement
 
 DISPLACEMENT SIGNAL
-[Primary signal with source — CoStar lease expiry / street view / LinkedIn]
+[Primary signal with source — permit filing / redevelopment displacement / satellite view / fleet growth]
 
 GROWTH SIGNAL
-[LinkedIn headcount trend, active postings, hiring locations]
+[Fleet size trend, active postings, hiring locations]
 
 SPACE FIT ANALYSIS
-[How their implied need maps to the subject property or target building type]
+[How their implied need maps to the subject site or target site type]
 
 DECISION MAKER
 [Name / Title / Contact if identified]
 
 RECOMMENDED OUTREACH APPROACH
-[1–2 sentence framing — position as operator solving a space problem, not a broker]
+[1–2 sentence framing — position as operator solving a yard-space problem, not a broker]
 
-DATA SOURCES USED: [Google Maps ✓ / CoStar ✓ / LinkedIn ✓]
+DATA SOURCES USED: [Google Maps ✓ / Permit Filings ✓ / Fleet Growth ✓ / Redevelopment Tracking ✓]
 ```
 
 Formatting:
-- Header: `CANVAS — Tenant Intelligence Report — [Property/Market] — [Date]`
-- Footer every page: `CANVAS — RIDGE Tenant Sourcing Engine — Confidential`
+- Header: `CANVAS — IOS Demand Intelligence Report — [Site/Market] — [Date]`
+- Footer every page: `CANVAS — RIDGE IOS Demand Sourcing Engine — Confidential`
 - Tier 1 profiles: green left border `1E6B3C`
 - Tier 2 summary table: amber header `8B6914`
 - RIDGE Acquisition Feed section: navy header `1A3A5C`
@@ -399,17 +425,17 @@ Formatting:
 Formatted as a direct input to the RIDGE Daily Prospect Report.
 Append to session pipeline as a demand-validated sourcing signal.
 
-For each submarket pocket where ≥3 Tier 1/2 tenants are identified:
+For each submarket pocket where ≥3 Tier 1/2 users are identified:
 ```
 SUBMARKET: [Name]
-DEMAND SIGNAL: [X] businesses identified needing [SF range] [bay type] space
-TOP TENANT: [Name] — [displacement signal summary]
-IMPLIED ACQUISITION TARGET: [Building type / size / submarket description]
+DEMAND SIGNAL: [X] businesses identified needing [acreage range] [site config] space
+TOP USER: [Name] — [displacement signal summary]
+IMPLIED ACQUISITION TARGET: [Site config / size / submarket description]
 RIDGE CONVICTION: High / Needs More Data / Watch List
 ```
 
-High Conviction requires: ≥3 Tier 1 tenants + submarket vacancy below 10% + no
-new supply under construction in that pocket.
+High Conviction requires: ≥3 Tier 1 users + confirmed IOS-permitted zoning or SUP
+precedent in that pocket + no comparable competing supply under development nearby.
 
 ---
 
@@ -417,11 +443,12 @@ new supply under construction in that pocket.
 
 - CANVAS runs as a standalone session or as a module within a RIDGE sourcing session
 - Fill mode output informs leasing strategy and owner outreach framing —
-  "we have tenants ready" is the strongest possible acquisition conversation opener
+  "we have users ready" is the strongest possible acquisition conversation opener
 - Hunt mode output feeds directly into RIDGE pipeline — demand-validated acquisition
-  targeting is more defensible than vacancy signal alone
-- CoStar tenant export for CANVAS is a separate pull from the CoStar property export
-  used for the RIDGE pipeline — both may be uploaded in the same session
+  targeting is more defensible than a vacant-site signal alone
+- Municipal permit filing data for CANVAS should be cross-referenced against
+  `zoning-entitlement-screener/SKILL.md` and `municipal-ordinance-reference/SKILL.md`
+  for jurisdiction-specific outdoor storage rules
 - Parameter set and run log (Tab 4) should be retained session-to-session to track
   which pockets have been worked and avoid redundant coverage
 
@@ -430,7 +457,7 @@ new supply under construction in that pocket.
 ## Output Naming Convention
 
 ```
-CANVAS_[Property address or Market]_Fill_[YYYYMMDD].xlsx / .pdf
+CANVAS_[Site address or Market]_Fill_[YYYYMMDD].xlsx / .pdf
 CANVAS_[Market]_Hunt_[YYYYMMDD].xlsx / .pdf
 ```
 

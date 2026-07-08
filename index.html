@@ -1087,22 +1087,22 @@ Extract every relevant fact from the materials above before asking any questions
   },
   {
     id:'canvas', num:'12', icon:'🏗️', name:'CANVAS',
-    badge:'Tenant Sourcing',
-    desc:'Tenant sourcing engine. Fill mode: find tenants for a specific building. Hunt mode: scan for displaced businesses and feed them back as acquisition targets.',
-    shortDesc:'Tenant sourcing. Fill a building or hunt acquisition targets.',
+    badge:'IOS Demand Sourcing',
+    desc:'IOS demand sourcing engine. Fill mode: find users for a specific IOS site. Hunt mode: scan for displaced or expanding fleets/operators and feed them back as acquisition targets.',
+    shortDesc:'IOS demand sourcing. Fill a site or hunt acquisition targets.',
     uploads:[
-      {id:'data',label:'Property Info or Market Data',hint:'Optional: floor plan PDF, CoStar data, or OM',icon:'📄',accept:'.pdf,.xlsx',type:'mixed'},
-      {id:'vacancy',label:'CoStar Vacancy Data',hint:'Hunt mode: CoStar vacancy export to ground tenant targeting',icon:'📊',accept:'.xlsx,.csv',type:'xlsx'}
+      {id:'data',label:'Site Info or Market Data',hint:'Optional: site plan PDF, CoStar data, or OM',icon:'📄',accept:'.pdf,.xlsx',type:'mixed'},
+      {id:'vacancy',label:'Municipal Permit Filings',hint:'Hunt mode: SUP/CUP or site plan filings referencing outdoor storage to ground targeting',icon:'📊',accept:'.xlsx,.csv',type:'xlsx'}
     ],
     fields:[
-      {row:[{id:'mode',label:'Mode',type:'select',opts:['Fill — I have a building, find tenants','Hunt — find displaced businesses for acquisition targeting']},{id:'addr',label:'Property Address',ph:'e.g. 7100 Distribution Dr, Dallas, TX'}]},
-      {row:[{id:'sf',label:'Available SF',ph:'e.g. 48,000'},{id:'dock',label:'Dock Doors / Clear Height',ph:'e.g. 4 dock-high, 24\' clear'}]},
-      {row:[{id:'rent',label:'Target Rent PSF',ph:'e.g. $13.50 NNN'},{id:'sub',label:'Submarket',ph:'e.g. Great Southwest / Arlington'}]},
-      {row:[{id:'notes',label:'Ideal Tenant Profile',ph:'3PL, light manufacturing, e-commerce fulfillment, max 3 tenants...',type:'textarea'}]},
+      {row:[{id:'mode',label:'Mode',type:'select',opts:['Fill — I have a site, find users','Hunt — find displaced/expanding fleets for acquisition targeting']},{id:'addr',label:'Site Address',ph:'e.g. 7100 Distribution Dr, Dallas, TX'}]},
+      {row:[{id:'sf',label:'Available Acreage',ph:'e.g. 8.5 acres'},{id:'dock',label:'Fencing / Paving / Power',ph:'e.g. Fenced, fully paved, 200A 3-phase'}]},
+      {row:[{id:'rent',label:'Target Rate ($/acre or $/spot)',ph:'e.g. $4,500/acre/mo'},{id:'sub',label:'Submarket',ph:'e.g. Great Southwest / Arlington'}]},
+      {row:[{id:'notes',label:'Ideal Target-User Profile',ph:'Trailer parking, container storage, contractor yard, max 3 users...',type:'textarea'}]},
     ],
-    steps:['Analyzing building specs...','Identifying demand signals...','Scanning target tenant types...','Building prospect list...','Generating outreach recommendations...'],
-    system:`You are CANVAS, RIDGE's tenant sourcing engine. In Fill mode you find tenants for a specific building. In Hunt mode you find displaced or space-hungry businesses that could either lease RIDGE assets or signal acquisition targets. You know industrial and flex tenant profiles — 3PL, light manufacturing, e-commerce, tech, flex users. Be specific with company names and contact approaches.`,
-    prompt:(d)=>`Run CANVAS ${d.mode||'Fill'} for: ${d.addr||'Subject Property'} | ${d.sf||'?'} SF available | ${d.dock||''} | Target rent: ${d.rent||'market'} | Submarket: ${d.sub||'?'}.\n${d.notes?'Ideal profile: '+d.notes+'\n':''}\n${d.data_text?'Property data:\n'+d.data_text+'\n\n':''}${d.vacancy_text?'CoStar vacancy data:\n'+d.vacancy_text+'\n\n':''}\nProduce:\n## DEMAND ANALYSIS\nWhat tenant types are actively looking in this submarket? What size requirements are most active?\n\n## TENANT PROSPECT TABLE\nTable: Company | Type | Est. SF Need | Likelihood | Why This Building | Outreach Approach\nProvide 8–12 specific prospects.\n\n## TOP 3 TARGETS\nFor each: company overview, why they need space, what to lead with in outreach, who to contact.\n\n## OUTREACH STRATEGY\nHow to position this building. What to lead with. What brokers are active with these tenant types.`
+    steps:['Analyzing site specs...','Identifying demand signals...','Scanning target-user categories...','Building prospect list...','Generating outreach recommendations...'],
+    system:`You are CANVAS, RIDGE's IOS demand sourcing engine for Dalfen Industrial. In Fill mode you find users for a specific Industrial Outdoor Storage site. In Hunt mode you find displaced or space-hungry fleets/operators that could either lease a Dalfen site or signal acquisition targets. You know Dalfen's target-user profile — trailer parking operators, container storage users, contractor & material yards, equipment maintenance & rental operators, truck terminals, auto/bus storage fleets — in Dallas-Fort Worth and Houston only. Be specific with company names and contact approaches.`,
+    prompt:(d)=>`Run CANVAS ${d.mode||'Fill'} for: ${d.addr||'Subject Site'} | ${d.sf||'?'} acres available | ${d.dock||''} | Target rate: ${d.rent||'market'} | Submarket: ${d.sub||'?'}.\n${d.notes?'Ideal profile: '+d.notes+'\n':''}\n${d.data_text?'Site data:\n'+d.data_text+'\n\n':''}${d.vacancy_text?'Municipal permit filing data:\n'+d.vacancy_text+'\n\n':''}\nProduce:\n## DEMAND ANALYSIS\nWhat IOS target-user types are actively looking in this submarket? What acreage requirements are most active?\n\n## USER PROSPECT TABLE\nTable: Company | Category | Est. Acreage Need | Likelihood | Why This Site | Outreach Approach\nProvide 8–12 specific prospects.\n\n## TOP 3 TARGETS\nFor each: company overview, why they need yard space, what to lead with in outreach, who to contact.\n\n## OUTREACH STRATEGY\nHow to position this site. What to lead with. What brokers are active with these target-user categories.`
   },
   {
     id:'lease-compare', num:'13', icon:'📑', name:'LEASE NEGOTIATION ANALYZER',
@@ -2992,10 +2992,10 @@ If CONDITIONAL: state exactly what must be verified before proceeding
       return '__SCOUT_HANDLED__';
 
     case 'canvas':
-      p = 'You are a senior acquisitions officer at Dalfen Industrial running tenant intelligence.\n\n';
-      p += 'MODE: ' + (d.mode||'Fill') + '\nPROPERTY: ' + (d.addr||'') + '\nAVAILABLE SF: ' + (d.sf||'') + '\nTARGET RENT: $' + (d.rent||'') + ' PSF\nSUBMARKET: ' + (d.sub||'') + '\nIDEAL PROFILE: ' + (d.notes||'') + '\n\n';
-      p += 'DALFEN TENANT CRITERIA: Industrial/flex users | NNN leases | 3-7yr terms | creditworthy | no retail or office users\n\n';
-      p += 'Produce:\n## DEMAND ANALYSIS\nWho is actively looking for space in this submarket right now? What size ranges are in demand? What rent tolerance? Which tenant categories are expanding vs contracting?\n\n## TIER 1 PROSPECTS (Immediate)\n| Company | Industry | Est SF Need | Current Location | Why They Move | Contact Angle |\nMinimum 5 prospects. These are companies actively in the market or clearly need to move.\n\n## TIER 2 PROSPECTS (Cultivate)\nMinimum 5 prospects. Companies that should need this space within 12-24 months based on growth signals, lease expirations, or business conditions.\n\n## DISPLACEMENT PLAYS\nTenants currently in inferior space (older building, wrong configuration, below-market location) who would upgrade to this asset. Specific names and why.\n\n## LEASING STRATEGY\nRecommended deal structure to attract the highest-quality tenant: asking rent, term, TI package, free rent. What concessions are market and what is above market.\n\n## HIGHEST CONVICTION TARGET\nOne company. Why them specifically. How to get in front of the decision maker.';
+      p = 'You are a senior acquisitions officer at Dalfen Industrial running IOS demand intelligence.\n\n';
+      p += 'MODE: ' + (d.mode||'Fill') + '\nSITE: ' + (d.addr||'') + '\nAVAILABLE ACREAGE: ' + (d.sf||'') + '\nSITE CONFIG: ' + (d.dock||'') + '\nTARGET RATE: ' + (d.rent||'') + '\nSUBMARKET: ' + (d.sub||'') + '\nIDEAL PROFILE: ' + (d.notes||'') + '\n\n';
+      p += 'DALFEN TARGET-USER CRITERIA: Trailer parking operators, container storage users, contractor & material yards, equipment maintenance & rental operators, truck terminals, auto/bus storage fleets | DFW and Houston only | no office/retail/building-lease tenants\n\n';
+      p += 'Produce:\n## DEMAND ANALYSIS\nWho is actively looking for IOS space in this submarket right now? What acreage ranges are in demand? What rate tolerance? Which target-user categories are expanding vs contracting?\n\n## TIER 1 PROSPECTS (Immediate)\n| Company | Category | Est Acreage Need | Current Location | Why They Move | Contact Angle |\nMinimum 5 prospects. These are companies actively in the market or clearly need to move.\n\n## TIER 2 PROSPECTS (Cultivate)\nMinimum 5 prospects. Companies that should need this space within 12-24 months based on fleet growth signals, permit filings, or displacement from redeveloped industrial sites.\n\n## DISPLACEMENT PLAYS\nUsers currently on inferior sites (unpaved, unfenced, undersized, below-market location, or facing displacement from redevelopment) who would upgrade to this asset. Specific names and why.\n\n## LEASING STRATEGY\nRecommended deal structure to attract the highest-quality user: asking rate, term, site improvements, any concessions. What is market and what is above market.\n\n## HIGHEST CONVICTION TARGET\nOne company. Why them specifically. How to get in front of the decision maker.';
       return p;
 
     case 'lease-compare':
@@ -7367,20 +7367,20 @@ function _exportLeaseCompare(wb, tid, dateStr, paste) {
 
 // ── CANVAS — Tenant Sourcing ──────────────────────────────
 function _exportCanvas(wb, tid, dateStr, paste) {
-  var ws = wb.addWorksheet('Tenant Prospects', { views:[{state:'frozen',xSplit:0,ySplit:3}] });
+  var ws = wb.addWorksheet('IOS User Prospects', { views:[{state:'frozen',xSplit:0,ySplit:3}] });
   rcColWidths(ws, [26,20,12,12,12,12,12,12,12,12]);
   var addr = rcGetField(tid,'addr');
-  var r = rcTitle(ws, 'CANVAS — TENANT SOURCING', addr, dateStr);
+  var r = rcTitle(ws, 'CANVAS — IOS DEMAND SOURCING', addr, dateStr);
 
-  rcSecHead(ws, r, 'PROPERTY PROFILE'); r++;
+  rcSecHead(ws, r, 'SITE PROFILE'); r++;
   r = rcKV(ws, [
-    ['Property',       rcGetField(tid,'addr')],
-    ['Submarket',      rcGetField(tid,'sub')],
-    ['Mode',           rcGetField(tid,'mode')],
-    ['Available SF',   rcGetField(tid,'sf')],
-    ['Dock / Clear Ht',rcGetField(tid,'dock')],
-    ['Target Rent',    rcGetField(tid,'rent')],
-    ['Ideal Profile',  rcGetField(tid,'notes')],
+    ['Site',                rcGetField(tid,'addr')],
+    ['Submarket',           rcGetField(tid,'sub')],
+    ['Mode',                rcGetField(tid,'mode')],
+    ['Available Acreage',   rcGetField(tid,'sf')],
+    ['Fencing / Paving / Power', rcGetField(tid,'dock')],
+    ['Target Rate',         rcGetField(tid,'rent')],
+    ['Ideal Profile',       rcGetField(tid,'notes')],
   ], r);
 
   r = rcAnalysis(ws, paste, r);
