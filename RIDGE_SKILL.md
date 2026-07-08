@@ -257,14 +257,16 @@ RIDGE's dedicated sourcing engine. Activates on any request to build a prospect 
 
 **Trigger phrases:** "build me a prospect list", "find targets in [submarket]", "run SCOUT", "source deals in [market]", "pull a dossier on [address]", "who owns this", "debt stress", "CMBS", "bridge loan flags", "loan maturity", "sourcing run", or any request to identify off-market acquisition candidates.
 
-**Two operating modes:**
-- **Submarket Sweep** — Ranked prospect table (10–50 properties) built from vacancy signals, debt lifecycle signals, and physical neglect signals. Applies RIDGE drop criteria (institutional owners, listed assets, sub-15K SF, hold period <4 years) automatically.
-- **Property Dossier** — Full single-property workup: owner intelligence, debt profile, physical asset intel, basis reconstruction, RIDGE price ceiling, and suggested opening angle for outreach.
+**Output — four required sections (matches `scout/SKILL.md` exactly):**
+- **Submarket Snapshot** — Land absorption, truck parking demand, warehouse-under-construction pipeline, outdoor storage rent trends, and recent comparable land/IOS sales for the submarket.
+- **Top 10 Prospect List** — Ranked table built from debt lifecycle signals, owner hold period, zoning/deed-restriction compatibility, and aerial-imagery signals showing existing outdoor storage/laydown use. Applies RIDGE drop criteria (institutional owners, listed assets, sub-2-acre parcels, hold period <4 years) automatically.
+- **Debt Stress Flags** — Any CMBS watchlist placements, bridge loans approaching maturity, or special servicer assignments in the submarket.
+- **Portfolio Plays** — Owners with multiple qualifying parcels who might entertain a portfolio conversation.
 
 **RIDGE sourcing integration:**
-- Dossier output feeds directly into session Deal Review block
-- Basis reconstruction output informs RIDGE acquisition price ceiling
-- Suggested opening angle hands off to outreach preparation block
+- Top 10 Prospect List feeds directly into session Deal Review block
+- Debt Stress Flags inform RIDGE acquisition price ceiling and urgency read
+- Portfolio Plays hand off to outreach preparation block
 - Properties with 2–3 confirmed signals automatically surface as High Conviction candidates
 
 Read `/mnt/skills/user/scout/SKILL.md` in full before executing any sourcing or dossier task.

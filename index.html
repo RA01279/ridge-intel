@@ -1076,13 +1076,13 @@ Extract every relevant fact from the materials above before asking any questions
     shortDesc:'CoStar folder → verified off-market prospects. Source-cited.',
     uploads:[],
     fields:[
-      {row:[{id:'mkt',label:'Market',type:'select',opts:['Atlanta','Savannah','Dallas–Fort Worth','Houston','Austin']}]},
-      {row:[{id:'asset',label:'Asset Class',type:'select',opts:['Industrial','Flex','Office','Mixed-Use']}]},
+      {row:[{id:'mkt',label:'Market',type:'select',opts:['Dallas–Fort Worth','Houston']}]},
+      {row:[{id:'asset',label:'Asset Class',type:'select',opts:['Industrial Outdoor Storage (IOS)']}]},
       {row:[{id:'sub',label:'Submarket',type:'select',opts:['All Submarkets']}]},
-      {row:[{id:'notes',label:'Focus / Notes',ph:'e.g. Prioritize >50k SF or distressed only'}]},
+      {row:[{id:'notes',label:'Focus / Notes',ph:'e.g. Prioritize parcels 2-10 acres, or deed-restriction risk only'}]},
     ],
     steps:['Parsing CoStar folder...','Scoring signals deterministically...','Pre-fetching context (DB + Voyage)...','Awaiting approval to enrich...','Enriching candidates (web_search/web_fetch)...','Synthesizing report...','Writing verified properties to database...'],
-    system:`You are SCOUT, RIDGE's off-market sourcing engine for Dalfen Industrial. You produce a ranked list of acquisition prospects from CoStar data, enriched with verified owner intelligence and distress signals. Every claim in your output must cite a tool result. Never fabricate owner names, dollar amounts, debt facts, or distress signals. Null is better than invented.`,
+    system:`You are SCOUT, RIDGE's off-market sourcing engine for Dalfen Industrial's Industrial Outdoor Storage (IOS) acquisitions in Dallas-Fort Worth and Houston. You produce a ranked list of acquisition prospects from CoStar and county/zoning data, enriched with verified owner intelligence, debt distress signals, zoning/deed-restriction compatibility, and aerial-imagery signals showing existing outdoor storage or laydown use. Every claim in your output must cite a tool result. Never fabricate owner names, dollar amounts, debt facts, or distress signals. Null is better than invented.`,
     prompt: null // SCOUT runs its own pipeline via _scoutRunPipeline; buildTrigger returns __SCOUT_HANDLED__ sentinel
   },
   {
@@ -8446,6 +8446,8 @@ function _scoutResolveColumns(headers, row, market) {
     city:             ['city', 'property city'],
     building_sf:      ['rba', 'rentable building area', 'building sf', 'total sf', 'gba'],
     available_sf:     ['total available space', 'available sf', 'available space'],
+    acreage:          ['land acres', 'lot size ac', 'acres', 'site acreage', 'land area (ac)'],
+    zoning:           ['zoning', 'zoning code', 'land use', 'zoning classification'],
     asking_rent_psf:  ['rent/sf/yr', 'asking rent', 'rent psf', 'rent/sf', 'asking rent/sf'],
     submarket:        ['submarket name', 'submarket'],
     last_sale_date:   ['last sale date', 'sale date', 'recorded sale date'],
@@ -8499,8 +8501,7 @@ function _scoutResolveColumns(headers, row, market) {
   }
   var city = getField('city');
   var STATE_BY_MARKET = {
-    'Atlanta': 'GA', 'Savannah': 'GA',
-    'Dallas–Fort Worth': 'TX', 'Houston': 'TX', 'Austin': 'TX'
+    'Dallas–Fort Worth': 'TX', 'Houston': 'TX'
   };
   var state = STATE_BY_MARKET[market] || '';
   var fullAddress = String(street).trim()
@@ -8519,6 +8520,8 @@ function _scoutResolveColumns(headers, row, market) {
     submarket:       getField('submarket'),
     building_sf:     numI('building_sf'),
     available_sf:    numI('available_sf'),
+    acreage:         numF('acreage'),
+    zoning:          getField('zoning'),
     asking_rent_psf: numF('asking_rent_psf'),
     last_sale_date:  getField('last_sale_date'),
     last_sale_price: numF('last_sale_price'),
@@ -8601,9 +8604,13 @@ async function _scoutParseFolder(market, assetClass, submarket) {
 
 // ── SCORING ENGINE (Chunk 4) ─────────────────────────────────────────────
 // Deterministic JS scoring. Runs on every parsed property AFTER parse.
-// No AI involvement — pure functions over CoStar-observable fields.
-// v1 max score = 11 from 5 signals. v2 plugs in paid data (debt maturity,
-// CMBS watchlist, owner age, tax delinquency) without changing this shape.
+// No AI involvement — pure functions over CoStar/county-observable fields.
+// v1 max score = 9 from 4 signals (private owner, hold period, zoning
+// compatibility, capex/renovation timing). v2 plugs in paid data (debt
+// maturity, CMBS watchlist, owner age, tax delinquency) without changing
+// this shape. Aerial-imagery outdoor-storage-use signal is NOT scored here —
+// it requires an image-analysis call and is applied during AI enrichment
+// (_scoutPrefetch / the enrichment agent loop), not this pre-AI-spend pass.
 
 // Parse last_sale_date through multiple CoStar formats. Returns Date or null.
 function _scoutParseSaleDate(v) {
@@ -8647,9 +8654,7 @@ function _scoutBuildBatchContext(rows) {
 
   function statsFor(group) {
     return {
-      medianRent:    _scoutMedian(group.map(function(p) { return p.asking_rent_psf; })),
-      medianVacancy: _scoutMedian(group.map(function(p) { return p.vacancy_pct; })),
-      count:         group.length
+      count: group.length
     };
   }
 
@@ -8675,17 +8680,16 @@ function _scoutIsPrivateOwner(ownerName) {
 }
 
 // Deterministic scoring. Pure function. Returns { score, conviction_tier, flags }.
-// v1 max = 11 from 5 signals. v2 placeholder fields are null
+// v1 max = 9 from 4 signals. v2 placeholder fields are null
 // so paid signals can slot in without changing the consumer shape.
 function _scoutScore(property, batchContext) {
   var flags = {
     private_owner_flag:           false,
     long_hold_flag:               false,
     hold_years:                   null,
-    vacancy_signal:               false,
-    vacancy_gap_pp:               null,
-    below_market_rent_flag:       false,
-    rent_gap_pct:                 null,
+    zoning_compatible_flag:       false,
+    zoning_incompatible_flag:    false,
+    zoning_raw:                   null,
     permit_inactivity_flag:       false,
     renovation_flip_flag:         false,
     years_since_capex:            null,
@@ -8713,38 +8717,26 @@ function _scoutScore(property, batchContext) {
     else if (years >=  5) { flags.long_hold_flag = true; score += 1; }
   }
 
-  // C. VACANCY VS SUBMARKET (+1 / +2). Submarket median when n>=5, else market median.
-  if (property.vacancy_pct != null && batchContext && batchContext.submarketStats) {
-    var subStats = batchContext.submarketStats[property.submarket || 'Unknown'];
-    var mktStats = batchContext.marketStats[property.market || 'Unknown'];
-    var medianVacancy = (subStats && subStats.count >= 5 && subStats.medianVacancy != null)
-      ? subStats.medianVacancy
-      : (mktStats ? mktStats.medianVacancy : null);
-    if (medianVacancy != null) {
-      var gap = property.vacancy_pct - medianVacancy;
-      flags.vacancy_gap_pp = +gap.toFixed(1);
-      if      (gap >= 20) { flags.vacancy_signal = true; score += 2; }
-      else if (gap >= 10) { flags.vacancy_signal = true; score += 1; }
+  // C. ZONING / DEED-RESTRICTION COMPATIBILITY (+2). Deterministic keyword match against
+  // the zoning/land-use column when the CoStar or county export includes one. Absent column
+  // degrades gracefully to null (no points, no penalty) — same pattern as every other
+  // optional field here. This does NOT replace the deed-restriction title search (DD Tracker
+  // Category 1) or a full zoning/entitlement screener verdict — it's a coarse pre-AI-spend
+  // filter to prioritize parcels worth enriching.
+  if (property.zoning) {
+    var zoningRaw = String(property.zoning).toLowerCase();
+    flags.zoning_raw = property.zoning;
+    var compatiblePatterns   = ['industrial', 'i-1', 'i-2', 'i1', 'i2', 'm-1', 'm-2', 'm1', 'm2', 'heavy industrial', 'light industrial', 'ios', 'outdoor storage'];
+    var incompatiblePatterns = ['residential', 'single family', 'single-family', 'r-1', 'r-2', 'agricultural', 'ag-', 'conservation'];
+    if (compatiblePatterns.some(function(p) { return zoningRaw.indexOf(p) !== -1; })) {
+      flags.zoning_compatible_flag = true;
+      score += 2;
+    } else if (incompatiblePatterns.some(function(p) { return zoningRaw.indexOf(p) !== -1; })) {
+      flags.zoning_incompatible_flag = true;
     }
   }
 
-  // D. BELOW-MARKET RENT (+1 / +2). Same submarket→market fallback as vacancy.
-  if (property.asking_rent_psf != null && property.asking_rent_psf > 0
-      && batchContext && batchContext.submarketStats) {
-    var subStats2 = batchContext.submarketStats[property.submarket || 'Unknown'];
-    var mktStats2 = batchContext.marketStats[property.market || 'Unknown'];
-    var medianRent = (subStats2 && subStats2.count >= 5 && subStats2.medianRent != null)
-      ? subStats2.medianRent
-      : (mktStats2 ? mktStats2.medianRent : null);
-    if (medianRent != null && medianRent > 0) {
-      var gapPct = ((medianRent - property.asking_rent_psf) / medianRent) * 100;
-      flags.rent_gap_pct = +gapPct.toFixed(1);
-      if      (gapPct >= 20) { flags.below_market_rent_flag = true; score += 2; }
-      else if (gapPct >= 10) { flags.below_market_rent_flag = true; score += 1; }
-    }
-  }
-
-  // E. CAPEX SIGNAL (+1 or +2 — two regimes, intent-flipped from a naive "old = motivated" read)
+  // D. CAPEX SIGNAL (+1 or +2 — two regimes, intent-flipped from a naive "old = motivated" read)
   //
   //   ysc 2–5    → RECENT RENOVATION = flip prep (+2, renovation_flip_flag).
   //                A private owner who just dropped capex is staging the asset for sale —
@@ -8971,7 +8963,7 @@ function _scoutRenderPreview(enrichedCandidates) {
   }
 
   // Prettify flag names: strip _flag suffix, underscores → spaces, title-case words.
-  // private_owner_flag → "Private Owner", below_market_rent_flag → "Below Market Rent"
+  // private_owner_flag → "Private Owner", zoning_compatible_flag → "Zoning Compatible"
   function activeFlags(p) {
     var flags = Object.keys(p._flags || {})
       .filter(function(k) { return p._flags[k] === true; })
@@ -9371,6 +9363,7 @@ function _scoutBuildBatchPrompt(batch, batchIndex) {
       'Property ' + (i + 1) + ':',
       '- address: ' + p.address,
       '- city: ' + (p.city || '—') + ' | submarket: ' + (p.submarket || '—') + ' | market: ' + (p.market || '—'),
+      '- acreage: ' + (p.acreage == null ? '—' : p.acreage) + ' | zoning: ' + (p.zoning || '—'),
       '- building_sf: ' + (p.building_sf == null ? '—' : p.building_sf),
       '- year_built: ' + (p.year_built || '—') + ' | year_renovated: ' + (p.year_renovated || '—'),
       '- asking_rent_psf: ' + (p.asking_rent_psf == null ? '—' : p.asking_rent_psf),
@@ -9943,8 +9936,15 @@ async function _scoutSaveToDatabase() {
       conviction_tier:            (candidate && candidate.conviction_tier) || null,
       private_owner_flag:         bool(flags.private_owner_flag),
       long_hold_flag:             bool(flags.long_hold_flag),
-      vacancy_signal:             bool(flags.vacancy_signal),
-      below_market_rent_flag:     bool(flags.below_market_rent_flag),
+      // vacancy_signal / below_market_rent_flag: no longer computed by _scoutScore (dropped
+      // per the IOS signal-stack rework — vacancy/rent-roll signals don't map to land).
+      // Written as false rather than removed to avoid touching the Supabase `properties`
+      // schema from this pass. [VERIFY WITH USER / FOLLOW-UP] These columns should be
+      // migrated to zoning_compatible_flag / zoning_incompatible_flag (see flags above) once
+      // a schema change is approved — the new signal is computed in _scoutScore today but has
+      // nowhere to persist until that migration happens.
+      vacancy_signal:             false,
+      below_market_rent_flag:     false,
       permit_inactivity_flag:     bool(flags.permit_inactivity_flag),
       renovation_flip_flag:       bool(flags.renovation_flip_flag),
       debt_maturity_within_18_mo: bool(flags.debt_maturity_within_18_mo),
@@ -11651,6 +11651,13 @@ function _debtCalc(price, noi, baseLTV, baseRate) {
   ];
 }
 
+// [VERIFY WITH USER] Dalfen's actual IRR/YOC/EM hurdles are unconfirmed — these are
+// Entrada's old thresholds, carried over as placeholders only (see RIDGE_SKILL.md
+// Investment Criteria § Return Thresholds). Do not treat these as Dalfen's real hurdles.
+var NAPKIN_IRR_HURDLE_UNVERIFIED = 0.1475;
+var NAPKIN_YOC_TARGET_UNVERIFIED = 0.075;
+var NAPKIN_EM_FLOOR_UNVERIFIED   = 1.75;
+
 function _napkinCalc(d) {
   var ask = parseFloat((d.ask||'0').toString().replace(/[^0-9.]/g,''));
   var sf = parseFloat((d.sf||'0').toString().replace(/[^0-9.]/g,''));
@@ -11736,7 +11743,7 @@ function _napkinCalc(d) {
   var lo = ask*0.3, hi = ask*1.1;
   for (var iter=0; iter<80; iter++) {
     var mid = (lo+hi)/2;
-    if (calcIRR(_buildCFs(mid)) < 0.1475) hi=mid; else lo=mid;
+    if (calcIRR(_buildCFs(mid)) < NAPKIN_IRR_HURDLE_UNVERIFIED) hi=mid; else lo=mid;
   }
   var maxPrice = (lo+hi)/2;
 
@@ -11760,9 +11767,9 @@ function _napkinCalc(d) {
     maxPrice: Math.round(maxPrice).toLocaleString(),
     maxPricePSF: (maxPrice/sf).toFixed(2),
     priceReduction: Math.round(ask-maxPrice).toLocaleString(),
-    meetsIRR: irr >= 0.1475,
-    meetsYOC: yoc34 >= 0.075,
-    meetsEM: em >= 1.75,
+    meetsIRR: irr >= NAPKIN_IRR_HURDLE_UNVERIFIED,
+    meetsYOC: yoc34 >= NAPKIN_YOC_TARGET_UNVERIFIED,
+    meetsEM: em >= NAPKIN_EM_FLOOR_UNVERIFIED,
     ioYrs: ioYrs
   };
 }

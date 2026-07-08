@@ -1,13 +1,14 @@
 ---
 name: scout
 description: >
-  SCOUT is RIDGE's off-market deal sourcing and owner intelligence engine. Use this skill
-  ANY TIME the user wants to identify acquisition prospects, enrich owner data, score vacancy
-  signals, or build a ranked prospect list for a submarket. Trigger on: "run SCOUT", "find
-  me deals", "off-market prospects", "submarket sweep", "who owns this building", "owner
-  intel", "sourcing sweep", "find motivated sellers", "debt stress signals", "CMBS watchlist",
-  "loan maturity signals", "CoStar vacancy data", "prospect list", or any request to surface
-  acquisition targets using vacancy, ownership, debt, or physical property signals. Always
+  SCOUT is RIDGE's off-market deal sourcing and owner intelligence engine for Industrial
+  Outdoor Storage (IOS) acquisitions. Use this skill ANY TIME the user wants to identify
+  acquisition prospects, enrich owner data, score underutilized-land signals, or build a
+  ranked prospect list for a submarket. Trigger on: "run SCOUT", "find me deals", "off-market
+  prospects", "submarket sweep", "who owns this parcel", "owner intel", "sourcing sweep",
+  "find motivated sellers", "debt stress signals", "CMBS watchlist", "loan maturity signals",
+  "underutilized industrial land", "prospect list", or any request to surface acquisition
+  targets using ownership, debt, zoning/deed-restriction, or aerial-imagery signals. Always
   load this skill before executing any sourcing sweep or owner enrichment task.
 ---
 
@@ -17,9 +18,10 @@ description: >
 
 ## Identity
 
-SCOUT surfaces the deals that are not on the market yet. It uses vacancy signals, debt
-stress indicators, ownership patterns, and physical property data to rank acquisition
-prospects by motivation level — and tells RIDGE exactly how to make first contact.
+SCOUT surfaces the deals that are not on the market yet. It uses debt stress indicators,
+ownership patterns, zoning/deed-restriction compatibility, and aerial imagery to rank
+acquisition prospects by motivation level and IOS suitability — and tells RIDGE exactly
+how to make first contact.
 
 95% of RIDGE's deal flow is non-marketed. SCOUT is why.
 
@@ -27,13 +29,17 @@ prospects by motivation level — and tells RIDGE exactly how to make first cont
 
 ## Sourcing Signal Stack (Priority Order)
 
+Building-occupancy signals (vacancy rate, rent roll concentration) don't map to land — an
+underutilized parcel doesn't have a "vacancy rate." The stack below replaces those with
+land-appropriate signals and keeps what transfers.
+
 | Signal | Weight | Source |
 |---|---|---|
 | Debt stress (bridge maturity, CMBS watchlist, special servicer) | Highest | EDGAR, servicer reports, CoStar |
-| Vacancy above submarket avg + no leasing activity 12+ months | High | CoStar export, physical inspection |
 | Owner hold period 7+ years, private entity, no recent capex permits | High | County records, CoStar ownership |
-| Rent roll concentration risk (1–2 tenants >60% NRA expiring <24 months) | Medium | CoStar, OM if available |
-| Physical neglect signals (deferred maintenance, no permits 5+ years) | Medium | County permit records, site visit |
+| Zoning/deed-restriction compatibility — industrial-zoned parcel, IOS permitted by-right or SUP path is realistic, no deed restriction blocking outdoor storage | High | County zoning/permitted-use records, deed restriction search |
+| Aerial imagery signal — current or historical aerials show the site already functioning as outdoor storage, laydown, or trailer/container yard, whether or not formally entitled | High | Google/satellite imagery, historical aerials |
+| Physical neglect signals (no permits 5+ years, low building coverage relative to site) | Medium | County permit records, site visit |
 | Recent ownership transfer at below-market basis | Medium | County deed records |
 
 ---
@@ -42,22 +48,24 @@ prospects by motivation level — and tells RIDGE exactly how to make first cont
 
 | Input | Required | Notes |
 |---|---|---|
-| Target market / submarket | Yes | One or more from RIDGE's coverage universe |
-| SF range | Preferred | Default: 10,000–300,000 SF |
-| Max deal size | Preferred | Default: $70M |
-| Vacancy / CoStar data | Preferred | Upload CoStar export for grounded scoring |
-| Signal focus | Optional | Debt stress / Vacancy / Ownership / All |
+| Target market / submarket | Yes | DFW or Houston |
+| Acreage range | Preferred | Default: 2–50 acres |
+| Deal size | Preferred | Default: $2M minimum, no maximum |
+| Zoning / deed-restriction data | Preferred | County records or upload for grounded scoring |
+| Signal focus | Optional | Debt stress / Ownership / Zoning compatibility / Aerial imagery / All |
 
 ---
 
 ## Output Format — Required Sections
 
 ### Submarket Snapshot
-Vacancy rate, asking rents (Class A/B/C), absorption trend, new supply pipeline,
-3 most recent comparable sales with cap rates and PSF. Cite actual sources.
+Land absorption near intermodal/port and highway-access nodes, truck parking demand,
+warehouse-under-construction pipeline (leading indicator of future IOS demand), outdoor
+storage rent trends ($/acre and per-spot), 3 most recent comparable land/IOS sales with
+$/acre pricing. Cite actual sources. (Full metric definitions: `market-pulse/SKILL.md`.)
 
 ### Top 10 Prospect List
-Table: # | Address | Est SF | Owner Entity | Hold (yrs) | Primary Signal | Debt Signal | Conviction
+Table: # | Address | Est Acreage | Owner Entity | Hold (yrs) | Primary Signal | Debt Signal | Conviction
 
 For each prospect:
 - Specific owner name/entity from public records
