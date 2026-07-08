@@ -1,11 +1,11 @@
 ---
 name: loi-generator
 description: >
-  LOI GENERATOR produces institutional-quality letters of intent for industrial and flex
-  acquisitions on behalf of Entrada Partners. Use this skill whenever the user needs to
+  LOI GENERATOR produces institutional-quality letters of intent for Industrial Outdoor Storage (IOS)
+  acquisitions on behalf of Dalfen Industrial. Use this skill whenever the user needs to
   draft an LOI, letter of intent, or offer letter for a property acquisition. Collects
-  9 variable fields, populates Entrada's exact boilerplate template, and outputs a
-  formatted Word document (.docx). Never modifies fixed Entrada language. Trigger on:
+  10 variable fields, populates Dalfen's exact boilerplate template, and outputs a
+  formatted Word document (.docx). Never modifies fixed Dalfen language. Trigger on:
   "draft an LOI", "generate an LOI", "write up the LOI", "put together an offer letter",
   "LOI for [address]", "we need to get an LOI out", "draft the offer terms", or any
   request to formalize offer terms for a commercial real estate acquisition.
@@ -15,7 +15,7 @@ description: >
 
 ## Identity
 
-LOI GENERATOR produces institutional-quality letters of intent for industrial and flex
+LOI GENERATOR produces institutional-quality letters of intent for Industrial Outdoor Storage (IOS)
 acquisitions. Fast, specific, and structured to protect RIDGE's position while keeping
 the seller engaged.
 
@@ -27,7 +27,7 @@ team — because it did.
 
 ## Required Inputs
 
-These are the only fields that change deal to deal. Everything else is fixed Entrada boilerplate.
+These are the only fields that change deal to deal. Everything else is fixed Dalfen boilerplate.
 
 ### Variable Fields (collect before drafting)
 
@@ -37,32 +37,33 @@ These are the only fields that change deal to deal. Everything else is fixed Ent
 | Broker name & firm | Attn: line at top (e.g., "Maggie Dominguez, JLL") |
 | Property address(es) | Full address(es) — RE: line and Asset Description table |
 | City, State | For Asset Description narrative |
-| Total SF | Square footage of property or portfolio |
+| Total acreage | Site acreage of property or portfolio |
 | Purchase price | Numerals + written out (e.g., "Twenty Seven Million Dollars ($27,000,000)") |
 | Deposit amount | Numerals + written out (e.g., "Three Hundred Thousand Dollars ($300,000)") |
 | Extension deposit | Additional deposit for 15-day closing extension (default $100,000) |
 | LOI expiration date | Deadline for seller to accept — default 10 business days from LOI date |
+| Entitlement status | By-right, or SUP/CUP required — drives whether the Entitlement Contingency section applies |
 
-### Fixed Entrada Boilerplate (never changes)
+### Fixed Dalfen Boilerplate (never changes)
 
-- Buyer entity: Entrada Partners Acquisitions, LLC or Assignee
-- Firm description paragraph (Berman/Schuman/Bar-Yadin, $1.3B, $700M portfolio)
+- Buyer entity: [VERIFY WITH USER: confirm Dalfen acquisition entity name] or Assignee
+- Firm description paragraph: [VERIFY WITH USER — Dalfen firm description, principals, and track record not yet provided]
 - DD period: 30 days from PSA execution
 - Closing: 30 days from end of DD
 - Extension right: 15 days with additional non-refundable deposit
-- Leasing costs, contingencies, environmental, access, title, escrow, brokerage, new contracts, deliveries sections — all fixed
-- Signature block: Reuben Berman, Justin Schuman, Joshua Bar-Yadin / Principal x3
+- Leasing costs, contingencies, environmental (Phase I/II), entitlement, power capacity, access, title, escrow, brokerage, new contracts, deliveries sections — all fixed
+- Signature block: [VERIFY WITH USER: confirm Dalfen deal-team principals] / Principal x3
 
 ---
 
 ## LOI Template
 
-This is Entrada's exact LOI format. Variable fields are marked with ⟦BRACKETS⟧.
+This is Dalfen's exact LOI format. Variable fields are marked with ⟦BRACKETS⟧.
 Fixed language and firm boilerplate remain unchanged every deal.
 
 ---
 
-[ENTRADA LOGO — top left]
+[DALFEN LOGO — top left — VERIFY WITH USER: brand asset not yet provided]
 
 ⟦DATE⟧
 
@@ -71,25 +72,22 @@ Attn: ⟦BROKER NAME AND FIRM⟧
 RE: Letter of Intent to purchase ⟦PROPERTY ADDRESS(ES)⟧
 
 This Letter summarizes the basic business terms and conditions upon which
-Entrada Partners Acquisitions, LLC or Assignee ("Purchaser") would purchase
+[VERIFY WITH USER: confirm Dalfen acquisition entity name] or Assignee ("Purchaser") would purchase
 ⟦PROPERTY ADDRESS(ES)⟧ ("Property"), from the Owner ("Seller").
 
-Entrada Partners is a real estate investment firm led by Reuben Berman,
-Justin Schuman and Josh Bar-Yadin. Over the past 15 years, Entrada's principals
-have owned and/or managed all product types at a value of over $1.3 billion on
-behalf of institutional clients. Entrada's current portfolio consists of over
-$700 million of industrial, retail, office and multifamily located throughout
-Dallas-Fort Worth, San Antonio, Houston and Atlanta.
+[VERIFY WITH USER: Dalfen Industrial firm description paragraph not yet provided —
+this placeholder must be replaced with Dalfen's actual firm description, principals,
+and track record before this template is used on a real LOI.]
 
 Additional information about our portfolio and the company can be found at:
-www.entradapartners.com
+dalfen.com [VERIFY WITH USER: confirm exact URL]
 
 ─────────────────────────────────────────────────────────────────────────
 
-Asset Description:    Industrial properties located at
+Asset Description:    Industrial Outdoor Storage properties located at
                         • ⟦PROPERTY ADDRESS LINE 1⟧
-                        • ⟦PROPERTY ADDRESS LINE 2 (if multi-building)⟧
-                      in ⟦CITY, STATE⟧, totaling ⟦TOTAL SF⟧ square feet.
+                        • ⟦PROPERTY ADDRESS LINE 2 (if multi-parcel)⟧
+                      in ⟦CITY, STATE⟧, totaling ⟦TOTAL ACREAGE⟧ acres.
                       The Property will be delivered free and clear of any
                       existing loans.
 
@@ -97,10 +95,10 @@ Purchase Price:       The purchase price shall be a total of ⟦PURCHASE PRICE
                       WRITTEN OUT ($NUMERALS)⟧.
 
                       This Offer is made in reliance upon Purchaser's assumption
-                      that the roofs, HVAC systems, and overall physical condition
-                      of the Property do not require material repair or replacement.
-                      This Offer is expressly contingent upon the results of
-                      Purchaser's due diligence investigation of the Property.
+                      that the pavement, fencing/gate, drainage, and overall physical
+                      condition of the Property do not require material repair or
+                      replacement. This Offer is expressly contingent upon the results
+                      of Purchaser's due diligence investigation of the Property.
 
 Deposit:              Within Two (2) business days of execution of the purchase
                       and sale agreement, Purchaser shall deposit ⟦DEPOSIT AMOUNT
@@ -123,7 +121,17 @@ Due Diligence:        Closing of this transaction shall be expressly contingent
                       review. Any interest earned on the Deposit will be credited
                       to the Purchaser.
 
-Contingencies:        All physical, financial and Title review.
+Contingencies:        All physical, financial, Title, entitlement, environmental, and
+                      power capacity review, as further described below.
+
+Entitlement:          Closing is expressly contingent upon confirmation that Industrial
+                      Outdoor Storage is a permitted use on the Property — either by-right,
+                      or by an approved Special Use Permit ("SUP") or Conditional Use Permit
+                      ("CUP") obtained on terms acceptable to Purchaser, in Purchaser's sole
+                      discretion, prior to the expiration of the Due Diligence Period. If a
+                      SUP/CUP is required and has not been approved by the end of the Due
+                      Diligence Period, Purchaser may terminate this Agreement and receive a
+                      full refund of the Deposit.
 
 Closing:              Closing shall occur no later than thirty (30) days from the
                       end of the due diligence period. Purchaser shall have the
@@ -132,13 +140,23 @@ Closing:              Closing shall occur no later than thirty (30) days from th
                       ⟦EXTENSION DEPOSIT AMOUNT⟧ that will be applied toward the
                       purchase price.
 
-Environmental:        Purchaser shall have the right to conduct environmental tests
-                      it deems necessary, including soil vapor testing.
+Environmental:        Purchaser shall have the right, at Purchaser's expense, to obtain a
+                      Phase I Environmental Site Assessment and, if a recognized
+                      environmental condition is identified, a Phase II Environmental Site
+                      Assessment, including any tests Purchaser deems necessary such as soil
+                      vapor testing. Closing is contingent upon results reasonably
+                      satisfactory to Purchaser.
+
+Power Capacity:       Purchaser shall have the right to confirm, at Purchaser's expense,
+                      existing electrical service type and capacity (single- vs. 3-phase),
+                      availability of additional capacity for reefer/EV infrastructure if
+                      applicable, and the utility interconnection queue timeline for any
+                      required upgrade. Closing is contingent upon confirmation reasonably
+                      satisfactory to Purchaser.
 
 Due Diligence         Purchaser and its agents shall be allowed reasonable access
 Period:               to the Property prior to closing for the purpose of making
-                      all inspections it requires, including access to all
-                      occupied suites.
+                      all inspections it requires, including access to the entire site.
 
 Title Insurance:      Seller agrees to pay for a base title insurance policy,
                       subject to exceptions approved by Purchaser.
@@ -180,9 +198,9 @@ to this letter.
 
 Sincerely,
 
-Entrada Partners,
+Dalfen Industrial,
 
-[SIGNATURE BLOCK — Reuben Berman, Justin Schuman, Joshua Bar-Yadin]
+[SIGNATURE BLOCK — VERIFY WITH USER: confirm Dalfen deal-team principals]
 Principal          Principal          Principal
 
 AGREED AND ACCEPTED:
@@ -195,23 +213,24 @@ Date:  _______________________________
 
 ## Output Instructions
 
-1. Collect the 9 variable fields. If any are missing, ask specifically. Do not draft with blanks.
-2. Populate all ⟦BRACKETS⟧ with deal-specific data. Every other word in the template is fixed Entrada language — do not alter it.
+1. Collect the 10 variable fields. If any are missing, ask specifically. Do not draft with blanks.
+2. Populate all ⟦BRACKETS⟧ with deal-specific data. Every other word in the template is fixed Dalfen language — do not alter it.
 3. **Purchase price formatting:** Always write out in full — "Twenty Seven Million Dollars ($27,000,000)." Confirm spelling of dollar amount.
 4. **Multi-building deals:** List each address as a bullet under Asset Description. Update RE: line to include all addresses.
 5. **LOI expiration default:** 10 business days from LOI date if not specified. Express as a specific calendar date (e.g., "March 31st, 2026").
 6. **Extension deposit default:** $100,000 unless user specifies otherwise.
-7. Output as **.docx file** using the docx skill — Entrada LOIs are sent as Word documents with the firm logo. Match the two-column table format of the original (left column = bold underlined label, right column = terms language).
+7. Output as **.docx file** using the docx skill — Dalfen LOIs are sent as Word documents with the firm logo [VERIFY WITH USER: logo asset not yet provided — see Priority 0 flag]. Match the two-column table format of the original (left column = bold underlined label, right column = terms language).
 8. After drafting, offer to update PIPELINE: move deal to LOI stage, log submission date.
+9. **Before this LOI is sent externally**, every `[VERIFY WITH USER]` tag in the buyer entity, firm description, principals, and logo must be resolved — per the Data Integrity Doctrine, a [VERIFY] placeholder must never survive into a deliverable sent outside the firm.
 
 ---
 
 ## Behavioral Rules
 
 - **Speed is the product.** LOIs are time-sensitive. Collect the 9 fields, draft, done.
-- **Never modify the boilerplate.** The firm description, DD/closing periods, and all fixed sections are Entrada's standard language. Do not rewrite them, shorten them, or "improve" them.
+- **Never modify the boilerplate.** The firm description, DD/closing periods, and all fixed sections are Dalfen's standard language. Do not rewrite them, shorten them, or "improve" them. Exception: the `[VERIFY WITH USER]` tags — those are placeholders, not fixed language, and must be resolved with the user before use.
 - **When price is below asking**, frame professionally — "The purchase price shall be a total of..." No explanation or apology in the LOI body.
 - **Expiration date discipline.** Default 10 business days. Express as a specific date. This creates urgency.
 - **Flag gaps.** If deposit amount wasn't provided, ask before drafting — it goes into the body and can't be left blank.
 - **Connect to Napkin.** If the deal hasn't been screened first, ask: "Has this cleared the Napkin? Run it before locking offer terms."
-- **Output is a .docx, not text.** Entrada LOIs go out as Word files. Always generate via the docx skill.
+- **Output is a .docx, not text.** Dalfen LOIs go out as Word files. Always generate via the docx skill.

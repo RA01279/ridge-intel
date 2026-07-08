@@ -1,8 +1,8 @@
 ---
 name: dd-tracker
 description: >
-  DD TRACKER is RIDGE's due diligence management and checklist engine for industrial and flex
-  CRE acquisitions. Use this skill ANY TIME a deal has entered the due diligence phase and
+  DD TRACKER is RIDGE's due diligence management and checklist engine for Industrial Outdoor
+  Storage (IOS) acquisitions. Use this skill ANY TIME a deal has entered the due diligence phase and
   needs a structured checklist, tracking system, or status report — including generating a
   full DD checklist from scratch, updating item completion status, identifying outstanding
   or at-risk items, managing DD period deadlines, producing a DD status report for IC or
@@ -25,8 +25,8 @@ DD TRACKER manages the 30–90 days between LOI execution and closing. It genera
 the checklist, tracks completion, escalates at-risk items, and tells you exactly
 what's standing between you and a funded deal.
 
-DD TRACKER is calibrated for industrial and flex acquisitions. The checklist is not
-generic — it knows what matters for this asset type.
+DD TRACKER is calibrated for Industrial Outdoor Storage acquisitions. The checklist is not
+generic — it knows what matters for land and yard assets, not buildings.
 
 ---
 
@@ -35,11 +35,11 @@ generic — it knows what matters for this asset type.
 | Input | Required | Notes |
 |-------|----------|-------|
 | Property address | Yes | Full address |
-| Asset type | Yes | Industrial / Flex / Conversion |
+| Transaction type | Yes | Single asset / Portfolio / Sale-leaseback / Land entitlement / Forward sale / Development for IOS use / Covered land play |
 | DD period length | Yes | Days from LOI execution |
 | LOI execution date | Yes | Calendar start date |
-| Single-tenant or multi-tenant | Preferred | Drives lease review scope |
-| Value-add or stabilized | Preferred | Drives physical inspection scope |
+| Vacant or leased | Preferred | Drives lease review scope |
+| Entitled (by-right) or SUP-required | Preferred | Drives Category 1 legal scope |
 | Lender in deal | Preferred | Adds lender-specific requirements |
 | Known issues from LOI / Napkin | Optional | Pre-populate flags |
 
@@ -68,68 +68,78 @@ CATEGORY 1 — LEGAL & TITLE
 ════════════════════════════════════════════════════════
 🔴 [ ] Title commitment received and reviewed
        Owner: Buyer's Counsel | Due: DD Day 5
+🔴 [ ] Deed restriction search — confirm no restriction prohibits outdoor storage/industrial use
+       Owner: Buyer's Counsel | Due: DD Day 7
+       [Critical in Houston — no zoning; deed restrictions are the primary use control. Not
+       an edge case: run this search on every deal, every market.]
 🔴 [ ] Survey (ALTA/NSPS) ordered
        Owner: Buyer | Due: DD Day 7
 🔴 [ ] Survey review — exceptions noted and cleared
        Owner: Buyer's Counsel | Due: DD Day 14
 🔴 [ ] Title exceptions reviewed — approved or objected
        Owner: Buyer's Counsel | Due: DD Day 14
-🟡 [ ] Zoning confirmation letter obtained
+🔴 [ ] Zoning/permitted-use confirmation — IOS confirmed by-right, or SUP/CUP already approved
        Owner: Buyer | Due: DD Day 10
-🟡 [ ] Certificate of occupancy(ies) confirmed on file
+       [Houston: confirm via deed restrictions, not a zoning map — there is no zoning.]
+🟡 [ ] Screening, paving, and setback ordinance confirmed for the specific municipality
        Owner: Buyer | Due: DD Day 10
 🟡 [ ] Confirm no pending special assessments or liens
        Owner: Buyer's Counsel | Due: DD Day 14
+🟡 [ ] Severed mineral estate and surface use restrictions checked
+       Owner: Buyer's Counsel | Due: DD Day 14
 🟢 [ ] UCC search — confirm no fixtures/equipment liens
        Owner: Buyer's Counsel | Due: DD Day 14
-🟢 [ ] Confirm no easement conflicts with intended use
+🟢 [ ] Confirm no easement conflicts with intended use (pipeline easements — check TxRRC GIS)
        Owner: Buyer's Counsel | Due: DD Day 14
 
-[IF VALUE-ADD / CONVERSION:]
-🔴 [ ] Entitlement/rezoning feasibility confirmed
+[IF NOT BY-RIGHT / SUP OR ENTITLEMENT REQUIRED:]
+🔴 [ ] SUP/CUP application path, timeline, and denial risk confirmed
        Owner: Buyer | Due: DD Day 7
-🟡 [ ] Building permit history reviewed (5-year lookback)
-       Owner: Buyer | Due: DD Day 10
+🟡 [ ] Local land use counsel engaged
+       Owner: Buyer's Counsel | Due: DD Day 10
 
 ════════════════════════════════════════════════════════
-CATEGORY 2 — PHYSICAL INSPECTION                        
+CATEGORY 2 — PHYSICAL & SITE DILIGENCE                   
 ════════════════════════════════════════════════════════
-🔴 [ ] Property condition assessment (PCA) ordered
+🔴 [ ] Geotechnical/soils report ordered
        Owner: Buyer | Due: DD Day 3 (order)
-🔴 [ ] PCA completed and report received
+       [Expansive clay/subsidence risk elevated in Houston — do not skip.]
+🔴 [ ] Pavement load-bearing capacity assessed
        Owner: Inspector | Due: DD Day 14
-🔴 [ ] PCA findings reviewed — major items flagged
-       Owner: Buyer | Due: DD Day 17
-🔴 [ ] Roof inspection report received
-       Owner: Inspector | Due: DD Day 14
-🟡 [ ] HVAC inspection (each unit / RTU documented)
-       Owner: Inspector | Due: DD Day 14
-🟡 [ ] Electrical capacity confirmed for tenant uses
-       Owner: Inspector | Due: DD Day 14
-🟡 [ ] Dock doors / levelers / drive-in doors inspected
-       Owner: Inspector | Due: DD Day 14
-       [Flag for industrial/flex — critical for tenant retention]
-🟡 [ ] Clear height confirmed (actual vs. marketed)
+       [Confirm surface (asphalt/gravel/concrete) can bear trailer/container/truck loads —
+       this is the core physical diligence item for IOS, equivalent to a PCA for a building.]
+🔴 [ ] Usable acreage confirmed net of easements, detention, setbacks, floodway
+       Owner: Buyer / Surveyor | Due: DD Day 14
+🔴 [ ] FEMA flood zone check completed
        Owner: Buyer | Due: DD Day 7
-       [Physical tape or survey — broker figures are often incorrect]
-🟡 [ ] Truck court / parking confirmed (dimensions, striping)
+       [Critical in Houston.]
+🟡 [ ] Fencing and gate condition inspected — replacement cost estimated if needed
+       Owner: Inspector | Due: DD Day 14
+🟡 [ ] Truck turning radius / circulation adequacy confirmed
        Owner: Buyer | Due: DD Day 7
-🟡 [ ] Sprinkler system type and coverage confirmed
+       [Physical walk or survey — broker-stated circulation is often optimistic.]
+🟡 [ ] Drainage / detention adequacy confirmed for site use
        Owner: Inspector | Due: DD Day 14
-🟢 [ ] Plumbing inspection
+🟡 [ ] Electrical service type and capacity confirmed (single vs. 3-phase), upgrade cost/timeline if needed
        Owner: Inspector | Due: DD Day 14
-🟢 [ ] Slab/foundation assessment
+🟡 [ ] Water/sewer, stormwater, and telecom availability confirmed
+       Owner: Buyer | Due: DD Day 10
+🟢 [ ] Site lighting (type, age, condition, security coverage)
        Owner: Inspector | Due: DD Day 14
-🟢 [ ] Lighting (type, age, condition) — LED conversion cost
-       Owner: Inspector | Due: DD Day 14
-🟢 [ ] Deferred maintenance estimate compiled
+🟢 [ ] Deferred maintenance estimate compiled (pavement, fencing, drainage)
        Owner: Buyer | Due: DD Day 17
 
-[IF VALUE-ADD / CONVERSION:]
-🔴 [ ] Structural assessment for conversion feasibility
-       Owner: Structural engineer | Due: DD Day 14
-🟡 [ ] MEP feasibility assessment for conversion
-       Owner: MEP engineer | Due: DD Day 14
+[IF ANY BUILDING/STRUCTURE ON SITE:]
+🟡 [ ] Structure condition assessment (office/shop/maintenance building, if present)
+       Owner: Inspector | Due: DD Day 14
+🟢 [ ] Roof/HVAC/electrical spot-check on existing structure
+       Owner: Inspector | Due: DD Day 14
+
+[IF DEVELOPMENT FOR IOS USE:]
+🔴 [ ] GC bids received for paving, fencing, lighting, drainage buildout
+       Owner: Buyer | Due: DD Day 21
+🟡 [ ] Permitting path and timeline confirmed
+       Owner: Buyer | Due: DD Day 14
 
 ════════════════════════════════════════════════════════
 CATEGORY 3 — ENVIRONMENTAL                              
@@ -145,12 +155,19 @@ CATEGORY 3 — ENVIRONMENTAL
        Owner: Buyer | Due: Immediately upon Phase I delivery
 🔴 [ ] Phase II results received
        Owner: Environmental consultant | Due: Varies
-🟡 [ ] Confirm no current USEPA/TCEQ/EPD enforcement actions
+🟡 [ ] Confirm no current USEPA/TCEQ enforcement actions
        Owner: Buyer's Counsel | Due: DD Day 14
-🟢 [ ] Historical use review (Sanborn maps / records)
-       Owner: Environmental consultant | Due: Included in Phase I
-🟢 [ ] Underground storage tank (UST) status confirmed
+🟡 [ ] TCEQ database checked for site-specific violations/history
        Owner: Environmental consultant | Due: DD Day 21
+🟡 [ ] Underground storage tank (UST) history confirmed
+       Owner: Environmental consultant | Due: DD Day 21
+🟡 [ ] PCB check on any existing transformers on site
+       Owner: Environmental consultant | Due: DD Day 21
+       [Older pole-mount or pad-mount transformers can contain PCB-contaminated oil —
+       confirm testing/manifest before assuming a clean site.]
+🟢 [ ] Historical use review (Sanborn maps / historical aerials) — check for prior fuel,
+       industrial, or landfill use
+       Owner: Environmental consultant | Due: Included in Phase I
 
 ════════════════════════════════════════════════════════
 CATEGORY 4 — FINANCIAL & LEASES                         
@@ -280,8 +297,9 @@ RECOMMENDED ACTIONS TODAY:
 2. **Flag the critical path.** On every status update, identify the 2–3 items that
    are on the critical path to closing. These get highlighted regardless of status.
 
-3. **Clear height and dock door inspection are non-negotiable.** Always include for
-   industrial/flex. Broker-stated specs are unreliable — physical confirmation required.
+3. **Pavement load-bearing capacity and truck circulation are non-negotiable.** Always
+   include for IOS. Broker-stated acreage, coverage, and circulation figures are unreliable —
+   physical/survey confirmation required.
 
 4. **Phase II triggers automatically.** If any RECs are found in Phase I, immediately
    flag Phase II as Critical and required before DD expiration.

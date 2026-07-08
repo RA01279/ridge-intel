@@ -54,10 +54,10 @@ a deal can be added with just address + stage.
 DEAL RECORD
 ───────────────────────────────────────────────────────
 Address:          [Street, City, State]
-Market:           [Atlanta / Savannah / DFW / Houston]
-Submarket:        [e.g. Fulton Industrial, Northwest Dallas]
-Asset Type:       [Industrial / Flex / Conversion]
-SF (est.):        [square footage]
+Market:           [DFW / Houston]
+Submarket:        [e.g. Great Southwest, Northwest Dallas]
+Asset Type:       [Industrial Outdoor Storage (IOS)]
+Acreage (est.):   [total site acreage]
 Est. Price:       [$M range]
 Stage:            [WATCH / OUTREACH / MEETING / LOI / DD / IC / CLOSING / CLOSED / DEAD]
 Conviction:       [High / Needs More Data / Watch List]

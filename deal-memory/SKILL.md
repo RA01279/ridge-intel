@@ -63,12 +63,12 @@ A DEAL MEMORY state block contains everything needed to reconstruct a RIDGE sess
 
 ### Pipeline Compact Format (one line per deal)
 ```
-[STAGE]|[Address]|[Market]|[SF]|[Est Price]|[Conviction]|[Follow-Up Date]|[Last Action]|[Notes 40 chars max]
+[STAGE]|[Address]|[Market]|[Acreage]|[Est Price]|[Conviction]|[Follow-Up Date]|[Last Action]|[Notes 40 chars max]
 ```
 Example:
 ```
-LOI|1850 Crown Dr Dallas TX|DFW|48500|$9.2M|HIGH|2025-02-14|LOI submitted 2/10|Owner motivated, debt maturing Q2
-WATCH|1234 Industrial Blvd Atlanta|ATL|32000|$6.5M|WATCH|2025-02-20|SCOUT flagged 2/8|CMBS watchlist signal
+LOI|1850 Crown Dr Dallas TX|DFW|11.2|$9.2M|HIGH|2025-02-14|LOI submitted 2/10|Owner motivated, debt maturing Q2
+WATCH|9400 Fallbrook Dr Houston TX|HOU|7.5|$6.5M|WATCH|2025-02-20|SCOUT flagged 2/8|Deed restriction search pending
 ```
 
 ### SCOUT History Compact Format

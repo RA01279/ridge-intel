@@ -20,7 +20,7 @@ description: >
 
 ACQ INVESTMENT REPORT builds the institutional IC deck. Given an uploaded acquisition
 model (Excel) and optional broker OM (PDF), it generates a complete 12–14 slide PowerPoint
-package structured for presentation to Entrada Partners' investment committee.
+package structured for presentation to Dalfen Industrial's investment committee.
 
 Every slide must meet the Midnight Executive standard defined in `output-standard/STANDARD.md`.
 Every number must trace directly to the uploaded model. No fabrication. No rounding without
@@ -45,18 +45,19 @@ flagging. No empty slide halves.
 
 Build slides in this order. Each slide has a designated data source.
 
-1. **Cover** — address (one line), date, asset type badge, SF | Price | Cap Rate strip
+1. **Cover** — address (one line), date, asset type badge, Acreage | Price | Price/Acre strip
 2. **Deal Snapshot** — 2×4 KPI grid (8 metrics), navy + dark green boxes
 3. **Investment Thesis** — user thesis input, 3–4 points, left accent bars
 4. **Property Overview** — site facts + location narrative from OM
 5. **Sources & Uses / Capital Stack** — table from model + stacked bar visual
-6. **Return Metrics** — IRR/EM hero callouts + full returns table with status column
+6. **Return Metrics** — IRR/EM hero callouts + full returns table with status column, referencing Dalfen's confirmed hurdle — **[VERIFY WITH USER]** if not yet confirmed, never Entrada's old 14.75%/1.8x-2.2x/7.5-8.0% numbers
 7. **Cash Flow Summary** — year-by-year from model, hold period only
-8. **In-Place Rent Roll** — full tenant table with delta column, color-coded rows
-9. **Lease Expiration Waterfall** — bar chart by year, colored by tenant
-10. **Market & Submarket** — vacancy/rent KPIs + comp set bar chart
-11. **Sensitivity Analysis** — color-coded IRR × price × hold/exit cap tables
-12. **Risk Matrix** — colored severity badges, each risk with specific mitigant
+8. **Land-Basis / Acre Economics** (variant — use for vacant land, entitlement, forward sale, or covered-land-play deals with no in-place rent roll) — total acreage, building coverage % vs. the <30% gate, price per acre, entitlement status and timeline, land appreciation or stabilized-income exit basis. **Use this slide instead of slide 8/9 below when there is no tenant income to report.**
+8. **In-Place Rent Roll** (leased/sale-leaseback deals only) — full tenant table with delta column, color-coded rows, acreage/spot-count basis instead of SF where applicable
+9. **Lease Expiration Waterfall** (leased/sale-leaseback deals only) — bar chart by year, colored by tenant
+10. **Market & Submarket** — land absorption, outdoor storage rent, truck parking demand KPIs + comp set bar chart
+11. **Sensitivity Analysis** — color-coded IRR × price × hold/exit basis tables, using the confirmed (or explicitly flagged unconfirmed) hurdle for color thresholds
+12. **Risk Matrix** — colored severity badges, each risk with specific mitigant — entitlement risk and deed-restriction risk are IOS-specific risks that belong here when applicable
 13. **IC Recommendation** — verdict banner, KPI strip, numbered next steps
 
 ---

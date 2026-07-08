@@ -2,17 +2,17 @@
 name: market-pulse
 description: >
   MARKET PULSE is RIDGE's submarket intelligence and benchmarking engine. Use this skill
-  ANY TIME the user needs current industrial or flex market data — including pulling vacancy
-  rates, asking rents, absorption, new supply, cap rate spreads, or rent growth for any of
-  RIDGE's target markets (Atlanta, Savannah, DFW, Houston, Austin). Also trigger for running
-  a full Market Pulse report on one or multiple submarkets, updating RIDGE's underwriting
-  benchmarks, comparing submarkets side-by-side, or assessing where a deal sits relative
-  to current market conditions. Trigger on: "run market pulse", "what's the market doing",
-  "current vacancy in [market]", "what are rents in [submarket]", "market benchmarks",
-  "submarket intelligence", "market update", "where are cap rates", "market report",
-  "absorption data", "new supply", "submarket matrix", "update the benchmarks", or any
-  request for current CRE market data in RIDGE's target markets. Always load this skill
-  before producing any market analysis, submarket report, or benchmark update.
+  ANY TIME the user needs current Industrial Outdoor Storage (IOS) market data — including
+  land absorption near intermodal/port nodes, truck parking demand, warehouse-under-
+  construction pipeline, or outdoor storage rent trends for DFW or Houston. Also trigger for
+  running a full Market Pulse report on one or multiple submarkets, updating RIDGE's
+  underwriting benchmarks, comparing submarkets side-by-side, or assessing where a deal sits
+  relative to current market conditions. Trigger on: "run market pulse", "what's the market
+  doing", "land absorption in [market]", "outdoor storage rents in [submarket]", "market
+  benchmarks", "submarket intelligence", "market update", "truck parking demand", "market
+  report", "warehouse construction pipeline", "submarket matrix", "update the benchmarks",
+  or any request for current CRE market data in RIDGE's target markets. Always load this
+  skill before producing any market analysis, submarket report, or benchmark update.
 ---
 
 > **Output Standard:** Before generating any output, read and apply `output-standard/STANDARD.md` (repo root). All formatting, color, typography, and QA requirements defined there supersede any defaults in this skill. Market Pulse applies: PDF standard (Section 4).
@@ -24,6 +24,12 @@ description: >
 MARKET PULSE is RIDGE's market intelligence function. Every underwriting decision runs
 against a benchmark. MARKET PULSE maintains and refreshes those benchmarks.
 
+Industrial vacancy rate is **not** the core IOS market-health metric — a building-occupancy
+number doesn't describe demand for outdoor storage. MARKET PULSE tracks land absorption,
+truck parking demand, warehouse-under-construction pipeline (a leading indicator of future
+IOS tenant demand — new warehouse space means new trucking/logistics activity that needs
+somewhere to park), and submarket-level outdoor storage rent trends instead.
+
 The submarket-matrix.md referenced in RIDGE's core skill does not exist as a static file —
 MARKET PULSE builds it dynamically from live web searches, broker reports, and any
 user-provided data. Output is structured so it can drop directly into RIDGE's underwriting
@@ -33,30 +39,17 @@ engine and IC decks.
 
 ## Target Markets & Submarket Coverage
 
-### Primary Markets
-
-**Atlanta, GA**
-Key submarkets: Fulton Industrial, I-20 West, I-85 North, I-85 South (Hartsfield),
-Northeast Atlanta (Gwinnett/Buford), I-285 (Perimeter), Cherokee/Woodstock,
-Conyers/Covington
-
-**Savannah, GA**
-Key submarkets: Port of Savannah (Garden City/Pooler), I-16 Corridor, Chatham County North,
-Bryan County (emerging), Effingham County
-
 **Dallas-Fort Worth, TX**
 Key submarkets: Great Southwest/Arlington, Northwest Dallas, Mesquite/Garland,
-South Dallas/DeSoto, Alliance (Fort Worth), Las Colinas/Irving,
-McKinney/Allen (flex), Lewisville/Denton
+South Dallas/DeSoto, Alliance (Fort Worth) — priority for intermodal proximity (BNSF),
+Las Colinas/Irving, Lewisville/Denton
 
 **Houston, TX**
 Key submarkets: Northwest Houston, Northeast Houston/Greenspoint, South Houston/Hobby,
 Westchase/Westheimer, Katy/I-10 West, Hardy Toll Road/Greenspoint,
-Brookhollow/Northwest, Port Houston/Ship Channel
+Brookhollow/Northwest, Port Houston/Ship Channel — priority for port proximity
 
-### Watch Market
-**Austin, TX** — Track only. No proactive sourcing. Flag conversion plays at distressed
-pricing when flex vacancy < 12%.
+No secondary or watch markets. Atlanta, Savannah, and Austin are out of scope.
 
 ---
 
@@ -77,11 +70,11 @@ MARKET PULSE pulls data from these sources in priority order:
 
 **Search queries (run these in sequence):**
 ```
-"[Market] industrial market report Q[quarter] [year]"
-"[Submarket] flex industrial vacancy [year]"
-"[Market] industrial asking rent [year] CBRE OR JLL OR Cushman"
-"[Market] industrial cap rates [year]"
-"[Submarket] industrial absorption [year]"
+"[Market] industrial land absorption [year]"
+"[Submarket] outdoor storage rent trends [year]"
+"[Market] warehouse under construction pipeline [year] CBRE OR JLL OR Cushman"
+"[Market] truck parking demand [year]"
+"[Submarket] IOS land sales comps [year]"
 ```
 
 ### Report Output Format
@@ -94,44 +87,42 @@ As of: [Date] | Sources: [Source list]
 
 HEADLINE METRICS
 ┌─────────────────────────────────────────────────────────────────┐
-│ VACANCY RATE:          [X.X]%    [↑ / ↓ / →] vs 12 mo ago      │
-│ DIRECT ASK RENT (NNN): $[X.XX]/SF/yr  Class A: $[X] B: $[X]    │
-│ NET ABSORPTION:        [+/-X,XXX] SF  (trailing 12 months)      │
-│ NEW SUPPLY (under const): [X,XXX,XXX] SF  Del. in 12 mo: [X]   │
-│ MARKET CAP RATE:       [X.X]%–[X.X]%  (industrial/flex)        │
-│ RENT GROWTH (12 mo):   [+/-X.X]%                               │
+│ LAND ABSORPTION:       [+/-X] acres  (trailing 12 mo, near       │
+│                        intermodal/port nodes)                    │
+│ OUTDOOR STORAGE RENT:  $[X]/acre/yr  or $[X]/spot/mo             │
+│ TRUCK PARKING DEMAND:  [Tight / Balanced / Oversupplied]          │
+│ WAREHOUSE UNDER CONST: [X,XXX,XXX] SF  (leading indicator of      │
+│                        future IOS tenant demand)                 │
+│ IOS RENT GROWTH (12mo):[+/-X.X]%                                 │
 └─────────────────────────────────────────────────────────────────┘
 
 SUBMARKET BREAKDOWN
-Submarket          | Vacancy | Ask Rent | Trend   | RIDGE Priority
-─────────────────────────────────────────────────────────────────
-[Submarket A]      | [X.X]%  | $[X.XX]  | Tight   | ★ Primary
-[Submarket B]      | [X.X]%  | $[X.XX]  | Stable  | Secondary
-[Submarket C]      | [X.X]%  | $[X.XX]  | Softening| Watch
+Submarket          | Land Absorption | Storage Rent  | Trend    | RIDGE Priority
+──────────────────────────────────────────────────────────────────────────────
+[Submarket A]      | [+X] acres      | $[X]/acre     | Tight    | ★ Primary
+[Submarket B]      | [+X] acres      | $[X]/acre     | Stable   | Secondary
+[Submarket C]      | [-X] acres      | $[X]/acre     | Softening| Watch
 
-SUPPLY PIPELINE
+WAREHOUSE CONSTRUCTION PIPELINE (leading indicator)
   Delivering < 6 months:  [N] buildings / [X,XXX,XXX] SF
   Delivering 6–12 months: [N] buildings / [X,XXX,XXX] SF
   Under construction:     [N] buildings / [X,XXX,XXX] SF
-  Speculative %:          [X]%
-  ⚠️ Supply flag: [Note if spec pipeline > 15% of existing inventory]
+  ⚠️ Read: new warehouse supply signals future trucking/logistics activity —
+     read as a leading indicator of IOS demand, not a competing supply risk.
 
 TENANT DEMAND SIGNALS
-  Active requirements (>50k SF): [List key users actively seeking space]
-  Recent large leases signed:    [Notable transactions in last 90 days]
-  Sector drivers:                [e-commerce / manufacturing / 3PL / flex tenants]
+  Active fleet/trucking expansion in submarket: [List companies actively growing]
+  Recent large IOS leases signed:               [Notable transactions in last 90 days]
+  Sector drivers:                                [3PL / drayage / e-commerce last-mile / construction]
 
-CAP RATE CONTEXT
-  Industrial (stabilized):    [X.X]%–[X.X]%
-  Flex (stabilized):          [X.X]%–[X.X]%
-  Value-add premium:          [+XX–XX bps] above stabilized
-  RIDGE exit assumption:      [X.X]% (confirm vs. current market)
+EXIT BASIS CONTEXT
+  Land appreciation (covered land play basis):  [X]%/yr trailing
+  Stabilized IOS income cap rate (leased basis): [X.X]%–[X.X]%  [VERIFY WITH USER: Dalfen's exit assumption is unconfirmed]
 
 RIDGE UNDERWRITING IMPLICATIONS
-  Market rent benchmark:      $[X.XX]/SF NNN  [Class A/B] → use in Napkin/models
-  Vacancy assumption:         [X]%  (submarket avg = [X]%, RIDGE uses [X]% stress)
-  Rent growth assumption:     [X]%/yr for 5-year hold
-  Exit cap assumption:        [X.X]%  [same as above / adjusted to [X.X]% given trend]
+  Outdoor storage rent benchmark: $[X]/acre/yr or $[X]/spot/mo → use in Napkin/models
+  Land absorption trend:          [X] acres/yr in submarket
+  Rent growth assumption:         [X]%/yr for hold period
   
   Verdict: [FAVORABLE / NEUTRAL / CAUTIOUS]
   One paragraph: What does this market data mean for RIDGE's current sourcing priorities?
@@ -148,25 +139,21 @@ DATA FLAGS
 
 When user requests "run the full matrix" or "update all benchmarks":
 
-Run Market Pulse for all 5 markets (Atlanta, Savannah, DFW, Houston, Austin) and output
-in a comparative matrix format.
+Run Market Pulse for both markets (DFW, Houston) and output in a comparative matrix format.
 
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 SUBMARKET MATRIX — RIDGE Coverage Universe
 Generated: [Date]
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Market    │ Vacancy │ Ask Rent    │ Absorption  │ Cap Rate   │ RIDGE View
-──────────┼─────────┼─────────────┼─────────────┼────────────┼────────────
-Atlanta   │ [X.X]%  │ $[X.XX]/SF  │ [+/-X]k SF  │ [X.X]-[X]% │ ACTIVE
-Savannah  │ [X.X]%  │ $[X.XX]/SF  │ [+/-X]k SF  │ [X.X]-[X]% │ ACTIVE
-DFW       │ [X.X]%  │ $[X.XX]/SF  │ [+/-X]k SF  │ [X.X]-[X]% │ ACTIVE
-Houston   │ [X.X]%  │ $[X.XX]/SF  │ [+/-X]k SF  │ [X.X]-[X]% │ ACTIVE
-Austin    │ [X.X]%  │ $[X.XX]/SF  │ [+/-X]k SF  │ [X.X]-[X]% │ WATCH ONLY
+Market    │ Land Absorption │ Storage Rent │ Whse U/C Pipeline │ RIDGE View
+──────────┼─────────────────┼──────────────┼───────────────────┼────────────
+DFW       │ [+/-X] acres    │ $[X]/acre    │ [X,XXX,XXX] SF    │ ACTIVE
+Houston   │ [+/-X] acres    │ $[X]/acre    │ [X,XXX,XXX] SF    │ ACTIVE
 
-Hottest market right now:     [Market] — [one sentence why]
-Most cautious market:         [Market] — [one sentence why]
-Best value-add opportunity:   [Market/Submarket] — [one sentence why]
+Hottest submarket right now:  [Submarket] — [one sentence why]
+Most cautious submarket:      [Submarket] — [one sentence why]
+Best covered-land-play opportunity: [Market/Submarket] — [one sentence why]
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
 
@@ -200,12 +187,12 @@ MARKET PULSE outputs feed directly into:
 
 | Destination | Data Used |
 |------------|-----------|
-| Napkin screen | Market rent/SF for NOI calculation |
-| Full models | Rent growth %, vacancy assumption, exit cap rate |
-| SCOUT | Submarket vacancy benchmark for signal calibration |
-| CANVAS | Tenant demand signals for lease-up thesis |
+| Napkin screen | $/acre or $/spot rate for stabilized income calculation |
+| Full models | Rent growth %, land absorption trend, exit basis assumption |
+| SCOUT | Land absorption/outdoor storage rent benchmark for signal calibration |
+| CANVAS | Fleet/trucking expansion signals for demand-side sourcing thesis |
 | IC deck | Market analysis slide — market context section |
-| DD Tracker | Market rent comps for lease analysis |
+| DD Tracker | Outdoor storage rent comps for lease analysis |
 
 When MARKET PULSE runs, offer: "Should I update the benchmarks in your active deals?"
 
@@ -225,9 +212,12 @@ When MARKET PULSE runs, offer: "Should I update the benchmarks in your active de
 4. **Source hierarchy matters.** CoStar > Broker research reports > Web search estimates.
    Never cite LoopNet asking rents as market benchmarks.
 
-5. **Supply pipeline is the lead risk indicator.** If spec under construction > 15% of
-   existing inventory in a submarket, flag it prominently as a rent pressure risk.
+5. **Warehouse construction pipeline is a leading demand indicator, not a supply risk.**
+   Unlike a building-lease business where new supply competes for the same tenants, new
+   warehouse construction near an IOS site signals more future trucking/logistics activity
+   that will need somewhere to park. Read it as bullish for IOS demand, and say so.
 
-6. **Cap rate convergence warning.** If the RIDGE exit cap assumption is tighter than
-   current market caps by more than 25 bps, flag: "Exit cap assumption may be
-   optimistic relative to current market — recommend stress test at [X.X]%."
+6. **Exit basis convergence warning.** If the RIDGE exit assumption (land appreciation rate,
+   or stabilized IOS income cap rate for a leased asset) is more aggressive than current
+   market comps by a material margin, flag it: "Exit assumption may be optimistic relative
+   to current market — recommend stress test at [X]."

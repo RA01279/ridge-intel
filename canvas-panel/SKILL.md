@@ -2,21 +2,20 @@
 name: canvas-panel
 description: >
   CANVAS PANEL is the in-app version of CANVAS integrated directly into RIDGE Deal Tools.
-  Use this skill to execute CANVAS tenant sourcing workflows from within the deal tools app
-  environment — finding tenants for a specific building (Fill mode), hunting businesses
-  that need industrial or flex space for acquisition targeting (Hunt mode), or generating
-  tenant prospect packages for IC or broker marketing. Trigger on: "run CANVAS", "find
-  tenants for this building", "tenant search", "who should lease this space", "fill this
-  building", "demand analysis", "tenant prospects", "who's looking for space in [market]",
-  "CANVAS fill", "CANVAS hunt", "tenant sourcing", "what tenants fit this space", "build
-  a tenant list", or any request to identify prospective tenants for industrial or flex
-  space — whether for a specific property or to identify demand signals for sourcing.
-  CANVAS PANEL operates identically to the CANVAS skill but is designed for the RIDGE
-  Deal Tools app panel interface. Always load this skill for any tenant sourcing or
-  demand-side analysis task.
+  Use this skill to execute CANVAS IOS demand sourcing workflows from within the deal tools
+  app environment — finding users for a specific IOS site (Fill mode), hunting businesses
+  that need trailer parking, container storage, contractor/material yard, equipment rental,
+  or truck terminal space for acquisition targeting (Hunt mode), or generating IOS demand
+  prospect packages for IC or broker marketing. Trigger on: "run CANVAS", "find users for
+  this site", "IOS demand search", "who should lease this yard", "fill this site", "demand
+  analysis", "IOS prospects", "who's looking for outdoor storage in [market]", "CANVAS fill",
+  "CANVAS hunt", "IOS user sourcing", "build an IOS demand list", or any request to identify
+  prospective IOS users for a site or submarket in DFW or Houston. CANVAS PANEL operates
+  identically to the CANVAS skill but is designed for the RIDGE Deal Tools app panel
+  interface. Always load this skill for any IOS demand sourcing or demand-side analysis task.
 ---
 
-# CANVAS PANEL — Tenant Intelligence Engine (App Integration)
+# CANVAS PANEL — IOS Demand Intelligence Engine (App Integration)
 
 ## Identity
 
@@ -24,48 +23,48 @@ CANVAS PANEL is the app-integrated version of CANVAS. Same engine, same outputs 
 purpose-built to run inside the RIDGE Deal Tools browser app as a dedicated panel
 alongside SCOUT, The Gavel, and ISR.
 
-CANVAS operates in two modes. The mode is determined by what the user has — a building
+CANVAS operates in two modes. The mode is determined by what the user has — a site
 or a question.
 
 | Mode | You have | Output |
 |------|----------|--------|
-| **FILL** | A specific building — find the tenants | Ranked tenant prospect list for that address |
+| **FILL** | A specific IOS site — find the users | Ranked IOS user prospect list for that address |
 | **HUNT** | A target profile — find the demand | Business list feeding RIDGE sourcing targets |
 
 ---
 
-## Mode 1: FILL — Find Tenants for a Building
+## Mode 1: FILL — Find Users for an IOS Site
 
 ### Required Inputs
 | Input | Required | Notes |
 |-------|----------|-------|
-| Property address | Yes | Full address |
-| Total SF available | Yes | Can be partial or whole building |
-| Bay sizes / divisibility | Preferred | Min divisible unit |
-| Clear height | Preferred | Industrial spec confirmation |
-| Dock doors / drive-ins | Preferred | Loading infrastructure |
-| Office SF / finish level | Preferred | Drives flex vs. industrial tenant fit |
-| Asking rent | Optional | Filters for tenant budget range |
-| Market / submarket | Yes | Derived from address if not stated |
+| Site address | Yes | Full address |
+| Total acreage available | Yes | Can be partial or whole site |
+| Building coverage % | Preferred | Confirms the site is IOS-eligible (<30% gate) |
+| Fencing / gate / paving condition | Preferred | Drives which target-user categories fit |
+| Power availability | Preferred | Relevant for equipment maintenance/rental users |
+| Zoning / entitlement status | Yes | By-right vs. SUP/CUP required — filters user urgency |
+| Asking rate | Optional | $/acre or $/spot per month — filters user budget range |
+| Market / submarket | Yes | DFW or Houston only — derived from address if not stated |
 
 ### Tenant Profiling Framework
 
-CANVAS scores tenant prospects against four dimensions:
+CANVAS scores IOS user prospects against four dimensions:
 
 **1. Space Fit Score (1–5)**
-- SF requirement matches available space (within 20% either direction) = 3
-- Configuration match (dock access, clear height, power) = +1 each
-- Office finish match = +1
+- Acreage requirement matches available acreage (within 20% either direction) = 3
+- Configuration match (paving, fencing/gate, power) = +1 each
+- Site subdivisibility match (if user needs a partial site) = +1
 
 **2. Creditworthiness Signal (1–5)**
 - Established business 5+ years = 2
-- National/regional tenant = +2
-- Growing headcount / revenues = +1
+- National/regional fleet or operator = +2
+- Growing fleet size / revenues = +1
 - Local operator, limited history = 1 base
 
 **3. Urgency Signal (1–5)**
-- Known expansion / new facility requirement = 5
-- Lease expiry within 12 months = 4
+- Known SUP/CUP or site plan filing for outdoor storage use = 5
+- Displacement from a redeveloped industrial site (confirmed) = 4
 - In growth mode but not actively searching = 3
 - No known urgency = 1–2
 
@@ -76,50 +75,50 @@ CANVAS scores tenant prospects against four dimensions:
 
 **Total CANVAS Score: 4–20. Prioritize 14+.**
 
-### Tenant Category Matrix — Industrial & Flex
+### Target-User Category Matrix — Industrial Outdoor Storage
 
-Match building specs to tenant categories:
+Match site specs to target-user categories:
 
 ```
-BUILDING PROFILE          → BEST TENANT CATEGORIES
-──────────────────────────────────────────────────────
-High bay (28+ ft clear)   → E-commerce fulfillment, 3PL, bulk distribution,
-  + dock heavy              manufacturing (auto, building products)
-                          
-Mid-bay (20–27 ft clear)  → Light manufacturing, food/bev distribution,
-  + dock + drive-in         building materials, parts distribution, contractor
+SITE PROFILE               → BEST TARGET-USER CATEGORIES
+──────────────────────────────────────────────────────────
+Fully paved, fenced/gated, → Container storage, trailer parking operators,
+  no building required        truck terminals (parking-focused)
 
-Low bay (18–20 ft clear)  → Flex tenants: contractors, last-mile delivery,
-  + drive-in only           medical device storage, specialty trades
+Partial paving, fenced,    → Contractor & material yards, auto/bus storage
+  small office/shop           fleets, municipal/public works yards (conditional)
 
-Flex (12–16 ft clear)     → Professional trades, showroom + storage, light
-  + heavy office             assembly, tech hardware, medical device
+Fenced, shop building       → Equipment maintenance & rental yards,
+  + yard                      heavy equipment dealer overflow lots
 
-Multi-tenant flex         → Small business users: contractors, distributors,
-  (sub-5,000 SF bays)       specialty retail backroom, service businesses
+Unpaved/compacted base,    → Container storage (chassis pool), lower-cost
+  fenced only                 trailer parking, material laydown yards
+
+Large contiguous acreage   → Truck terminals (LTL/parking), large fleet
+  (10+ acres)                 trailer parking, regional distribution overflow
 ```
 
 ### FILL Output Format
 
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-CANVAS FILL — [Address] | [SF Available] | [Submarket]
+CANVAS FILL — [Address] | [Acreage Available] | [Submarket]
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-BUILDING PROFILE SUMMARY
-  SF:           [X,XXX] SF available (min suite: [X,XXX])
-  Height:       [XX] ft clear
-  Loading:      [N dock] / [N drive-in]
-  Power:        [X]A / [X]V [if known]
-  Target tenants: [Best fit categories based on specs above]
+SITE PROFILE SUMMARY
+  Acreage:      [X.X] acres available (min divisible: [X.X] acres)
+  Building coverage: [X]% (gate: <30%)
+  Site config:  [Paved/unpaved] | [Fenced/gated: Y/N]
+  Power:        [Service type / capacity, if known]
+  Target users: [Best fit categories based on specs above]
 
-TENANT PROSPECTS — RANKED BY CANVAS SCORE
+USER PROSPECTS — RANKED BY CANVAS SCORE
 ──────────────────────────────────────────────────────────────────
-Rank | Business Name | Category | SF Need | Score | Urgency Signal
-─────┼───────────────┼──────────┼─────────┼───────┼────────────────
-  1  | [Name]        | [Cat]    | [X,XXX] | 17/20 | Lease exp Q3
-  2  | [Name]        | [Cat]    | [X,XXX] | 16/20 | Expansion mode
-  3  | [Name]        | [Cat]    | [X,XXX] | 15/20 | Active search
+Rank | Business Name | Category | Acreage Need | Score | Urgency Signal
+─────┼───────────────┼──────────┼──────────────┼───────┼────────────────
+  1  | [Name]        | [Cat]    | [X.X] ac     | 17/20 | SUP filing active
+  2  | [Name]        | [Cat]    | [X.X] ac     | 16/20 | Fleet expansion
+  3  | [Name]        | [Cat]    | [X.X] ac     | 15/20 | Active search
   ...
 
 PROSPECT DETAILS — TOP 10
@@ -127,9 +126,9 @@ PROSPECT DETAILS — TOP 10
   Business: [Name] — [Category]
   Address:  [Current location]
   Contact:  [Name, title, phone/email if available via web search]
-  Why fit:  [One sentence on why this tenant fits this space]
-  Urgency:  [What's driving timing — lease expiry, growth, new market]
-  Approach: [How to open — broker intro, direct call, property tour]
+  Why fit:  [One sentence on why this user fits this site]
+  Urgency:  [What's driving timing — permit filing, redevelopment displacement, fleet growth]
+  Approach: [How to open — broker intro, direct call, site tour]
   CANVAS Score: [X/20]
 
 MARKET DEMAND SUMMARY
@@ -137,11 +136,11 @@ MARKET DEMAND SUMMARY
   High urgency (score 16+):    [N]
   Active requirements (known): [N]
   Estimated lease-up timeline: [X–Y months at market absorption pace]
-  Comparable buildings leased: [Reference 1–2 recent comp leases in submarket]
+  Comparable sites leased:     [Reference 1–2 recent comp leases in submarket]
 
 RECOMMENDED OUTREACH SEQUENCE
   Week 1: Contact [Top 3 names] — highest urgency + best fit
-  Week 2: Broker canvass — [Name 1–2 active industrial brokers in submarket]
+  Week 2: Broker canvass — [Name 1–2 active industrial/IOS brokers in submarket]
   Week 3: Secondary list outreach — [Next 5 prospects]
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
@@ -150,46 +149,46 @@ RECOMMENDED OUTREACH SEQUENCE
 
 ## Mode 2: HUNT — Find Demand Signals for Sourcing
 
-HUNT is the inverse of FILL. Instead of matching tenants to a building, HUNT identifies
+HUNT is the inverse of FILL. Instead of matching users to a site, HUNT identifies
 businesses in a market whose space needs signal acquisition opportunities for RIDGE.
 
 ### HUNT Use Cases
-- "Who in Atlanta is growing fast and will need more industrial space?"
-- "Find businesses in DFW that are in lease-up situations"
-- "What companies are driving demand in the Pooler/Garden City submarket?"
-- "Find tenants whose lease is expiring at competitor properties"
+- "Who in DFW is growing their fleet and will need more yard space?"
+- "Find businesses in Houston that have filed for outdoor storage entitlement"
+- "What companies are being displaced by industrial redevelopment near [submarket]?"
+- "Find trailer parking operators whose current site is being redeveloped"
 
 ### HUNT Inputs
 | Input | Required |
 |-------|----------|
-| Market / submarket | Yes |
-| Asset type focus | Yes |
-| Target tenant size (SF) | Preferred |
+| Market / submarket (DFW or Houston only) | Yes |
+| Target-user category focus | Yes |
+| Target user size (acreage) | Preferred |
 | Specific sectors of interest | Optional |
 
 ### HUNT Output Format
 
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-CANVAS HUNT — [Market/Submarket] | [Asset Type]
+CANVAS HUNT — [Market/Submarket] | [Target-User Category]
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 DEMAND LANDSCAPE
-  Primary demand drivers in this submarket: [Sectors, activity level]
-  Known active requirements (>20k SF): [List any confirmed requirements]
-  Net absorption trend (12 mo): [Positive/Negative, magnitude]
-  Typical lease term for target tenants: [X–Y years]
+  Primary demand drivers in this submarket: [Categories, activity level]
+  Known active requirements (>5 acres): [List any confirmed requirements]
+  Permit filing activity (12 mo): [# of SUP/CUP/site plan filings referencing outdoor storage]
+  Typical lease term for target users: [X–Y years]
 
 BUSINESSES WITH ACTIVE SPACE NEEDS
-Rank | Business | Sector | Est. Req SF | Signal | Acquisition Implication
-─────┼──────────┼────────┼─────────────┼────────┼─────────────────────────
-  1  | [Name]   | [Sect] | [X,XXX] SF  | [Type] | [How to exploit]
+Rank | Business | Category | Est. Req Acreage | Signal | Acquisition Implication
+─────┼──────────┼──────────┼───────────────────┼────────┼─────────────────────────
+  1  | [Name]   | [Cat]    | [X.X] ac          | [Type] | [How to exploit]
   ...
 
 ACQUISITION TARGETING IMPLICATION
-  These tenant demand signals support sourcing in: [Specific submarkets]
-  Building profiles in highest demand: [Specs]
-  Lease-up risk in these submarkets: [Assessment]
+  These user demand signals support sourcing in: [Specific submarkets]
+  Site profiles in highest demand: [Specs — paving/fencing/acreage]
+  Entitlement risk in these submarkets: [Assessment — by-right vs. SUP pattern]
   RIDGE sourcing recommendation: [Where to focus SCOUT next]
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
@@ -203,12 +202,12 @@ When running inside the RIDGE Deal Tools app:
 **Input panel** — Left column:
 - Mode toggle: FILL / HUNT
 - Address autocomplete (Google Maps API)
-- SF, height, loading config inputs
-- Market dropdown
+- Acreage, coverage %, fencing/paving config inputs
+- Market dropdown (DFW / Houston only)
 - "Run CANVAS" button
 
 **Output panel** — Right column / main area:
-- Ranked tenant table (sortable by Score, Urgency, SF Fit)
+- Ranked IOS user table (sortable by Score, Urgency, Acreage Fit)
 - Prospect detail cards (expand on click)
 - Export to CSV / copy-to-clipboard
 - "Add to Pipeline" button (for HUNT mode — surfaces as sourcing note)
@@ -219,11 +218,14 @@ When running inside the RIDGE Deal Tools app:
 ## Data Sources
 
 **CANVAS pulls from:**
-1. Web search — business listings, press releases, expansion announcements, lease news
-2. LinkedIn / company websites — headcount growth, job postings (signals growth)
-3. CoStar (user-provided) — known lease expirations, existing tenant at competing buildings
-4. Local business journals (Atlanta Business Chronicle, Dallas Morning News, etc.)
-5. Port authority / economic development filings (Savannah)
+1. Web search — business listings, press releases, fleet expansion announcements
+2. Municipal permit / zoning filings (user-provided or public record) — SUP/CUP
+   applications and site plans referencing outdoor storage, trailer parking, or laydown yards
+3. Company websites / DOT-FMCSA carrier data where available — fleet size growth, job postings
+4. CoStar (user-provided) — known industrial site redevelopment activity displacing
+   existing outdoor-storage users
+5. Public redevelopment/demolition permit records — tracks displacement from
+   redeveloped industrial sites
 
 **CANVAS never uses:**
 - LoopNet tenant data (unreliable, stale)
@@ -235,11 +237,12 @@ When running inside the RIDGE Deal Tools app:
 
 | Tool | When CANVAS Connects |
 |------|---------------------|
-| PIPELINE | Attach tenant prospect list to active deal record |
+| PIPELINE | Attach IOS user prospect list to active deal record |
 | SCOUT | HUNT output feeds back as demand validation for SCOUT prospects |
 | LOI Generator | Anchor lease-up thesis — "primary demand is from [category]" |
-| acq-investment-report | Tenant demand summary for IC deck market slide |
-| Market Pulse | Cross-reference CANVAS demand signals against market absorption data |
+| acq-investment-report | IOS demand summary for IC deck market slide |
+| Market Pulse | Cross-reference CANVAS demand signals against land absorption / truck parking demand data |
+| Zoning & Entitlement Screener | Confirm target-user category is a permitted use before treating a demand signal as actionable |
 
 ---
 
@@ -250,14 +253,15 @@ When running inside the RIDGE Deal Tools app:
 
 2. **Score every prospect.** Unscored lists are noise. CANVAS scoring forces prioritization.
 
-3. **Contact information is the product.** A tenant name without a contact is half the work.
+3. **Contact information is the product.** A business name without a contact is half the work.
    Spend the search effort to find a decision-maker name and phone/email.
 
 4. **HUNT informs SCOUT.** If HUNT surfaces high demand in a specific submarket that SCOUT
    hasn't covered yet, flag it: "Demand signals suggest we should run SCOUT in [submarket]."
 
-5. **Lease expiry timing is the urgency signal.** Tenants with leases expiring in 6–18 months
-   are the highest-urgency prospects. Prioritize identifying these.
+5. **Permit filing timing is the strongest urgency signal.** An active SUP/CUP or site
+   plan filing for outdoor storage use is the single highest-confidence signal CANVAS can
+   surface — prioritize identifying these over inferred growth signals.
 
-6. **Never fabricate tenant data.** If web search doesn't surface a credible contact for a
+6. **Never fabricate user data.** If web search doesn't surface a credible contact for a
    prospect, note it as "Contact: research required" rather than guessing.

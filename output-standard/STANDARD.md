@@ -8,15 +8,15 @@ All skills that produce a deliverable must reference and apply this document.
 
 | Field | Value |
 |---|---|
-| Firm name | Entrada Partners |
+| Firm name | Dalfen Industrial |
 | Platform | RIDGE — Real Intelligence for Deal Generation & Evaluation |
-| Confidentiality footer | `ENTRADA PARTNERS \| CONFIDENTIAL & PROPRIETARY` |
-| Target markets | Atlanta (primary), Savannah (primary), DFW, Houston — Austin: watch only |
-| Asset types | Industrial, Flex Industrial, Single-Story Office (conversion only) |
-| Deal size | $10M–$70M \| Sweet spot: $25M–$35M |
-| IRR hurdle | 14.75%+ Levered |
-| YOC target | 7.5%–8.0% by Year 3/4 |
-| Equity multiple | 1.7x+ (program floor) |
+| Confidentiality footer | `DALFEN INDUSTRIAL \| CONFIDENTIAL & PROPRIETARY` |
+| Target markets | [PRIORITY 1 — VERIFY: to be updated to DFW / Houston only] |
+| Asset types | [PRIORITY 1 — VERIFY: to be updated to Industrial Outdoor Storage only] |
+| Deal size | [PRIORITY 1 — VERIFY: to be updated to Dalfen's $2M-minimum-no-maximum criteria] |
+| IRR hurdle | [PRIORITY 1 — VERIFY WITH USER: Dalfen's actual IRR hurdle not yet confirmed] |
+| YOC target | [PRIORITY 1 — VERIFY WITH USER: Dalfen's actual YOC target not yet confirmed] |
+| Equity multiple | [PRIORITY 1 — VERIFY WITH USER: Dalfen's actual equity multiple target not yet confirmed] |
 
 ---
 
@@ -147,7 +147,7 @@ The following automatically fail QA and require a full rebuild:
 
 | # | Slide | Key Requirements |
 |---|---|---|
-| 1 | **Cover** | Property name on one line (reduce font until it fits, max 54pt). Right panel: aerial/map image or labeled placeholder. Bottom strip: asset type badge, SF \| Price \| Cap Rate stats, Entrada branding. No empty lower half. |
+| 1 | **Cover** | Property name on one line (reduce font until it fits, max 54pt). Right panel: aerial/map image or labeled placeholder. Bottom strip: asset type badge, SF \| Price \| Cap Rate stats, Dalfen branding. No empty lower half. |
 | 2 | **Deal Snapshot** | 6–8 KPI callouts in uniform grid (2×3 or 2×4). Navy boxes for operational KPIs, dark green for return metrics. All boxes identical dimensions. |
 | 3 | **Investment Thesis** | 3–4 points. Bold header (one line, navy) + 2-sentence supporting body. Left accent bar in medium blue instead of numbered circle. Breathing room between points. Body text max 13pt. |
 | 4 | **Property Overview** | Two-column: site facts left, location/connectivity right. Photo placeholder or map if available. |
@@ -179,8 +179,8 @@ After every PPTX generation, execute in order:
 
 - Page size: Letter (8.5" × 11") or A4
 - Margins: 0.75" all sides minimum
-- Header: Entrada Partners placeholder left | Document title center | Date right — on every page
-- Footer: `ENTRADA PARTNERS | CONFIDENTIAL & PROPRIETARY | Page X of Y` — on every page
+- Header: Dalfen Industrial placeholder left | Document title center | Date right — on every page
+- Footer: `DALFEN INDUSTRIAL | CONFIDENTIAL & PROPRIETARY | Page X of Y` — on every page
 - Section dividers: full-width navy bar with white section title
 
 ### 4.2 Typography
@@ -302,10 +302,10 @@ When this STANDARD and the design system SKILL.md disagree, STANDARD wins for da
 | `preview/colors-primary.html` | Brand + accent palette swatches |
 | `preview/colors-neutrals.html` | Surface / border / text neutrals |
 | `preview/colors-semantic.html` | Status, risk, conviction colors |
-| `preview/brand-lockups.html` | RIDGE wordmark + Entrada wordmark (light + knockout) |
+| `preview/brand-lockups.html` | RIDGE wordmark + Dalfen wordmark (light + knockout, placeholder) |
 | `preview/type-scale.html` | Type scale, KPI scale, voice samples |
 | `preview/spacing-elevation-icons.html` | 4px spacing scale, radii, shadow primitives, 16-icon line set |
 | `preview/components.html` | Buttons, inputs, badges, KPI grid, returns table, deal cards, verdict banners, toast |
 | `preview/ui-kit-app-surfaces.html` | RIDGE app shell — header, hero, skill panel, pipeline cards |
 | `assets/ridge-*.svg / .png` | RIDGE wordmark + favicon |
-| `assets/entrada-*.svg / .png` | Entrada wordmarks (light, knockout, vertical, horizontal, e-mark) |
+| `assets/dalfen-*.svg` | Dalfen wordmarks (light, knockout, vertical, horizontal, e-mark) — PLACEHOLDER, brand assets not yet provided |
