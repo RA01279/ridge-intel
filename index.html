@@ -1103,6 +1103,25 @@ Extract every relevant fact from the materials above before asking any questions
     prompt:(d)=>`Run CANVAS ${d.mode||'Fill'} for: ${d.addr||'Subject Site'} | ${d.sf||'?'} acres available | ${d.dock||''} | Target rate: ${d.rent||'market'} | Submarket: ${d.sub||'?'}.\n${d.notes?'Ideal profile: '+d.notes+'\n':''}\n${d.data_text?'Site data:\n'+d.data_text+'\n\n':''}${d.vacancy_text?'Municipal permit filing data:\n'+d.vacancy_text+'\n\n':''}\nProduce:\n## DEMAND ANALYSIS\nWhat IOS target-user types are actively looking in this submarket? What acreage requirements are most active?\n\n## USER PROSPECT TABLE\nTable: Company | Category | Est. Acreage Need | Likelihood | Why This Site | Outreach Approach\nProvide 8–12 specific prospects.\n\n## TOP 3 TARGETS\nFor each: company overview, why they need yard space, what to lead with in outreach, who to contact.\n\n## OUTREACH STRATEGY\nHow to position this site. What to lead with. What brokers are active with these target-user categories.`
   },
   {
+    id:'salvage', num:'12a', icon:'♻️', name:'SALVAGE',
+    badge:'Distressed Sourcing', badgeBlue:true,
+    desc:'Distressed & bankruptcy acquisition sourcing. Screens Chapter 11 dockets and news for two target patterns — direct Section 363 asset sales, and buy-then-bankrupt carve-outs — and ranks them by actionability against RIDGE criteria.',
+    shortDesc:'Distressed & bankruptcy sourcing — 363 sales and buy-then-bankrupt targets.',
+    uploads:[],
+    fields:[
+      {row:[{id:'market',label:'Market',type:'select',opts:['Any','Dallas-Fort Worth','Houston','Austin','San Antonio','Atlanta']},{id:'asset-type',label:'Asset Type',type:'select',opts:['Any','Industrial Outdoor Storage (IOS)','Industrial / Flex','Single-story Office (conversion)']}]},
+      {row:[{id:'deal-size-min',label:'Min Deal Size ($)',type:'number',ph:'2000000'},{id:'lookback-days',label:'Lookback Window (days)',type:'number',ph:'90'}]},
+    ],
+    steps:['Scanning Chapter 11 dockets...','Screening 363 sale motions...','Checking buy-then-bankrupt signals...','Scoring against RIDGE criteria...','Ranking by actionability...','Building ranked lead table...'],
+    system:`You are SALVAGE, RIDGE's distressed and bankruptcy acquisition sourcing engine.
+Screen for two patterns: (A) Direct 363 sale — the debtor's assets/business/real estate being sold through the bankruptcy sale process itself (stalking horse bid, bid procedures order, sale hearing). (B) Buy-then-bankrupt — a company that acquired another business in the last 1-4 years has since filed Chapter 11; the acquired unit is often carved out and resold in the case.
+Apply Dalfen's actual criteria: IOS deals $2M+ no ceiling; general industrial/flex $10M-$70M (sweet spot $25M-$35M); target markets Dallas-Fort Worth, Houston, Austin, San Antonio, and Atlanta. A case outside these markets can still be flagged Watch List if the signal is strong.
+Rank candidates by actionability (imminent sale hearing beats early-stage filing with no timeline), not recency. State a conviction level (High Conviction / Needs More Data / Watch List) for every row, per RIDGE's conviction framework.
+Output a markdown table: # | Debtor | Pattern | Court/Docket | Asset Type | Market Fit | Sale Timeline | Key Facts | Conviction | Source. Follow with 2-3 sentences on the most actionable lead(s) and why. If results are thin, say so plainly rather than padding the table.
+This is investment research, not legal or investment advice. Flag that docket details should be verified directly against the court record, especially for time-sensitive bid deadlines.`,
+    prompt: null
+  },
+  {
     id:'lease-compare', num:'13', icon:'📑', name:'LEASE NEGOTIATION ANALYZER',
     badge:'Compare · Negotiate · Abstract',
     desc:'Upload 2–3 lease documents — proposals, counters, or executed leases. Get a full side-by-side economic comparison, risk flags by severity, and a prioritized negotiation strategy across all material terms.',
@@ -1689,6 +1708,7 @@ function buildPanelHTML(tool) {
         <div class="res-title" id="rtitle-${tool.id}">${tool.name} — Results</div>
         <div class="res-actions">
           <button class="btn btn-o" style="font-size:12px" onclick="copyResult('${tool.id}')">📋 Copy</button>
+          ${tool.id === 'salvage' ? `<button class="btn btn-o" style="font-size:12px" onclick="salvagePushToPipeline()">⚡ Push to Pipeline</button>` : ''}
         </div>
       </div>
       <div class="res-body" id="rout-${tool.id}"></div>
@@ -3048,6 +3068,20 @@ If CONDITIONAL: state exactly what must be verified before proceeding
 
     case 'scout':
       return '__SCOUT_HANDLED__';
+
+    case 'salvage': {
+      var market = getFieldValue('f-salvage-market') || 'Any';
+      var assetType = getFieldValue('f-salvage-asset-type') || 'Any';
+      var dealSizeMin = getFieldValue('f-salvage-deal-size-min', true) || 2000000;
+      var lookbackDays = getFieldValue('f-salvage-lookback-days', true) || 90;
+      return 'Screen for distressed and bankruptcy-driven acquisition targets.\n\n' +
+        'Market: ' + market + '\n' +
+        'Asset type: ' + assetType + '\n' +
+        'Minimum deal size: $' + Number(dealSizeMin).toLocaleString() + '\n' +
+        'Lookback window: last ' + lookbackDays + ' days of filings or sale motions\n\n' +
+        'Search for both target patterns (direct 363 sale, and buy-then-bankrupt). ' +
+        'Return the ranked table per your output format, with conviction levels stated explicitly.';
+    }
 
     case 'canvas':
       p = 'You are a senior acquisitions officer at Dalfen Industrial running IOS demand intelligence.\n\n';
@@ -5375,6 +5409,105 @@ async function plAddDeal() {
   renderPipeline();
   showToast(addr.split(',')[0] + ' added to pipeline');
 }
+
+// SALVAGE → Pipeline. Parses the SALVAGE result table, filters to High Conviction
+// rows, dedupes against existing deals by debtor/address, and inserts each as a
+// pipeline deal in the app's internal shape (addr/type/price/sf/mkt/stage/conv/
+// broker/notes/nextDate) — the same shape plAddDeal uses and _sbUpsertDeal maps
+// to the deals table. Persists to localStorage + Supabase, mirroring plAddDeal.
+async function salvagePushToPipeline() {
+  var resultText = (STATE['salvage'] && STATE['salvage'].result) || '';
+  if (!resultText) {
+    showToast('Run SALVAGE first — no results to push.');
+    return;
+  }
+  var rows = _parseSalvageTable(resultText);
+  if (!rows.length) {
+    showToast('No parseable rows found in SALVAGE output.');
+    return;
+  }
+  var highConviction = rows.filter(function (r) {
+    return /high/i.test(r.conviction || '');
+  });
+  if (!highConviction.length) {
+    showToast('No High Conviction leads to push — ' + rows.length + ' total leads found, review manually.');
+    return;
+  }
+  var deals = getPipelineDeals();
+  var existingNames = deals.map(function (d) {
+    return (d.addr || '').toLowerCase().trim();
+  });
+  var pushed = 0;
+  for (var i = 0; i < highConviction.length; i++) {
+    var r = highConviction[i];
+    var key = (r.debtor || '').toLowerCase().trim();
+    if (!key || existingNames.indexOf(key) !== -1) continue;
+    var nowIso = new Date().toISOString();
+    var deal = {
+      id: (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + '-' + i),
+      addr: r.debtor,
+      type: /ios/i.test(r.assetType || '') ? 'Industrial Outdoor Storage (IOS)' : 'Other',
+      price: null,
+      sf: null,
+      mkt: r.marketFit || null,
+      stage: 'Initial Screen',
+      conv: 'High Conviction',
+      broker: null,
+      notes: 'Sourced via SALVAGE. Pattern: ' + (r.pattern || '') +
+             '. Court/Docket: ' + (r.courtDocket || '') +
+             '. Sale timeline: ' + (r.saleTimeline || '') +
+             '. Key facts: ' + (r.keyFacts || '') +
+             '. Source: ' + (r.source || ''),
+      nextDate: null,
+      createdAt: nowIso,
+      updatedAt: nowIso
+    };
+    deals.unshift(deal);
+    existingNames.push(key);
+    if (_sbOk && _sb) {
+      try {
+        await _sbUpsertDeal(deal);
+      } catch (e) {
+        console.warn('[SALVAGE] pipeline push failed for', r.debtor, e && e.message);
+      }
+    }
+    pushed++;
+  }
+  savePipelineDeals(deals);
+  _plFilter = 'All';
+  if (typeof renderPipeline === 'function') renderPipeline();
+  showToast('Pushed ' + pushed + ' of ' + highConviction.length + ' High Conviction lead(s) to Pipeline.');
+}
+
+// Parse a SALVAGE markdown table into row objects. Skips the header and the
+// |---|---| separator row; requires at least the 9 core columns.
+function _parseSalvageTable(text) {
+  var lines = text.split('\n').filter(function (l) { return l.trim().indexOf('|') === 0 || l.indexOf('|') !== -1; });
+  var rows = [];
+  for (var i = 0; i < lines.length; i++) {
+    var line = lines[i].trim();
+    if (!line.startsWith('|')) continue;
+    if (/^\|[\s:-]+\|/.test(line)) continue;
+    var cells = line.split('|').map(function (c) { return c.trim(); }).filter(function (c, idx, arr) {
+      return !(c === '' && (idx === 0 || idx === arr.length - 1));
+    });
+    if (cells.length < 9) continue;
+    if (/^#$/.test(cells[0]) || /debtor/i.test(cells[1])) continue;
+    rows.push({
+      debtor: cells[1],
+      pattern: cells[2],
+      courtDocket: cells[3],
+      assetType: cells[4],
+      marketFit: cells[5],
+      saleTimeline: cells[6],
+      keyFacts: cells[7],
+      conviction: cells[8],
+      source: cells[9] || ''
+    });
+  }
+  return rows;
+}
+
 function plSetFilter(stage) {
   _plFilter = stage;
   renderPipeline();

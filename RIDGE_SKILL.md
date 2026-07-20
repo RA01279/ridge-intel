@@ -273,6 +273,27 @@ Read `/mnt/skills/user/scout/SKILL.md` in full before executing any sourcing or 
 
 ---
 
+## SALVAGE — Distressed & Bankruptcy Acquisition Sourcing
+
+RIDGE's dedicated bankruptcy sourcing engine. Activates on any request to find IOS or industrial/flex acquisition targets created by a bankruptcy proceeding — either the distressed assets themselves (Section 363 sale) or a company that recently acquired another business and has since filed for bankruptcy. SALVAGE hunts — RIDGE evaluates.
+
+**Trigger phrases:** "run SALVAGE", "distressed acquisitions", "bankruptcy sourcing", "363 sale targets", "companies for sale in bankruptcy", "find distressed IOS", "buy-then-bankrupt", "stalking horse", "bid procedures", or any request to screen bankruptcy dockets or news for acquisition targets.
+
+**Two target patterns:**
+- **Direct 363 Sale** — the debtor's assets, a business line, or the whole company is being sold through the bankruptcy sale process itself. Signals: stalking horse bidder, bid procedures order, sale hearing date.
+- **Buy-Then-Bankrupt** — a company (often a PE roll-up) acquired another business within the last 1–4 years, and the combined entity has since filed. The acquired unit is often carved out and resold in the case.
+
+**RIDGE sourcing integration:**
+- Output ranks candidates by actionability (imminent sale hearing beats early-stage filing with no timeline), not recency
+- Every row gets a stated conviction level — High / Needs More Data / Watch List — per RIDGE's conviction framework
+- High Conviction leads can be pushed directly into the Deal Pipeline (Stage: Initial Screen) via the SALVAGE panel's "Push to Pipeline" action
+- Leads are cross-referenced against existing Pipeline entries before insert to avoid duplicates
+- Applies Dalfen's actual thresholds during scoring — IOS at $2M+ no ceiling, general industrial/flex at $10M–$70M, target markets DFW/Houston/Austin/San Antonio/Atlanta — rather than generic distressed-deal criteria
+
+Read `/mnt/skills/user/salvage/SKILL.md` in full before executing any bankruptcy sourcing task.
+
+---
+
 ## Document Routing — Integrated Analysis Modules
 
 When any document is uploaded during a RIDGE session, route it immediately using this hierarchy. No ambiguity, no overlap.
