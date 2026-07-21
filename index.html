@@ -8054,6 +8054,47 @@ var _apiKey = null;
 var _voyageKey = null;
 var _officerName = '';
 
+// ── SERVER-SIDE MODEL PROXY ─────────────────────────────────────────────────
+// Provider API keys (Anthropic, Voyage) now live ONLY in the Supabase Edge
+// Function `model-proxy` — never in the browser. A thin fetch shim transparently
+// redirects the legacy client calls to api.anthropic.com / api.voyageai.com to
+// the proxy, stripping any client-side key. Streaming responses pass through.
+// UPDATE these to your LIVE Supabase project (must match _sbInit / config.js):
+var _MODEL_PROXY_URL  = 'https://ookdsectdhllnhbwrwil.supabase.co/functions/v1/model-proxy';
+var _MODEL_PROXY_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9va2RzZWN0ZGhsbG5oYndyd2lsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQxMDgwNzIsImV4cCI6MjA4OTY4NDA3Mn0.NcvazMHBHocJrSdjMJViERttA3lijCXiA3x6x9p6vTM';
+
+// Bearer for the proxy: a signed-in Supabase user token when Auth is wired up,
+// otherwise the public anon key (a valid JWT the platform accepts).
+var _sbAccessToken = null;
+function _proxyBearer() { return _sbAccessToken || _MODEL_PROXY_ANON; }
+
+(function installModelProxyShim() {
+  if (typeof window === 'undefined' || window.__ridgeFetchShim) return;
+  var _origFetch = window.fetch.bind(window);
+  window.__ridgeFetchShim = true;
+  window.fetch = function(input, init) {
+    try {
+      var url = (typeof input === 'string') ? input : (input && input.url) || '';
+      var isAnthropic = url.indexOf('api.anthropic.com/v1/messages') !== -1;
+      var isVoyage    = url.indexOf('api.voyageai.com/v1/embeddings') !== -1;
+      if (isAnthropic || isVoyage) {
+        init = init || {};
+        var target = _MODEL_PROXY_URL + (isAnthropic ? '/messages' : '/embeddings');
+        return _origFetch(target, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'apikey': _MODEL_PROXY_ANON,
+            'Authorization': 'Bearer ' + _proxyBearer()
+          },
+          body: init.body   // forwarded unchanged; provider key added server-side
+        });
+      }
+    } catch (e) { console.warn('[RIDGE] model-proxy shim passthrough:', e && e.message); }
+    return _origFetch(input, init);
+  };
+})();
+
 var _mapsKey = null;
 async function loadMapsKey() {
   if (!_sbOk || !_sb) return;
@@ -8066,19 +8107,11 @@ async function loadMapsKey() {
 }
 
 async function loadApiKey() {
-  if (!_sbOk || !_sb) return;
-  try {
-    var { data, error } = await _sb.from('session_state').select('data').eq('id', 'api_config').single();
-    if (!error && data && data.data && data.data.apiKey) {
-      _apiKey = data.data.apiKey;
-    }
-  } catch(e) { console.warn('[RIDGE] loadApiKey (api_config) failed:', e.message); }
-  try {
-    var vr = await _sb.from('session_state').select('data').eq('id', 'voyage_config').single();
-    if (!vr.error && vr.data && vr.data.data && vr.data.data.voyageKey) {
-      _voyageKey = vr.data.data.voyageKey;
-    }
-  } catch(e) { console.warn('[RIDGE] loadApiKey (voyage_config) failed:', e.message); }
+  // Provider keys now live server-side in the model-proxy Edge Function — the
+  // browser must never load them. Sentinels keep the "key present" gates happy.
+  _apiKey = 'via-proxy';
+  _voyageKey = 'via-proxy';
+  if (!_sbOk || !_sb) { if (!_officerName) _officerName = _getSessionUser(); return; }
   try {
     var nr = await _sb.from('session_state').select('data').eq('id', 'officer_config').single();
     if (!nr.error && nr.data && nr.data.data && nr.data.data.officerName) {
@@ -8091,27 +8124,16 @@ async function loadApiKey() {
 }
 
 async function saveApiKey() {
-  var val = (document.getElementById('apikey-input').value || '').trim();
-  var vval = (document.getElementById('voyage-input').value || '').trim();
+  // Provider keys are no longer entered or stored client-side — they live in the
+  // model-proxy Edge Function secrets. This modal now only sets the officer name.
   var nval = (document.getElementById('officer-name-input').value || '').trim();
-  if (!val) { showToast('Enter an Anthropic API key first'); return; }
-  _apiKey = val;
-  if (vval) _voyageKey = vval;
+  _apiKey = 'via-proxy';
+  _voyageKey = 'via-proxy';
   if (nval) _officerName = nval;
-  if (_sbOk && _sb) {
+  if (_sbOk && _sb && nval) {
     try {
-      await _sb.from('session_state').upsert({ id: 'api_config', data: { apiKey: val } }, { onConflict: 'id' });
-    } catch(e) { console.warn('[RIDGE] saveApiKey (api_config) failed:', e.message); }
-    if (vval) {
-      try {
-        await _sb.from('session_state').upsert({ id: 'voyage_config', data: { voyageKey: vval } }, { onConflict: 'id' });
-      } catch(e) { console.warn('[RIDGE] saveApiKey (voyage_config) failed:', e.message); }
-    }
-    if (nval) {
-      try {
-        await _sb.from('session_state').upsert({ id: 'officer_config', data: { officerName: nval } }, { onConflict: 'id' });
-      } catch(e) { console.warn('[RIDGE] saveApiKey (officer_config) failed:', e.message); }
-    }
+      await _sb.from('session_state').upsert({ id: 'officer_config', data: { officerName: nval } }, { onConflict: 'id' });
+    } catch(e) { console.warn('[RIDGE] saveApiKey (officer_config) failed:', e.message); }
   }
   closeApiKeyModal();
   showToast('Settings saved');
