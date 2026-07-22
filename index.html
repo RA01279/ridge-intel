@@ -3508,6 +3508,15 @@ async function _sbInit() {
       'https://ookdsectdhllnhbwrwil.supabase.co',
       'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9va2RzZWN0ZGhsbG5oYndyd2lsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQxMDgwNzIsImV4cCI6MjA4OTY4NDA3Mn0.NcvazMHBHocJrSdjMJViERttA3lijCXiA3x6x9p6vTM'
     );
+    // Keep the model-proxy bearer in sync with the Supabase Auth session (once
+    // Auth is enabled). Falls back to the anon key when there is no signed-in user.
+    try {
+      var _s0 = await _sb.auth.getSession();
+      _sbAccessToken = (_s0 && _s0.data && _s0.data.session && _s0.data.session.access_token) || null;
+      _sb.auth.onAuthStateChange(function(_evt, session) {
+        _sbAccessToken = (session && session.access_token) || null;
+      });
+    } catch (e) { /* Auth not configured — anon fallback stays in effect */ }
     var { error } = await _sb.from('deals').select('id').limit(1);
     _sbOk = !error;
   } catch(e) { _sbOk = false; }
