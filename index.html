@@ -526,17 +526,31 @@ footer{border-top:1px solid var(--border);padding:20px 24px;text-align:center;co
   <div class="apikey-modal">
     <button class="xbtn" onclick="closeApiKeyModal()">✕</button>
     <h3>Settings</h3>
-    <p style="margin-bottom:14px;">Configure your API keys and display name.</p>
+    <p style="margin-bottom:14px;">Set your display name.</p>
     <p style="margin-top:0;margin-bottom:6px;">Your Name <span style="color:var(--muted);font-size:11px;">(used in reports and outreach scripts)</span></p>
     <input type="text" id="officer-name-input" placeholder="e.g. Rhett Anderson" style="margin-bottom:10px;" />
-    <p style="margin-top:0;margin-bottom:6px;">Anthropic API Key</p>
-    <input type="password" id="apikey-input" placeholder="sk-ant-..." />
-    <p style="margin-top:14px;margin-bottom:6px;">Voyage AI API Key <span style="color:var(--muted);font-size:11px;">(for semantic lease search)</span></p>
-    <input type="password" id="voyage-input" placeholder="pa-..." />
-    <div class="apikey-note">🔒 Stored in Supabase · Never logged · Never committed to GitHub</div>
+    <div class="apikey-note">🔒 Model API keys now live server-side in the model-proxy function — they are no longer entered or stored in the browser.</div>
     <div class="modal-btns" style="margin-top:16px;">
       <button class="btn btn-o" onclick="closeApiKeyModal()">Cancel</button>
       <button class="btn btn-p" onclick="saveApiKey()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- LOGIN MODAL (single-user Supabase Auth) -->
+<div class="apikey-modal-bg" id="login-modal">
+  <div class="apikey-modal">
+    <button class="xbtn" onclick="closeLoginModal()">✕</button>
+    <h3>Sign in to RIDGE</h3>
+    <p style="margin-bottom:14px;">Sign in with your RIDGE account. Required to run skills — this keeps your model credits private to you.</p>
+    <p style="margin:0 0 6px;">Email</p>
+    <input type="email" id="login-email" placeholder="you@dalfen.com" />
+    <p style="margin:14px 0 6px;">Password</p>
+    <input type="password" id="login-password" placeholder="••••••••" onkeydown="if(event.key==='Enter')ridgeSignIn()" />
+    <div class="apikey-note">🔒 Authenticated via Supabase. Your session stays signed in on this device.</div>
+    <div class="modal-btns" style="margin-top:16px;">
+      <button class="btn btn-o" onclick="closeLoginModal()">Cancel</button>
+      <button class="btn btn-p" onclick="ridgeSignIn()">Sign In</button>
     </div>
   </div>
 </div>
@@ -653,7 +667,8 @@ footer{border-top:1px solid var(--border);padding:20px 24px;text-align:center;co
       <button class="ridge-nav-btn" onclick="showHistoryPanel()">History</button>
       <button class="ridge-nav-btn" onclick="showLeaseLibrary()">Lease Library</button>
       <button class="ridge-nav-btn" onclick="pickMarketIntelFolder()">Sync Market Intel</button>
-      <button class="ridge-nav-btn" onclick="showApiKeyModal()">API Key</button>
+      <button class="ridge-nav-btn" onclick="showApiKeyModal()">Settings</button>
+      <button class="ridge-nav-btn" id="auth-btn" onclick="ridgeToggleAuth()">Sign In</button>
       <button class="ridge-nav-btn" onclick="_ridgeForceReset()" title="Force reset all RIDGE state" style="color:#005eb8;">⟳ Reset</button>
       <div style="width:1px;height:20px;background:var(--border);margin:0 6px;"></div>
       <div class="ridge-api-dot off" id="sb-dot" title="Supabase initializing…"></div>
@@ -3504,10 +3519,7 @@ function _trackTokens(input, output) {
 async function _sbInit() {
   try {
     if (!window.supabase) { _sbSetIndicator(false); return; }
-    _sb = window.supabase.createClient(
-      'https://ookdsectdhllnhbwrwil.supabase.co',
-      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9va2RzZWN0ZGhsbG5oYndyd2lsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQxMDgwNzIsImV4cCI6MjA4OTY4NDA3Mn0.NcvazMHBHocJrSdjMJViERttA3lijCXiA3x6x9p6vTM'
-    );
+    _sb = window.supabase.createClient(RIDGE_SB.url, RIDGE_SB.anon);
     // Keep the model-proxy bearer in sync with the Supabase Auth session (once
     // Auth is enabled). Falls back to the anon key when there is no signed-in user.
     try {
@@ -3515,12 +3527,14 @@ async function _sbInit() {
       _sbAccessToken = (_s0 && _s0.data && _s0.data.session && _s0.data.session.access_token) || null;
       _sb.auth.onAuthStateChange(function(_evt, session) {
         _sbAccessToken = (session && session.access_token) || null;
+        if (typeof _refreshAuthBtn === 'function') _refreshAuthBtn();
       });
     } catch (e) { /* Auth not configured — anon fallback stays in effect */ }
     var { error } = await _sb.from('deals').select('id').limit(1);
     _sbOk = !error;
   } catch(e) { _sbOk = false; }
   _sbSetIndicator(_sbOk);
+  if (typeof _refreshAuthBtn === 'function') _refreshAuthBtn();
   if (_sbOk) { await _sbLoadDeals(); _sbSubscribe(); await _loadMarkets(); }
   console.log('[RIDGE] Session started — user:', _getSessionUser(), '| Supabase:', _sbOk ? 'connected' : 'offline');
 }
@@ -8068,9 +8082,17 @@ var _officerName = '';
 // Function `model-proxy` — never in the browser. A thin fetch shim transparently
 // redirects the legacy client calls to api.anthropic.com / api.voyageai.com to
 // the proxy, stripping any client-side key. Streaming responses pass through.
-// UPDATE these to your LIVE Supabase project (must match _sbInit / config.js):
-var _MODEL_PROXY_URL  = 'https://ookdsectdhllnhbwrwil.supabase.co/functions/v1/model-proxy';
-var _MODEL_PROXY_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9va2RzZWN0ZGhsbG5oYndyd2lsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQxMDgwNzIsImV4cCI6MjA4OTY4NDA3Mn0.NcvazMHBHocJrSdjMJViERttA3lijCXiA3x6x9p6vTM';
+// ▼▼▼ THE ONLY TWO VALUES TO CHANGE when you create your Supabase project ▼▼▼
+// (Supabase dashboard → Settings → API → "Project URL" and "anon public" key.)
+// This is the single source of truth — used by BOTH the model proxy and the
+// database client (_sbInit) below. See docs/BACKEND_SETUP.md.
+var RIDGE_SB = {
+  url:  'https://ookdsectdhllnhbwrwil.supabase.co',
+  anon: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9va2RzZWN0ZGhsbG5oYndyd2lsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQxMDgwNzIsImV4cCI6MjA4OTY4NDA3Mn0.NcvazMHBHocJrSdjMJViERttA3lijCXiA3x6x9p6vTM'
+};
+// ▲▲▲ --------------------------------------------------------------------- ▲▲▲
+var _MODEL_PROXY_URL  = RIDGE_SB.url + '/functions/v1/model-proxy';
+var _MODEL_PROXY_ANON = RIDGE_SB.anon;
 
 // Bearer for the proxy: a signed-in Supabase user token when Auth is wired up,
 // otherwise the public anon key (a valid JWT the platform accepts).
@@ -8088,6 +8110,13 @@ function _proxyBearer() { return _sbAccessToken || _MODEL_PROXY_ANON; }
       var isVoyage    = url.indexOf('api.voyageai.com/v1/embeddings') !== -1;
       if (isAnthropic || isVoyage) {
         init = init || {};
+        // When the backend is connected, model calls require a signed-in user
+        // (the proxy rejects the anon key). Nudge to sign in rather than 401.
+        if (_sbOk && !_sbAccessToken) {
+          showToast('Sign in to run RIDGE skills.');
+          if (typeof showLoginModal === 'function') showLoginModal();
+          return Promise.reject(new Error('RIDGE: sign in required'));
+        }
         var target = _MODEL_PROXY_URL + (isAnthropic ? '/messages' : '/embeddings');
         return _origFetch(target, {
           method: 'POST',
@@ -8151,11 +8180,42 @@ async function saveApiKey() {
 
 
 function showApiKeyModal() {
-  document.getElementById('apikey-input').value = '';
-  document.getElementById('voyage-input').value = '';
   document.getElementById('officer-name-input').value = _officerName || '';
   _showModal('apikey-modal');
   setTimeout(function() { document.getElementById('officer-name-input').focus(); }, 100);
+}
+
+// ── Single-user Auth (Supabase) ─────────────────────────────
+function showLoginModal() {
+  _showModal('login-modal');
+  setTimeout(function() { var e = document.getElementById('login-email'); if (e) e.focus(); }, 100);
+}
+function closeLoginModal() { _hideModal('login-modal'); }
+function _refreshAuthBtn() {
+  var b = document.getElementById('auth-btn');
+  if (b) b.textContent = _sbAccessToken ? 'Sign Out' : 'Sign In';
+}
+function ridgeToggleAuth() { if (_sbAccessToken) ridgeSignOut(); else showLoginModal(); }
+async function ridgeSignIn() {
+  var email = (document.getElementById('login-email').value || '').trim();
+  var pw = (document.getElementById('login-password').value || '');
+  if (!email || !pw) { showToast('Enter your email and password.'); return; }
+  if (!_sb) { showToast('Backend not connected yet — see docs/BACKEND_SETUP.md.'); return; }
+  try {
+    var r = await _sb.auth.signInWithPassword({ email: email, password: pw });
+    if (r.error) { showToast('Sign in failed: ' + r.error.message); return; }
+    _sbAccessToken = (r.data && r.data.session && r.data.session.access_token) || null;
+    document.getElementById('login-password').value = '';
+    closeLoginModal();
+    _refreshAuthBtn();
+    showToast('Signed in as ' + email);
+  } catch (e) { showToast('Sign in error: ' + (e && e.message)); }
+}
+async function ridgeSignOut() {
+  try { if (_sb) await _sb.auth.signOut(); } catch (e) {}
+  _sbAccessToken = null;
+  _refreshAuthBtn();
+  showToast('Signed out.');
 }
 
 

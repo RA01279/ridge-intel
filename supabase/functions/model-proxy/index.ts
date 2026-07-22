@@ -42,6 +42,21 @@ function allowedModels(): Set<string> {
   return new Set([...BASE_MODELS, ...extra]);
 }
 
+// Read the `role` claim from a Supabase JWT without re-verifying it (the
+// platform's verify_jwt has already checked the signature). Anon keys carry
+// role "anon"; a signed-in user carries role "authenticated".
+function jwtRole(authHeader: string): string {
+  try {
+    const token = authHeader.replace(/^Bearer\s+/i, "");
+    const payload = token.split(".")[1];
+    if (!payload) return "";
+    const decoded = atob(payload.replace(/-/g, "+").replace(/_/g, "/"));
+    return (JSON.parse(decoded).role as string) || "";
+  } catch {
+    return "";
+  }
+}
+
 function corsHeaders(): Record<string, string> {
   return {
     "Access-Control-Allow-Origin": Deno.env.get("ALLOWED_ORIGIN") || "*",
@@ -66,9 +81,15 @@ Deno.serve(async (req: Request) => {
   if (req.method !== "POST") return json(405, { error: "method_not_allowed" });
 
   // Require an Authorization header. (Platform JWT verification does the real
-  // validation; this is a defensive check for local / verify_jwt=false runs.)
-  if (!req.headers.get("authorization")) {
-    return json(401, { error: "missing_authorization" });
+  // signature validation; this is a defensive check for local runs.)
+  const authHeader = req.headers.get("authorization") || "";
+  if (!authHeader) return json(401, { error: "missing_authorization" });
+
+  // Require a signed-in user — reject the public anon key so the proxy is not
+  // an open relay anyone can use to spend your model credits. Set ALLOW_ANON=true
+  // temporarily to smoke-test before the login UI is wired up.
+  if (Deno.env.get("ALLOW_ANON") !== "true" && jwtRole(authHeader) !== "authenticated") {
+    return json(401, { error: "auth_required", detail: "sign in to use the RIDGE proxy" });
   }
 
   const url = new URL(req.url);
